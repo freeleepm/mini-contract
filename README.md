@@ -3,7 +3,7 @@ Mini-Contract(免费开源电子合同)
 
 当前最新版本：v1.0.0 (发布时间：2022-11-25)
 
-[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License %202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)
+[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)
 [![输入图片说明](https://img.shields.io/static/v1?label=Author&message=上海旭冉信息科技有限公司&color=blue)](https://wwww.yi-types.com)
 [![输入图片说明](https://img.shields.io/static/v1?label=version&message=1.0.0&color=green)](https://wwww.yi-types.com)
 
