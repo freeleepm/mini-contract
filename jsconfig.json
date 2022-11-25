@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "commonjs",
+    "allowSyntheticDefaultImports": true,
+    "vueCompilerOptions": false,
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "jsx": "preserve"
+  },
+  "exclude": [".hbuilderx", "unpackage"]
+}
