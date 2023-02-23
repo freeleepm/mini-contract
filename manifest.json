@@ -2,8 +2,8 @@
     "name" : "eSign",
     "appid" : "__UNI__D494736",
     "description" : "",
-    "versionName" : "1.0.0",
-    "versionCode" : "100",
+    "versionName" : "1.0.1",
+    "versionCode" : "101",
     "transformPx" : false,
     /* 5+App特有相关 */
     "app-plus" : {

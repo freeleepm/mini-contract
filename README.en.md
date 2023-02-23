@@ -1,7 +1,14 @@
+<!--
+ * @Description:
+ * @LastEditTime: 2023-02-23 10:30:39
+ * @LastEditors: 何俊峰
+ * @Author: 何俊峰
+ * @Date: 2023-02-23 10:11:20
+-->
 Mini-Contract(免费开源电子合同)
 ===============
 
-当前最新版本：v1.0.0 (发布时间：2022-11-25)
+当前最新版本：v1.0.1 (发布时间：2023-2-23)
 
 [![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License %202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)
 [![输入图片说明](https://img.shields.io/static/v1?label=Author&message=上海旭冉信息科技有限公司&color=blue)](https://wwww.yi-types.com)
@@ -174,7 +181,7 @@ Mini-Contract(免费开源电子合同)
 ----
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_01.png)
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_02.png) 
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_02.png)
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_03.png)
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_04.png)
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_05.png)
@@ -201,7 +208,7 @@ Mini-Contract(免费开源电子合同)
 如果你有任何对 Mini-Contract 产品上的想法、意见或建议，或商务上的合作需求，请扫码添加 Mini-Contract 项目团队进一步沟通：
 ![输入图片说明](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/shawn_huangxing_qrcode.png)
 
-## 捐赠 
+## 捐赠
 
 如果觉得还不错，请作者喝杯咖啡吧 ☺
 
