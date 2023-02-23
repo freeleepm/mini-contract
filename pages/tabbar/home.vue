@@ -1,6 +1,6 @@
 <!--
  * @Description:
- * @LastEditTime: 2022-09-16 09:47:43
+ * @LastEditTime: 2022-09-22 15:29:43
  * @LastEditors: 刘仁秀
  * @Author: 刘仁秀
  * @Date: 2022-09-02 15:21:16
@@ -8,7 +8,7 @@
 <template>
   <view class="home flex-col">
     <view class="swiper-box">
-      <swiper class="swiper" circular @change="swiperChange">
+      <swiper class="swiper" circular @change="swiperChange" autoplay interval="5000">
         <swiper-item v-for="(item, index) in banners" :key="index">
           <image class="img-banner" :src="item.img"></image>
         </swiper-item>
@@ -66,7 +66,7 @@
           @click="navigateTo('/pages/switchIdentity/contractDetails?id=' + item.id)"
         >
           <view class="title flex-sb">
-            <view class="text-elps name flex-1 text-28 bold">
+            <view class="name flex-1 text-28 bold">
               {{ item.name || '' }}
             </view>
             <view
@@ -144,12 +144,12 @@ export default {
       loading: true,
       banners: [
         {
-          img: require('@/static/ImgBanner1.png'),
-          active: true,
-        },
-        {
           img: require('@/static/ImgBanner2.png'),
           active: false,
+        },
+        {
+          img: require('@/static/ImgBanner1.png'),
+          active: true,
         },
       ],
     };
@@ -344,18 +344,23 @@ export default {
         margin-bottom: 40rpx;
         border-radius: 12rpx;
         .title {
-          padding: 0 28rpx;
-          height: 96rpx;
+          padding: 28rpx;
           position: relative;
           background-color: #f7f9ff;
           border-bottom: 1px solid #e6e6e6;
           overflow: hidden;
+          .name{
+            white-space: break-spaces;
+            word-break: break-all;
+          }
         }
 
         .tag-status {
           padding: 0 20rpx;
           height: 40rpx;
           border-radius: 22rpx;
+          align-self: flex-start;
+          margin-left: 30rpx;
         }
 
         .date-box {

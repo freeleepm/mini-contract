@@ -83,7 +83,7 @@
             </view>
 
             <view class="text-enterprise text-26 color-base">
-              {{ item.companyName || '阿萨法撒旦法萨芬是打发斯蒂芬斯蒂芬撒防晒啥的' }}
+              {{ item.companyName || '--' }}
             </view>
           </view>
         </view>
@@ -93,8 +93,8 @@
       </view>
     </template>
 
-    <view v-else class="container-empty">
-      <BaseEmpty v-if="!list.length && !name" massage="暂无数据~"></BaseEmpty>
+    <view  v-if="!list.length && inSearching" class="container-empty">
+      <BaseEmpty massage="暂无数据~"></BaseEmpty>
       <button class="btn-primary text-32" open-type="share" type="primary">邀请注册</button>
     </view>
   </view>
@@ -119,10 +119,10 @@ export default {
   },
   onShareAppMessage() {
     return {
-      title: '嘿，有份合同要你签署一下',
+      title: '这份合同需要您补充信息，请前往查看 >',
       desc: '',
       path: '/pages/index/index',
-      imageUrl: '',
+      imageUrl: 'https://resource.yi-types.com/eSign/20230221-155954.jpg',
     };
   },
   methods: {

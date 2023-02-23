@@ -1,19 +1,26 @@
+/*
+ * @Description:
+ * @LastEditTime: 2022-12-09 16:48:45
+ * @LastEditors: 刘仁秀
+ * @Author: 刘仁秀
+ * @Date: 2022-09-02 15:21:16
+ */
 let baseUrl = '';
-let imgUrl = '';
-// 开发环境
-if (process.env.NODE_ENV === 'development') {
-  // baseUrl = 'http://192.168.101.168:8763';
-  // imgUrl = 'http://192.168.101.168:9090/r/';
-  baseUrl = 'localhost';
-  imgUrl = 'localhost';
+import { mockUrl, devUrl, testUrl, prodUrl } from './net.config.js'
+// #ifdef MP-WEIXIN
+const accountInfo = uni.getAccountInfoSync();
+if (accountInfo.miniProgram.envVersion == "develop") {// 开发版
+  baseUrl = prodUrl;
 }
-// 生产环境
-if (process.env.NODE_ENV === 'production') {
-  baseUrl = 'localhost';
-  imgUrl = 'localhost';
+if (accountInfo.miniProgram.envVersion == "trial") {  // 体验版
+  baseUrl = prodUrl;
 }
+if (accountInfo.miniProgram.envVersion == "release") {// 正式版
+  baseUrl = prodUrl;
+}
+// #endif
 
 export default {
   baseUrl,
-  imgUrl,
+  imgUrl: 'https://esign.yi-types.com/r/'
 };

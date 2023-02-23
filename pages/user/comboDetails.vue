@@ -7,18 +7,23 @@
 -->
 <template>
   <view class="page-base">
-    <view class="v-tabs-box flex-ct">
-      <v-tabs
-        :tabs="['全部', '个人套餐', '企业套餐']"
-        height="76rpx"
-        lineHeight="4rpx"
-        paddingItem="0 50rpx"
-        :value="current"
-        @change="change"
-      ></v-tabs>
-      <!-- 未个人实名认证，不可购买 -->
+    <view style="height: 112rpx;">
+      <view class="v-tabs-box flex-ct">
+        <v-tabs style='width: 80%;'
+          :tabs="tabs"
+          height="76rpx"
+          paddingItem="0 50rpx"
+          :value="current"
+          @change="change"
+          :scroll="false"
+          field="label"
+        ></v-tabs>
+      </view>
     </view>
-
+    <view class="count-box flex-ct">
+      <view>个人套餐总量：12分</view>
+      <view>剩余量：10份</view>
+    </view>
     <view class="list" v-if="list.length">
       <view class="item" v-for="(item, i) in list" :key="i">
         <view class="title flex-sb">
@@ -95,6 +100,11 @@ import { info } from '@/api/login.js';
 export default {
   data() {
     return {
+      tabs:[
+        // { label: '全部', state: '' },
+        { label: '个人套餐', state: 0 },
+        { label: '企业套餐', state: 1 }
+      ],
       current: 0,
       loading: true,
       list: [],
@@ -103,7 +113,9 @@ export default {
   },
   onLoad(options) {
     that = this;
-    this.current = options.type;
+    if(options.type || options.type == 0){
+      this.current = this.tabs.findIndex(i => i.state == options.type);
+    }
     that.init();
   },
   onShareAppMessage() {
@@ -132,7 +144,7 @@ export default {
     },
     getList() {
       list({
-        type: this.current == 0 ? '' : this.current - 1, // 个人0,企业1
+        type: this.tabs[this.current].state, // 个人0,企业1  this.current == 0 ? '' : this.current - 1
       })
         .then(data => {
           this.loading = false;
@@ -191,9 +203,22 @@ export default {
   margin-top: 300rpx;
   width: 100%;
 }
+.count-box{
+   background: #ccddff;
+       width: 686rpx;
+       text-align: center;
+       font-size: 28rpx;
+       padding: 12rpx 20rpx;
+       box-sizing: border-box;
+       margin-bottom: 20rpx;
+       color: #666;
+       view{
+         margin: 0 20rpx;
+       }
+}
 
 .list {
-  margin-top: 112rpx;
+
   width: 686rpx;
   .item {
     overflow: hidden;
@@ -203,7 +228,7 @@ export default {
     border-radius: 12rpx;
     .title {
       padding: 0 28rpx;
-      height: 96rpx;
+      height: 86rpx;
       position: relative;
       background-color: #f7f9ff;
       border-bottom: 1px solid #e6e6e6;
@@ -217,14 +242,13 @@ export default {
     }
 
     .date-box {
-      padding: 0 28rpx;
-      padding-bottom: 28rpx;
+      padding: 0 24rpx;
+      padding-bottom: 24rpx;
       background-color: white;
       border-radius: 0 0 30rpx 30rpx;
 
       .text-26 {
-        margin-top: 29rpx;
-        line-height: 37rpx;
+        margin-top: 24rpx;
       }
 
       .key {
@@ -238,7 +262,7 @@ export default {
       }
 
       .bar-money {
-        padding-top: 30rpx;
+        padding-top: 24rpx;
         border-top: 1px solid $uni-border-color;
       }
     }

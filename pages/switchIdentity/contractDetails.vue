@@ -1,6 +1,6 @@
 <!--
  * @Description:
- * @LastEditTime: 2022-09-16 14:31:53
+ * @LastEditTime: 2022-09-22 14:04:12
  * @LastEditors: 刘仁秀
  * @Author: 刘仁秀
  * @Date: 2022-09-02 15:21:16
@@ -8,9 +8,9 @@
 <template>
   <view class="page-base">
     <!-- 合同名 -->
-    <view class="contai-head flex-fs">
+    <view class="contai-head flex">
       <image class="icon-file" src="@/static/IconFile.png"></image>
-      <view class="text-26 color-base flex-1 text-elps">{{ data.name || '无合同' }}</view>
+      <view class="text-26 color-base flex-1">{{ data.name || '无合同' }}</view>
       <view
         v-if="data.state == 0"
         class="tag-status text-26 flex-ct"
@@ -125,12 +125,17 @@
                   未认证
                 </view>
 
+                <view class="text-enterprise text-26 color-base">
+                  {{ item.companyName || '' }}
+                </view>
+
                 <view v-if="item.state === 1" class="text-enterprise text-26 color-base-minor">
                   签署时间：{{ item.gmtSign || '' }}
                 </view>
                 <view v-if="item.state === 2" class="text-enterprise text-26 color-base-minor">
                   拒签时间：{{ item.gmtSign || '' }}
                 </view>
+
                 <view
                   v-if="item.state === 5 && data.state === 4"
                   class="text-enterprise text-26 color-base-minor"
@@ -478,9 +483,8 @@ export default {
 
 .contai-head {
   box-sizing: border-box;
-  padding: 0 32rpx;
+  padding: 32rpx;
   width: 100%;
-  height: 104rpx;
   background: #ffffff;
   border-top: 1px solid $uni-border-color;
 
@@ -489,11 +493,14 @@ export default {
     width: 32rpx;
     height: 32rpx;
   }
-
+  .color-base{
+    word-break: break-all;
+  }
   .tag-status {
     padding: 0 20rpx;
     height: 40rpx;
     border-radius: 22rpx;
+    margin-left: 30rpx;
   }
 }
 

@@ -1,0 +1,40 @@
+.DS_Store
+node_modules
+unpackage
+
+# local env files
+.env.local
+.env.*.local
+
+# Log files
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories and files
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Lock files
+pnpm-lock.yaml
+
+# Yarn v2
+.pnp.*
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# Vab
+public/video
+*.zip
+*.7z
+*.rar
+src/vab/styles/themes/red.scss

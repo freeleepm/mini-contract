@@ -84,6 +84,8 @@
             <view class="flex-wrap">
               <view class="text-28 color-base bold width-full">
                 {{ form.signers[0].nickname || '未认证用户' }}
+                
+                <text class="sealCount">套餐<text class="color-primary">20</text>份</text>
               </view>
               <view
                 v-if="form.signers[0].authentication"
@@ -109,8 +111,10 @@
               :src="form.signers[0].avatarUrl || '../../static/ImgDefAvatar.png'"
             ></image>
             <view class="flex-wrap">
-              <view class="text-28 color-base bold width-full">
-                {{ form.signers[0].nickname || '未认证用户' }}
+              <view class="flex-fs width-full">
+                <text class="text-30 color-base bold">{{ form.signers[0].nickname || '未认证用户' }}</text>
+                
+                <text class="sealCount">套餐<text class="color-primary">20</text>份</text>
               </view>
               <view
                 v-if="form.signers[0].authentication"
@@ -225,8 +229,9 @@
               :src="userInfo.avatarUrl || '../../static/ImgDefAvatar.png'"
             ></image>
             <view class="flex-wrap">
-              <view class="text-28 color-base bold width-full">
-                {{ userInfo.nickname || '未认证用户' }}
+              <view class="width-full flex-fs">
+                <text class="text-30 color-base bold">{{ userInfo.nickname || '未认证用户' }}</text>
+                <text class="sealCount">套餐<text class="color-primary">20</text>份</text>
               </view>
 
               <view v-if="userInfo.authentication" class="tag-auth tag-auth__auth flex-ct text-20">
@@ -690,6 +695,11 @@ export default {
   background-color: #fff;
   border-radius: 12rpx;
 }
+.sealCount{
+  font-size: 20rpx;
+  font-weight: normal;
+  margin-left: 12rpx;
+}
 .readme {
   position: fixed;
   top: 0;
@@ -753,7 +763,7 @@ export default {
 
 .tag-auth {
   box-sizing: border-box;
-  margin-top: 4rpx;
+  margin-top: 8rpx;
   padding: 0 10rpx;
   height: 36rpx;
   border-radius: 18rpx;

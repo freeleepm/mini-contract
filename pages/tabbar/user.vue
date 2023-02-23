@@ -1,6 +1,6 @@
 <!--
  * @Description:
- * @LastEditTime: 2022-09-16 15:06:44
+ * @LastEditTime: 2022-09-22 14:18:49
  * @LastEditors: 刘仁秀
  * @Author: 刘仁秀
  * @Date: 2022-09-02 15:21:16
@@ -71,7 +71,7 @@
       </view>
 
       <view class="menu-container flex-sb">
-        <view class="menu-item flex-col" @click="navigateTo('/pages/user/comboDetails?type=1')">
+        <view class="menu-item flex-col" @click="navigateTo('/pages/user/comboDetails?type=0')">
           <view
             v-if="!userInfo.individualMealCount"
             class="tip flex-ct"
@@ -85,7 +85,7 @@
           <view class="text-24">个人套餐</view>
         </view>
         <view class="line-vertical"></view>
-        <view class="menu-item flex-col" @click="navigateTo('/pages/user/comboDetails?type=2')">
+        <view class="menu-item flex-col" @click="navigateTo('/pages/user/comboDetails?type=1')">
           <view class="num">
             {{ userInfo.companyMealCount || 0 }}
           </view>
@@ -105,7 +105,7 @@
           color="#B3B3B3"
         ></uni-icons>
       </view>
-      <view
+      <!-- <view
         class="item flex-fs"
         @click="navigateTo('/pages/user/companySeal?companyId' + userInfo.companyId)"
       >
@@ -117,7 +117,7 @@
           size="16"
           color="#B3B3B3"
         ></uni-icons>
-      </view>
+      </view> -->
       <view class="item flex-fs" @click="navigateTo('/pages/user/fileManage')">
         <image class="icon-item" src="@/static/IconFilder.png"></image>
         <view class="flex-1 text-28">文件管理</view>

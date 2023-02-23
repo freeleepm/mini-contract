@@ -20,7 +20,7 @@
           <view class="decorate-small"></view>
         </view>
       </view>
-      <view class="row-type" :class="companyName ? 'flex-sb' : 'flex-ct'">
+      <view class="row-type flex-sb">
         <view
           class="card-type flex-fs color-base"
           :class="{ 'card-type-active': form.type == 0 }"
@@ -38,10 +38,15 @@
             color="#3277FF"
           ></uni-icons>
         </view>
+        <!-- :class="companyName ? 'flex-sb' : 'flex-ct'"
+          v-if="companyName" -->
         <view
-          v-if="companyName"
+         
           class="card-type flex-fs color-base"
-          :class="{ 'card-type-active': form.type == 1, disabled: !companyName }"
+          :class="{ 
+            'card-type-active': form.type == 1,
+            'card-type-disabled': !companyName
+            }"
           @click="tab(1)"
         >
           <view>
@@ -158,9 +163,26 @@ export default {
   },
   methods: {
     tab(type) {
-      this.form.type = type;
       if (type == 0) this.form.share = 1;
-      if (type == 1) this.form.share = 10;
+      if (type == 1){
+        if(!this.companyName){
+          uni.showModal({
+            content: '企业认证后才可购买套餐！',
+            confirmText: '去认证',
+            confirmColor: '#3277FF',
+            success: function (res) {
+              if (res.confirm) {
+                uni.navigateTo({
+                  url: '/pages/company/Certification',
+                });
+              }
+            },
+          });
+          return
+        }
+        this.form.share = 10;
+      }
+      this.form.type = type;
       this.cal();
     },
     change(arithmetic, e) {
@@ -309,7 +331,9 @@ export default {
       display: flex;
     }
   }
-
+  .card-type-disabled{
+    opacity: 0.75;
+  }
   .icon-checkbox {
     position: absolute;
     right: 20rpx;

@@ -1,6 +1,6 @@
 <!--
  * @Description:
- * @LastEditTime: 2022-09-15 11:50:15
+ * @LastEditTime: 2022-09-22 14:19:25
  * @LastEditors: 刘仁秀
  * @Author: 刘仁秀
  * @Date: 2022-09-02 15:21:16
@@ -35,10 +35,10 @@
             <image class="icon-auth" src="@/static/IconEnterpriseUnAuth.png"></image>
             未认证
           </view>
-          <view v-if="item.authentication == 1" class="tag-auth tag-auth__auth flex-ct text-20">
+          <!-- <view v-if="item.authentication == 1" class="tag-auth tag-auth__auth flex-ct text-20">
             <image class="icon-auth" src="@/static/IconSeal2.png"></image>
             印章
-          </view>
+          </view> -->
         </view>
         <image class="img-back" src="@/static/ImgBackEnterprise.png"></image>
         <view class="vertify flex-fs">
@@ -82,7 +82,7 @@
         >
           去认证
         </navigator>
-        <navigator
+        <!-- <navigator
           v-if="checkedEnterprise.authentication === 1"
           class="row-popup text-28 flex-ct"
           hover-class="none"
@@ -90,7 +90,7 @@
           @click="$refs.popupRef.close()"
         >
           企业印章
-        </navigator>
+        </navigator> -->
         <navigator
           class="row-popup text-28 flex-ct color-error"
           hover-class="none"
