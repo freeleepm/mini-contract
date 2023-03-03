@@ -9,47 +9,17 @@
   <view class="page-base">
     <!-- 合同名 -->
     <view class="contai-head flex">
-      <image class="icon-file" src="@/static/IconFile.png"></image>
-      <view class="text-26 color-base flex-1">{{ data.name || '无合同' }}</view>
+      <!-- <image class="icon-file" src="@/static/IconFile.png"></image> -->
+      <view class="text-28 bold color-base flex-1">{{ data.name || '无合同' }}</view>
       <view
-        v-if="data.state == 0"
         class="tag-status text-26 flex-ct"
-        style="color: #ee6a15; background: #ffefe6"
-      >
-        待签署
-      </view>
-      <view
-        v-if="data.state == 1"
-        class="tag-status text-26 flex-ct"
-        style="color: #00cf15; background: #e6ffe8"
-      >
-        已完成
-      </view>
-      <view
-        v-if="data.state == 2"
-        class="tag-status text-26 flex-ct"
-        style="color: #ff0000; background: #ffe8e8"
-      >
-        已拒签
-      </view>
-      <view
-        v-if="data.state == 3"
-        class="tag-status text-26 flex-ct"
-        style="color: #ff0000; background: #ffe8e8"
-      >
-        已撤销
-      </view>
-      <view
-        v-if="data.state == 4"
-        class="tag-status text-26 flex-ct"
-        style="color: #666666; background: #e6e6e6"
-      >
-        已逾期
+        :class="'status-color-' + data.state">
+          {{ data.state | stateHandle }}
       </view>
     </view>
 
     <!-- 签署文件 -->
-    <view class="contai-file color-base">
+    <view class="contai-file color-base" style="border-radius: 0 0 12rpx 12rpx;">
       <view class="row text-28 bold">签署合同</view>
 
       <view class="row head-docx flex" @click="listImg(data.url)">
@@ -82,7 +52,13 @@
     <!-- 签署流程 -->
     <!-- v-if="data && data.signers" -->
     <view class="contai-file color-base">
-      <view class="text-28 bold">签署流程</view>
+      <view class="flex-sb">
+        <view class="text-28 bold">签署流程</view>
+        <button open-type="share" class="flex-fs wx-share" v-if="data.initiatorName === userInfo.nickname && data.state < 1">
+          <image src="../../static/icon-share.png" mode=""></image>
+          <text class="text-24 color-primary">分享给签署方</text>
+        </button>
+      </view>
       <view class="container flex-col">
         <view class="container-person width-full">
           <view v-for="(item, index) in data.signers" :key="index" class="item">
@@ -197,15 +173,25 @@
         </view>
       </view>
     </view>
-
-    <view
-      v-if="data.state === 0 && data.initiatorName === userInfo.nickname"
-      class="btn-primary"
-      @click.stop="navigateTo('/pages/switchIdentity/revoke?id=' + data.id)"
-    >
-      撤销合同
-    </view>
-
+    <!-- 合同状态为未签署 && （发起方未签署 || 签署方未签署） -->
+    <template v-if="data.state === 0 && ((data.signers[0].state === 0 && data.signers[0].userName === userInfo.nickname) || (data.signers[1].state === 0 && data.signers[1].userName === userInfo.nickname))">
+      <view
+        class="btn-primary"
+        @click.stop="toSign"
+      >
+        签署合同
+      </view>
+      <!-- 发起人才可撤销 -->
+      <view
+		v-if="data.initiatorName === userInfo.nickname"
+        class="btn-primary btn-cancel"
+        @click.stop="navigateTo('/pages/switchIdentity/revoke?id=' + data.id)"
+      >
+        撤销合同
+      </view>
+    </template>
+    
+    
     <!-- 普通弹窗 -->
     <uni-popup ref="popup" background-color="#fff" @change="change">
       <view class="popup-window">
@@ -251,20 +237,32 @@ export default {
     };
   },
   onLoad(options) {
-    // console.log(options,'asdasd');
     this.contractId = options?.id;
+    
   },
   onShow() {
-    userInfoApi.contractDetails(this.contractId).then(data => {
-      this.data = data;
-    });
     userInfoApi.personalInformation().then(data => {
       this.userInfo = data;
+      userInfoApi.contractDetails(this.contractId).then(res => {
+        this.data = res;
+      });
     });
   },
   methods: {
     navigateTo(url) {
       this.common.navigateTo(url);
+    },
+    toSign(){
+      if(!this.data.signUrl){
+        uni.showToast({
+          title: '签署链接获取失败',
+          icon: 'none'
+        })
+        return
+      }
+      uni.reLaunch({
+        url: '/pages/company/authorize?path=' + encodeURIComponent(this.data.signUrl),
+      })
     },
     toggle(type, num) {
       this.type = type;
@@ -309,10 +307,20 @@ export default {
   },
 
   onShareAppMessage() {
-    return this.setting.share;
+    return {
+      title: '这份合同需要您签署，前往查看>',
+      desc: '',
+      path: '/pages/index/index?id='+this.contractId+'&uid='+this.data.signers[1].userId,
+      imageUrl: 'https://resource.yi-types.com/eSign/20230228-145916.png',
+    };
   },
   onShareTimeline() {
-    return this.setting.share;
+    return {
+      title: '这份合同需要您签署，前往查看>',
+      desc: '',
+      path: '/pages/index/index?id='+this.contractId+'&uid='+this.data.signers[1].userId,
+      imageUrl: 'https://resource.yi-types.com/eSign/20230228-145916.png',
+    };
   },
 };
 </script>
@@ -358,11 +366,18 @@ export default {
 .contai-file {
   box-sizing: border-box;
   padding: 32rpx;
-  margin-top: 32rpx;
+  margin-bottom: 32rpx;
   width: 686rpx;
   background: #ffffff;
   border-radius: 12rpx;
-
+  .wx-share{
+    border-radius: 50rpx;
+    image{
+      width: 24rpx;
+      height: 24rpx;
+      margin-right: 10rpx;
+    }
+  }
   .head-docx {
     padding: 24rpx;
     background: #f5f5f5;
@@ -484,10 +499,11 @@ export default {
 .contai-head {
   box-sizing: border-box;
   padding: 32rpx;
-  width: 100%;
+  width: 686rpx;
   background: #ffffff;
-  border-top: 1px solid $uni-border-color;
-
+  margin-top: 32rpx;
+  border-radius: 12rpx 12rpx 0 0;
+  border-bottom: 1px solid #F5F5F5;
   .icon-file {
     margin-right: 10rpx;
     width: 32rpx;
@@ -506,9 +522,11 @@ export default {
 
 .btn-primary {
   margin-top: 60rpx;
-  margin-bottom: 158rpx;
   width: 598rpx;
   height: 88rpx;
   border-radius: 8rpx;
+  &.btn-cancel{
+    background: $uni-color-error!important;
+  }
 }
 </style>

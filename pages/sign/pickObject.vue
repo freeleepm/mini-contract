@@ -88,13 +88,15 @@
           </view>
         </view>
       </view>
-      <view class="bottom-bar flex-ct padding-safe">
-        <button class="btn-primary text-32" open-type="share">邀请注册</button>
-      </view>
+      
     </template>
-
+    
+    <view class="bottom-bar flex-ct padding-safe" v-if="name && !inSearching">
+      <view class="btn-primary text-32" @click="comfirm">查询</view>
+    </view>
+    
     <view  v-if="!list.length && inSearching" class="container-empty">
-      <BaseEmpty massage="暂无数据~"></BaseEmpty>
+      <BaseEmpty :massage="type == 1 ? '未查询到个人<br>请先微信邀请签署方前往小程序完成实名认证' : '未查询到企业<br>请先微信邀请签署方前往小程序完成企业认证'"></BaseEmpty>
       <button class="btn-primary text-32" open-type="share" type="primary">邀请注册</button>
     </view>
   </view>
@@ -121,7 +123,7 @@ export default {
     return {
       title: '这份合同需要您补充信息，请前往查看 >',
       desc: '',
-      path: '/pages/index/index',
+      path: '/pages/login/login?isCertification=1',
       imageUrl: 'https://resource.yi-types.com/eSign/20230221-155954.jpg',
     };
   },
@@ -318,13 +320,14 @@ export default {
 }
 
 .bottom-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
+  // position: fixed;
+  // bottom: 0;
+  // left: 0;
   width: 100%;
   height: 188rpx;
-  background: #ffffff;
-  box-shadow: 0rpx -1px 20rpx 1px rgba(0, 0, 0, 0.1);
+  // background: #ffffff;
+  // box-shadow: 0rpx -1px 20rpx 1px rgba(0, 0, 0, 0.1);
+  margin: 110rpx auto 0;
 }
 
 .btn-primary {

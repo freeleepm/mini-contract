@@ -9,13 +9,10 @@
   <view class="page-base">
     <view class="search-box flex-sb">
       <view class="text-28 bold color-base">我的企业</view>
-      <view
-        class="text-26 color-primary"
-        :class="{
-          disabled: !authentication,
-        }"
-        @click="toCreate"
-      >
+      <view @click="toCreate" class="text-26 color-primary">
+      <!-- :class="{
+        disabled: !authentication,
+      }" -->
         +创建企业
       </view>
     </view>

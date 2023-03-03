@@ -8,7 +8,7 @@
 Mini-Contract(免费开源电子合同)
 ===============
 
-当前最新版本：v1.0.1 (发布时间：2023-2-23)
+当前最新版本：v1.0.2 (发布时间：2023-3-3)
 
 [![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License %202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)
 [![输入图片说明](https://img.shields.io/static/v1?label=Author&message=上海旭冉信息科技有限公司&color=blue)](https://wwww.yi-types.com)

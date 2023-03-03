@@ -17,3 +17,16 @@ export function remove(data){ // 删除文件
 		url:`/api/attachment/v1?id=`+data.id
 	})
 }
+
+export function templateList(data){ // 签署模板列表
+	return get({
+		url:`/api/contract-template`,
+		data
+	})
+}
+
+export function templateDetail(templateId){ // 签署模板详情
+	return get({
+		url:`/api/contract-template/${templateId}`
+	})
+}

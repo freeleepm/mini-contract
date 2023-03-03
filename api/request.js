@@ -48,6 +48,7 @@ function request(obj, method) {
             reject()
           } else if (res.data.code == 1010 || res.data.code == 1051) { // 未登录或token过期
             uni.setStorageSync('eToken', '')
+            uni.setStorageSync('userInfo', '')
             // #ifdef MP-WEIXIN
             uni.login({
               provider: 'weixin',

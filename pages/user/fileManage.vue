@@ -42,14 +42,14 @@
         </view>
       </view>
 
-      <view class="item flex-fs" v-for="(item, i) in list" :key="i" @click="openFile(item)">
+      <view class="item flex-fs" v-for="(item, i) in list" :key="i" @click="openFile(item)" @longpress="handleDel(item.id, i)">
         <image
-          v-if="item.name.split('.')[1] === 'doc' || item.name.split('.')[1] === 'docx'"
+          v-if="item.name.indexOf('.doc') > -1"
           class="icon-doc"
           src="@/static/IconDoc.png"
         ></image>
         <image
-          v-if="item.name.split('.')[1] === 'pdf'"
+          v-if="item.name.indexOf('.pdf') > -1"
           class="icon-doc"
           src="@/static/IconPdf.png"
         ></image>
@@ -57,12 +57,8 @@
           <view class="text-name text-26 color-base text-elps">{{ item.name }}</view>
           <view class="text-24 color-grey-minor">{{ item.size | size }}</view>
         </view>
-        <!-- <text
-          class="iconfont icon-checked"
-          :class="{ 'text-primary': id == item.id }"
-          v-if="pick == 1"
-        ></text> -->
-        <!-- <text class="iconfont icon-shanchu" v-else @click.stop="del(item.id, i)"></text> -->
+        <uni-icons type="checkbox-filled" size="24" color="#3277FF" v-if="pick == 1 && id == item.id"></uni-icons>
+        <!-- <uni-icons type="trash-filled" size="24" color="#e63c3c" v-else @click.stop="del(item.id, i)"></uni-icons> -->
       </view>
       <loadMore v-if="loading"></loadMore>
       <baseline v-if="showBaseline"></baseline>
@@ -264,6 +260,22 @@ export default {
       });
       // #endif
     },
+    handleDel(id, i){
+      if(that.pick != 1){
+        uni.showActionSheet({
+        	itemList: ['删除'],
+          itemColor: '#e63c3c',
+        	success: function (res) {
+            if(res.tapIndex === 0){
+              that.del(id, i)
+            }
+        	},
+        	fail: function (res) {
+        		console.log(res.errMsg);
+        	}
+        });
+      }
+    },
     openFile(item) {
       if (that.pick == 1) {
         uni.setStorageSync('file_name', '');
@@ -320,7 +332,7 @@ export default {
         content: '删除后文件不可恢复，是否继续？',
         confirmText: '删除',
         cancelText: '取消',
-        confirmColor: '#3277FF',
+        confirmColor: '#e63c3c',
         cancelColor: '#999999',
         success: function (res) {
           if (res.confirm) {

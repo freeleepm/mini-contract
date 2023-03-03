@@ -13,7 +13,6 @@
 		},
 		onLoad(e) {
 			if(e.path) this.path = decodeURIComponent(e.path)
-			console.log(this.path)
 		},
     onShareAppMessage() {
       return this.setting.share

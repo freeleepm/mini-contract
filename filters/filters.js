@@ -29,6 +29,18 @@ export function size(size) {
 export function money(num) {
 	return num?(num/100).toFixed(2):0
 }
+export function stateHandle(state){
+    const states = [
+      { state: -2, text: '待签署'},
+      { state: 0, text: '待签署'},
+      { state: 1, text: '已完成'},
+      { state: 2, text: '已拒签'},
+      { state: 3, text: '已撤销'},
+      { state: 4, text: '已逾期'},
+      { state: 5, text: '流产'},
+    ]
+    return states.find(i=>i.state === state)?.text
+}
 export function duration(duration) {
 	duration = duration || 0
 	if(duration < 10) duration = '00:0'+duration

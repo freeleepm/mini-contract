@@ -1,7 +1,7 @@
 .DS_Store
 node_modules
 unpackage
-
+.hbuilderx
 # local env files
 .env.local
 .env.*.local

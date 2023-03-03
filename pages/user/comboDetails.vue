@@ -7,7 +7,7 @@
 -->
 <template>
   <view class="page-base">
-    <view style="height: 112rpx;">
+    <view style="height: 76rpx;">
       <view class="v-tabs-box flex-ct">
         <v-tabs style='width: 80%;'
           :tabs="tabs"
@@ -20,10 +20,21 @@
         ></v-tabs>
       </view>
     </view>
-    <view class="count-box flex-ct">
-      <view>个人套餐总量：12分</view>
-      <view>剩余量：10份</view>
+    <view class="count-box flex-ct" v-if="showMealCount">
+      <view class="count-list flex-sa">
+        <view class="count-item">
+          <view class="count"><text>{{ showMealCount.shareCount || 0 }}</text>份</view>
+          <view>总量</view>
+          <!-- <view>{{ current==0?'个人套餐总量':'企业套餐总量' }}</view> -->
+        </view>
+        <view class="line"></view>
+        <view class="count-item">
+          <view class="count"><text>{{ showMealCount.surplusShareCount || 0 }}</text>份</view>
+          <view>剩余量</view>
+        </view>
+      </view>
     </view>
+    
     <view class="list" v-if="list.length">
       <view class="item" v-for="(item, i) in list" :key="i">
         <view class="title flex-sb">
@@ -95,7 +106,7 @@
 
 <script>
 var that;
-import { list } from '@/api/meal.js';
+import { list, count } from '@/api/meal.js';
 import { info } from '@/api/login.js';
 export default {
   data() {
@@ -109,6 +120,7 @@ export default {
       loading: true,
       list: [],
       authentication: false,
+      MealCount: ''
     };
   },
   onLoad(options) {
@@ -131,6 +143,9 @@ export default {
     showBaseline() {
       return !this.noMore && !this.loading && this.list.length > 5;
     },
+    showMealCount(){
+      return this.MealCount?this.MealCount.find(i=> i.type === this.current):''
+    }
   },
   methods: {
     getUinfo() {
@@ -138,7 +153,15 @@ export default {
         that.authentication = data.authentication;
       });
     },
+    getMealCount(){
+      count({
+        state: 1
+      }).then(res=>{
+        this.MealCount = res
+      })
+    },
     async init() {
+      await that.getMealCount();
       await that.getUinfo();
       await that.getList();
     },
@@ -197,6 +220,7 @@ export default {
   left: 0;
   width: 100%;
   background-color: white;
+  border-bottom: 1px solid #F5F5F5;
 }
 
 .nodata {
@@ -204,21 +228,41 @@ export default {
   width: 100%;
 }
 .count-box{
-   background: #ccddff;
-       width: 686rpx;
+   background: linear-gradient(to bottom, #ffffff, #f5f5f5);
+       width: 100%;
        text-align: center;
        font-size: 28rpx;
-       padding: 12rpx 20rpx;
+       padding: 32rpx;
        box-sizing: border-box;
-       margin-bottom: 20rpx;
        color: #666;
-       view{
-         margin: 0 20rpx;
+       .count-list{
+         border-radius: 12rpx;
+         background-color: #ffffff;
+         height: 100%;
+         width: 100%;
+         height: 134rpx;
+         .count-item{
+           flex: 1;
+           .count{
+             font-size: 24rpx;
+             text{
+               font-size: 36rpx;
+               font-weight: bold;
+               color: #333333;
+               padding-right: 4rpx;
+             }
+           }
+         }
+         .line{
+           background-color: #f5f5f5;
+           width: 1px;
+           height: 52rpx;
+         }
        }
 }
 
 .list {
-
+  margin-top: 20rpx;
   width: 686rpx;
   .item {
     overflow: hidden;
@@ -239,6 +283,7 @@ export default {
       padding: 0 20rpx;
       height: 40rpx;
       border-radius: 22rpx;
+      align-self: center;
     }
 
     .date-box {

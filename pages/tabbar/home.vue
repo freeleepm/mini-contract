@@ -37,13 +37,22 @@
         <view class="text-26">待他人处理</view>
       </view>
       <view class="line-vertical"></view>
-      <view class="menu-item flex-col" @click="toSign">
+      <view class="menu-item flex-col" @click="navigateTo('/pages/tabbar/sign',1)">
         <view class="num flex-ct">
           <image class="icon-contract" src="@/static/IconContract.png"></image>
         </view>
         <view class="text-26">签署合同</view>
       </view>
     </view>
+    <view class="template-box flex-sb" @click="navigateTo('/pages/contractTemplate/index', 1)">
+      <image src="../../static/templateBg.png" mode="widthFix"></image>
+      <text class="bold text-30 color-base">合同模板</text>
+      <view class="flex-fs">
+        <text class="text-24 color-base-minor">各行业合同模板</text>
+        <uni-icons type="right" color="#666" size="14"></uni-icons>
+      </view>
+    </view>
+    
     <!-- 最近文件 -->
     <view class="file-list">
       <view class="file-list-title flex-sb">
@@ -71,38 +80,8 @@
             </view>
             <view
               class="tag-status text-26 flex-ct"
-              style="color: #ee6a15; background: #ffefe6"
-              v-if="item.state == 0"
-            >
-              待签署
-            </view>
-            <view
-              class="tag-status text-26 flex-ct"
-              style="color: #00cf15; background: #e6ffe8"
-              v-if="item.state == 1"
-            >
-              已完成
-            </view>
-            <view
-              class="tag-status text-26 flex-ct"
-              style="color: #ff0000; background: #ffe8e8"
-              v-if="item.state == 2"
-            >
-              已拒签
-            </view>
-            <view
-              class="tag-status text-26 flex-ct"
-              style="color: #ff0000; background: #ffe8e8"
-              v-if="item.state == 3"
-            >
-              已撤销
-            </view>
-            <view
-              class="tag-status text-26 flex-ct"
-              style="color: #666666; background: #e6e6e6"
-              v-if="item.state == 4"
-            >
-              已逾期
+              :class="'status-color-' + item.state">
+              {{ item.state | stateHandle }}
             </view>
           </view>
           <view class="date-box">
@@ -158,27 +137,6 @@ export default {
     this.init();
   },
   methods: {
-    toSign() {
-      if (uni.getStorageSync('userInfo').token) {
-        uni.navigateTo({
-          url: '/pages/tabbar/sign',
-        });
-      } else {
-        uni.showModal({
-          title: '温馨提示',
-          content: '请先登录/注册，方可进行下一步操作',
-          confirmText: '去登录',
-          cancelText: '取消',
-          confirmColor: '#3277FF',
-          cancelColor: '#999999',
-          success: res => {
-            if (res.confirm) {
-              this.common.navigateTo('/pages/login/login?logout=1');
-            }
-          },
-        });
-      }
-    },
     async init() {
       this.loading = true;
       if (!uni.getStorageSync('userInfo')) {
@@ -201,7 +159,23 @@ export default {
         this.balanceQuery = data;
       });
     },
-    navigateTo(url) {
+    navigateTo(url, checkLogin) {
+      if(checkLogin && !uni.getStorageSync('userInfo').token){
+        uni.showModal({
+          title: '温馨提示',
+          content: '请先登录/注册，方可进行下一步操作',
+          confirmText: '去登录',
+          cancelText: '取消',
+          confirmColor: '#3277FF',
+          cancelColor: '#999999',
+          success: res => {
+            if (res.confirm) {
+              this.common.navigateTo('/pages/login/login?logout=1');
+            }
+          },
+        });
+        return
+      }
       this.common.navigateTo(url);
     },
     switchTab(type) {
@@ -265,7 +239,30 @@ export default {
       opacity: 1;
     }
   }
-
+  .template-box{
+    width: 686rpx;
+    height: 160rpx;
+    padding: 0 32rpx 0 170rpx;
+    background-color: #D8E5FF;
+    border-radius: 12rpx 12rpx 12rpx 12rpx;
+    margin-top: 32rpx;
+    box-sizing: border-box;
+    position: relative;
+    image{
+      display: block;
+      width: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    text,view{
+      position: relative;
+      z-index: 1;
+    }
+    .text-24{
+      margin-right: 10rpx;
+    }
+  }
   .menu-list {
     position: relative;
     margin-top: 32rpx;
@@ -347,20 +344,12 @@ export default {
           padding: 28rpx;
           position: relative;
           background-color: #f7f9ff;
-          border-bottom: 1px solid #e6e6e6;
+          border-bottom: 1px solid rgba(230, 230, 230, 0.5);
           overflow: hidden;
           .name{
             white-space: break-spaces;
             word-break: break-all;
           }
-        }
-
-        .tag-status {
-          padding: 0 20rpx;
-          height: 40rpx;
-          border-radius: 22rpx;
-          align-self: flex-start;
-          margin-left: 30rpx;
         }
 
         .date-box {

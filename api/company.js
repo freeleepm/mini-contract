@@ -55,7 +55,7 @@ export function companyAuth(data){ // 企业认证
 
 export function sign(data){ // 合同签订
 	return post({
-		url:`/api/contract/v1`,
+		url:`/api/contract/v2`,
 		data
 	})
 }

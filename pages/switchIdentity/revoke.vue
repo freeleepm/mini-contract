@@ -151,7 +151,9 @@ export default {
                 duration: 2000,
               });
               setTimeout(() => {
-                uni.navigateBack();
+                uni.switchTab({
+                  url: '/pages/tabbar/home'
+                });
               }, 800);
             });
         } else {

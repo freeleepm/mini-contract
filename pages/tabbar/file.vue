@@ -23,43 +23,13 @@
         @click="navigateTo('/pages/switchIdentity/contractDetails?id=' + item.id)"
       >
         <view class="title flex-sb">
-          <view class="text-elps name flex-1 text-28 bold">
+          <view class="name flex-1 text-28 bold">
             {{ item.name || '' }}
           </view>
           <view
             class="tag-status text-26 flex-ct"
-            style="color: #ee6a15; background: #ffefe6"
-            v-if="item.state == 0"
-          >
-            待签署
-          </view>
-          <view
-            class="tag-status text-26 flex-ct"
-            style="color: #00cf15; background: #e6ffe8"
-            v-if="item.state == 1"
-          >
-            已完成
-          </view>
-          <view
-            class="tag-status text-26 flex-ct"
-            style="color: #ff0000; background: #ffe8e8"
-            v-if="item.state == 2"
-          >
-            已拒签
-          </view>
-          <view
-            class="tag-status text-26 flex-ct"
-            style="color: #ff0000; background: #ffe8e8"
-            v-if="item.state == 3"
-          >
-            已撤销
-          </view>
-          <view
-            class="tag-status text-26 flex-ct"
-            style="color: #666666; background: #e6e6e6"
-            v-if="item.state == 4"
-          >
-            已逾期
+            :class="'status-color-' + item.state">
+            {{ item.state | stateHandle }}
           </view>
         </view>
         <view class="date-box">
@@ -83,13 +53,13 @@
             <view class="key">截止时间</view>
             <view class="val">{{ item.endTime || '' }}</view>
           </view>
-          <view
+          <!-- <view
             v-if="item.state === 0 && item.initiatorName === userInfo.nickname"
             class="btn-vice text-26"
             @click.stop="navigateTo('/pages/switchIdentity/revoke?id=' + item.id)"
           >
             撤销
-          </view>
+          </view> -->
         </view>
       </view>
     </view>
@@ -252,6 +222,19 @@ export default {
       }
     },
   },
+  
+  onReachBottom() {
+    if (this.hasMore) {
+      this.loading = true;
+      this.params.pageNum++;
+      this.getData();
+    }
+  },
+  onPullDownRefresh() {
+    this.loading = true;
+    this.params.pageNum = 1;
+    this.getData();
+  }
 };
 </script>
 
@@ -287,20 +270,17 @@ export default {
     background-color: #ffffff;
     border-radius: 12rpx;
     .title {
-      padding: 0 28rpx;
-      height: 96rpx;
+      padding: 28rpx;
       position: relative;
       background-color: #f7f9ff;
-      border-bottom: 1px solid #e6e6e6;
+      border-bottom: 1px solid rgba(230, 230, 230, 0.5);
       overflow: hidden;
+      .name{
+        white-space: break-spaces;
+        word-break: break-all;
+      }
     }
-
-    .tag-status {
-      padding: 0 20rpx;
-      height: 40rpx;
-      border-radius: 22rpx;
-    }
-
+    
     .date-box {
       padding: 0 28rpx;
       padding-bottom: 28rpx;

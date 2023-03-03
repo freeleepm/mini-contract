@@ -23,7 +23,10 @@ export default {
       title: 'Hello',
     };
   },
-  onLoad() {
+  onLoad(e) {
+    console.log(e)
+    uni.removeStorageSync('userInfo')
+    uni.removeStorageSync('eToken')
     uni.login({
       provider: 'weixin',
       success: function (loginRes) {
@@ -34,12 +37,21 @@ export default {
             if (res.token) {
               uni.setStorageSync('userInfo', res);
             }
+            if(e.id && e.uid && e.uid === res.id){ // 有合同 && 当前用户是签署方
+              uni.navigateTo({
+                url: '/pages/switchIdentity/contractDetails?id='+e.id,
+              });
+            }else{
+              uni.reLaunch({
+                url: '/pages/tabbar/home',
+              })
+            }
           })
-          .finally(() => {
+          .catch(() => {
             uni.reLaunch({
               url: '/pages/tabbar/home',
             });
-          });
+          })
       },
       fail() {
         uni.reLaunch({

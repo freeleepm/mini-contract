@@ -22,12 +22,12 @@
         @click="navigateTo('/pages/user/fileManage?pick=1&id=' + file.id)"
       >
         <image
-          v-if="['doc', 'docx'].includes(file.name.split('.')[1])"
+          v-if="file.name.indexOf('.doc') > -1"
           class="icon-doc"
           src="@/static/IconDoc.png"
         ></image>
         <image
-          v-if="file.name.split('.')[1] === 'pdf'"
+          v-if="file.name.indexOf('.pdf') > -1"
           class="icon-doc"
           src="@/static/IconPdf.png"
         ></image>
@@ -63,13 +63,19 @@
       </view>
       <view class="line-horizontal"></view>
       <view class="title bold text-28 color-base">截止日期</view>
-
-      <uni-datetime-picker type="datetime" :value="form.endTime" :start="start" @change="change">
+      
+     <!-- <uni-datetime-picker type="datetime" :value="form.endTime" :start="start" @change="change">
         <view class="text-26 color-base flex-sb">
           <view>{{ form.endTime || '请选择截止时间' }}</view>
           <uni-icons type="forward" size="15" color="#B3B3B3" class="flex-ct"></uni-icons>
         </view>
-      </uni-datetime-picker>
+      </uni-datetime-picker> -->
+      <picker mode="date" :value="form.endTime" :start="start" @change="change" v-if="!reloading">
+        <view class="text-26 color-base flex-sb">
+          <view>{{ form.endTime || '请选择截止时间' }}</view>
+          <uni-icons type="forward" size="15" color="#B3B3B3" class="flex-ct"></uni-icons>
+        </view>
+      </picker>
     </view>
 
     <view class="container-card">
@@ -85,7 +91,7 @@
               <view class="text-28 color-base bold width-full">
                 {{ form.signers[0].nickname || '未认证用户' }}
                 
-                <text class="sealCount">套餐<text class="color-primary">20</text>份</text>
+                <text class="sealCount">套餐<text class="color-primary">{{userInfo.companyMealCount || 0}}</text>份</text>
               </view>
               <view
                 v-if="form.signers[0].authentication"
@@ -114,7 +120,7 @@
               <view class="flex-fs width-full">
                 <text class="text-30 color-base bold">{{ form.signers[0].nickname || '未认证用户' }}</text>
                 
-                <text class="sealCount">套餐<text class="color-primary">20</text>份</text>
+                <text class="sealCount">套餐<text class="color-primary">{{userInfo.individualMealCount || 0}}</text>份</text>
               </view>
               <view
                 v-if="form.signers[0].authentication"
@@ -231,7 +237,7 @@
             <view class="flex-wrap">
               <view class="width-full flex-fs">
                 <text class="text-30 color-base bold">{{ userInfo.nickname || '未认证用户' }}</text>
-                <text class="sealCount">套餐<text class="color-primary">20</text>份</text>
+                <text class="sealCount">套餐<text class="color-primary">{{userInfo.individualMealCount || 0}}</text>份</text>
               </view>
 
               <view v-if="userInfo.authentication" class="tag-auth tag-auth__auth flex-ct text-20">
@@ -262,6 +268,7 @@
             <view class="flex-wrap">
               <view class="text-28 color-base bold width-full">
                 {{ userInfo.nickname || '未认证用户' }}
+                <text class="sealCount">套餐<text class="color-primary">{{item.companyMealCount || 0}}</text>份</text>
               </view>
 
               <view v-if="item.authentication" class="tag-auth tag-auth__enterauth flex-ct text-20">
@@ -293,26 +300,17 @@
 </template>
 
 <script>
-var that,
-  fastClick = true;
+var that;
 import { sign, recent } from '@/api/company.js';
 import userInfoApi from '@/api/api.js';
 import { info } from '@/api/login.js';
-
 export default {
   data() {
-    var date = new Date();
-    var m = date.getMonth() + 1;
-    var d = date.getDate();
-    m = m < 10 ? '0' + m : m;
-    d = d < 10 ? '0' + d : d;
-    var start = date.getFullYear() + '-' + m + '-' + d;
-
     return {
-      start: start,
+      start: '',
       file: '',
       form: {
-        endTime: start + ' 23:59:59',
+        endTime: '',
         name: '',
         url: '',
         signers: [
@@ -337,6 +335,8 @@ export default {
       showReadeMe: false,
       contract: [],
       contractCheckedIndex: 0,
+      reloading: true,
+      fastClick: true
     };
   },
   computed: {
@@ -351,6 +351,12 @@ export default {
     uni.$on('getSignatory', signatory => {
       this.form.signers[1] = signatory;
     });
+    this.form.endTime = this.GetDateStr(1)
+    setTimeout(()=>{
+      this.start = this.form.endTime.replace(' 23:59:59', '');
+      this.reloading = false;
+      this.$forceUpdate()
+    },100)
   },
   beforeDestroy() {
     this.hide();
@@ -363,7 +369,16 @@ export default {
       uni.hideLoading();
       uni.setStorageSync('file_name', this.form.name);
     },
-
+    GetDateStr(AddDayCount) {//获取AddDayCount天后的日期
+      var dd = new Date();
+      dd.setDate(dd.getDate()+AddDayCount);
+      var y = dd.getFullYear();
+      var m = dd.getMonth()+1;
+      m = m < 10 ? '0' + m : m;
+      var d = dd.getDate();
+      d = d < 10 ? '0' + d : d;
+      return y + "-" + m + "-" + d + ' 23:59:59';
+    },
     init() {
       that = this;
       uni.getStorage({
@@ -585,10 +600,10 @@ export default {
       });
     },
     change(e) {
-      that.form.endTime = e;
+      that.form.endTime = e.detail.value+ ' 23:59:59';
     },
     submit() {
-      if (!fastClick) return;
+      if (!that.fastClick) return;
       if (!that.form.signers[0].id) {
         // 未登录
         that.showModel();
@@ -606,6 +621,23 @@ export default {
           success: function (res) {
             if (res.confirm) {
               that.common.navigateTo('/pages/user/Certification');
+            }
+          },
+        });
+        return;
+      }
+      // 合同数不足
+      if((that.form.signers[0].companyId && that.form.signers[0].companyMealCount < 1) || (!that.form.signers[0].companyId && that.form.signers[0].individualMealCount < 1)){
+        uni.showModal({
+          title: '',
+          content: '剩余合同份数为0，请先购买套餐',
+          confirmText: '购买',
+          cancelText: '取消',
+          confirmColor: '#3277FF',
+          cancelColor: '#999999',
+          success: function (res) {
+            if (res.confirm) {
+              that.common.navigateTo('/pages/combo/buy');
             }
           },
         });
@@ -634,49 +666,57 @@ export default {
         return;
       }
       // return
-      fastClick = false;
+      that.fastClick = false;
       uni.showLoading({
         title: '发起中...',
       });
-
-      sign(that.form)
+      let form = JSON.parse(JSON.stringify(this.form))
+      form.endTime = form.endTime
+      sign(form)
         .then(res => {
-          uni.showModal({
-            title: '签署发起成功',
-            content: '发起双方请注意留意手机短信，进行下一步操作',
-            confirmText: '好的',
-            cancelText: '取消',
-            confirmColor: '#3277FF',
-            cancelColor: '#999999',
-            success: function (res) {
-              uni.hideLoading();
-              if (res.confirm) {
-                that.$emit('tab', 1);
-              }
-              uni.removeStorageSync('file');
-              uni.removeStorageSync('file_name');
-              that.file = '';
-              that.form.name = '';
-              that.form.url = '';
-              that.form.signers[1] = {
-                userId: '',
-                companyId: '',
-                nickname: '',
-                phone: '',
-              };
-              fastClick = true;
-
-              uni.switchTab({
-                url: '/pages/tabbar/home',
-              })
-            },
-            fail() {
-              uni.hideLoading();
-            },
-          });
-        })
+            uni.hideLoading();
+            uni.showModal({
+              title: '签署发起成功',
+              content: '请提醒签署方注意留意手机短信，进行签署操作',
+              confirmText: '好的',
+              cancelText: '取消',
+              confirmColor: '#3277FF',
+              cancelColor: '#999999',
+              success: function (res1) {
+                uni.hideLoading();
+                if (res1.confirm) {
+                  that.$emit('tab', 1);
+                  uni.removeStorageSync('file');
+                  uni.removeStorageSync('file_name');
+                  that.file = '';
+                  that.form.name = '';
+                  that.form.url = '';
+                  that.form.signers[1] = {
+                    userId: '',
+                    companyId: '',
+                    nickname: '',
+                    phone: '',
+                  };
+                  if (res) {
+                    uni.redirectTo({
+                      url: '/pages/company/authorize?path=' + encodeURIComponent(res),
+                    })
+                    return
+                  }
+                }
+                that.fastClick = true;
+                uni.switchTab({
+                  url: '/pages/tabbar/home',
+                })
+              },
+              fail() {
+                uni.hideLoading();
+                that.fastClick = true;
+              },
+            });
+          })
         .catch(() => {
-          fastClick = true;
+          that.fastClick = true;
           setTimeout(() => {
             uni.hideLoading();
           }, 1000);
