@@ -8,7 +8,7 @@
 Mini-Contract(免费开源电子合同)
 ===============
 
-当前最新版本：v1.0.2 (发布时间：2023-3-3)
+当前最新版本：v1.1.1 (发布时间：2023-3-9)
 
 [![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)
 [![输入图片说明](https://img.shields.io/static/v1?label=Author&message=上海旭冉信息科技有限公司&color=blue)](https://wwww.yi-types.com)
@@ -186,6 +186,27 @@ Mini-Contract(免费开源电子合同)
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_04.png)
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_05.png)
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_06.png)
+
+
+
+### 最近更新
+
+##### V1.1.0 更新日志
+
+- [x] 新增丰富多样的合同模板
+- [x] 新增应用内合同签署，提升用户体验
+- [x] 新增签署方短信通知，避免消息不及时
+- [x] 优化用户体验
+- [x] 修复已知bug
+
+
+
+
+##### V1.0.1 更新日志
+
+- [x] 优化企业和个人电子合同套餐份数
+- [x] 优化用户体验
+- [x] 修复已知bug
 
 
 
