@@ -1,61 +1,72 @@
-import { get, post, put, del } from './request.js';
+import request from '@/utils/request.js';
 
 let userInfo = {
   contractList: data => {
     //获取 合同列表
-    return get({
-      url: `/api/contract/v1`,
+    return request({
+      url: `/v2/contract`,
+      method: 'GET',
       data,
     });
   },
   personalInformation: () => {
     //获取 个人信息
-    return get({
-      url: `/api/u/info`,
+    return request({
+      url: `/u/info`,
+      method: 'GET',
     });
   },
   enterpriseList: data => {
     //获取企业列表
-    return get({
-      url: `/api/company/v1`,
+    return request({
+      url: `/company/v1`,
+      method: 'GET',
       data,
     });
   },
   IdentitySwitching: data => {
     //切换身份
-    return put({
-      url: `/api/company/role?companyId=${data}`,
+    return request({
+      url: `/company/role?companyId=${data}`,
+      method: 'PUT',
     });
   },
   contractDetails: data => {
     // 合同详情
-    return get({
-      url: `/api/contract/v1/detail/${data}`,
+    return request({
+      // url: `/contract/v1/detail/${data}`,
+      url: `/v2/contract/${data.contractId}`,
+      method: 'GET'
     });
   },
   balanceQuery: () => {
     // 合同详情
-    return get({
-      url: `/api/meal/v1/surplus`,
+    return request({
+      url: `/meal/v1/surplus`,
+      method: 'GET',
     });
   },
   getCode(data) {
     // 获取验证码 type:1 -> 登录, 2 -> 重置密码, 3 -> 注册  4 -> 企业解绑   5-> 撤销合同
-    return get({
-      url: `/api/u/${data.phone}/verification-code/${data.type}`,
+    return request({
+      url: `/u/${data.phone}/verification-code/${data.type}`,
+      method: 'GET',
     });
   },
   cancellationOfContract(data, contractId) {
     //撤销合同
-    return put({
-      url: `/api/contract/v1/${contractId}/revoke`,
+    return request({
+      // url: `/contract/v1/${contractId}/revoke`,
+      url: `/v2/contract/${contractId}/revoke`,
+      method: 'PUT',
       data,
     });
   },
 
   changeAvatar(avatarUrl) {
-    return put({
-      url: '/api/u/updateHeader?avatarUrl=' + avatarUrl,
+    return request({
+      url: '/u/updateHeader?avatarUrl=' + avatarUrl,
+      method: 'PUT',
     });
   },
 };

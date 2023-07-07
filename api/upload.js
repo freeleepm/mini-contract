@@ -1,13 +1,6 @@
-/*
- * @Description:
- * @LastEditTime: 2022-09-09 16:34:38
- * @LastEditors: 刘仁秀
- * @Author: 刘仁秀
- * @Date: 2022-09-02 15:21:16
- */
-import { get } from './request.js';
-import config from '../common/config.js';
-export function upload(file, url = '/api/upload/v1') {
+import config from '../config/config.js';
+import store from '../store/index.js';
+export function upload(file, url = '/upload/v1') {
   // #ifdef MP-WEIXIN
   url = config.baseUrl + url;
   // #endif
@@ -41,9 +34,9 @@ export function upload(file, url = '/api/upload/v1') {
       name: 'file',
       dataType: 'json',
       header: {
-        'x-access-token': uni.getStorageSync('userInfo').token,
+        'x-access-token': store.state.token,
       },
-      success: function (uploadFileRes) {
+      success: function(uploadFileRes) {
         if (uploadFileRes.data) {
           if (typeof uploadFileRes.data == 'string')
             uploadFileRes.data = JSON.parse(uploadFileRes.data);
@@ -85,9 +78,9 @@ export function upload(file, url = '/api/upload/v1') {
           name: 'file',
           dataType: 'json',
           header: {
-            'x-access-token': uni.getStorageSync('userInfo').token,
+            'x-access-token': store.state.token
           },
-          success: function (uploadFileRes) {
+          success: function(uploadFileRes) {
             if (uploadFileRes.data) {
               if (typeof uploadFileRes.data == 'string')
                 uploadFileRes.data = JSON.parse(uploadFileRes.data);
@@ -107,23 +100,23 @@ export function upload(file, url = '/api/upload/v1') {
               });
             }
           },
-          fail: function (res) {
+          fail: function(res) {
             console.log('fail');
             reject();
             console.log(res);
           },
         });
       },
-      fail: function (res) {
+      fail: function(res) {
         uni.uploadFile({
           url: url,
           filePath: file.path,
           name: 'file',
           dataType: 'json',
           header: {
-            'x-access-token': uni.getStorageSync('userInfo').token,
+            'x-access-token': store.state.token,
           },
-          success: function (uploadFileRes) {
+          success: function(uploadFileRes) {
             if (uploadFileRes.data) {
               if (typeof uploadFileRes.data == 'string')
                 uploadFileRes.data = JSON.parse(uploadFileRes.data);

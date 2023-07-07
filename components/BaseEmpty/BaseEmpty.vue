@@ -8,7 +8,7 @@
 <template>
   <view class="container" :style="style">
     <image class="img-empty" src="@/static/ImgEmpty.png"></image>
-    <view class="massage">{{ massage }}</view>
+    <view class="massage" v-html="massage"></view>
   </view>
 </template>
 
@@ -47,7 +47,8 @@ export default {
     font-size: 26rpx;
     font-family: PingFang SC-Regular, PingFang SC;
     color: #999999;
-    line-height: 37rpx;
+    line-height: 46rpx;
+    text-align: center;
   }
 }
 </style>
