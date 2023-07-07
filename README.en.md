@@ -1,6 +1,6 @@
 <!--
  * @Description:
- * @LastEditTime: 2023-07-07 14:24:49
+ * @LastEditTime: 2023-07-07 18:22:49
  * @LastEditors: 何俊峰
  * @Author: 何俊峰
  * @Date: 2023-02-23 10:11:20
@@ -52,66 +52,66 @@ Mini-Contract(免费开源电子合同)
 -----------------------------------
 
 ```
-│  App.vue                                              // 应用配置，用来配置APP全局样式以及监听
-│  index.html	                                        // 给网页开发提供的功能，提供模板
-│  jsconfig.json	                                // 规范配置等
-│  main.js			                        // 入口文件
-│  manifest.json	                                // 配置应用名称、appid、logo、版本等打包信息
-│  pages.json		                                // 配置页面路由、导航条、选项卡等页面类信息
-│  README.md		                                // 帮助文档
-│  uni.scss			                        // scss变量预置, 为了方便整体控制应用的风格
-│  vue.config.js	                                // 开发设置
+│  App.vue                          // 应用配置，用来配置APP全局样式以及监听
+│  index.html	                     // 给网页开发提供的功能，提供模板
+│  jsconfig.json	                  // 规范配置等
+│  main.js			                  // 入口文件
+│  manifest.json	                  // 配置应用名称、appid、logo、版本等打包信息
+│  pages.json		                  // 配置页面路由、导航条、选项卡等页面类信息
+│  README.md		                  // 帮助文档
+│  uni.scss			                  // scss变量预置, 为了方便整体控制应用的风格
+│  vue.config.js	                  // 开发设置
 │
-├─api		                                        // 接口管理，按照功能分类
+├─api		                           // 接口管理，按照功能分类
 │
-├─components						// 公共组件库
-│  ├─backTop						// 返回顶部
+├─components						      // 公共组件库
+│  ├─backTop						      // 返回顶部
 │  │
-│  ├─BaseEmpty						// 缺省页
+│  ├─BaseEmpty						      // 缺省页
 │  │
-│  ├─baseline						// 没有更多数据
+│  ├─baseline						      // 没有更多数据
 │  │
-│  ├─btn-fixed						// 固定在页面底部组件（插槽）
+│  ├─btn-fixed						      // 固定在页面底部组件（插槽）
 │  │
-│  ├─checkUser						// 切换身份
+│  ├─checkUser						      // 切换身份
 │  │
-│  ├─contractState					// 合同状态
+│  ├─contractState				      // 合同状态
 │  │
-│  ├─FileItem						// 文件信息
+│  ├─FileItem						      // 文件信息
 │  │
-│  ├─loading						// 页面加载
+│  ├─loading						      // 页面加载
 │  │
-│  ├─loadMore    					// 加载数据
+│  ├─loadMore    					      // 加载数据
 │  │
-│  ├─SwitchEnvironment					// 切换环境
+│  ├─SwitchEnvironment			      // 切换环境
 │  │
-│  ├─tag-auth						// 用户身份
+│  ├─tag-auth						      // 用户身份
 │  │
-│  ├─userInfo						// 用户信息
+│  ├─userInfo						      // 用户信息
 │  │
-│  └─v-tabs						// tab切换
+│  └─v-tabs						         // tab切换
 │
 ├─config
-│      config.js					// 系统配置（域名等）
-│      net.config.js					// 域名配置
-│      setting.js					// 其他全局配置（如：页面分享文案）
+│      config.js					      // 系统配置（域名等）
+│      net.config.js					   // 域名配置
+│      setting.js					      // 其他全局配置（如：页面分享文案）
 │
-├─filters						// 过滤器
+├─filters						         // 过滤器
 │
-├─mixins						//  混入
-│      share.js						// 页面分享
+├─mixins						            //  混入
+│      share.js					      // 页面分享
 │
-├─pages							// 页面文件夹
-│  ├─contract						// 合同相关页面
-│  │  │  index.vue					// 合同首页
+├─pages							         // 页面文件夹
+│  ├─contract						      // 合同相关页面
+│  │  │  index.vue				      // 合同首页
 │  │  │
 │  │  ├─detail
-│  │  │  │  index.vue					// 合同详情
+│  │  │  │  index.vue			      // 合同详情
 │  │  │  │
 │  │  │  └─components
 │  │  │          signerInfo.vue
 │  │  │
-│  │  ├─sign						// 发起签署
+│  │  ├─sign						      // 发起签署
 │  │  │  │  drawSign.vue
 │  │  │  │  index.vue
 │  │  │  │
@@ -120,10 +120,10 @@ Mini-Contract(免费开源电子合同)
 │  │  │          initiator.vue
 │  │  │          Signatories.vue
 │  │  │
-│  │  └─revoke						// 撤销合同
+│  │  └─revoke						      // 撤销合同
 │  │          index.vue
 │  │
-│  ├─home						// 首页
+│  ├─home						         // 首页
 │  │  │  index.vue
 │  │  │
 │  │  ├─components
@@ -131,71 +131,71 @@ Mini-Contract(免费开源电子合同)
 │  │  │      contractCard.vue
 │  │  │      contractTemplateBox.vue
 │  │  │
-│  │  └─contractTemplate			        // 合同模板
+│  │  └─contractTemplate		      // 合同模板
 │  │          index.vue
 │  │
-│  ├─index						// 启动页
+│  ├─index						         // 启动页
 │  │      index.vue
 │  │
-│  ├─login						// 登录注册
+│  ├─login						         // 登录注册
 │  │      login.vue
 │  │
-│  └─user						// 我的
+│  └─user						         // 我的
 │      │  index.vue
 │      │
-│      ├─company					// 企业相关
-│      │      addCompany.vue				// 添加企业
-│      │      addSeal.vue			        // 添加印章
-│      │      authorize.vue			        // web-view页面
-│      │      Certification.vue				// 企业认证
-│      │      companySeal.vue				// 企业印章管理
+│      ├─company					      // 企业相关
+│      │      addCompany.vue			// 添加企业
+│      │      addSeal.vue			   // 添加印章
+│      │      authorize.vue			// web-view页面
+│      │      Certification.vue		// 企业认证
+│      │      companySeal.vue			// 企业印章管理
 │      │      create.vue				// 创建企业（已废弃）
-│      │      myCompany.vue				// 我的企业
-│      │      removeComfirm.vue				// 移除企业
+│      │      myCompany.vue			// 我的企业
+│      │      removeComfirm.vue		// 移除企业
 │      │
 │      ├─companyMembers
-│      │      createMember.vue				// 添加成员
+│      │      createMember.vue		// 添加成员
 │      │      index.vue					// 企业成员
 │      │
 │      ├─createUser
-│      │      addPerson.vue				// 添加最近签署人（已废弃）
+│      │      addPerson.vue			// 添加最近签署人（已废弃）
 │      │      index.vue					// 最近签署人
 │      │
 │      ├─file
-│      │      fileManage.vue				// 文件管理
+│      │      fileManage.vue			// 文件管理
 │      │
 │      ├─package
 │      │      buy.vue					// 购买套餐
-│      │      comboDetails.vue				// 我的套餐
+│      │      comboDetails.vue		// 我的套餐
 │      │
 │      ├─personal
-│      │      Certification.vue				// 个人认证
+│      │      Certification.vue		// 个人认证
 │      │
 │      └─setting
-│              changeIdentity.vue			// 切换身份（已废弃）
-│              password.vue				// 修改密码（已废弃）
+│              changeIdentity.vue	// 切换身份（已废弃）
+│              password.vue			// 修改密码（已废弃）
 │              Privacy.vue				// 隐私申明
 │
-├─static						// 存放静态资源，如图片、视频
+├─static						            // 存放静态资源，如图片、视频
 │  │
-│  └─tabbar						// tabbar图标
+│  └─tabbar						         // tabbar图标
 │
-├─store							// 状态管理库
+├─store							         // 状态管理库
 │      index.js
 │
-├─style							// 公共样式库
+├─style							         // 公共样式库
 │      common.scss
 │
-├─uni_modules						// 项目组件、页面、公共模块等
+├─uni_modules					         // 项目组件、页面、公共模块等
 │
-├─unpackage 						// 打包目录
+├─unpackage 					         // 打包目录
 │
-└─utils							// 工具
-        cache.js			                // 设置缓存
-        common.js			                // 公共方法
-        compress.js			                // 图片压缩
-        reg.js				                // 通用正则表达式
-        request.js			                // 网络请求设置
+└─utils							         // 工具
+        cache.js			            // 设置缓存
+        common.js			            // 公共方法
+        compress.js			         // 图片压缩
+        reg.js				            // 通用正则表达式
+        request.js			         // 网络请求设置
  ```
 
 
