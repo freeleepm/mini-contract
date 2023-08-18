@@ -4,7 +4,7 @@
  * @LastEditors: 何俊峰
  * @Author: 何俊峰
  * @Date: 2023-02-23 10:17:18
-  -->
+    -->
 
   Mini-Contract(免费开源电子合同)
   ===============
@@ -12,8 +12,8 @@
 当前最新版本：v1.1.2 (发布时间：2023-7-7)
 
 [![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)
-[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=上海旭冉信息科技有限公司&color=blue)](https://wwww.yi-types.com)
-[![输入图片说明](https://img.shields.io/static/v1?label=version&message=1.0.0&color=green)](https://wwww.yi-types.com)
+[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=重庆弈联数聚科技有限公司&color=blue)](https://wwww.yi-types.com)
+[![输入图片说明](https://img.shields.io/static/v1?label=version&message=1.1.2&color=green)](https://wwww.yi-types.com)
 
 #### 介绍
 
