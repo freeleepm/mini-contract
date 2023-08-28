@@ -202,14 +202,71 @@
 项目效果
 ----
 
+
+
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_01.png)
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_02.png)
+
+
+
+#### 用户端（移动端）
+
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_03.png)
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_04.png)
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_05.png)
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_06.png)
 
 
+
+#### 用户端（Web端）
+
+> Web 的用户端，可以在后台对自己的合同进行相应的签署和查看
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_01.png)
+
+#### 平台端
+
+***数据概况***
+
+> 了解合同平台下所有使用者的基本信息，并对相应的数据进行综合概览汇总
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_01.png)
+
+***个人认证***
+
+> 平台可查看到脱敏后的所有个人认证的基本信息
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_02.png)
+
+***企业认证***
+
+> 平台可查看到脱敏后的所有企业认证的基本信息
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_03.png)
+
+***销售订单***
+
+> 平台可查看所有合同销售情况
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_04.png)
+
+***消耗服务***
+
+> 平台可查看到所有合同的使用和消费情况
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_05.png)
+
+***价格设置***
+
+> 平台可根据自己合同运营情况设置相应的价格
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_06.png)
+
+***账号管理***
+
+> 平台根据不同角色进行相应的用户权限设置，不同的用户有不同的管理权限
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_07.png)
 
 ### 最近更新
 
