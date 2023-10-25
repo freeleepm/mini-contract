@@ -22,7 +22,7 @@
           placeholder-class="place"
         />
       </view>
-      <view class="row">
+      <!-- <view class="row">
         <view class="text-28 color-base text-required">角色管理</view>
         <view class="role-list">
           <view
@@ -42,7 +42,7 @@
             </view>
           </view>
         </view>
-      </view>
+      </view> -->
     </view>
     <view class="btn-primary" @click="submit">确定</view>
     <view class="btn-cancel" v-if="form.id" @click="del">删除成员</view>
@@ -62,7 +62,7 @@ export default {
         name: '',
         account: '',
         companyId: '',
-        role: [],
+        // role: [],
       },
       roleList: [
         {
@@ -129,12 +129,12 @@ export default {
     check(i) {
       this.roleList[i].checked = !this.roleList[i].checked;
       this.roleList = [].concat(this.roleList);
-      this.form.role = this.roleList
-        .filter(i => i.checked === true)
-        .map(i => {
-          return i.value;
-        })
-        .join(',');
+      // this.form.role = this.roleList
+      //   .filter(i => i.checked === true)
+      //   .map(i => {
+      //     return i.value;
+      //   })
+      //   .join(',');
     },
     del() {
       var that = this;
@@ -178,12 +178,12 @@ export default {
           icon: 'none',
         });
       }
-      if (!this.roleList.find(i => i.checked === true)) {
-        return uni.showToast({
-          title: '请至少添加一个角色',
-          icon: 'none',
-        });
-      }
+      // if (!this.roleList.find(i => i.checked === true)) {
+      //   return uni.showToast({
+      //     title: '请至少添加一个角色',
+      //     icon: 'none',
+      //   });
+      // }
       this.fastClick = false;
       if (this.form.id) {
         memberUpdate(this.form).then(() => {

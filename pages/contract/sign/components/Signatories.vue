@@ -7,6 +7,7 @@
           class="flex-ct add-item"
           @click="
             current = i;
+            getSignerRecordList()
             $refs.addSignerRef.open(0);
           "
         >
@@ -18,6 +19,7 @@
           class="flex-ct add-item"
           @click="
             current = i;
+            getSignerRecordList()
             $refs.addSignerRef.open(1);
           "
         >
@@ -53,6 +55,7 @@
             </view>
           </view>
         </view>
+
         <view @click="del(i)" class="flex-col" style="padding-left: 20rpx">
           <image class="icon-change" src="@/static/IconDelete.png"></image>
           <view class="text-24 color-base-minor">删除</view>
@@ -63,14 +66,16 @@
     <view class="add-btn color-primary text-28" @click="addSign" v-if="signers.length < 10">
       +添加签署方
     </view>
-    <addSigner ref="addSignerRef" @change="onChange" />
+    <addSigner :signerRecordList="signerRecordList" ref="addSignerRef" @change="onChange"  @currentList="getCurrentList" @currentType="getCurrentType" :currentUserInfo="currentUserInfo" :companyName="companyName" :name="name" :mobile="mobile" />
   </view>
 </template>
 
 <script>
 import { addSigner } from './addSigner';
+import userInfo from '@/api/api.js';
 export default {
   components: { addSigner },
+  props:['currentUserInfo', 'companyName', 'name', 'mobile'],
   data() {
     return {
       current: -1,
@@ -88,9 +93,10 @@ export default {
         //   },
         // },
       ],
+      signerRecordList:[],
+      currentType:0
     };
   },
-  created() {},
   methods: {
     del(i) {
       var that = this;
@@ -131,10 +137,39 @@ export default {
       //   },
       // });
       // this.$emit('change', this.signers);
-      this.current = -1;
-      this.$refs.addSignerRef.open(0);
+
+        this.current = -1;
+        this.getSignerRecordList()
+        this.$refs.addSignerRef.open(0);
+
+
     },
+    getSignerRecordList () {
+      userInfo.signerRecordList({userType:this.currentType}).then(res => {
+         this.signerRecordList = res;
+      });
+    },
+    getCurrentList (list) {
+      this.signerRecordList = list;
+    },
+    getCurrentType (type) {
+      this.currentType = type;
+    }
   },
+  watch:{
+    companyName (val) {
+      console.log('val :', val)
+      if(val) {
+        this.$refs.addSignerRef.open(1);
+      }
+    },
+    name (val) {
+      console.log('val :', val)
+      // if(val) {
+        // this.$refs.addSignerRef.open(0);
+      // }
+    }
+  }
 };
 </script>
 

@@ -4,15 +4,15 @@
 
 <script>
 import config from '@/config/config.js';
-import { mockUrl, devUrl, testUrl, prodUrl } from '@/config/net.config.js';
+import { mockUrl, devUrl, testUrl, uatUrl, prodUrl } from '@/config/net.config.js';
 
 var that;
 export default {
   name: 'SwitchEnvironment',
   data() {
     return {
-      fastClickCount: 0, // 点击次数
-      fastClickLastTime: 0, // 点击时间
+      fastClickCount: 0,
+      fastClickLastTime: 0,
     };
   },
   created() {
@@ -34,6 +34,7 @@ export default {
               'dev：' + devUrl,
               'test：' + testUrl,
               'prod：' + prodUrl,
+              'uat：' + uatUrl,
             ],
             success: function (res) {
               if (res.tapIndex === 0) {
@@ -48,6 +49,9 @@ export default {
               } else if (res.tapIndex === 3) {
                 config.baseUrl = prodUrl;
                 uni.showToast({ title: '已切换为生产环境', icon: 'none' });
+              } else if (res.tapIndex === 4) {
+                config.baseUrl = uatUrl;
+                uni.showToast({ title: '已切换为uat环境', icon: 'none' });
               }
               setTimeout(() => {
                 uni.navigateTo({

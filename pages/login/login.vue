@@ -1,7 +1,7 @@
 <!--
  * @Description:
- * @LastEditTime: 2022-09-09 19:39:27
- * @LastEditors: 刘仁秀
+ * @LastEditTime: 2023-09-04 10:26:32
+ * @LastEditors: wudi
  * @Author: 刘仁秀
  * @Date: 2022-09-02 15:21:16
 -->
@@ -13,77 +13,54 @@
     <view v-if="type === 1" class="btn-box">
       <button
         type="default"
-        open-type="getPhoneNumber"
+        :open-type="checked ? 'getPhoneNumber' : ''"
         @getphonenumber="getPhoneNumber"
+        @click="showTost"
         class="btn-primary"
       >
-        <image class="icon-wechat" src="@/static/IconWeChat.png"></image>
-        微信授权登录
+        授权登录
       </button>
       <view class="btn-cancel" @click="type = 2">手机号码登录</view>
-      <view class="text-28 flex-ct">
-        登录即表示同意
-        <navigator class="text-link" hover-class="none" url="/pages/user/setting/Privacy">
-          《一合通服务协议和隐私政策》
-        </navigator>
-      </view>
+      <checkBox @change="e => (checked = e)" :check="checked" />
     </view>
-    <view v-if="type === 2" class="form-box">
-      <view class="form-item flex-fs">
-        <image src="@/static/IconPhone.png" class="icon-phone"></image>
-        <input
-          type="number"
-          v-model="form.phone"
-          placeholder="11位手机号"
-          placeholder-class="place"
-          class="flex-1"
-        />
-      </view>
-
-      <view class="flex-sb" style="margin: 12rpx 0 30rpx">
-        <view class="form-item flex-fs flex-1" style="margin: 0">
-          <image src="@/static/IconAuth.png" class="icon-auth"></image>
+    <view v-if="type === 2">
+      <view class="form-box">
+        <view class="form-item flex-fs">
+          <image src="@/static/IconPhone.png" class="icon-phone"></image>
           <input
-            type="text"
-            v-model="form.verificationCode"
-            placeholder="短信验证码"
+            type="number"
+            v-model="form.phone"
+            placeholder="11位手机号"
             placeholder-class="place"
+            :maxlength="11"
             class="flex-1"
           />
-          <view :disabled="disabled" :class="{ disabled }" @click="getCode" class="btn-vice">
-            {{ btnText }}
+        </view>
+
+        <view class="flex-sb" style="margin: 12rpx 0 30rpx">
+          <view class="form-item flex-fs flex-1" style="margin: 0">
+            <image src="@/static/IconAuth.png" class="icon-auth"></image>
+            <input
+              type="text"
+              v-model="form.verificationCode"
+              placeholder="短信验证码"
+              placeholder-class="place"
+              class="flex-1"
+            />
+            <view :disabled="disabled" :class="{ disabled }" @click="getCode" class="btn-vice">
+              {{ btnText }}
+            </view>
           </view>
         </view>
-      </view>
-      <view class="btn btn-primary flex-ct" :class="{ disabled: disabledNext }" @click="submit">
-        下一步
-      </view>
-      <view class="text-28 flex-ct">
-        登录即表示同意
-        <navigator class="text-link" hover-class="none" url="/pages/user/setting/Privacy">
-          《一合通服务协议和隐私政策》
-        </navigator>
-      </view>
-      <!-- #ifdef MP-WEIXIN -->
-      <view class="other">
-        <view class="flex-ct">
-          <view class="line"></view>
-          <text class="text-28">一键登录</text>
-          <view class="line"></view>
+        <view class="btn btn-primary flex-ct" :class="{ disabled: disabledNext }" @click="submit">
+          下一步
         </view>
-        <button
-          class="flex-ct box-wechat"
-          type="default"
-          open-type="getPhoneNumber"
-          @getphonenumber="getPhoneNumber"
-        >
-          <image class="img-wechat" src="@/static/ButtonWeChat.png"></image>
-          <!-- <button
-            type="default"
-            open-type="getPhoneNumber"
-            @getphonenumber="getPhoneNumber"
-          ></button> -->
-        </button>
+      </view>
+      <checkBox @change="e => (checked = e)" :check="checked" />
+      <!-- #ifdef MP-WEIXIN -->
+      <view class="flex-ct fast-login-text" @click="type = 1">
+        <uni-icons type="left" size="20" color="#999999"></uni-icons>
+        <view class="txt">授权登录</view>
       </view>
       <!-- #endif -->
     </view>
@@ -97,7 +74,9 @@ var that,
 import reg from '@/utils/reg.js';
 import { mapState, mapActions } from 'vuex';
 import { login, getCode, loginBySms, appletsLogin, bind } from '@/api/login.js';
+import checkBox from './checkBox.vue';
 export default {
+  components: { checkBox },
   data() {
     return {
       passwordVisible: false,
@@ -111,6 +90,9 @@ export default {
       type: 1,
       jumpSeconds: 5,
       isCertification: false,
+      checked: false,
+      loginType:null,
+      id:''
     };
   },
   computed: {
@@ -125,39 +107,56 @@ export default {
     that = this;
     fastClick = true;
     console.log(e);
-    if (e.logout != 1) {
-      uni.login({
-        provider: 'weixin',
-        success: function (loginRes) {
-          appletsLogin({
-            code: loginRes.code,
-          }).then(res => {
-            if (res.token) {
-              that.$store.commit('setToken', res.token);
-              that.$store.commit('setUserInfo', res);
-              if (e && e.isCertification && !res.authentication) {
-                uni.navigateTo({
-                  url: '/pages/user/personal/Certification',
-                });
-              } else {
-                uni.reLaunch({
-                  url: '/pages/home/index',
-                });
-              }
-            }
-          });
-        },
-      });
+    if(e.id)  {
+      that.id = e.id
     }
+    if(e.loginType) {
+      that.loginType = e.loginType;
+      return;
+    }
+
+    // if (e.logout != 1) {
+    //   uni.login({
+    //     provider: 'weixin',
+    //     success: function (loginRes) {
+    //       appletsLogin({
+    //         code: loginRes.code,
+    //       }).then(res => {
+    //         if (res.token) {
+    //           that.$store.commit('setToken', res.token);
+    //           that.$store.commit('setUserInfo', res);
+    //           if (e && e.isCertification && !res.authentication) {
+    //             uni.navigateTo({
+    //               url: '/pages/user/personal/Certification',
+    //             });
+    //           } else {
+    //             uni.reLaunch({
+    //               url: '/pages/home/index',
+    //             });
+    //           }
+    //         }
+    //       });
+    //     },
+    //   });
+    // }
     // 邀请注册进来的
     if (e && e.isCertification) {
       this.isCertification = true;
     }
   },
   methods: {
+    showTost() {
+      if (this.checked) return;
+      uni.showToast({
+        title: '请先阅读用户隐私协议',
+        icon: 'none',
+      });
+    },
     getPhoneNumber(e) {
       // 获取手机号
+      console.log('that.id :', that.id)
       if (e.detail.errMsg == 'getPhoneNumber:ok') {
+        console.log('e :', e)
         if (!fastClick) return;
         fastClick = false;
         uni.showLoading();
@@ -175,14 +174,20 @@ export default {
                 if (res.token) {
                   that.$store.commit('setToken', res.token);
                   that.$store.commit('setUserInfo', res);
-                  if (that.isCertification && !res.authentication) {
-                    uni.navigateTo({
-                      url: '/pages/user/personal/Certification',
+                  if(that.loginType && that.loginType === 'first') {
+                    uni.redirectTo({
+                      url: '/pages/contract/detail/index?id=' + that.id,
                     });
                   } else {
+                if (that.isCertification && !res.authentication) {
+                      uni.navigateTo({
+                       url: '/pages/user/personal/Certification',
+                      });
+                    } else {
                     uni.reLaunch({
                       url: '/pages/home/index',
-                    });
+                     });
+                   }
                   }
                 } else {
                   bind(
@@ -197,14 +202,21 @@ export default {
                       if (data.token) {
                         that.$store.commit('setToken', data.token);
                         that.$store.commit('setUserInfo', data);
-                        if (this.isCertification && !data.authentication) {
-                          uni.navigateTo({
-                            url: '/pages/user/personal/Certification',
+
+                        if(that.loginType && that.loginType === 'first') {
+                          uni.redirectTo({
+                            url: '/pages/contract/detail/index?id=' + that.id,
                           });
                         } else {
-                          uni.reLaunch({
-                            url: '/pages/home/index',
-                          });
+                          if (this.isCertification && !data.authentication) {
+                            uni.navigateTo({
+                              url: '/pages/user/personal/Certification',
+                            });
+                          } else {
+                            uni.reLaunch({
+                              url: '/pages/home/index',
+                            });
+                          }
                         }
                       }
                     })
@@ -254,8 +266,11 @@ export default {
         });
     },
     submit() {
+      if (!this.checked) {
+        this.showTost();
+        return;
+      }
       if (this.disabledNext) return;
-
       if (!that.form.phone.trim()) {
         that.common.showToast('手机号不能为空');
         return;
@@ -276,11 +291,17 @@ export default {
       loginBySms(that.form).then(data => {
         if (data.token) {
           uni.setStorageSync('phone', that.form.phone);
-          that.$store.commit('setToken', res.token);
-          that.$store.commit('setUserInfo', res);
-          uni.reLaunch({
+          that.$store.commit('setToken', data.token);
+          that.$store.commit('setUserInfo', data);
+          if(that.loginType && that.loginType === 'first') {
+            uni.redirectTo({
+              url: '/pages/contract/detail/index?id=' + that.id,
+            });
+          } else {
+            uni.reLaunch({
             url: '/pages/home/index',
           });
+         }
         }
       });
     },
@@ -290,40 +311,24 @@ export default {
 
 <style lang="scss" scoped>
 .page {
-  padding: 0 76rpx;
-
-  .text-link {
-    color: #3277ff;
-  }
-
   .btn-box {
     margin-top: 150rpx;
-
     .btn-cancel,
     .btn-primary {
+      margin: 32rpx auto;
       box-sizing: border-box;
       width: 598rpx;
       height: 88rpx;
       border-radius: 8rpx;
       font-size: 32rpx;
     }
-
-    .icon-wechat {
-      margin-right: 20rpx;
-      width: 40rpx;
-      height: 40rpx;
-    }
-
     .btn-cancel {
       border-color: #ccc;
-      margin: 32rpx 0;
     }
   }
 
   .top-box {
-    padding: 0 24rpx;
     position: relative;
-
     .logo {
       margin: 50rpx auto 0;
       width: 150rpx;
@@ -365,7 +370,7 @@ export default {
 
   .form-box {
     margin-top: 120rpx;
-
+    padding: 0 76rpx;
     .place {
       font-size: $uni-font-size-base;
     }
@@ -419,28 +424,6 @@ export default {
       }
     }
 
-    .other {
-      margin-top: 60rpx;
-      text-align: center;
-
-      .text-28 {
-        margin: 0 32rpx;
-        color: #666666;
-        line-height: 56rpx;
-      }
-
-      .line {
-        width: 100rpx;
-        height: 1px;
-        background: #e6e6e6;
-      }
-
-      .img-wechat {
-        width: 80rpx;
-        height: 80rpx;
-      }
-    }
-
     .text-28 {
       color: #333333;
       line-height: 56rpx;
@@ -449,11 +432,11 @@ export default {
   }
 }
 
-.box-wechat {
-  margin: 0 auto;
-  margin-top: 32rpx;
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 50%;
+.fast-login-text {
+  margin-top: 70rpx;
+  .txt {
+    color: #999999;
+    line-height: 20px;
+  }
 }
 </style>

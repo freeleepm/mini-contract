@@ -1,7 +1,7 @@
 <!--
  * @Description:
- * @LastEditTime: 2022-09-09 18:20:56
- * @LastEditors: 刘仁秀
+ * @LastEditTime: 2023-09-14 15:01:55
+ * @LastEditors: wudi
  * @Author: 刘仁秀
  * @Date: 2022-09-02 15:21:16
 -->
@@ -20,6 +20,7 @@
           v-model.trim="form.nickname"
           placeholder="请输入您的真实姓名"
           placeholder-class="place"
+          :adjust-position="true"
         />
       </view>
       <view class="form-box">
@@ -30,6 +31,7 @@
           v-model="form.idNumber"
           placeholder="请输入您的身份证号"
           placeholder-class="place"
+          :adjust-position="true"
         />
       </view>
       <view class="form-box">
@@ -42,6 +44,7 @@
           disabled
           placeholder="手机号"
           placeholder-class="place"
+          :adjust-position="true"
         />
       </view>
       <!-- <view class="form-box">
@@ -57,10 +60,16 @@
       <view class="success-box flex-col">
         <image class="img-back" src="@/static/ImgBackSuccess.png"></image>
         <view class="text-26 color-base">恭喜你已通过个人实名认证！</view>
+        <!-- <view
+          @click="jumpPage"
+          class="btn-primary"
+        >
+          {{ jumpSeconds }}S 发起签署
+      </view> -->
         <navigator
           hover-class="none"
           open-type="switchTab"
-          url="/pages/home/index"
+          :url="jumpUrl"
           class="btn-primary"
         >
           {{ jumpSeconds }}S 发起签署
@@ -75,7 +84,7 @@ var that,
   timer = null;
 var timer2;
 import reg from '@/utils/reg.js';
-import { auth, backfill, authRecord } from '@/api/company.js';
+import { auth, backfill, authUserRecord } from '@/api/company.js';
 import { setCache, getCache } from '@/utils/cache.js';
 import { mapState } from 'vuex';
 export default {
@@ -92,9 +101,13 @@ export default {
       type: 0,
       jumpSeconds: 3,
       showPage: false,
+      originType:null,
+      id:'',
+      authRecordObj:null
     };
   },
-  computed: { ...mapState(['userInfo']) },
+  computed: { ...mapState(['userInfo']),
+},
 
   onShow() {
     that = this;
@@ -105,23 +118,19 @@ export default {
     // }else{
     // 	that.showPage = true
     // }
-    authRecord().then(res => {
-      if (!res) return;
-      if (res.authUrl && res.authState === 1) {
-        uni.redirectTo({
-          url: '/pages/user/company/authorize?path=' + encodeURIComponent(res.authUrl),
-        });
-      } else if (res.authState === 2) {
-        that.success();
-      }
-    });
+    that.getAuthRecord()
   },
   onLoad(e) {
     that = this;
     that.form.phone = this.userInfo.phone;
     that.form.nickname = this.userInfo.nickname || '';
+    console.log('e :', e)
+    if (e.originType) that.originType = e.originType ;
     if (e.type) that.type = e.type;
     else that.type = 1;
+    if(e.id) {
+      that.id = e.id;
+    }
     that.disabled = false;
     if (that.type == 2) {
       that.success();
@@ -137,9 +146,26 @@ export default {
         if (that.jumpSeconds > 1) that.jumpSeconds--;
         else {
           clearInterval(timer2);
-          uni.reLaunch({
-            url: '/pages/user/index',
-          });
+          if(that.originType && that.originType === 'sign') {
+            if(that.id) {
+              uni.redirectTo({
+                url: '/pages/contract/detail/index?id=' + that.id,
+              });
+            } else {
+              uni.navigateBack({
+                delta:1,
+              })
+            }
+
+            } else if(that.originType && that.originType === 'mine') {
+              uni.reLaunch({
+              url: '/pages/user/index',
+            });
+            } else {
+              uni.reLaunch({
+              url: '/pages/user/index',
+            });
+          }
         }
       }, 1000);
     },
@@ -167,14 +193,25 @@ export default {
       }
       if (that.disabled) return;
       that.disabled = true;
+      console.log('that.originType :', that.originType)
+      if(that.originType && that.originType === 'mine') {
+        //type = 6 我的
+        that.form.type = 6;
+      } else if(that.originType && that.originType === 'sign' && that.id) {
+        //type = 7 合同详情
+        that.form.type = 7;
+        that.form.params = that.id;
+      }
       auth(that.form)
         .then(res => {
           if (res) {
             that.disabled = false;
-            // setCache('eCerURL',res,1*60*60)
-            uni.redirectTo({
-              url: '/pages/user/company/authorize?path=' + encodeURIComponent(res),
-            });
+
+              // setCache('eCerURL',res,1*60*60)
+              uni.redirectTo({
+                url: '/pages/user/company/authorize?path=' + encodeURIComponent(res),
+              });
+
           } else {
             // 没有返回链接则是代表已认证成功
             that.success();
@@ -198,7 +235,74 @@ export default {
           that.disabled = false;
         });
     },
+    getAuthRecord() {
+      authUserRecord().then(res => {
+        this.authRecordObj = res;
+      });
+    }
   },
+  watch: {
+    originType (value) {
+      console.log('value :', value)
+      if(value && value === 'mine') {
+            that.jumpUrl = '/pages/user/index';
+         } else if(value && value === 'sign') {
+            that.jumpUrl = '/pages/contract/detail/index?id=' + that.id;
+         } else {
+            that.jumpUrl = '/pages/home/index';
+        }
+        console.log('that.jumpUrl :', that.jumpUrl)
+    },
+    authRecordObj (obj) {
+      if (!obj) return;
+        if (obj.authState === 1) {
+          if(obj.authUrl) {
+            uni.showModal({
+              content: '您之前上传过认证资料，若继续操作请点击继续认证按钮',
+              confirmText: '继续认证',
+              cancelText: '我要重新认证',
+              confirmColor: '#dd524d',
+              cancelColor: '#999999',
+              success: function (res) {
+                if (res.confirm) {
+                  uni.redirectTo({
+                    url: '/pages/user/company/authorize?path=' + encodeURIComponent(obj.authUrl),
+                  });
+                }
+              },
+            });
+          } else {
+            uni.showModal({
+              content: '企业认证中，请等待',
+              confirmText: '刷新认证状态',
+              cancelText: '取消',
+              confirmColor: '#dd524d',
+              cancelColor: '#999999',
+              success: function (res) {
+                if (res.confirm) {
+                  that.getAuthRecord()
+                }
+              },
+            });
+          }
+        } else if (obj.authState === 2) {
+          that.success();
+        } else if(obj.authState === 3) {
+          uni.showModal({
+              content: obj.failReason,
+              confirmText: '重新认证',
+              cancelText: '取消',
+              confirmColor: '#dd524d',
+              cancelColor: '#999999',
+              success: function (res) {
+                if (res.confirm) {
+                  console.log('重新认证')
+                }
+              },
+            });
+        }
+    }
+  }
 };
 </script>
 

@@ -1,7 +1,7 @@
 <!--
  * @Description:
- * @LastEditTime: 2022-09-15 11:53:29
- * @LastEditors: 刘仁秀
+ * @LastEditTime: 2023-09-26 11:06:37
+ * @LastEditors: wudi
  * @Author: 刘仁秀
  * @Date: 2022-09-02 15:21:16
 -->
@@ -24,6 +24,7 @@
             v-model="form.name"
             placeholder="企业名称"
             placeholder-class="place"
+            :adjust-position="true"
           />
         </view>
         <view class="row flex-sb">
@@ -34,6 +35,7 @@
             v-model="form.creditCode"
             placeholder="统一信用代码"
             placeholder-class="place"
+            :adjust-position="true"
           />
         </view>
       </view>
@@ -47,6 +49,7 @@
             v-model="form.nickName"
             placeholder="姓名"
             placeholder-class="place"
+            :adjust-position="true"
           />
         </view>
         <view class="row flex-sb">
@@ -57,6 +60,7 @@
             v-model="form.idNumber"
             placeholder="请输入身份证号"
             placeholder-class="place"
+            :adjust-position="true"
           />
         </view>
         <view class="row flex-sb">
@@ -67,8 +71,20 @@
             v-model="form.phone"
             placeholder="请输入手机号"
             placeholder-class="place"
+            :adjust-position="true"
           />
         </view>
+        <!-- <view class="row flex-sb">
+          <view class="text-26 color-base">邮箱</view>
+          <input
+            class="text-26 color-base flex-1"
+            type="text"
+            v-model="form.email"
+            placeholder="请输入邮箱"
+            placeholder-class="place"
+            :adjust-position="true"
+          />
+        </view> -->
       </view>
       <view class="btn-primary" @click="submit">提交</view>
       <!-- <view class="btn" @click="type=2">下一步</view> -->
@@ -102,11 +118,17 @@
         <navigator
           hover-class="none"
           open-type="switchTab"
-          url="/pages/home/index"
+          :url="jumpUrl"
           class="btn-primary"
         >
           {{ jumpSeconds }}S 发起签署
         </navigator>
+        <!-- <view
+          @click="success"
+          class="btn-primary"
+        >
+          {{ jumpSeconds }}S 发起签署
+      </view> -->
       </view>
     </template>
   </view>
@@ -118,7 +140,7 @@ var that,
 var timer2, fastClick;
 import reg from '@/utils/reg.js';
 import { upload } from '@/api/oss.js';
-import { ocr, companyAuth } from '@/api/company.js';
+import { ocr, companyAuth, authRecord } from '@/api/company.js';
 // import { setCache, getCache } from '@/utils/cache.js';
 export default {
   data() {
@@ -131,6 +153,7 @@ export default {
         phone: '',
         verificationCode: '',
         license: '',
+        // email:''
       },
       disabled: false,
       btnText: '获取验证码',
@@ -141,6 +164,9 @@ export default {
         id: '',
       },
       showPage: false,
+      originType:null,
+      id:'',
+      authRecordObj:null
     };
   },
   onShow() {
@@ -152,13 +178,28 @@ export default {
     // }else{
     // 	that.showPage = true
     // }
+    authRecord().then(res => {
+      if (!res) return;
+      if (res.authUrl && res.authState === 1) {
+        uni.redirectTo({
+          url: '/pages/user/company/authorize?path=' + encodeURIComponent(res.authUrl),
+        });
+      } else if (res.authState === 2) {
+        that.success();
+      }
+    });
   },
   onLoad(e) {
+    console.log('e :', e)
     that = this;
     fastClick = true;
     if (e.id) that.license.id = e.id;
     if (e.type) that.type = e.type;
     else that.type = 1;
+    if(e.originType) that.originType = e.originType;
+    if(e.id) {
+      that.id = e.id;
+    }
     if (that.type == 3) {
       that.success();
     }
@@ -173,15 +214,26 @@ export default {
         if (that.jumpSeconds > 1) that.jumpSeconds--;
         else {
           clearInterval(timer2);
-          uni.reLaunch({
+            if(that.originType && that.originType === 'mine') {
+              uni.reLaunch({
+              url: '/pages/user/index',
+            });
+           } else if(that.originType && that.originType === 'sign') {
+            uni.redirectTo({
+              url: '/pages/contract/detail/index?id=' + that.id,
+            });
+           } else {
+            uni.reLaunch({
             url: '/pages/home/index',
           });
+          }
         }
       }, 1000);
     },
     pickImg() {
       uni.chooseImage({
         count: 1,
+        // mediaType: ['image'],
         sizeType: ['compressed'],
         sourceType: ['album', 'camera'],
         success: function (res) {
@@ -288,8 +340,25 @@ export default {
         that.common.showToast('手机号格式有误');
         return;
       }
+      // if (!that.form.email.trim()) {
+      //   that.common.showToast('请输入邮箱');
+      //   return;
+      // }
+      // if (!reg.email.test(that.form.email)) {
+      //   that.common.showToast('邮箱格式有误');
+      //   return;
+      // }
       if (!fastClick) return;
       fastClick = false;
+      if(that.originType && that.originType === 'mine') {
+        //type = 6 我的
+        that.form.type = 6;
+      } else if(that.originType && that.originType === 'sign' && that.id) {
+        //type = 7 合同详情
+        that.form.type = 7;
+        that.form.params = that.id;
+      }
+
       companyAuth(that.form)
         .then(res => {
           if (res) {
@@ -323,7 +392,81 @@ export default {
           fastClick = true;
         });
     },
+    getAuthRecord() {
+      authRecord().then(res => {
+        this.authRecordObj = res;
+      });
+    }
   },
+  watch: {
+    originType (value) {
+      console.log('value :', value)
+      if(value && value === 'mine') {
+            that.jumpUrl = '/pages/user/index';
+         } else if(value && value === 'sign') {
+            that.jumpUrl = '/pages/contract/detail/index?id=' + that.id;
+         } else {
+            that.jumpUrl = '/pages/home/index';
+        }
+        console.log('that.jumpUrl :', that.jumpUrl)
+    },
+    authRecordObj (obj) {
+      if (!obj) return;
+        if (obj.authState === 1) {
+          if(Number(obj.unAuthCount) > 1) {
+           uni.navigator({
+             url:  '/pages/user/company/myCompany?originType=' + this.originType
+           })
+          } else {
+            if(obj.authUrl) {
+                uni.showModal({
+                  content: `您之前上传过${obj.companyName}的认证资料，若继续操作请点击继续认证按钮`,
+                  confirmText: '继续认证',
+                  cancelText: '我要重新认证',
+                  confirmColor: '#dd524d',
+                  cancelColor: '#999999',
+                  success: function (res) {
+                    if (res.confirm) {
+                      uni.redirectTo({
+                        url: '/pages/user/company/authorize?path=' + encodeURIComponent(obj.authUrl),
+                      });
+                    }
+                  },
+                });
+              } else {
+
+                uni.showModal({
+                  content: '企业认证中，请等待',
+                  confirmText: '刷新认证状态',
+                  cancelText: '取消',
+                  confirmColor: '#dd524d',
+                  cancelColor: '#999999',
+                  success: function (res) {
+                    if (res.confirm) {
+                      that.getAuthRecord()
+                    }
+                  },
+                });
+              }
+          }
+        } else if (obj.authState === 2) {
+          that.success();
+        } else if(obj.authState === 3) {
+          uni.showModal({
+              content: obj.failReason,
+              confirmText: '重新认证',
+              cancelText: '取消',
+              confirmColor: '#dd524d',
+              cancelColor: '#999999',
+              success: function (res) {
+                if (res.confirm) {
+                  console.log('重新认证')
+                }
+              },
+            });
+        }
+    }
+  }
 };
 </script>
 

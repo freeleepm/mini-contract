@@ -56,7 +56,7 @@
       <!-- 发起方 -->
       <initiator />
       <!-- 签署方 -->
-      <Signatories @change="onChange" />
+      <Signatories @change="onChange"  :currentUserInfo="userInfo" :companyName="companyName" :name="name" :mobile="mobile" />
     </view>
 
     <view class="btn-next btn-primary" :class="{ disabled: isFormDisabled }" @click="submit">
@@ -67,17 +67,20 @@
 
 <script>
 var that;
-import { sign, recent } from '@/api/company.js';
+import { sign, recent, getCompanyState } from '@/api/company.js';
 import { info } from '@/api/login.js';
 import initiator from './components/initiator';
 import Signatories from './components/Signatories';
 import { mapState, mapActions } from 'vuex';
+import userInfoApi from '@/api/api.js';
 export default {
   components: { initiator, Signatories },
   data() {
     return {
       start: '',
       file: '',
+      name:'',
+      mobile:'',
       form: {
         initiateType: 0, // 发起类型(0:个人;1:公司;)
         name: '',
@@ -88,6 +91,9 @@ export default {
       showReadeMe: false,
       reloading: true,
       fastClick: true,
+      authObj:{},
+      authCompanyObj:{},
+      companyName:''
     };
   },
   computed: {
@@ -96,11 +102,25 @@ export default {
     },
     ...mapState(['userInfo']),
   },
-  onShow() {
+  onShow(e) {
     this.init();
+    if(e && e.companyName) {
+      that.companyName = e.companyName;
+    }
+    if(e && e.name) {
+      that.name = e.name;
+    }
+    if(e && e.mobile) {
+      that.mobile = e.mobile;
+    }
   },
-  onLoad() {
+  onLoad(e) {
+    that = this;
     this.form.endTime = this.GetDateStr(1);
+      this.getCurrentState()
+      if(that.userInfo.authentication && that.userInfo.companyAccountId) {
+        that.getCurrentCompanyState();
+      }
     setTimeout(() => {
       this.start = this.form.endTime.replace(' 23:59:59', '');
       this.reloading = false;
@@ -159,7 +179,7 @@ export default {
           cancelColor: '#999999',
           success: function (res) {
             if (res.confirm) {
-              that.common.navigateTo('/pages/user/personal/Certification');
+              that.common.navigateTo('/pages/user/personal/Certification?originType=sign');
             }
           },
         });
@@ -171,6 +191,102 @@ export default {
       that.form.endTime = e.detail.value + ' 23:59:59';
     },
     submit() {
+      if(Number(that?.authObj?.globalAuthState) === 1 && that?.authObj?.authUrl) {
+      uni.showModal({
+          content: '由于签署渠道变更，需要重新个人认证',
+          confirmText: '去认证',
+          confirmColor: '#3277FF',
+          success: function (res) {
+            if (res.confirm) {
+              uni.redirectTo({
+                url: '/pages/user/company/authorize?path=' + encodeURIComponent(that?.authObj?.authUrl),
+              });
+            }
+          },
+        });
+          return;
+      }
+
+      if(Number(that?.authObj?.globalAuthState) === 3) {
+        if(that?.authObj?.authUrl) {
+          uni.showModal({
+              content: '用户认证中，请稍后再试',
+              confirmText: '继续认证',
+              confirmColor: '#3277FF',
+              success: function (res) {
+                if (res.confirm) {
+                  uni.redirectTo({
+                    url: '/pages/user/company/authorize?path=' + encodeURIComponent(that?.authObj?.authUrl),
+                  });
+                }
+              },
+            });
+              return;
+
+        } else {
+          uni.showModal({
+              content: '用户认证中，请稍后再试',
+              confirmText: '刷新认证状态',
+              confirmColor: '#3277FF',
+              success: function (res) {
+                if (res.confirm) {
+                  that.getCurrentState();
+                }
+              },
+            });
+              return;
+
+        }
+      }
+
+      if(Number(that?.authCompanyObj?.globalAuthState) === 1 && that?.authCompanyObj?.authUrl) {
+      uni.showModal({
+          content: '由于签署渠道变更，需要重新企业认证',
+          confirmText: '去认证',
+          confirmColor: '#3277FF',
+          success: function (res) {
+            if (res.confirm) {
+              uni.redirectTo({
+                url: '/pages/user/company/authorize?path=' + encodeURIComponent(that?.authCompanyObj?.authUrl),
+              });
+            }
+          },
+        });
+          return;
+      }
+
+      if(Number(that?.authCompanyObj?.globalAuthState) === 3) {
+        if(that?.authCompanyObj?.authUrl) {
+          uni.showModal({
+              content: '企业认证中，请稍后再试',
+              confirmText: '继续认证',
+              confirmColor: '#3277FF',
+              success: function (res) {
+                if (res.confirm) {
+                  uni.redirectTo({
+                    url: '/pages/user/company/authorize?path=' + encodeURIComponent(that?.authCompanyObj?.authUrl),
+                  });
+                }
+              },
+            });
+              return;
+
+        } else {
+          uni.showModal({
+              content: '企业认证中，请稍后再试',
+              confirmText: '刷新认证状态',
+              confirmColor: '#3277FF',
+              success: function (res) {
+                if (res.confirm) {
+                  that.getCurrentCompanyState();
+                }
+              },
+            });
+              return;
+
+        }
+       }
+
       if (!that.fastClick) return;
       // 合同数不足
       if (
@@ -196,6 +312,7 @@ export default {
         uni.showToast({ title: '请选择签署文件', icon: 'none' });
         return;
       }
+      console.log('that.file :', that.file)
       if (!that.form.name.trim()) {
         uni.showToast({ title: '请输入合同名称', icon: 'none' });
         return;
@@ -218,6 +335,7 @@ export default {
         title: '发起中...',
       });
       let form = JSON.parse(JSON.stringify(this.form));
+      form.fileSize = this.file.size;
       form.initiateType = this.userInfo.companyId ? 1 : 0;
       console.log(form);
       sign(form)
@@ -262,7 +380,26 @@ export default {
           }, 1000);
         });
     },
+    getCurrentState() {
+      userInfoApi.getAuthState({type:7}).then(res=> {
+        this.authObj = res;
+      })
+    },
+    getCurrentCompanyState(){
+      getCompanyState({type:7}).then(res=> {
+        this.authCompanyObj = res;
+      })
+    }
   },
+  watch:{
+    userInfo(value){
+      console.log('value :', value)
+      this.getCurrentState()
+      if(value.authentication && value.companyAccountId) {
+        that.getCurrentCompanyState();
+      }
+    }
+  }
 };
 </script>
 <style lang="scss">

@@ -1,7 +1,7 @@
 <!--
  * @Description:
- * @LastEditTime: 2022-09-08 18:00:57
- * @LastEditors: 刘仁秀
+ * @LastEditTime: 2023-09-20 10:30:14
+ * @LastEditors: wudi
  * @Author: 刘仁秀
  * @Date: 2022-09-05 16:57:04
 -->
@@ -9,6 +9,7 @@
   <view class="container" :style="style">
     <image class="img-empty" src="@/static/ImgEmpty.png"></image>
     <view class="massage" v-html="massage"></view>
+    <slot></slot>
   </view>
 </template>
 
