@@ -17,10 +17,10 @@ export function upload(file, url = '/upload/v1') {
     // 10M-> 1M
     Quality = 10;
   }
-  if (file.size > 10485760) {
+  if (file.size > 10485760 * 2) {
     // 上限
     uni.showToast({
-      title: '文件最大10M',
+      title: '文件最大20M',
       icon: 'none',
     });
     resolve(false);

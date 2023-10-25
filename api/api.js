@@ -1,10 +1,17 @@
+/*
+ * @Author: wudi
+ * @Date: 2023-08-29 09:44:38
+ * @LastEditors: wudi
+ * @LastEditTime: 2023-10-10 15:33:46
+ * @Description:
+ */
 import request from '@/utils/request.js';
 
 let userInfo = {
   contractList: data => {
     //获取 合同列表
     return request({
-      url: `/v2/contract`,
+      url: `/v3/contract`,
       method: 'GET',
       data,
     });
@@ -35,8 +42,8 @@ let userInfo = {
     // 合同详情
     return request({
       // url: `/contract/v1/detail/${data}`,
-      url: `/v2/contract/${data.contractId}`,
-      method: 'GET'
+      url: `/v3/contract/${data.contractId}`,
+      method: 'GET',
     });
   },
   balanceQuery: () => {
@@ -57,7 +64,7 @@ let userInfo = {
     //撤销合同
     return request({
       // url: `/contract/v1/${contractId}/revoke`,
-      url: `/v2/contract/${contractId}/revoke`,
+      url: `/v3/contract/${contractId}/revoke`,
       method: 'PUT',
       data,
     });
@@ -69,5 +76,38 @@ let userInfo = {
       method: 'PUT',
     });
   },
+  // 获取认证状态
+  getAuthState(data) {
+    return request({
+      url: `/v3/u/auth/state?params=${data.params ?? ''}&type=${data.type}`,
+      method: 'GET',
+    });
+  },
+  // 用户签署方记录列表查询
+  signerRecordList: data => {
+    return request({
+      url: `/v1/u/con-signer`,
+      method: 'GET',
+      data,
+    });
+  },
+
+  // 删除用户签署方记录
+  delSignerRecord: data => {
+    return request({
+      url: `/v1/u/con-signer/` + data.id,
+      method: 'DELETE',
+    });
+  },
+
+  // 查询已认证的用户
+  getAuthPersonList(data) {
+    return request({
+      url: `/v3/u/auth/list`,
+      method: 'GET',
+      data,
+    });
+  },
 };
+
 export default userInfo;

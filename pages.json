@@ -1,5 +1,6 @@
 {
-  "pages": [{
+  "pages": [
+    {
       "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "",
@@ -18,16 +19,18 @@
         "navigationBarTitleText": "合同",
         "enablePullDownRefresh": true
       }
-    }, {
+    },
+    {
       "path": "pages/contract/sign/drawSign",
       "style": {
         "navigationBarTitleText": "创建个人签名"
       }
-    }, {
+    },
+    {
       "path": "pages/contract/detail/index",
       "style": {
         "navigationBarTitleText": "合同详情",
-        "enablePullDownRefresh": false
+        "enablePullDownRefresh": true
       }
     },
     {
@@ -59,7 +62,24 @@
         "enablePullDownRefresh": true
       }
     },
-	{
+
+    {
+      "path": "pages/user/company/searchCompany",
+      "style": {
+        "navigationBarTitleText": "搜索企业",
+        "enablePullDownRefresh": true
+      }
+    },
+
+    {
+      "path": "pages/user/personal/searchPerson",
+      "style": {
+        "navigationBarTitleText": "添加个人",
+        "enablePullDownRefresh": true
+      }
+    },
+
+    {
       "path": "pages/user/company/companySeal",
       "style": {
         "navigationBarTitleText": "企业印章",
@@ -173,40 +193,40 @@
         "enablePullDownRefresh": false
       }
     },
-
     {
       "path": "pages/user/company/authorize",
       "style": {
-        "navigationBarTitleText": "企业授权",
+        "navigationBarTitleText": " ",
         "enablePullDownRefresh": false
       }
-    }, {
+    },
+    {
       "path": "pages/home/contractTemplate/index",
       "style": {
         "navigationBarTitleText": "合同范本",
         "enablePullDownRefresh": true
       }
-
-    }, {
+    },
+    {
       "path": "pages/user/companyMembers/index",
       "style": {
         "navigationBarTitleText": "企业成员",
         "enablePullDownRefresh": true
       }
-    }, {
+    },
+    {
       "path": "pages/user/companyMembers/createMember",
       "style": {
         "navigationBarTitleText": "添加成员",
         "enablePullDownRefresh": false
       }
-
-    }, {
+    },
+    {
       "path": "pages/user/companyMembers/sarManage",
       "style": {
         "navigationBarTitleText": "成员印章管理",
         "enablePullDownRefresh": false
       }
-
     }
   ],
   "tabBar": {
@@ -214,7 +234,8 @@
     "selectedColor": "#3277FF",
     "backgroundColor": "#FFFFFF",
     "borderStyle": "white",
-    "list": [{
+    "list": [
+      {
         "text": "主页",
         "pagePath": "pages/home/index",
         "iconPath": "static/tabbar/IconTabbarHome.png",

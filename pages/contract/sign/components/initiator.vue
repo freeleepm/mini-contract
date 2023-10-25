@@ -11,7 +11,7 @@
         <view class="text-24 color-base-minor">更改</view>
       </view>
     </view>
-    <checkUser ref="checkUserRef" />
+    <checkUser ref="checkUserRef" backType="sign" />
   </view>
 </template>
 

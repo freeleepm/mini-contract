@@ -1,3 +1,10 @@
+<!--
+ * @Author: wudi
+ * @Date: 2023-08-29 09:44:38
+ * @LastEditors: wudi
+ * @LastEditTime: 2023-09-04 21:21:40
+ * @Description:
+-->
 <template>
   <view v-if="userInfo">
     <!-- 企业身份 -->
@@ -20,7 +27,7 @@
       <view
         v-else
         class="tag-auth tag-auth__unauth flex-ct text-20"
-        @click="common.navigateTo('/pages/user/personal/Certification')"
+        @click="common.navigateTo('/pages/user/personal/Certification?originType=mine')"
       >
         <image class="icon-auth" src="@/static/IconUserUnAuth.png"></image>
         未实名

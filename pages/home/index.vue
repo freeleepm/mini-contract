@@ -23,6 +23,15 @@
         </view>
         <view class="text-26 color-base">签署合同</view>
       </view>
+
+      <!-- 临时 -->
+      <!-- <view class="line-vertical"></view>
+      <view class="menu-item flex-col" @click="navigateTo('/pages/login/login')">
+        <view class="num flex-ct">
+          <image class="icon-contract" src="@/static/IconContract.png"></image>
+        </view>
+        <view class="text-26 color-base">跳转登录</view>
+      </view> -->
     </view>
     <contractTemplateBox @onClick="navigateTo('/pages/home/contractTemplate/index', 1)" />
     <!-- 最近文件 -->
@@ -54,7 +63,7 @@ import userInfoApi from '@/api/api.js';
 import contractTemplateBox from './components/contractTemplateBox';
 import contractCard from './components/contractCard';
 import banner from './components/banner';
-import { mapState, mapActions } from 'vuex';
+import { mapState } from 'vuex';
 export default {
   components: { contractTemplateBox, contractCard, banner },
   data() {
@@ -65,6 +74,7 @@ export default {
   },
   onShow() {
     this.init();
+    // this.getCurrentState();
   },
   computed: {
     ...mapState(['token']),
@@ -103,6 +113,59 @@ export default {
         url: '/pages/contract/index',
       });
     },
+    getCurrentState() {
+      let that = this;
+      userInfoApi.getAuthState({type:3}).then(data=> {
+         if(Number(data?.globalAuthState) === 1 && data?.authUrl) {
+          uni.showModal({
+              content: '由于签署渠道变更，需要重新认证',
+              confirmText: '去认证',
+              confirmColor: '#3277FF',
+              success: function (res) {
+                if (res.confirm) {
+                  uni.redirectTo({
+                    url: '/pages/user/company/authorize?path=' + encodeURIComponent(data?.authUrl),
+                  });
+                }
+              },
+            });
+           return;
+         }
+
+         if(Number(data?.globalAuthState) === 3) {
+          if(data?.authUrl) {
+            uni.showModal({
+              content: '用户认证中，请稍后再试',
+              confirmText: '继续认证',
+              confirmColor: '#3277FF',
+              success: function (res) {
+                if (res.confirm) {
+                  uni.redirectTo({
+                    url: '/pages/user/company/authorize?path=' + encodeURIComponent(data?.authUrl),
+                  });
+                }
+              },
+            });
+           return;
+
+          } else {
+            uni.showModal({
+              content: '用户认证中，请稍后再试',
+              confirmText: '刷新认证状态',
+              confirmColor: '#3277FF',
+              success: function (res) {
+                if (res.confirm) {
+                 that.getCurrentState()
+                }
+              },
+            });
+           return;
+
+          }
+        }
+      })
+    },
+
   },
 };
 </script>

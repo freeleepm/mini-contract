@@ -6,10 +6,10 @@
       <image class="img-back" src="@/static/ImgBackEnterprise.png"></image>
     </view>
     <view class="list width-full">
-      <view class="flex-sb item" v-for="(item, i) in list" :key="i">
+      <view class="flex-sb item" @click="toDetail(item)" v-for="(item, i) in list" :key="i">
         <view>
           <view class="color-base text-28">{{ item.name }} {{ item.account }}</view>
-          <!-- <view class="color-grey-minor text-24">角色：{{ item.roleName }}</view> -->
+          <view class="color-grey-minor text-24">角色：{{ item.roleName }}</view>
           <view class="sarList text-24" v-if="item.sarList">
             <text class="label color-grey-minor">印章：</text>
             <view class="sarBox">
@@ -19,11 +19,7 @@
             </view>
           </view>
         </view>
-        <view
-          class="moreBox"
-          @click.stop="showPopup(item)"
-          v-if="!item.role || item.role.indexOf('99') == -1"
-        >
+        <view class="moreBox" @click.stop="showPopup(item)">
           <uni-icons type="more-filled" size="16"></uni-icons>
         </view>
       </view>
@@ -36,14 +32,8 @@
 
     <uni-popup ref="popupRef" type="bottom" class="color-base" :safe-area="false">
       <view class="popup padding-safe">
-        <!-- <view
-		      class="row-popup text-28 flex-ct"
-		      @click="showSar(1)"
-		    >
-		      编辑
-		    </view> -->
-        <view class="row-popup text-28 flex-ct" v-if="userInfo.phone !== checkedSeal.account"  @click="showSar(2)">删除</view>
-        <view v-if="userInfo.sealManager" class="row-popup text-28 flex-ct" @click="showSar(0)">印章管理</view>
+        <view class="row-popup text-28 flex-ct" @click="showSar(1)">编辑</view>
+        <view class="row-popup text-28 flex-ct" @click="showSar(0)">印章管理</view>
         <view style="height: 32rpx; background-color: #f5f5f5"></view>
         <view class="row-popup text-28 flex-ct" @click="$refs.popupRef.close()">取消</view>
       </view>
@@ -52,7 +42,7 @@
 </template>
 
 <script>
-import { memberList, memberDel } from '@/api/company.js';
+import { memberList } from '@/api/company.js';
 import { mapState } from 'vuex';
 export default {
   data() {
@@ -104,32 +94,8 @@ export default {
         uni.navigateTo({
           url: './createMember?id=' + this.checkedSeal.id,
         });
-      } else if (e == 2) {
-        this.memberDel();
       }
       this.$refs.popupRef.close();
-    },
-    memberDel() {
-      let that = this;
-      uni.showModal({
-        title: '提示',
-        content: '确定删除成员' + this.checkedSeal.name + '？',
-        confirmColor: '#dd524d',
-        confirmText: '确定',
-        cancelText: '取消',
-        cancelColor: '#999999',
-        success: function (res) {
-          if (res.confirm) {
-            memberDel(that.checkedSeal.id).then(() => {
-              uni.showToast({
-                title: '删除成功！',
-                icon: 'none',
-              });
-              that.getList();
-            });
-          }
-        },
-      });
     },
     showPopup(item) {
       this.checkedSeal = item;
@@ -202,7 +168,7 @@ export default {
       }
       .moreBox {
         width: 100rpx;
-        /* height: 100rpx; */
+        height: 100rpx;
         text-align: right;
       }
     }

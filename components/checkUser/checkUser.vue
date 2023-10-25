@@ -6,6 +6,12 @@
         <view class="color-base bold">切换身份</view>
         <view class="color-primary" @click="comfirmIdentity">确定</view>
       </view>
+      <view @click="toCreate(`/pages/user/company/Certification?originType=${backType}`, 1)" class="text-26 color-primary add-company">
+        <!-- :class="{
+        disabled: !userInfo.authentication,
+      }" -->
+        +创建企业
+      </view>
       <view class="list">
         <!-- 个人身份 -->
         <view class="item flex" @click="identityCheck(userInfo, -1)">
@@ -59,6 +65,10 @@ export default {
       type: Boolean,
       default: true,
     },
+    backType:{
+      type:String,
+      default:''
+    }
   },
   data() {
     return {
@@ -117,6 +127,14 @@ export default {
         }
       }
     },
+    toCreate(url, checkAuthentication) {
+      if (!this.userInfo.authentication && checkAuthentication) {
+        this.common.showToast('请先个人认证');
+      } else {
+        this.$refs.popupRef.close();
+        this.common.navigateTo(url);
+      }
+    },
   },
 };
 </script>
@@ -149,6 +167,10 @@ export default {
       top: 54rpx;
       right: 0;
     }
+  }
+  .add-company {
+    margin: 10px 0 0 0;
+    text-align: right;
   }
 }
 </style>

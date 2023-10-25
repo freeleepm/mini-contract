@@ -1,18 +1,19 @@
 <!--
  * @Description:
- * @LastEditTime: 2023-07-07 19:11:02
+ * @LastEditTime: 2023-10-25 14:10:17
  * @LastEditors: 何俊峰
  * @Author: 何俊峰
  * @Date: 2023-02-23 10:11:20
 -->
-Mini-Contract(免费开源电子合同)
+Mini-Contract(Free and Open Source Electronic Contracts)
 ===============
 
-当前最新版本：v1.1.2 (发布时间：2023-7-7)
+Current Latest Version: v1.5.0 (Release Date: 2023-10-25)
 
-[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License %202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)
-[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=上海旭冉信息科技有限公司&color=blue)](https://wwww.yi-types.com)
-[![输入图片说明](https://img.shields.io/static/v1?label=version&message=1.0.0&color=green)](https://wwww.yi-types.com)
+[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)
+[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=重庆弈联数聚科技有限公司&color=blue)](https://wwww.yi-types.com)
+[![输入图片说明](https://img.shields.io/static/v1?label=version&message=1.5.0&color=green)](https://wwww.yi-types.com)
+
 
 #### 介绍
 
@@ -20,31 +21,32 @@ Mini-Contract(免费开源电子合同)
 
 <h3 align="center">Mini-Contract</h3>
 
-⭐️⭐️⭐️  Mini-Contract是由”上海旭冉信息科技有限公司“从公司商业化产品“一合通“剥离出来的一款开源产品，该工具针对行业特点和业务场景深度定制综合解决方案，实现合同便捷在线签署，安全合规可靠。为中小微企业及用户构建省时省力的闭环式服务体系，打造安全无忧的司法保障体系，电子合同底层基于”e签宝“及其它”合同厂商“，获得国家认证，安全可靠。
+⭐️⭐️⭐️   Mini-Contract is an open-source product that has been separated from the commercial product "YiHetong" by "Chongqing Yeeco Technology Co., Ltd." This tool provides a comprehensive solution customized for industry-specific needs and business scenarios. It enables convenient online contract signing, ensuring security, compliance, and reliability. It builds a time-saving and efficient closed-loop service system for small and medium-sized enterprises and users, creating a worry-free legal protection system. The underlying electronic contract technology is based on "eSign" and other "contract vendors," which are nationally certified and secure.
 
 
 
 ### 为什么选择Mini-Contract ?
 
-聚合市场上各类电子合同解决方案商，你无需一个一个的对接电子合同厂商，费时，因为这个工作我们已经做了适配，你只需要一个接口就能使用我们的所有服务商，同时你还可以享受我们的接口渠道价格，Mini-Contract是我们企业真实项目的实战经验结晶，简洁的代码，最新的技术栈，全方位适合不同需求的前端研发同学，同时更是中小微企业开发需求的不二选择，可以帮助解决前端项目的80%以上的重复工作，同时如果不介意界面风格的同学，可以直接使用我们的风格，无需担心版权，能快速落地项目。
+Mini-Contract aggregates various electronic contract solution providers in the market, so you don't need to integrate with each contract vendor one by one, saving you time and effort. We have already handled this integration for you, and you only need a single interface to access all our service providers. Additionally, you can enjoy our interface channel prices. Mini-Contract is the result of our real-world project experience, offering concise code, the latest technology stack, and is suitable for front-end developers with various needs. It is also the preferred choice for small and medium-sized enterprises, as it can help reduce over 80% of the repetitive work in front-end projects. If you don't mind using our user interface style, you can quickly launch your project without worrying about copyright issues.
 
 
 
 ### 商业授权
 
-商业版本与开源版本代码一致，没有区分。
+The commercial version of the code is identical to the open-source version.
 
-商业授权模式为永久授权，支持永久升级。
+Commercial licensing is perpetual and supports lifelong upgrades.
 
-商业使用需要授权，授权方式可选择联系下方技术同学。
+For commercial use, please contact the technical team below for licensing details.
+
 
 
 
 ### 开源须知
 
-1.仅允许用于个人学习研究使用。
+1. Only allowed for personal study and research use.
+2. Prohibited from selling the code and resources in any form or under any name.
 
-2.禁止将本开源的代码和资源进行任何形式任何名义的出售。
 
 
 
@@ -52,184 +54,281 @@ Mini-Contract(免费开源电子合同)
 -----------------------------------
 
 ```
-├─App.vue                           // 应用配置，用来配置APP全局样式以及监听
-├─index.html                        // 给网页开发提供的功能，提供模板
-├─jsconfig.json                     // 规范配置等
-├─main.js                           // 入口文件
-├─manifest.json                     // 配置应用名称、appid、logo、版本等打包信息
-├─pages.json                        // 配置页面路由、导航条、选项卡等页面类信息
-├─README.md                         // 帮助文档
-├─uni.scss                          // scss变量预置, 为了方便整体控制应用的风格
-├─vue.config.js                     // 开发设置
-├─api                               // 接口管理，按照功能分类
-├─components                        // 公共组件库
-│  ├─backTop                        // 返回顶部
-│  ├─BaseEmpty                      // 缺省页
-│  ├─baseline                       // 没有更多数据
-│  ├─btn-fixed                      // 固定在页面底部组件（插槽）
-│  ├─checkUser                      // 切换身份
-│  ├─contractState                  // 合同状态
-│  ├─FileItem                       // 文件信息
-│  ├─loading                        // 页面加载
-│  ├─loadMore                       // 加载数据
-│  ├─SwitchEnvironment              // 切换环境
-│  ├─tag-auth                       // 用户身份
-│  ├─userInfo                       // 用户信息
-│  └─v-tabs                         // tab切换
-├─config                            // 配置
-│  ├─config.js                      // 系统配置（域名等）
-│  ├─net.config.js                  // 域名配置
-│  └─setting.js                     // 其他全局配置（如：页面分享文案）
-├─filters                           // 过滤器
-├─mixins                            // 混入
-│  └─share.js                       // 页面分享
-├─pages                             // 页面文件夹
-│  ├─contract                       // 合同相关页面
-│  │  ├─index.vue                   // 合同首页
-│  │  │    └─index.vue              // 合同详情
-│  │  ├─sign                        // 发起签署
-│  │  └─revoke                      // 撤销合同
-│  ├─home                           // 首页
-│  │  └─contractTemplate            // 合同模板
-│  ├─index                          // 启动页
-│  ├─login                          // 登录注册
-│  └─user                           // 我的
-│     ├─company                     // 企业相关
-│     │    ├─addCompany.vue         // 添加企业
-│     │    ├─addSeal.vue            // 添加印章
-│     │    ├─authorize.vue          // web-view页面
-│     │    ├─Certification.vue      // 企业认证
-│     │    ├─companySeal.vue        // 企业印章管理
-│     │    ├─create.vue             // 创建企业（已废弃）
-│     │    ├─myCompany.vue          // 我的企业
-│     │    └─removeComfirm.vue      // 移除企业
-│     ├─companyMembers              // 成员
-│     │    ├─createMember.vue       // 添加成员
-│     │    └─index.vue              // 企业成员
-│     ├─createUser                  // 签署
-│     │    ├─addPerson.vue          // 添加最近签署人（已废弃）
-│     │    └─index.vue              // 最近签署人
-│     ├─file                        // 文件管理
-│     ├─package                     // 套餐
-│     │    ├─buy.vue                // 购买套餐
-│     │    └─comboDetails.vue       // 我的套餐
-│     ├─personal                    // 个人
-│     │    └─Certification.vue      // 个人认证
-│     └─setting                     // 设置
-│          ├─changeIdentity.vue     // 切换身份（已废弃）
-│          ├─password.vue           // 修改密码（已废弃）
-│          └─Privacy.vue            // 隐私申明
-├─static                            // 存放静态资源，如图片、视频
-│  └─tabbar                         // tabbar图标
-├─store                             // 状态管理库
-├─style                             // 公共样式库
-├─uni_modules                       // 项目组件、页面、公共模块等
-├─unpackage                         // 打包目录
-└─utils                             // 工具
-   ├─cache.js                       // 设置缓存
-   ├─common.js                      // 公共方法
-   ├─compress.js                    // 图片压缩
-   ├─reg.js                         // 通用正则表达式
-   └─request.js                     // 网络请求设置
+├─App.vue                           // Application configuration, used for configuring global styles and event listeners
+├─index.html                        // Provides functionality for web page development and serves as a template
+├─jsconfig.json                     // Configuration for code linting, etc.
+├─main.js                           // Entry file
+├─manifest.json                     //  Configuration for application name, appid, logo, version, etc.
+├─pages.json                        // Configuration for page routes, navigation bars, tabs, and other page-related information
+├─README.md                         // Help documentation
+├─uni.scss                          // Pre-set SCSS variables for easy control of the application's style
+├─vue.config.js                     // Development settings
+├─api                               // Interface management, categorized by functionality
+├─components                        // Public component library
+│  ├─backTop                        // Back to top button
+│  ├─BaseEmpty                      //  Empty page
+│  ├─baseline                       // No more data
+│  ├─btn-fixed                      // Fixed bottom component (slot)
+│  ├─checkUser                      // Switch identity
+│  ├─contractState                  // Contract status
+│  ├─FileItem                       // File information
+│  ├─loading                        // Page loading
+│  ├─loadMore                       // Load more data
+│  ├─SwitchEnvironment              // Switch environment
+│  ├─tag-auth                       // User identity
+│  ├─userInfo                       // User information
+│  └─v-tabs                         // Tab switch
+├─config                            //  Configuration
+│  ├─config.js                      // System configuration (domain, etc.)
+│  ├─net.config.js                  // Domain configuration
+│  └─setting.js                     // Other global configurations (e.g., page sharing messages)
+├─filters                           // Filters
+├─mixins                            // Mixins
+│  └─share.js                       // Page sharing
+├─pages                             // Page folders
+│  ├─contract                       // Contract-related pages
+│  │  ├─index.vue                   // Contract home
+│  │  │    └─index.vue              // Contract details
+│  │  ├─sign                        // Initiate signing
+│  │  └─revoke                      // Revoke contract
+│  ├─home                           // Home
+│  │  └─contractTemplate            // Contract templates
+│  ├─index                          // Start page
+│  ├─login                          // Login and registration
+│  └─user                           // My account
+│     ├─company                     // Company-related
+│     │    ├─addCompany.vue         // Add company
+│     │    ├─addSeal.vue            // Add seal
+│     │    ├─authorize.vue          // Web-view page
+│     │    ├─Certification.vue      // Company certification
+│     │    ├─companySeal.vue        // Company seal management
+│     │    ├─create.vue             // Create company (deprecated)
+│     │    ├─myCompany.vue          // My company
+│     │    └─removeComfirm.vue      // Remove company
+│     ├─companyMembers              // Members
+│     │    ├─createMember.vue       // Add member
+│     │    └─index.vue              // Company members
+│     ├─createUser                  // Signers
+│     │    ├─addPerson.vue          // Add recent signers (deprecated)
+│     │    └─index.vue              // Recent signers
+│     ├─file                        // File management
+│     ├─package                     // Packages
+│     │    ├─buy.vue                // Purchase packages
+│     │    └─comboDetails.vue       // My packages
+│     ├─personal                    // Personal
+│     │    └─Certification.vue      // Personal certification
+│     └─setting                     // Settings
+│          ├─changeIdentity.vue     // Switch identity (deprecated)
+│          ├─password.vue           // Change password (deprecated)
+│          └─Privacy.vue            // Privacy statement
+├─static                            // Static resources storage, such as images, videos
+│  └─tabbar                         // Tabbar icons
+├─store                             // State management library
+├─style                             // Public style library
+├─uni_modules                       // Project components, pages, common modules, etc.
+├─unpackage                         // Build directory
+└─utils                             // Utilities
+   ├─cache.js                       // Cache management
+   ├─common.js                      // Common functions
+   ├─compress.js                    // Image compression
+   ├─reg.js                         // Common regular expressions
+   └─request.js                     // Network request settings
 ```
 
 
 
-技术架构
+Technical Architecture
 -----------------------------------
 
-#### 开发环境
+#### Development Environment
 
-- 语言：Vue2.0
+- Language: Vue 2.0
 
-- IDE(前端)： Vscode、HBuilder
+- IDE (Front-end): VSCode, HBuilder
 
-- 依赖管理：npm
-
-
-
-#### 移动端框架
-
-| 说明       | 框架       | 说明       | 框架      |
-| ---------- | ---------- | ---------- | --------- |
-| 基础框架   | uni-app    | JS版本     | ES6       |
-| 基础JS框架 | Vue.js     | 视频播放器 | 原生video |
-| 路由管理   | Vue Router | 状态管理   | Vuex      |
-| 网络请求   | axios      | css预处理  | scss      |
-| 地图引擎   | map        |            |           |
+- Dependency Management: npm
 
 
 
-### 功能模块
+#### Mobile Framework
+
+| Description       | Framework       | Description       | Framework       |
+| ------------------ | --------------- | ------------------ | --------------- |
+| Basic Framework    | uni-app         | JavaScript Version | ES6             |
+| Basic JS Framework | Vue.js          | Video Player      | Native video    |
+| Routing Management | Vue Router      | State Management  | Vuex            |
+| Network Requests  | axios           | CSS Pre-processing | SCSS            |
+| Map Engine        | map             |                  |                 |
+
+
+
+### Function Modules
 
 ```
-业务功能
-├─登录注册
-│  ├─账号方式
-│  └─微信授权
-├─首页
-│  ├─快捷合同处理
-│  │  ├─待我处理
-│  │  └─待他人处理
-│  └─最近合同
-├─合同
-│  ├─待我处理
-│  ├─待他人处理
-│  ├─已完成
-│  ├─已拒签
-│  ├─已撤销
-│  └─已逾期
-├─发起新签署合同
-└─个人中心
-   ├─我的企业
-   ├─企业印章
-	├─文件管理
-   ├─套餐管理
-	├─隐私政策
-   ├─修改密码
-   └─个人中心
-      ├─企业套餐
-      └─个人套餐
+Business Functions
+├─Login and Registration
+│  ├─Account Method
+│  └─WeChat Authorization
+├─Home
+│  ├─Quick Contract Handling
+│  │  ├─To Be Processed by Me
+│  │  └─To Be Processed by Others
+│  └─Recent Contracts
+├─Contracts
+│  ├─To Be Processed by Me
+│  ├─To Be Processed by Others
+│  ├─Completed
+│  ├─Rejected
+│  ├─Revoked
+│  └─Overdue
+├─Initiate New Signing Contracts
+└─My Account
+   ├─My Company
+   ├─Company Seals
+   ├─File Management
+   ├─Package Management
+   ├─Privacy Policy
+   ├─Change Password
+   └─Personal Center
+      ├─Company Packages
+      └─Personal Packages
 ```
 
 
 
 
-
-
-
-项目效果
+Project Screenshots
 ----
+
+
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_01.png)
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_02.png)
+
+
+
+#### User Interface (Mobile)
+
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_03.png)
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_04.png)
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_05.png)
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_06.png)
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_07.png)
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_08.png)
+
+
+#### User Interface (Web)
+
+> The web-based user interface allows users to sign and view their contracts in the backend.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_01.png)
+
+#### Platform Interface
+
+***Data Overview***
+
+> Gain insights into basic information about all users on the contract platform and aggregate and summarize data.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_01.png)
+
+***Personal Certification***
+
+> The platform can view desensitized basic information for all personal certifications.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_02.png)
+
+***Company Certification***
+
+> The platform can view desensitized basic information for all company certifications.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_03.png)
+
+***Sales Orders***
+
+> The platform can view all contract sales information.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_04.png)
+
+***Service Usage***
+
+> The platform can view all contract usage and consumption information.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_05.png)
+
+***Pricing Settings***
+
+> The platform can set prices based on contract operational needs.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_06.png)
+
+***Account Management***
+
+> The platform can configure user permissions based on different roles.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_07.png)
+
+### Latest Updates
+
+
+
+#####  Version 1.5.0 Release Notes
+- [x] Added support for non-evidence chain contract signing (suitable for daily internal approvals within companies).
+- [x] Optimized seal management.
+- [x] Enhanced company real-name certification logic.
+- [x] Improved logic for multi-channel signing in evidence chains.
+- [x] Upgraded third-party plugin versions.
+- [x] Enhanced privacy protection agreement content.
+- [x] Improved user experience.
+- [x] Fixed known bugs.
+
+
+##### Version 1.1.2 Release Notes
+
+- [x] Added support for backend management to view company contract status.
+- [x] Improved user experience.
+- [x] Fixed known bugs.
+
+
+##### Version 1.1.1 Release Notes
+
+- [x] Optimized the number of electronic contract copies for companies and individuals.
+- [x] Improved user experience.
+- [x] Fixed known bugs.
+
+
+
+##### Version 1.1.0 Release Notes
+
+- [x] Added a variety of contract templates.
+- [x] Added in-app contract signing for an enhanced user experience.
+- [x] Added SMS notifications to signing parties to ensure timely communication.
+- [x] Improved user experience.
+- [x] Fixed known bugs.
 
 
 
 
-### 技术文档
+### Technical Documentation
 
-* 在线演示：
+* Online Demo：
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_qrcode.png)
 
 
 
-### 交流合作
+### Contact and Collaboration
 
-如果你想加入我们的开源交流群，请扫码添加 Mini-Contract 项目团队，加入群聊：
+If you would like to join our open-source discussion group, please scan the QR code to add the Mini-Contract project team and join the group chat:
+：
 ![输入图片说明](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/shawn_company_qrcode.png)
 
 
 
-如果你有任何对 Mini-Contract 产品上的想法、意见或建议，或商务上的合作需求，请扫码添加 Mini-Contract 项目团队进一步沟通：
+If you have any ideas, suggestions, or business collaboration needs regarding the Mini-Contract product, please scan the QR code to add the Mini-Contract project team for further communication:
+：
 ![输入图片说明](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/shawn_huangxing_qrcode.png)
 
-## 捐赠
+## Donations
 
-如果觉得还不错，请作者喝杯咖啡吧 ☺
+If you find it useful, please consider Watching, Starred, and Forked ☺
 

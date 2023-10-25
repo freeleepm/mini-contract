@@ -1,7 +1,7 @@
 <!--
  * @Description:
- * @LastEditTime: 2022-09-16 16:46:36
- * @LastEditors: 刘仁秀
+ * @LastEditTime: 2023-08-31 15:14:50
+ * @LastEditors: wudi
  * @Author: 刘仁秀
  * @Date: 2022-09-02 15:21:16
 -->
@@ -272,15 +272,18 @@ export default {
 .row-type {
   padding: 10rpx;
   margin-right: -40rpx;
+  flex-wrap: wrap;
   .card-type {
     box-sizing: border-box;
     position: relative;
     padding-left: 28rpx;
-    flex: 1;
+    /* flex: 1; */
+    width: calc(50% - 40rpx);
     height: 170rpx;
     background: #f5f5f5;
     border-radius: 12rpx;
     margin-right: 40rpx;
+    margin-bottom: 40rpx;
     &::after {
       content: '';
     }

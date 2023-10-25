@@ -24,7 +24,7 @@
             <view class="text-24 color-primary">切换身份</view>
             <uni-icons type="forward" size="12" color="#B3B3B3"></uni-icons>
           </view>
-          <checkUser ref="checkUserRef" :check="false" />
+          <checkUser ref="checkUserRef" :check="false" backType="mine" />
         </view>
 
         <view class="menu-container flex-sb">
@@ -60,11 +60,11 @@
       <view class="list">
         <view
           v-for="(item, i) in list.filter(
-            j => j.hidden === false && (!j.mustAdmin || userInfo.admin)
+            j => j.hidden === false && (!j.mustAdmin || admin)
           )"
           :key="i"
           class="item flex-fs"
-          @click="navigateTo(item.url, item.checkToken, item.mustCompany)"
+          @click="navigateTo(item.url, item.checkToken, item.mustCompany, item.mustCross)"
         >
           <image class="icon-item" :src="item.icon"></image>
           <view class="flex-1 text-28 color-base">{{ item.title }}</view>
@@ -78,6 +78,7 @@
 <script>
 import { upload } from '@/api/oss.js';
 import userInfoApi from '@/api/api';
+import { getCompanyState, isAdmin } from '@/api/company.js';
 import { mapState, mapActions } from 'vuex';
 export default {
   data() {
@@ -87,10 +88,11 @@ export default {
         {
           title: '我的企业',
           icon: '/static/IconEnterprise.png',
-          url: '/pages/user/company/myCompany',
+          url: '/pages/user/company/myCompany?originType=mine',
           hidden: false,
           checkToken: true,
           mustCompany: true,
+          mustCross: true
         },
         {
           title: '企业成员',
@@ -100,6 +102,7 @@ export default {
           checkToken: true,
           mustCompany: true,
           mustAdmin: true,
+          mustCross: true
         },
         {
           title: '企业印章',
@@ -134,6 +137,9 @@ export default {
           mustCompany: false,
         },
       ],
+      authObj: {},
+      authCompanyObj: {},
+      admin:false
     };
   },
   onShow() {
@@ -163,12 +169,27 @@ export default {
         }
       });
     },
-    navigateTo(url, checkToken, mustCompany) {
+    navigateTo(url, checkToken, mustCompany, mustCross) {
       if (checkToken && !this.token) {
         this.common.toLogin();
         return;
       }
       if (mustCompany && !this.userInfo.companyId) {
+        if (!this.userInfo.authentication) {
+        uni.showModal({
+          content: '需要完成个人认证，方可进行下一步操作',
+          confirmText: '去认证',
+          confirmColor: '#3277FF',
+          success: function (res) {
+            if (res.confirm) {
+              uni.navigateTo({
+                url: '/pages/user/personal/Certification?originType=mine',
+              });
+            }
+          },
+        });
+        return;
+      }
         uni.showModal({
           title: '温馨提示',
           content: '该操作需要企业认证，请切换企业身份或进行企业认证！',
@@ -179,16 +200,134 @@ export default {
           success: function (res) {
             if (res.confirm) {
               uni.navigateTo({
-                url: '/pages/user/company/Certification',
+                url: '/pages/user/company/Certification?originType=mine',
+              });
+            }
+          },
+        });
+        return;
+
+      }
+      let that = this
+      if(mustCross && Number(this?.authObj?.globalAuthState) === 1 && this?.authObj?.authUrl) {
+          uni.showModal({
+          content: '由于签署渠道变更，需要重新个人认证',
+          confirmText: '去认证',
+          confirmColor: '#3277FF',
+          success: function (res) {
+            if (res.confirm) {
+              uni.redirectTo({
+                url: '/pages/user/company/authorize?path=' + encodeURIComponent(that?.authObj.authUrl),
               });
             }
           },
         });
         return;
       }
+
+      if(mustCross && Number(this?.authObj?.globalAuthState) === 3) {
+        if(this?.authObj?.authUrl) {
+          uni.showModal({
+              content: '用户认证中，请稍后再试',
+              confirmText: '继续认证',
+              confirmColor: '#3277FF',
+              success: function (res) {
+                if (res.confirm) {
+                  uni.redirectTo({
+                    url: '/pages/user/company/authorize?path=' + encodeURIComponent(that?.authObj.authUrl),
+                  });
+                }
+              },
+            });
+            return;
+        } else {
+          uni.showModal({
+              content: '用户认证中，请稍后再试',
+              confirmText: '刷新认证状态',
+              confirmColor: '#3277FF',
+              success: function (res) {
+                if (res.confirm) {
+                  that.getCurrentState();
+                }
+              },
+            });
+            return;
+        }
+      }
+
+      if(mustCross && Number(this?.authCompanyObj?.globalAuthState) === 1 && this?.authCompanyObj.authUrl) {
+          uni.showModal({
+          content: '由于签署渠道变更，需要重新企业认证',
+          confirmText: '去认证',
+          confirmColor: '#3277FF',
+          success: function (res) {
+            if (res.confirm) {
+              uni.redirectTo({
+                url: '/pages/user/company/authorize?path=' + encodeURIComponent(that.authCompanyObj.authUrl),
+              });
+            }
+          },
+        });
+        return;
+      }
+      // 认证中
+      if(mustCross && Number(this?.authCompanyObj?.globalAuthState) === 3) {
+          if(this?.authCompanyObj.authUrl) {
+            uni.showModal({
+              content: '企业认证中，请稍后再试',
+              confirmText: '继续认证',
+              confirmColor: '#3277FF',
+              success: function (res) {
+                if (res.confirm) {
+                  uni.redirectTo({
+                    url: '/pages/user/company/authorize?path=' + encodeURIComponent(that.authCompanyObj.authUrl),
+                  });
+                }
+              },
+            });
+            return;
+          } else {
+            uni.showModal({
+              content: '企业认证中，请稍后再试',
+              confirmText: '刷新认证状态',
+              confirmColor: '#3277FF',
+              success: function (res) {
+                if (res.confirm) {
+                  that.getCurrentCompanyState();
+                }
+              },
+            });
+            return;
+          }
+       }
+
       this.common.navigateTo(url);
     },
+    getCurrentState() {
+      userInfoApi.getAuthState({type:6}).then(res=> {
+        this.authObj = res;
+      })
+    },
+    getCurrentCompanyState(){
+      getCompanyState({type:6}).then(res=> {
+        this.authCompanyObj = res;
+      })
+    },
+    getIsAdmin() {
+      isAdmin().then(res => {
+        this.admin = res;
+      })
+    }
   },
+  watch:{
+    userInfo (value) {
+    this.getCurrentState();
+    this.getIsAdmin()
+     if(value.companyAccountId && value.authentication) {
+        this.getCurrentCompanyState();
+      }
+    }
+  }
 };
 </script>
 

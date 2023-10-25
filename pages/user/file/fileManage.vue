@@ -9,7 +9,7 @@
   <view class="page-base">
     <view class="container-card flex-col">
       <view class="text-26 color-base">从聊天记录中导入</view>
-      <view class="tip text-24 color-grey-minor">支持doc、docx、pdf等格式且小于5M的文件</view>
+      <view class="tip text-24 color-grey-minor">支持doc、docx、pdf等格式且小于20M的文件</view>
 
       <view class="btn-primary text-30" @click="uploadFile">本地文件</view>
     </view>
@@ -164,16 +164,21 @@ export default {
         extension: ['.doc', '.docx', '.pdf'],
         success: function (res) {
           if (res.tempFiles[0]) {
-            if (res.tempFiles[0].size / 1024 / 1024 > 5) {
-              that.common.showToast('文件最大5M');
+            if (res.tempFiles[0].size / 1024 / 1024 > 20) {
+              that.common.showToast('文件最大20M');
               return;
             }
             uni.showLoading({
               title: '正在上传',
             });
+			// 跳过图片压缩的大小限制
+			let size = res.tempFiles[0].size
+			res.tempFiles[0].size = 10485760 - 1
             upload([res.tempFiles[0]]).then(urls => {
               if (urls) {
-                create(urls[0]).then(file => {
+				let obj = urls[0]
+				obj.size = size
+                create(obj).then(file => {
                   if (file) {
                     if (that.pick == 1) {
                       uni.$emit('file', file);
@@ -199,16 +204,21 @@ export default {
             let index = res.tempFiles[0].name.lastIndexOf('.') + 1;
             let type = res.tempFiles[0].name.slice(index, res.tempFiles[0].name.length);
             if (type == 'docx' || type == 'doc' || type == 'pdf') {
-              if (res.tempFiles[0].size / 1024 / 1024 > 5) {
-                that.common.showToast('文件最大5M');
+              if (res.tempFiles[0].size / 1024 / 1024 > 20) {
+                that.common.showToast('文件最大20M');
                 return;
               }
               uni.showLoading({
                 title: '正在上传',
               });
+			  // 跳过图片压缩的大小限制
+			  let size = res.tempFiles[0].size
+			  res.tempFiles[0].size = 10485760 - 1
               upload([res.tempFiles[0]]).then(urls => {
                 if (urls) {
-                  create(urls[0]).then(file => {
+					let obj = urls[0]
+					obj.size = size
+                  create(obj).then(file => {
                     uni.hideLoading();
                     if (file) {
                       if (that.pick == 1) {

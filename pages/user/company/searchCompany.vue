@@ -1,28 +1,43 @@
 <!--
  * @Description:
- * @LastEditTime: 2023-09-18 17:49:57
+ * @LastEditTime: 2023-10-10 16:37:42
  * @LastEditors: wudi
  * @Author: 刘仁秀
  * @Date: 2022-09-02 15:21:16
 -->
 <template>
   <view class="page-base">
-    <view class="search-box flex-sb">
-      <view class="text-28 bold color-base">我的企业</view>
-      <view @click="toCreate('/pages/user/company/Certification?originType='+ originType, 1)" class="text-26 color-primary">
-        <!-- :class="{
-        disabled: !userInfo.authentication,
-      }" -->
-        +创建企业
+    <view class="search-box flex-ct">
+        <view class="search flex-fs">
+          <uni-icons
+            type="search"
+            size="24"
+            class="icon-search flex-ct"
+            color="#3277FF"
+          ></uni-icons>
+          <input
+            class="flex-1 text-28 color-base"
+            placeholder="请输入公司名称搜索"
+            v-model="params.companyName"
+            @confirm="confirm"
+          />
+          <uni-icons
+            v-if="params.companyName"
+            type="clear"
+            size="22"
+            class="flex-ct"
+            color="#E6E6E6"
+            @click="clear"
+          ></uni-icons>
+        </view>
       </view>
-    </view>
     <view class="list">
       <view v-for="(item, index) in list" :key="index" class="item" @click="handleEnterprise(item)">
-        <view class="text-26 color-base">{{ item.alias || '' }}</view>
+        <view class="text-26 color-base">{{ item.companyName || '' }}</view>
         <view class="line-horizontal"></view>
         <view class="flex-fs">
           <view
-            v-if="item.authentication === 1"
+            v-if="item.authState === 2"
             class="tag-auth tag-auth__enterauth flex-ct text-20"
           >
             <image class="icon-auth" src="@/static/IconEnterpriseAuth.png"></image>
@@ -48,55 +63,19 @@
         </view>
       </view>
       <loadMore v-if="loading"></loadMore>
-      <BaseEmpty v-if="noData" massage="暂无数据"></BaseEmpty>
+      <BaseEmpty v-if="noData" massage="暂无数据">
+        <view class="btn-box" v-if="params.companyName && noSearchData">
+          <button open-type="share" class="send-btn" type="primary">邀请企业用户注册</button>
+        </view>
+      </BaseEmpty>
       <baseline v-if="showBaseline"></baseline>
     </view>
-    <uni-popup ref="popupRef" type="bottom" class="color-base" :safe-area="false">
-      <view class="popup padding-safe">
-        <view
-          @click="toCreate('/pages/user/company/Certification?id=' + checkedEnterprise.id + '&originType=' + originType)"
-          v-if="checkedEnterprise.authentication !== 1"
-          class="row-popup text-28 flex-ct"
-        >
-          去认证
-        </view>
-        <!-- <view @click="toCreate('companySeal?companyId=' + checkedEnterprise.companyId)"
-          v-if="checkedEnterprise.authentication === 1"
-          class="row-popup text-28 flex-ct"
-          hover-class="none"
-        >
-          企业印章
-        </view> -->
-        <view
-          v-if="checkedEnterprise.admin"
-          @click="
-            toCreate(
-              './removeComfirm?id=' +
-                checkedEnterprise.id +
-                '&companyId=' +
-                checkedEnterprise.companyId
-            )
-          "
-          class="row-popup text-28 flex-ct color-error"
-        >
-          移除企业
-        </view>
-        <view
-          v-if="checkedEnterprise.authentication !== 1"
-          @click="deleteCompany"
-          class="row-popup text-28 flex-ct color-error"
-        >
-          删除企业
-        </view>
-        <view style="height: 32rpx; background-color: #f5f5f5"></view>
-        <view class="row-popup text-28 flex-ct" @click="$refs.popupRef.close()">取消</view>
-      </view>
-    </uni-popup>
+
   </view>
 </template>
 
 <script>
-import { company } from '@/api/company.js';
+import { getAuthCompanyList } from '@/api/company.js';
 import { info } from '@/api/login.js';
 import { mapState } from 'vuex';
 export default {
@@ -106,12 +85,14 @@ export default {
       loading: true,
       checkedEnterprise: null,
       params: {
-        content: '',
+        companyName: '',
         pageNum: 1,
         pageSize: 10,
       },
       noMore: false,
-      originType:null
+      originType:null,
+      // 搜索时没有数据的时候展示
+      noSearchData:false
     };
   },
   computed: {
@@ -140,14 +121,6 @@ export default {
     }
   },
   methods: {
-    toCreate(url, checkAuthentication) {
-      if (!this.userInfo.authentication && checkAuthentication) {
-        this.common.showToast('请先个人认证');
-      } else {
-        this.$refs.popupRef.close();
-        this.common.navigateTo(url);
-      }
-    },
 
     /**
      * @description: 管理企业弹窗
@@ -155,23 +128,56 @@ export default {
      * @return {*}
      */
     handleEnterprise(item) {
+      console.log('item :', item)
       this.checkedEnterprise = item;
-      this.$refs.popupRef.open();
+      let pages = getCurrentPages();
+      let prevPage = pages[pages.length - 2]; //上一个页面
+      let object={
+          companyName:item.companyName,
+      }
+      prevPage.onShow(object);
+      uni.navigateBack();
+      // uni.redirectTo({
+      //   url:'/pages/contract/sign/index?companyName='+ item.companyName
+      // })
     },
-
-    getList() {
+    getList(type) {
       this.noMore = false;
-      company(this.params).then(data => {
+      getAuthCompanyList(this.params).then(data => {
+        if(type && type === 'confirm' && !data.rows.length) {
+          this.noSearchData = true;
+        } else {
+          this.noSearchData = false;
+        }
         this.list = this.list.concat(data.rows);
         if (data.rows.length == this.params.pageSize) this.noMore = true;
         this.loading = false;
         uni.stopPullDownRefresh();
       });
     },
-    // 删除未认证成功的企业
-    deleteCompany(){
-       console.log('this.checkedEnterprise :', this.checkedEnterprise)
-    }
+    confirm() {
+      this.params.pageNum = 1;
+      this.loading = true;
+      this.list = [];
+      this.getList('confirm');
+    },
+    clear() {
+      this.params.companyName = '';
+      this.params.pageNum = 1;
+      this.loading = true;
+      this.list = [];
+      this.getList();
+    },
+  },
+  onShareAppMessage() {
+    return {
+      title: '邀您注册一合通小程序，签署合同>',
+      desc: '',
+      // path: '/pages/index/index?id=' + this.contractId + '&uid=' + this.userInfo.id,
+      // path: '/pages/user/company/Certification',
+      path: '/pages/index/index',
+      imageUrl: 'https://resource.yi-types.com/eSign/esign.png',
+    };
   },
   onReachBottom() {
     if (this.noMore) {
@@ -190,8 +196,20 @@ export default {
 
 <style lang="scss" scoped>
 .search-box {
-  margin-top: 32rpx;
-  width: 686rpx;
+  margin: 32rpx 0 0 0;
+  .search {
+    box-sizing: border-box;
+    padding: 0 21rpx;
+    width: 686rpx;
+    height: 80rpx;
+    background: #f5f5f5;
+    border-radius: 8rpx;
+  }
+
+  .icon-search {
+    width: 39rpx;
+    margin-right: 20rpx;
+  }
 }
 
 .list {
@@ -268,5 +286,18 @@ export default {
 
 .container-empty {
   margin-top: 100rpx;
+}
+.btn-box {
+  .send-btn {
+      width: 598rpx;
+      height: 88rpx;
+      /* height: 84rpx;
+      width: 260rpx; */
+      line-height: 88rpx;
+      margin-top: 100rpx;
+      font-size: $uni-font-size-base;
+      background-color: $uni-color-primary;
+      white-space: nowrap;
+    }
 }
 </style>
