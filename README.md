@@ -9,11 +9,11 @@
   Mini-Contract(免费开源电子合同)
   ===============
 
-当前最新版本：v1.1.2 (发布时间：2023-7-7)
+当前最新版本：v1.5.0 (发布时间：2023-10-25)
 
 [![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)
 [![输入图片说明](https://img.shields.io/static/v1?label=Author&message=重庆弈联数聚科技有限公司&color=blue)](https://wwww.yi-types.com)
-[![输入图片说明](https://img.shields.io/static/v1?label=version&message=1.1.2&color=green)](https://wwww.yi-types.com)
+[![输入图片说明](https://img.shields.io/static/v1?label=version&message=1.5.0&color=green)](https://wwww.yi-types.com)
 
 #### 介绍
 
@@ -215,7 +215,8 @@
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_04.png)
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_05.png)
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_06.png)
-
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_07.png)
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_08.png)
 
 
 #### 用户端（Web端）
@@ -269,6 +270,21 @@
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_07.png)
 
 ### 最近更新
+
+
+
+##### V1.5.0 更新日志
+- [x] 新增非证据链合同签署（可用于企业内部日常审批使用）
+- [x] 优化印章管理
+- [x] 优化企业实名认证逻辑
+- [x] 优化证据链多渠道签署逻辑
+- [x] 升级第三方插件版本
+- [x] 优化隐私保护协义内容
+- [x] 优化用户体验
+- [x] 修复已知bug
+
+
+
 
 ##### V1.1.2 更新日志
 
