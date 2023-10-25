@@ -15,7 +15,7 @@ Current Latest Version: v1.5.0 (Release Date: 2023-10-25)
 [![输入图片说明](https://img.shields.io/static/v1?label=version&message=1.5.0&color=green)](https://wwww.yi-types.com)
 
 
-#### 介绍
+#### Introduction
 
 
 
@@ -25,13 +25,13 @@ Current Latest Version: v1.5.0 (Release Date: 2023-10-25)
 
 
 
-### 为什么选择Mini-Contract ?
+### Why Choose Mini-Contract ?
 
 Mini-Contract aggregates various electronic contract solution providers in the market, so you don't need to integrate with each contract vendor one by one, saving you time and effort. We have already handled this integration for you, and you only need a single interface to access all our service providers. Additionally, you can enjoy our interface channel prices. Mini-Contract is the result of our real-world project experience, offering concise code, the latest technology stack, and is suitable for front-end developers with various needs. It is also the preferred choice for small and medium-sized enterprises, as it can help reduce over 80% of the repetitive work in front-end projects. If you don't mind using our user interface style, you can quickly launch your project without worrying about copyright issues.
 
 
 
-### 商业授权
+### Commercial Licensing
 
 The commercial version of the code is identical to the open-source version.
 
@@ -42,7 +42,7 @@ For commercial use, please contact the technical team below for licensing detail
 
 
 
-### 开源须知
+### Open Source Notice
 
 1. Only allowed for personal study and research use.
 2. Prohibited from selling the code and resources in any form or under any name.
@@ -50,7 +50,7 @@ For commercial use, please contact the technical team below for licensing detail
 
 
 
-目录结构
+Directory Structure
 -----------------------------------
 
 ```
@@ -319,13 +319,11 @@ Project Screenshots
 ### Contact and Collaboration
 
 If you would like to join our open-source discussion group, please scan the QR code to add the Mini-Contract project team and join the group chat:
-：
 ![输入图片说明](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/shawn_company_qrcode.png)
 
 
 
 If you have any ideas, suggestions, or business collaboration needs regarding the Mini-Contract product, please scan the QR code to add the Mini-Contract project team for further communication:
-：
 ![输入图片说明](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/shawn_huangxing_qrcode.png)
 
 ## Donations
