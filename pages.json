@@ -10,14 +10,20 @@
     {
       "path": "pages/home/index",
       "style": {
-        "navigationBarTitleText": "一合通"
+        "navigationBarTitleText": ""
       }
     },
     {
       "path": "pages/contract/index",
       "style": {
-        "navigationBarTitleText": "合同",
+        "navigationBarTitleText": "合同管理",
         "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/contract/noAccess/index",
+      "style": {
+        "navigationBarTitleText": ""
       }
     },
     {
@@ -108,6 +114,21 @@
         "enablePullDownRefresh": false
       }
     },
+    {
+      "path": "pages/user/personal/camera",
+      "style": {
+        "navigationBarTitleText": "",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/user/personal/CertificationFace",
+      "style": {
+        "navigationBarTitleText": "个人认证",
+        "enablePullDownRefresh": false
+      }
+    },
+
     {
       "path": "pages/user/package/comboDetails",
       "style": {
@@ -236,13 +257,19 @@
     "borderStyle": "white",
     "list": [
       {
-        "text": "主页",
+        "text": "首页",
         "pagePath": "pages/home/index",
         "iconPath": "static/tabbar/IconTabbarHome.png",
         "selectedIconPath": "static/tabbar/IconTabbarHomeActive.png"
       },
       {
-        "text": "合同",
+        "text": "发起签署",
+        "pagePath": "pages/contract/sign/index",
+        "iconPath": "static/tabbar/IconTabbarContract.png",
+        "selectedIconPath": "static/tabbar/IconTabbarContractActive.png"
+      },
+      {
+        "text": "合同管理",
         "pagePath": "pages/contract/index",
         "iconPath": "static/tabbar/IconTabbarContract.png",
         "selectedIconPath": "static/tabbar/IconTabbarContractActive.png"
@@ -257,7 +284,7 @@
   },
   "globalStyle": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "一合通",
+    "navigationBarTitleText": " ",
     "navigationBarBackgroundColor": "#FFFFFF",
     "backgroundColor": "#F8F8F8"
   }
