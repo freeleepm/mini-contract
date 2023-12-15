@@ -1,18 +1,11 @@
-<!--
- * @Description:
- * @LastEditTime: 2023-10-25 14:10:17
- * @LastEditors: 何俊峰
- * @Author: 何俊峰
- * @Date: 2023-02-23 10:11:20
--->
 Mini-Contract(Free and Open Source Electronic Contracts)
 ===============
 
-Current Latest Version: v1.5.0 (Release Date: 2023-10-25)
+Current Latest Version: v1.5.5 (Release Date: 2023-12-14)
 
 [![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)
 [![输入图片说明](https://img.shields.io/static/v1?label=Author&message=重庆弈联数聚科技有限公司&color=blue)](https://wwww.yi-types.com)
-[![输入图片说明](https://img.shields.io/static/v1?label=version&message=1.5.0&color=green)](https://wwww.yi-types.com)
+[![输入图片说明](https://img.shields.io/static/v1?label=version&message=1.5.5&color=green)](https://wwww.yi-types.com)
 
 
 #### Introduction
@@ -209,11 +202,38 @@ Project Screenshots
 
 #### User Interface (Mobile)
 
+> The homepage allows for quick initiation of contract signing, supporting multiple selections of signatories or companies (i.e., simultaneous signing by multiple individuals or companies), and also enables setting the validity period of the contract for this signing, thereby avoiding potential legal risks.
+
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_03.png)
+
+
+
+> As an enterprise, you need to complete "enterprise authentication" and "legal representative real-name authentication" before signing. Additionally, if the quota is used up during the usage, you can purchase more quota on your own.
+
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_04.png)
+
+
+
+> After logging into the application, you can access various features such as enterprise management, seal management, document signing management, signing quota purchase, and more.
+
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_05.png)
+
+
+
+> Before signing, individuals are required to complete "real-name authentication," "ID card verification," "facial recognition," and other processes to ensure the authenticity of the information.
+
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_06.png)
+
+
+
+> In the signing details, you can view the signing status information of the contract signatories and all parties involved. The signing parties can also click to sign the document, with signing methods including "handwritten signature" and "seal" options. 
+
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_07.png)
+
+
+
+> Signatories involved in the contract can receive SMS reminders about the signing process. Within the validity period, they can click the link to access the H5 or mini program to complete the signing. Once all signatories have completed the signing, a text message notification will be sent to inform them.
+
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_08.png)
 
 
@@ -267,43 +287,56 @@ Project Screenshots
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_07.png)
 
-### Latest Updates
+### Updates Logs
+
+##### v 1.5.5 
+
+- [x]  [New] Added "ID Card Comparison" in the real-name authentication process
+- [x]  [New] Send SMS notifications to signing parties upon completion
+- [x]  [New] Support for signing parties who are not the initiators (can delegate contract initiation)
+- [x]  [Optimization] Improved experience for switching between corporate and individual ID cards
+- [x] [Optimization] Enhanced user experience
+- [x] [Bug Fix] Fixed known issues
 
 
 
-#####  Version 1.5.0 Release Notes
-- [x] Added support for non-evidence chain contract signing (suitable for daily internal approvals within companies).
-- [x] Optimized seal management.
-- [x] Enhanced company real-name certification logic.
-- [x] Improved logic for multi-channel signing in evidence chains.
-- [x] Upgraded third-party plugin versions.
-- [x] Enhanced privacy protection agreement content.
-- [x] Improved user experience.
-- [x] Fixed known bugs.
-
-
-##### Version 1.1.2 Release Notes
-
-- [x] Added support for backend management to view company contract status.
-- [x] Improved user experience.
-- [x] Fixed known bugs.
-
-
-##### Version 1.1.1 Release Notes
-
-- [x] Optimized the number of electronic contract copies for companies and individuals.
-- [x] Improved user experience.
-- [x] Fixed known bugs.
+#####  v 1.5.0
+- [x]  [New] Added non-evidence chain contract signing (suitable for daily internal approval within enterprises)
+- [x]  [Optimization] Seal management
+- [x]  [Optimization] Corporate real-name authentication logic
+- [x]  [Optimization] Evidence chain multi-channel signing logic
+- [x]  [Upgrade] Third-party plugin version
+- [x]  [Optimization] Privacy protection agreement content
+- [x]  [Optimization] User experience
+- [x] [Bug Fix] Fixed known issues
 
 
 
-##### Version 1.1.0 Release Notes
 
-- [x] Added a variety of contract templates.
-- [x] Added in-app contract signing for an enhanced user experience.
-- [x] Added SMS notifications to signing parties to ensure timely communication.
-- [x] Improved user experience.
-- [x] Fixed known bugs.
+##### v 1.1.2
+
+- [x]  [New] Added support for backend management to view enterprise contract information
+- [x]  [Optimization] Improved user experience
+- [x]  [Bug Fix] Fixed known issues
+
+
+
+
+##### v 1.1.1 
+
+- [x] [Optimization] Adjusted the number of electronic contract packages for enterprises and individuals
+- [x]  [Optimization] Improved user experience
+- [x]  [Bug Fix] Fixed known issues
+
+
+
+##### v 1.1.0 
+
+- [x]  [New] Added a variety of contract templates
+- [x]  [New] In-app contract signing for improved user experience
+- [x]  [New] SMS notifications for signatories to avoid delayed communication
+- [x]  [Optimization] Enhanced user experience
+- [x]  [Bug Fix] Fixed known issues
 
 
 
