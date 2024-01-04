@@ -2,13 +2,15 @@
   ===============
 
 
-当前最新版本：v1.5.5 (发布时间：2023-12-14)
+当前最新版本：v1.9.0 (发布时间：2024-01-03)
 
 
 
 [![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)
+
 [![输入图片说明](https://img.shields.io/static/v1?label=Author&message=重庆弈联数聚科技有限公司&color=blue)](https://wwww.yi-types.com)
-[![输入图片说明](https://img.shields.io/static/v1?label=version&message=1.5.5&color=green)](https://wwww.yi-types.com)
+
+[![输入图片说明](https://img.shields.io/static/v1?label=version&message=1.9.0&color=green)](https://wwww.yi-types.com)
 
 #### 介绍
 
@@ -26,7 +28,7 @@
 
 ### 为什么选择Mini-Contract ?
 
-我们汇集了市场上各类电子合同解决方案提供商，为您提供一站式便捷服务。您无需逐一对接各个电子合同厂商，避免了费时费力的过程。我们已经完成了这项繁琐的工作，您只需一个接口就能轻松使用我们所有的服务商。同时，您还可以享受我们提供的接口渠道价格优势，让您的成本更加可控。
+我们汇集了市场上各类电子合同解决方案提供商，为您提供一站式便捷的独立合同运营管理平台服务。您无需逐一对接各个电子合同厂商，避免了费时费力的过程。我们已经完成了这项繁琐的工作，您只需一个接口就能轻松使用我们所有的服务商。同时，您还可以享受我们提供的接口渠道价格优势，让您的成本更加可控。
 
 Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简洁的代码和最新的技术栈，非常适合各种需求的前端研发人员。同时，能够帮助您解决前端项目中80%以上的重复工作，提高开发效率。
 
@@ -36,19 +38,16 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 
 ### 商业授权
 
-商业版本与开源版本代码一致，没有区分；
-
-商业授权模式为永久授权，支持永久升级；
-
-商业使用需要授权，授权方式可选择联系下方技术同学。
+1. 商业版本与开源版本代码一致，没有区分；
+2. 商业授权模式为永久授权，支持永久升级；
+3. 商业使用需要授权，授权方式可选择联系下方技术同学。
 
 
 
 ### 开源须知
 
-1.仅允许用于个人学习研究使用；
-
-2.禁止将本开源的代码和资源进行任何形式任何名义的出售。
+1. 仅允许用于个人学习研究使用；
+2. 禁止将本开源的代码和资源进行任何形式任何名义的出售。
 
 
 
@@ -243,6 +242,23 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 
 
 
+
+> 作为企业管理人员，可以管理企业成员，同时可以授权企业成员是否拥签署权限
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_09.png)
+
+
+
+
+> 实名认证企业之后可自动生成合规的ca证书签章，企业管理人员可为每一个成员设置不同的签章权限
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_10.png)
+
+> 
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_11.png)
+
+
 > 参与签署的人可以收到签署的短信信息提醒，在有效期内点击链接可以到H5或者小程序里面进行签署，所有签署人都签署完成之后有短信通知提示
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_08.png)
@@ -250,9 +266,62 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 
 #### 用户端（Web端）
 
-> Web 的用户端，可以在后台对自己的合同进行相应的签署和查看
+> Web 用户端，可以在后台对自己的合同进行相应的签署和查看
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_01.png)
+
+
+
+> Web 用户端，支持在线签署合同，点击“签署”跳转到相应的签署页面
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_02.png)
+
+
+
+> 手写签署，以及上传自己专属的个性签名信息 
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_03.png)
+
+
+
+
+> Web 用户端支持，“个人” 和 “企业” 不同身份的切换
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_04.png)
+
+
+
+
+> 作为企业管理人员，在Web端也能管理成员
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_05.png)
+
+
+
+> 输入"手机号"和“姓名”即可完成成员增加
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_06.png)
+
+
+
+> 同时Web端还能根据合同签署的状态“我发起的”、“待我处理”、“待他人处理“、”已完成“、“已拒签”、“已撤销”、“已逾期” 进行查询
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_07.png)
+
+
+
+
+> 作为企业管理人员或者个人在Web端能查看到所有已经签署过并且归档的合同，支持在线查看，下载等操作
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_08.png)
+
+
+
+
+> Web管理端还支持账号的更换和密码的修改等操作
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_09.png)
+
 
 #### 平台端
 
@@ -262,11 +331,15 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_01.png)
 
+
+
 ***个人认证***
 
 > 平台可查看到脱敏后的所有个人认证的基本信息
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_02.png)
+
+**
 
 ***企业认证***
 
@@ -274,11 +347,15 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_03.png)
 
+
+
 ***销售订单***
 
 > 平台可查看所有合同销售情况
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_04.png)
+
+
 
 ***消耗服务***
 
@@ -286,17 +363,52 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_05.png)
 
+
+
 ***价格设置***
 
 > 平台可根据自己合同运营情况设置相应的价格
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_06.png)
 
+
+
 ***账号管理***
 
 > 平台根据不同角色进行相应的用户权限设置，不同的用户有不同的管理权限
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_07.png)
+
+
+
+***横版分类***
+
+> 新增运营平台支持独立运营自己的合同模板，让平台更加灵活的配置
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_08.png)
+
+
+***横版分类***
+
+> 新增运营平台可独立运营自己的合同模板，让平台管理更加灵活更方便，运营平台建立起了合同模板之后，所有合同用户和企业都可以享受到运营平台提前设置好的合同模板
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_08.png)
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_09.png)
+
+
+
+> 在设置合同横版的时候，可提前设置好该模板预设好的签署方“个人”、“企业”，目前单个横版最多支持10个签署对象
+
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_10.png)
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_12.png)
+
+
+
+> 合同模板支持动态设置里面的参数信息，也可以提前预设一些参数信息，从而大大的增加了合同的灵活性
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_13.png)
 
 ### 最近更新
 
