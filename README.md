@@ -8,9 +8,11 @@
 
 [![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)
 
-[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=重庆弈联数聚科技有限公司&color=blue)](https://wwww.yi-types.com)
+[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=重庆弈联数聚科技有限公司&color=blue)](https://www.yi-types.com)
 
-[![输入图片说明](https://img.shields.io/static/v1?label=version&message=1.9.0&color=green)](https://wwww.yi-types.com)
+[![输入图片说明](https://img.shields.io/static/v1?label=version&message=1.9.1&color=green)](https://www.yi-types.com)
+
+
 
 #### 介绍
 
@@ -254,14 +256,19 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_10.png)
 
-> 
+
+
+> 平台默认非常多非常丰富的合同模板，我们还会不定期更新模板，开发者或者可免费享用模板
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_11.png)
+
+
 
 
 > 参与签署的人可以收到签署的短信信息提醒，在有效期内点击链接可以到H5或者小程序里面进行签署，所有签署人都签署完成之后有短信通知提示
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_08.png)
+
 
 
 #### 用户端（Web端）
@@ -339,7 +346,7 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_02.png)
 
-**
+
 
 ***企业认证***
 
@@ -367,7 +374,7 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 
 ***价格设置***
 
-> 平台可根据自己合同运营情况设置相应的价格
+> 平台可根据自己合同运营情况设置相应的价格，可单独对企业和个人的合同购买金额进行设置
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_06.png)
 
@@ -381,11 +388,6 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 
 
 
-***横版分类***
-
-> 新增运营平台支持独立运营自己的合同模板，让平台更加灵活的配置
-
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_08.png)
 
 
 ***横版分类***
