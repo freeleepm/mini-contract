@@ -1,17 +1,13 @@
 <template>
   <uni-popup ref="popupRef" type="bottom" class="color-base" :safe-area="false">
-    <view class="identity padding-safe">
+    <view class="identity">
+      <!-- padding-safe -->
       <view class="flex-sb text-32">
         <view class="color-base-minor" @click="$refs.popupRef.close()">取消</view>
         <view class="color-base bold">切换身份</view>
         <view class="color-primary" @click="comfirmIdentity">确定</view>
       </view>
-      <view @click="toCreate(`/pages/user/company/Certification?originType=${backType}`, 1)" class="text-26 color-primary add-company">
-        <!-- :class="{
-        disabled: !userInfo.authentication,
-      }" -->
-        +创建企业
-      </view>
+
       <view class="list">
         <!-- 个人身份 -->
         <view class="item flex" @click="identityCheck(userInfo, -1)">
@@ -50,6 +46,14 @@
             color="#3277FF"
           ></uni-icons>
         </view>
+
+
+      </view>
+      <view @click="toCreate(`/pages/user/company/Certification?originType=${backType}`, 1)" class="text-26 color-primary add-company">
+        <!-- :class="{
+        disabled: !userInfo.authentication,
+      }" -->
+        +创建企业
       </view>
     </view>
   </uni-popup>
@@ -100,10 +104,11 @@ export default {
         });
     },
     comfirmIdentity() {
+      console.log('this.contract[this.contractCheckedIndex] :', this.contract[this.contractCheckedIndex])
       const companyId =
         this.contractCheckedIndex === -1 ? '' : this.contract[this.contractCheckedIndex].companyId;
       userInfoApi
-        .IdentitySwitching(companyId)
+        .IdentitySwitching({companyId, identityType: companyId ? 1 : 0})
         .then(res => {
           this.uinfo();
           this.$refs.popupRef.close();
@@ -142,15 +147,17 @@ export default {
 <style lang="scss" scoped>
 .identity {
   box-sizing: border-box;
-  padding: 44rpx 32rpx;
+  padding: 44rpx 32rpx 100rpx 32rpx;
   min-height: 520rpx;
   background: #ffffff;
   border-radius: 12rpx 12rpx 0px 0px;
+  position: relative;
 
   .list {
     overflow-y: scroll;
     max-height: 40vh;
     margin-top: 12rpx;
+    position: relative;
   }
 
   .item {
@@ -169,8 +176,22 @@ export default {
     }
   }
   .add-company {
-    margin: 10px 0 0 0;
-    text-align: right;
+    text-align: center;
+    font-size: 32rpx;
+    font-weight: bold;
+    border-top: 1px dotted;
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translate(-50%, 0);
+    width: 100%;
+    padding: 16rpx 0;
+    z-index: 5;
+    background: #fff;
+    height: 100rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 </style>

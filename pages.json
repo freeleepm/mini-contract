@@ -47,6 +47,13 @@
       }
     },
     {
+      "path": "pages/contract/sign/template",
+      "style": {
+        "navigationBarTitleText": "发起签署",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
       "path": "pages/contract/sign/index",
       "style": {
         "navigationBarTitleText": "发起签署",
@@ -122,7 +129,7 @@
       }
     },
     {
-      "path": "pages/user/personal/CertificationFace",
+      "path": "pages/user/personal/CertificationThree",
       "style": {
         "navigationBarTitleText": "个人认证",
         "enablePullDownRefresh": false
@@ -248,6 +255,14 @@
         "navigationBarTitleText": "成员印章管理",
         "enablePullDownRefresh": false
       }
+    },
+    {
+      "path" : "pages/contract/sign/signByTemplate",
+      "style" : 
+      {
+        "navigationBarTitleText" : "发起签署",
+        "enablePullDownRefresh" : false
+      }
     }
   ],
   "tabBar": {
@@ -264,9 +279,9 @@
       },
       {
         "text": "发起签署",
-        "pagePath": "pages/contract/sign/index",
-        "iconPath": "static/tabbar/IconTabbarContract.png",
-        "selectedIconPath": "static/tabbar/IconTabbarContractActive.png"
+        "pagePath": "pages/contract/sign/template",
+        "iconPath": "static/tabbar/IconTabbarSign.png",
+        "selectedIconPath": "static/tabbar/IconTabbarSignActive.png"
       },
       {
         "text": "合同管理",

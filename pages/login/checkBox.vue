@@ -5,12 +5,13 @@
     </view>
     <view>请阅读并同意</view>
     <navigator @click.stop class="text-link" hover-class="none" url="/pages/user/setting/Privacy">
-      《一合通服务协议和隐私政策》
+      《{{ setting.appName }}服务协议和隐私政策》
     </navigator>
   </view>
 </template>
 
 <script>
+import setting from '@/static/config/setting.js';
 export default {
   props: {
     check: {
@@ -20,6 +21,7 @@ export default {
   },
   data() {
     return {
+      setting,
       checked: false,
     };
   },

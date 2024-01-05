@@ -34,8 +34,7 @@ export function remove(data) {
 export function templateList(data) {
   // 签署模板列表
   return request({
-    // url: `/contract-template`,
-    url: `/v2/contract-template`,
+    url: `/v1/contract/template`,
     method: 'GET',
     data,
   });
@@ -44,8 +43,31 @@ export function templateList(data) {
 export function templateDetail(templateId) {
   // 签署模板详情
   return request({
-    // url: `/contract-template/${templateId}`,
-    url: `/v2/contract-template/${templateId}`,
+    url: `/v1/contract/template/${templateId}`,
     method: 'GET',
+  });
+}
+export function templateCategory(templateId) {
+  // 模板分类列表
+  return request({
+    url: `/v1/contract/template/category/list`,
+    method: 'GET',
+  });
+}
+
+export function createByTemplate(templateId) {
+  // 基于合同模板发起合同签署
+  return request({
+    url: `/v4/contract/create-by-template`,
+    method: 'GET',
+  });
+}
+
+export function addTempStorage(data) {
+  // 临时存储通过模板发起合同参数
+  return request({
+    url: `/v1/contract/template/temp-storage`,
+    method: 'POST',
+    data
   });
 }

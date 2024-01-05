@@ -1,6 +1,6 @@
 <!--
  * @Description:
- * @LastEditTime: 2023-09-04 10:26:32
+ * @LastEditTime: 2023-12-15 11:35:50
  * @LastEditors: wudi
  * @Author: 刘仁秀
  * @Date: 2022-09-02 15:21:16
@@ -8,7 +8,7 @@
 <template>
   <view class="page">
     <view class="top-box">
-      <image src="../../static/ImgLogo.png" mode="widthFix" class="logo"></image>
+      <image v-if="setting.logo" :src="setting.logo" mode="widthFix" class="logo"></image>
     </view>
     <view v-if="type === 1" class="btn-box">
       <button
@@ -75,10 +75,12 @@ import reg from '@/utils/reg.js';
 import { mapState, mapActions } from 'vuex';
 import { login, getCode, loginBySms, appletsLogin, bind } from '@/api/login.js';
 import checkBox from './checkBox.vue';
+import setting from '@/static/config/setting.js';
 export default {
   components: { checkBox },
   data() {
     return {
+      setting,
       passwordVisible: false,
       form: {
         password: '',
@@ -91,8 +93,8 @@ export default {
       jumpSeconds: 5,
       isCertification: false,
       checked: false,
-      loginType:null,
-      id:''
+      loginType: null,
+      id: '',
     };
   },
   computed: {
@@ -101,16 +103,16 @@ export default {
     },
   },
   onShow() {
-    this.form.phone = uni.getStorageSync('phone');
   },
   onLoad(e) {
     that = this;
     fastClick = true;
     console.log(e);
-    if(e.id)  {
-      that.id = e.id
+    that.form.phone = uni.getStorageSync('phone');
+    if (e.id) {
+      that.id = e.id;
     }
-    if(e.loginType) {
+    if (e.loginType) {
       that.loginType = e.loginType;
       return;
     }
@@ -154,9 +156,9 @@ export default {
     },
     getPhoneNumber(e) {
       // 获取手机号
-      console.log('that.id :', that.id)
+      console.log('that.id :', that.id);
       if (e.detail.errMsg == 'getPhoneNumber:ok') {
-        console.log('e :', e)
+        console.log('e :', e);
         if (!fastClick) return;
         fastClick = false;
         uni.showLoading();
@@ -173,21 +175,22 @@ export default {
                 fastClick = true;
                 if (res.token) {
                   that.$store.commit('setToken', res.token);
+                  uni.setStorageSync('token', res.token);
                   that.$store.commit('setUserInfo', res);
-                  if(that.loginType && that.loginType === 'first') {
+                  if (that.id) {
                     uni.redirectTo({
                       url: '/pages/contract/detail/index?id=' + that.id,
                     });
                   } else {
-                if (that.isCertification && !res.authentication) {
+                    if (that.isCertification && !res.authentication) {
                       uni.navigateTo({
-                       url: '/pages/user/personal/Certification',
+                        url: '/pages/user/personal/Certification',
                       });
                     } else {
-                    uni.reLaunch({
-                      url: '/pages/home/index',
-                     });
-                   }
+                      uni.reLaunch({
+                        url: '/pages/home/index',
+                      });
+                    }
                   }
                 } else {
                   bind(
@@ -199,11 +202,13 @@ export default {
                     )
                   )
                     .then(data => {
+
                       if (data.token) {
                         that.$store.commit('setToken', data.token);
+                        uni.setStorageSync('token', data.token);
                         that.$store.commit('setUserInfo', data);
 
-                        if(that.loginType && that.loginType === 'first') {
+                        if (that.id) {
                           uni.redirectTo({
                             url: '/pages/contract/detail/index?id=' + that.id,
                           });
@@ -292,16 +297,17 @@ export default {
         if (data.token) {
           uni.setStorageSync('phone', that.form.phone);
           that.$store.commit('setToken', data.token);
+          uni.setStorageSync('token', data.token);
           that.$store.commit('setUserInfo', data);
-          if(that.loginType && that.loginType === 'first') {
+          if (that.id) {
             uni.redirectTo({
               url: '/pages/contract/detail/index?id=' + that.id,
             });
           } else {
             uni.reLaunch({
-            url: '/pages/home/index',
-          });
-         }
+              url: '/pages/home/index',
+            });
+          }
         }
       });
     },

@@ -1,6 +1,6 @@
 <!--
  * @Description:
- * @LastEditTime: 2023-09-26 11:06:37
+ * @LastEditTime: 2023-11-02 18:19:44
  * @LastEditors: wudi
  * @Author: 刘仁秀
  * @Date: 2022-09-02 15:21:16
@@ -113,15 +113,17 @@
     <template v-if="type == 3">
       <view class="success-box flex-col">
         <image src="@/static/icon/icon-success.png"></image>
-        <view class="text-32 bold">恭喜你已通过企业认证！</view>
-        <view class="success-tip">企业认证成功，可以发起签署。</view>
+        <!-- <view class="text-32 bold">恭喜你已通过企业认证！</view> -->
+        <view class="text-32 bold">企业认证中，请稍后</view>
+        <!-- <view class="success-tip">企业认证成功，可以发起签署。</view>  -->
         <navigator
           hover-class="none"
           open-type="switchTab"
           :url="jumpUrl"
           class="btn-primary"
         >
-          {{ jumpSeconds }}S 发起签署
+          <!-- {{ jumpSeconds }}S 发起签署 -->
+          {{ jumpSeconds }}S 返回上级页面
         </navigator>
         <!-- <view
           @click="success"
@@ -178,16 +180,17 @@ export default {
     // }else{
     // 	that.showPage = true
     // }
-    authRecord().then(res => {
-      if (!res) return;
-      if (res.authUrl && res.authState === 1) {
-        uni.redirectTo({
-          url: '/pages/user/company/authorize?path=' + encodeURIComponent(res.authUrl),
-        });
-      } else if (res.authState === 2) {
-        that.success();
-      }
-    });
+
+    // authRecord().then(res => {
+    //   if (!res) return;
+    //   if (res.authUrl && res.authState === 1) {
+    //     uni.redirectTo({
+    //       url: '/pages/user/company/authorize?path=' + encodeURIComponent(res.authUrl),
+    //     });
+    //   } else if (res.authState === 2) {
+    //     that.success();
+    //   }
+    // });
   },
   onLoad(e) {
     console.log('e :', e)
@@ -203,6 +206,7 @@ export default {
     if (that.type == 3) {
       that.success();
     }
+    that.getAuthRecord()
   },
   onUnload() {
     if (timer2) clearInterval(timer2);
@@ -316,10 +320,10 @@ export default {
       });
     },
     submit() {
-      // if (!that.form.license) {
-      //   that.common.showToast('上传营业执照');
-      //   return;
-      // }
+      if (!that.form.license) {
+        that.common.showToast('上传营业执照');
+        return;
+      }
       if (!that.form.name || !that.form.creditCode || !that.form.nickName) {
         that.common.showToast('ocr识别失败');
         return;
@@ -395,6 +399,14 @@ export default {
     getAuthRecord() {
       authRecord().then(res => {
         this.authRecordObj = res;
+        // if(Number(res.unAuthCount) < 2) {
+        //   this.form.name = res.companyName || '';
+        //   this.form.creditCode = res.creditCode || '';
+        //   this.form.nickName = res.psnName || '';
+        //   this.form.idNumber = res.psnIdNumber || '';
+        //   this.form.phone = res.psnMobile || '';
+        //   this.form.license = res.license || '';
+        // }
       });
     }
   },
@@ -411,9 +423,15 @@ export default {
         console.log('that.jumpUrl :', that.jumpUrl)
     },
     authRecordObj (obj) {
+      // obj.authState 认证状态
+      // 1:认证中(先判断有多少条未认证成功的记录，如果有大于一条，就跳企业列表，然后需分有无obj.authUrl,如果有就直接跳转obj.authUrl,没有就弹窗提示认证中请等待)
+      // 2:认证成功 直接跳转 success方法
+      // 3:认证失败 弹出提示框告知用户认证失败 关闭后可重新填写认证信息
       if (!obj) return;
-        if (obj.authState === 1) {
-          if(Number(obj.unAuthCount) > 1) {
+      switch (obj.authState) {
+        case 1:
+          // 判断未认证记录大于1条时，直接跳转到企业列表
+        if(Number(obj.unAuthCount) > 1) {
            uni.navigator({
              url:  '/pages/user/company/myCompany?originType=' + this.originType
            })
@@ -422,7 +440,7 @@ export default {
                 uni.showModal({
                   content: `您之前上传过${obj.companyName}的认证资料，若继续操作请点击继续认证按钮`,
                   confirmText: '继续认证',
-                  cancelText: '我要重新认证',
+                  cancelText: '重新认证',
                   confirmColor: '#dd524d',
                   cancelColor: '#999999',
                   success: function (res) {
@@ -434,10 +452,9 @@ export default {
                   },
                 });
               } else {
-
                 uni.showModal({
                   content: '企业认证中，请等待',
-                  confirmText: '刷新认证状态',
+                  confirmText: '刷新状态',
                   cancelText: '取消',
                   confirmColor: '#dd524d',
                   cancelColor: '#999999',
@@ -449,21 +466,27 @@ export default {
                 });
               }
           }
-        } else if (obj.authState === 2) {
-          that.success();
-        } else if(obj.authState === 3) {
+          break;
+        case 2:
+        that.success();
+          break;
+        case 3:
           uni.showModal({
               content: obj.failReason,
               confirmText: '重新认证',
-              cancelText: '取消',
+              showCancel:false,
+              // cancelText: '取消',
               confirmColor: '#dd524d',
-              cancelColor: '#999999',
+              // cancelColor: '#999999',
               success: function (res) {
                 if (res.confirm) {
                   console.log('重新认证')
                 }
               },
             });
+          break;
+        default:
+          break;
         }
     }
   }

@@ -13,6 +13,11 @@ export default {
   },
   onLoad(e) {
     if (e.path) this.path = decodeURIComponent(e.path);
+    if (e.title) {
+      uni.setNavigationBarTitle({
+        title: e.title,
+      });
+    }
   },
 };
 </script>

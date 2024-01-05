@@ -2,7 +2,7 @@
  * @Author: wudi
  * @Date: 2023-08-29 09:44:38
  * @LastEditors: wudi
- * @LastEditTime: 2023-09-04 21:21:40
+ * @LastEditTime: 2023-12-12 16:42:50
  * @Description:
 -->
 <template>
@@ -27,7 +27,8 @@
       <view
         v-else
         class="tag-auth tag-auth__unauth flex-ct text-20"
-        @click="common.navigateTo('/pages/user/personal/Certification?originType=mine')"
+        @click="userInfo.witnessComparison ? common.navigateTo('/pages/user/personal/CertificationThree?originType=mine') : common.navigateTo('/pages/user/personal/Certification?originType=mine')"
+
       >
         <image class="icon-auth" src="@/static/IconUserUnAuth.png"></image>
         未实名

@@ -16,8 +16,7 @@
 </template>
 
 <script>
-import { info } from '@/api/login.js';
-import { mapState, mapActions } from 'vuex';
+import { mapState } from 'vuex';
 export default {
   computed: {
     ...mapState(['userInfo']),

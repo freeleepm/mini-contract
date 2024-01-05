@@ -20,6 +20,7 @@
 							</view>
 						</view>
 						<view class="butBox">
+              <button v-if="item.state === 1" @click="jumpAuthSeal(item)" size="mini" style="background: #007aff;" type="primary" >继续授权</button>
 							<button v-if="!item.applyFlag || item.state == 3" @click="showPop(item)" style="background: #007aff;" size="mini" type="primary">授权</button>
 							<template v-else-if="item.state == 2">
 								<button @click="showPop(item)" style="background: #007aff; margin-right: 10rpx;" size="mini" type="primary">续期</button>
@@ -66,6 +67,10 @@
 		unSealAuth,
 		sealAuth
 	} from '@/api/company.js';
+  import {
+		getSealAuthUrl
+	} from '@/api/seal.js';
+
 	let today = new Date()
 	let year = today.getFullYear();
 	let month = today.getMonth() + 1;
@@ -147,7 +152,7 @@
 							this.getSealList()
 							this.clickmask()
 							this.fastClick = true
-							
+
 							console.log(res)
 							uni.reLaunch({
 							    url: '/pages/user/company/authorize?path=' + encodeURIComponent(res),
@@ -183,6 +188,16 @@
 					},
 				});
 			},
+      jumpAuthSeal(seal){
+        // 审核中
+          getSealAuthUrl({sealId:seal.sealId, id:this.id}).then(res=> {
+            if(res) {
+              uni.reLaunch({
+						    url: '/pages/user/company/authorize?path=' + encodeURIComponent(res),
+						});
+           }
+         })
+      },
 		},
 	};
 </script>

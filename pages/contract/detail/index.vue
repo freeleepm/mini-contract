@@ -1,11 +1,23 @@
 <!--
  * @Description:
- * @LastEditTime: 2023-09-26 11:32:58
+ * @LastEditTime: 2023-12-15 16:26:01
  * @LastEditors: wudi
  * @Author: 刘仁秀
  * @Date: 2022-09-02 15:21:16
 -->
 <template>
+  <view>
+    <view class="outer-box">
+      <view class="row-mark flex" v-if="data.result && data.state === 3">
+            <uni-icons
+              class="icon-help-filled"
+              type="help-filled"
+              size="18"
+              color="#FF731D"
+            ></uni-icons>
+            <view class="text-26 break-all">撤销原因: {{ data.result || '' }}</view>
+          </view>
+  </view>
   <view class="page-base">
     <view v-if="data">
       <!-- 合同名 -->
@@ -33,7 +45,7 @@
         <view class="row flex-fs text-26">
           <text class="key color-grey-minor">发起方</text>
           <text class="color-base">
-            {{
+            <!-- {{
               initiatorList.length
                 ? initiatorList
                     .map(i => {
@@ -41,13 +53,14 @@
                     })
                     .join(',')
                 : '--'
-            }}
+            }} -->
+            {{ data.initiatorName || '--'}}
           </text>
         </view>
         <view class="row flex-fs text-26">
           <text class="key color-grey-minor">签署方</text>
           <text class="color-base">
-            {{
+            <!-- {{
               data.signers.length
                 ? data.signers
                     .map(i => {
@@ -55,7 +68,8 @@
                     })
                     .join(',')
                 : '--'
-            }}
+            }} -->
+            {{ data.signersName || '--'}}
           </text>
         </view>
         <view class="row flex-fs text-26">
@@ -77,7 +91,7 @@
           <button
             open-type="share"
             class="flex-fs wx-share"
-            v-if="mySignInfo && mySignInfo.asInitiator && data.state < 1"
+            v-if="data.initiatorId === userInfo.id && data.state < 1"
           >
             <image src="/static/icon-share.png"></image>
             <text class="text-24 color-primary">分享给签署方</text>
@@ -86,16 +100,18 @@
         </view>
         <view class="container flex-col">
           <view class="container-person width-full">
-            <view class="item">
+            <!-- <view class="item">
               <view class="color-grey-minor text-28">发起方</view>
               <signerInfo :item="item" v-for="(item, index) in initiatorList" :key="index" />
             </view>
-            <view class="line-horizontal"></view>
+            <view class="line-horizontal"></view> -->
             <view class="item">
               <view class="color-grey-minor text-28">签署方</view>
-              <signerInfo :item="item" v-for="(item, index) in signersList" :key="index" />
+              <signerInfo  :item="item" v-for="(item, index) in signersList" :key="index" />
             </view>
+
           </view>
+
         </view>
       </view>
 
@@ -108,7 +124,7 @@
 
         <!-- 发起人才可撤销 -->
         <view
-          v-if="mySignInfo && mySignInfo.asInitiator"
+          v-if="data.initiatorId === userInfo.id"
           class="btn-primary btn-cancel"
           @click.stop="common.navigateTo('/pages/contract/revoke/index?id=' + data.id)"
         >
@@ -122,6 +138,8 @@
       </template>
     </view>
   </view>
+  </view>
+
 </template>
 
 <script>
@@ -140,14 +158,15 @@ export default {
       contractId: '',
       companyList:[],
       authObj:{},
-      authCompanyObj:{}
+      authCompanyObj:{},
+      enterType:''
     };
   },
   computed: {
     ...mapState(['userInfo']),
     signersList() {
       // 签署方信息
-      return this.data ? this.data.signers.filter(i => i.asInitiator === false) : [];
+      return this.data ? this.data.signers : [];
     },
     initiatorList() {
       // 发起方信息
@@ -155,11 +174,20 @@ export default {
     },
     mySignInfo() {
       // 当前用户的签署信息
-      return this.data ? this.data.signers.find(k => k.userId === this.userInfo.id) : {};
+      if(this.data) {
+         const mySigner = this.data.signers.find(i => i.userId === this.userInfo.id)
+         if(mySigner && this.data.initiatorId === this.userInfo.id) {
+          mySigner.asInitiator = true;
+         }
+         return mySigner;
+      } else {
+         return {}
+      }
     },
   },
   onLoad(options) {
     let that = this;
+    that.enterType = options?.enterType || '';
     that.contractId = options?.id;
     that.getUserInfo();
     that.getCompanyList();
@@ -167,9 +195,6 @@ export default {
     if(that.userInfo.authentication && that.userInfo.companyAccountId) {
       that.getCurrentCompanyState();
     }
-    console.log('this.userInfo :', this.userInfo)
-    console.log('this.data :', this.data)
-    console.log('this.mySignInfo :', this.mySignInfo)
   },
   onShow() {
     let that = this;
@@ -178,6 +203,72 @@ export default {
   },
   methods: {
     ...mapActions(['uinfo']),
+    // 检查globalAuthState
+    checkGlobalAuthState(obj, type) {
+      // obj - 认证对象
+      // type - person用户 company公司
+      // globalAuthState 全局认证状态
+      // 1:需重新认证 (有authUrl直接跳转)
+      // 3:认证中 (判断是否有authUrl，如果有就是认证到一半的用户，直接跳转authUrl继续认证即可，如果没有就是回调还没有回来，刷新认证状态即可)
+      let flag = true;
+      switch (obj?.globalAuthState) {
+        case 1:
+          if(obj?.authUrl) {
+              uni.showModal({
+                content: `由于签署渠道变更，需要重新认证${type === 'person' ? '用户' : '企业'}`,
+                confirmText: '去认证',
+                confirmColor: '#3277FF',
+                success: function (res) {
+                  if (res.confirm) {
+                    uni.redirectTo({
+                      url: '/pages/user/company/authorize?path=' + encodeURIComponent(obj?.authUrl),
+                    });
+                  }
+                },
+            });
+          flag = false;
+         }
+          break;
+        case 3:
+        if(obj?.authUrl) {
+          uni.showModal({
+              content: `${type === 'person' ? '用户' : '企业'}认证中，请稍后再试`,
+              confirmText: '继续认证',
+              confirmColor: '#3277FF',
+              success: function (res) {
+                if (res.confirm) {
+                  uni.redirectTo({
+                    url: '/pages/user/company/authorize?path=' + encodeURIComponent(obj?.authUrl),
+                  });
+                }
+              },
+            });
+            flag = false;
+
+        } else {
+          uni.showModal({
+              content: `${type === 'person' ? '用户' : '企业'}认证中，请稍后再试`,
+              confirmText: '刷新状态',
+              confirmColor: '#3277FF',
+              success: function (res) {
+                if (res.confirm) {
+                  if(type === 'person') {
+                    that.getCurrentState();
+                  } else {
+                    that.getCurrentCompanyState();
+                  }
+                }
+              },
+            });
+            flag = false;
+        }
+          break;
+        default:
+          break;
+      }
+
+       return flag;
+    },
     toSign() {
       let that = this;
       if (!this.mySignInfo) {
@@ -196,7 +287,7 @@ export default {
           success: function (res) {
             if (res.confirm) {
               uni.navigateTo({
-                url: '/pages/user/personal/Certification?id=' +  that.contractId  + '&originType=sign',
+                url: that.userInfo.witnessComparison ?  '/pages/user/personal/CertificationThree?id=' +  that.contractId  + '&originType=sign' : '/pages/user/personal/Certification?id=' +  that.contractId  + '&originType=sign',
               });
             }
           },
@@ -212,20 +303,16 @@ export default {
           success: function (res) {
             if (res.confirm) {
               uni.navigateTo({
-                url: '/pages/user/personal/Certification?id=' +  that.contractId  + '&originType=sign',
+                url: that.userInfo.witnessComparison ? '/pages/user/personal/CertificationThree?id=' +  that.contractId  + '&originType=sign' : '/pages/user/personal/Certification?id=' +  that.contractId  + '&originType=sign',
               });
             }
           },
         });
         return;
       }
-      // console.log('this.userInfo :', this.userInfo)
-      // console.log('this.signersList :', this.signersList)
-    const currentSigner = that.signersList.find(item=> item.phone === that.userInfo.phone)
-      console.log('currentSigner :', currentSigner)
-    // 公司
-    if(currentSigner && currentSigner.signType === 2) {
-      console.log('that.userInfo :', that.userInfo)
+      const currentSigner = that.signersList.find(item=> item.phone === that.userInfo.phone)
+      // 公司
+      if(currentSigner && currentSigner.signType === 2) {
       if(!that.userInfo.companyAccountId) {
         uni.showModal({
           content: '该操作需要企业认证，请切换企业身份或完成企业认证！',
@@ -241,101 +328,20 @@ export default {
         });
         return;
       }
-    }
+      }
 
-    if(Number(that?.authObj?.globalAuthState) === 1 && that?.authObj?.authUrl) {
-      uni.showModal({
-          content: '由于签署渠道变更，需要重新个人认证',
-          confirmText: '去认证',
-          confirmColor: '#3277FF',
-          success: function (res) {
-            if (res.confirm) {
-              uni.redirectTo({
-                url: '/pages/user/company/authorize?path=' + encodeURIComponent(that?.authObj.authUrl),
-              });
-            }
-          },
-        });
-        return;
-    }
-
-    if(Number(that?.authObj?.globalAuthState) === 3) {
-      if(that?.authObj?.authUrl) {
-        uni.showModal({
-          content: '用户认证中，请稍后再试',
-          confirmText: '继续认证',
-          confirmColor: '#3277FF',
-          success: function (res) {
-            if (res.confirm) {
-              uni.redirectTo({
-                url: '/pages/user/company/authorize?path=' + encodeURIComponent(that?.authObj.authUrl),
-              });
-            }
-          },
-        });
-        return;
-      } else {
-        uni.showModal({
-          content: '用户认证中，请稍后再试',
-          confirmText: '刷新认证状态',
-          confirmColor: '#3277FF',
-          success: function (res) {
-            if (res.confirm) {
-              that.getCurrentState()
-            }
-          },
-        });
+      let personFlag = true;
+      let companyFlag = true;
+      // 检查个人globalAuthState
+      personFlag = that.checkGlobalAuthState(that?.authObj, 'person');
+      if(!personFlag) {
         return;
       }
-    }
-
-    if(Number(that?.authCompanyObj?.globalAuthState) === 1 && that?.authCompanyObj?.authUrl) {
-      uni.showModal({
-          content: '由于签署渠道变更，需要重新企业认证',
-          confirmText: '去认证',
-          confirmColor: '#3277FF',
-          success: function (res) {
-            if (res.confirm) {
-              uni.redirectTo({
-                url: '/pages/user/company/authorize?path=' + encodeURIComponent(that?.authCompanyObj.authUrl),
-              });
-            }
-          },
-        });
+      // 检查公司globalAuthState
+      companyFlag = that.checkGlobalAuthState(that?.authCompanyObj, 'company');
+      if(!companyFlag) {
         return;
-    }
-
-    if(Number(that?.authCompanyObj?.globalAuthState) === 3) {
-      if(that?.authCompanyObj?.authUrl) {
-        uni.showModal({
-          content: '企业认证中，请稍后再试',
-          confirmText: '继续认证',
-          confirmColor: '#3277FF',
-          success: function (res) {
-            if (res.confirm) {
-              uni.redirectTo({
-                url: '/pages/user/company/authorize?path=' + encodeURIComponent(that?.authCompanyObj.authUrl),
-              });
-            }
-          },
-        });
-        return;
-
-      } else {
-        uni.showModal({
-          content: '企业认证中，请稍后再试',
-          confirmText: '刷新认证状态',
-          confirmColor: '#3277FF',
-          success: function (res) {
-            if (res.confirm) {
-              that.getCurrentCompanyState()
-            }
-          },
-        });
-        return;
-
       }
-    }
 
       uni.navigateTo({
         url: '/pages/user/company/authorize?path=' + encodeURIComponent(this.mySignInfo.signUrl),
@@ -386,8 +392,13 @@ export default {
         contractId: this.contractId,
       })
       .then(res => {
-        console.log('res :', res)
-        const signersList = res.signers.filter(i => !i.asInitiator);
+        if(res.canView === false) {
+          uni.redirectTo({
+            url: '/pages/contract/noAccess/index',
+          });
+          return;
+        }
+        const signersList = res.signers;
         const initiatorList = res.signers.filter(i => i.asInitiator);
         res.signers = [...initiatorList, ...signersList]; // 重新排序保证发起方在第一个
         this.data = res;
@@ -414,7 +425,7 @@ export default {
                 }
               })
             })
-            if(JSON.parse(JSON.stringify(obj)) !== '{}' && !that.mySignInfo.asInitiator) {
+            if(JSON.parse(JSON.stringify(obj)) !== '{}' && !that.mySignInfo?.asInitiator && that.enterType && that.enterType === 'index') {
               that.changeRole(obj);
             }
           }
@@ -424,7 +435,7 @@ export default {
       let that = this;
       if(obj.companyId) {
         userInfoApi
-        .IdentitySwitching(obj.companyId)
+        .IdentitySwitching({companyId:obj.companyId, identityType:obj.companyId ? 1 : 0})
         .then(res => {
           that.uinfo();
         })
@@ -562,4 +573,26 @@ export default {
     background: $uni-color-error !important;
   }
 }
+
+.row-mark {
+    padding: 16rpx 32rpx;
+    background: #fdf0e2;
+    border-radius: 8rpx;
+
+    .icon-help-filled {
+      /* width: 24rpx; */
+      margin-right: 8rpx;
+      position: relative;
+      display: flex;
+      justify-content: flex-start;
+      flex-direction: column;
+    }
+
+    .text-26 {
+      color: #000;
+    }
+  }
+  .break-all {
+    word-break: break-all;
+  }
 </style>

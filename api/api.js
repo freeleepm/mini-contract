@@ -2,7 +2,7 @@
  * @Author: wudi
  * @Date: 2023-08-29 09:44:38
  * @LastEditors: wudi
- * @LastEditTime: 2023-10-10 15:33:46
+ * @LastEditTime: 2023-12-12 16:15:16
  * @Description:
  */
 import request from '@/utils/request.js';
@@ -11,7 +11,7 @@ let userInfo = {
   contractList: data => {
     //获取 合同列表
     return request({
-      url: `/v3/contract`,
+      url: `/v4/contract`,
       method: 'GET',
       data,
     });
@@ -19,7 +19,7 @@ let userInfo = {
   personalInformation: () => {
     //获取 个人信息
     return request({
-      url: `/u/info`,
+      url: `/v3/u/info`,
       method: 'GET',
     });
   },
@@ -34,15 +34,16 @@ let userInfo = {
   IdentitySwitching: data => {
     //切换身份
     return request({
-      url: `/company/role?companyId=${data}`,
+      url: `/v3/u/switch-identities`,
       method: 'PUT',
+      data,
     });
   },
   contractDetails: data => {
     // 合同详情
     return request({
       // url: `/contract/v1/detail/${data}`,
-      url: `/v3/contract/${data.contractId}`,
+      url: `/v4/contract/${data.contractId}`,
       method: 'GET',
     });
   },

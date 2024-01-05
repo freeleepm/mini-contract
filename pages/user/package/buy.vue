@@ -13,7 +13,7 @@
           <view class="decorate-small"></view>
           <view class="decorate-big"></view>
         </view>
-        <view class="color-primary">一合通</view>
+        <view class="color-primary">{{ setting.appName }}</view>
         服务
         <view class="decorate flex-sb">
           <view class="decorate-big"></view>
@@ -111,9 +111,11 @@ var that, fastClick;
 import { pay, meallist } from '@/api/seal.js';
 import { appletsLogin } from '@/api/login.js';
 import { mapState } from 'vuex';
+import setting from '@/static/config/setting.js';
 export default {
   data() {
     return {
+      setting,
       form: {
         id: '', // 套餐id
         type: 0, // 套餐类型 0个人套餐,1企业套餐

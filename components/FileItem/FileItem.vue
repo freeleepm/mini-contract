@@ -19,8 +19,8 @@
       ></image>
       <image v-else class="icon-doc" src="@/static/IconPdf.png"></image>
       <view class="flex-1">
-        <view class="text-name text-elps text-26 color-base">{{ file.name }}</view>
-        <view class="text-24 color-grey-minor">{{ file.size | size }}</view>
+        <view class="text-name text-elps text-28 bold color-base">{{ file.name }}</view>
+        <view class="text-24 color-grey-minor" v-if="file.size">{{ file.size | size }}</view>
       </view>
     </view>
     <slot></slot>

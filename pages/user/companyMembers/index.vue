@@ -10,7 +10,7 @@
         <view>
           <view class="color-base text-28">{{ item.name }} {{ item.account }}</view>
           <!-- <view class="color-grey-minor text-24">角色：{{ item.roleName }}</view> -->
-          <view class="sarList text-24" v-if="item.sarList">
+          <view class="sarList text-24" v-if="item.sarList && userInfo.sealManager">
             <text class="label color-grey-minor">印章：</text>
             <view class="sarBox">
               <view class="tagItem" v-for="(sar, index) in item.sarList" :key="index">

@@ -1,7 +1,7 @@
 <!--
  * @Description: 文件管理页面
- * @LastEditTime: 2022-09-15 18:00:49
- * @LastEditors: 刘仁秀
+ * @LastEditTime: 2023-12-14 16:09:43
+ * @LastEditors: wudi
  * @Author: 刘仁秀
  * @Date: 2022-09-02 15:21:16
 -->
@@ -9,7 +9,7 @@
   <view class="page-base">
     <view class="container-card flex-col">
       <view class="text-26 color-base">从聊天记录中导入</view>
-      <view class="tip text-24 color-grey-minor">支持doc、docx、pdf等格式且小于20M的文件</view>
+      <view class="tip text-24 color-grey-minor">签署文件最大5M，支持格式为pdf、doc、docx</view>
 
       <view class="btn-primary text-30" @click="uploadFile">本地文件</view>
     </view>
@@ -164,8 +164,8 @@ export default {
         extension: ['.doc', '.docx', '.pdf'],
         success: function (res) {
           if (res.tempFiles[0]) {
-            if (res.tempFiles[0].size / 1024 / 1024 > 20) {
-              that.common.showToast('文件最大20M');
+            if (res.tempFiles[0].size / 1024 / 1024 > 5) {
+              that.common.showToast('文件最大5M');
               return;
             }
             uni.showLoading({
@@ -204,8 +204,8 @@ export default {
             let index = res.tempFiles[0].name.lastIndexOf('.') + 1;
             let type = res.tempFiles[0].name.slice(index, res.tempFiles[0].name.length);
             if (type == 'docx' || type == 'doc' || type == 'pdf') {
-              if (res.tempFiles[0].size / 1024 / 1024 > 20) {
-                that.common.showToast('文件最大20M');
+              if (res.tempFiles[0].size / 1024 / 1024 > 5) {
+                that.common.showToast('文件最大5M');
                 return;
               }
               uni.showLoading({
@@ -357,7 +357,7 @@ export default {
 .tip {
   margin-top: 2rpx;
   margin-bottom: 16rpx;
-  height: 33rpx;
+  text-align: center;
 }
 
 .btn-primary {

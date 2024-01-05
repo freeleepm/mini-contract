@@ -18,6 +18,7 @@
             <view class="text-30 bold width-full">
               {{ userInfo ? userInfo.nickname || userInfo.phone : '未登录用户' }}
             </view>
+            <!-- <view class="company-name" v-if="userInfo.companyName"> {{ userInfo.companyName }} </view> -->
             <tag-auth :userInfo="userInfo" />
           </view>
           <view v-if="userInfo.authentication" class="flex-fs" @click="$refs.checkUserRef.open()">
@@ -70,7 +71,26 @@
           <view class="flex-1 text-28 color-base">{{ item.title }}</view>
           <uni-icons class="icon-forward" type="forward" size="16" color="#B3B3B3"></uni-icons>
         </view>
+        <!-- <navigator
+
+          hover-class="none"
+          open-type="reLaunch"
+          url="/pages/login/login"
+          class="item flex-fs"
+        >
+          <image class="icon-item" src="/static/switch.png"></image>
+          <view class="flex-1 text-28 color-base">切换用户</view>
+          <uni-icons class="icon-forward" type="forward" size="16" color="#B3B3B3"></uni-icons>
+        </navigator> -->
       </view>
+      <view v-if="token" class="logout" @click="$refs.popupRef.open()">退出登录</view>
+      <uni-popup ref="popupRef" type="bottom" class="color-base" :safe-area="false">
+      <view class="popup">
+        <view class="tips">退出后，将不能发起个人签署和企业签署</view>
+        <view class="logout-txt row-popup text-28 flex-ct" @click="logout">确认退出</view>
+        <view class="row-popup text-28 flex-ct" @click="$refs.popupRef.close()">取消</view>
+      </view>
+    </uni-popup>
     </view>
   </SwitchEnvironment>
 </template>
@@ -79,6 +99,7 @@
 import { upload } from '@/api/oss.js';
 import userInfoApi from '@/api/api';
 import { getCompanyState, isAdmin } from '@/api/company.js';
+import { logout } from '@/api/login';
 import { mapState, mapActions } from 'vuex';
 export default {
   data() {
@@ -88,10 +109,10 @@ export default {
         {
           title: '我的企业',
           icon: '/static/IconEnterprise.png',
-          url: '/pages/user/company/myCompany?originType=mine',
+        url: '/pages/user/company/myCompany?originType=mine',
           hidden: false,
           checkToken: true,
-          mustCompany: true,
+          mustCompany: false,
           mustCross: true
         },
         {
@@ -169,6 +190,72 @@ export default {
         }
       });
     },
+       // 检查globalAuthState
+       checkGlobalAuthState(obj, type) {
+       // obj - 认证对象
+       // type - person用户 company公司
+       // globalAuthState 全局认证状态
+       // 1:需重新认证 (有authUrl直接跳转)
+       // 3:认证中 (判断是否有authUrl，如果有就是认证到一半的用户，直接跳转authUrl继续认证即可，如果没有就是回调还没有回来，刷新认证状态即可)
+        let flag = true;
+        switch (obj?.globalAuthState) {
+          case 1:
+            if(obj?.authUrl) {
+                uni.showModal({
+                  content: `由于签署渠道变更，需要重新认证${type === 'person' ? '用户' : '企业'}`,
+                  confirmText: '去认证',
+                  confirmColor: '#3277FF',
+                  success: function (res) {
+                    if (res.confirm) {
+                      uni.redirectTo({
+                        url: '/pages/user/company/authorize?path=' + encodeURIComponent(obj?.authUrl),
+                      });
+                    }
+                  },
+              });
+            flag = false;
+          }
+            break;
+          case 3:
+          if(obj?.authUrl) {
+            uni.showModal({
+                content: `${type === 'person' ? '用户' : '企业'}认证中，请稍后再试`,
+                confirmText: '继续认证',
+                confirmColor: '#3277FF',
+                success: function (res) {
+                  if (res.confirm) {
+                    uni.redirectTo({
+                      url: '/pages/user/company/authorize?path=' + encodeURIComponent(obj?.authUrl),
+                    });
+                  }
+                },
+              });
+              flag = false;
+
+          } else {
+            uni.showModal({
+                content: `${type === 'person' ? '用户' : '企业'}认证中，请稍后再试`,
+                confirmText: '刷新状态',
+                confirmColor: '#3277FF',
+                success: function (res) {
+                  if (res.confirm) {
+                    if(type === 'person') {
+                      that.getCurrentState();
+                    } else {
+                      that.getCurrentCompanyState();
+                    }
+                  }
+                },
+              });
+              flag = false;
+          }
+            break;
+          default:
+            break;
+        }
+
+        return flag;
+    },
     navigateTo(url, checkToken, mustCompany, mustCross) {
       if (checkToken && !this.token) {
         this.common.toLogin();
@@ -208,98 +295,22 @@ export default {
         return;
 
       }
-      let that = this
-      if(mustCross && Number(this?.authObj?.globalAuthState) === 1 && this?.authObj?.authUrl) {
-          uni.showModal({
-          content: '由于签署渠道变更，需要重新个人认证',
-          confirmText: '去认证',
-          confirmColor: '#3277FF',
-          success: function (res) {
-            if (res.confirm) {
-              uni.redirectTo({
-                url: '/pages/user/company/authorize?path=' + encodeURIComponent(that?.authObj.authUrl),
-              });
-            }
-          },
-        });
-        return;
-      }
 
-      if(mustCross && Number(this?.authObj?.globalAuthState) === 3) {
-        if(this?.authObj?.authUrl) {
-          uni.showModal({
-              content: '用户认证中，请稍后再试',
-              confirmText: '继续认证',
-              confirmColor: '#3277FF',
-              success: function (res) {
-                if (res.confirm) {
-                  uni.redirectTo({
-                    url: '/pages/user/company/authorize?path=' + encodeURIComponent(that?.authObj.authUrl),
-                  });
-                }
-              },
-            });
-            return;
-        } else {
-          uni.showModal({
-              content: '用户认证中，请稍后再试',
-              confirmText: '刷新认证状态',
-              confirmColor: '#3277FF',
-              success: function (res) {
-                if (res.confirm) {
-                  that.getCurrentState();
-                }
-              },
-            });
-            return;
+      let that = this
+      if(mustCross) {
+        let personFlag = true;
+        let companyFlag = true;
+        // 检查个人globalAuthState
+        personFlag = that.checkGlobalAuthState(that?.authObj, 'person');
+        if(!personFlag) {
+          return;
+        }
+        // 检查公司globalAuthState
+        companyFlag = that.checkGlobalAuthState(that?.authCompanyObj, 'company');
+        if(!companyFlag) {
+          return;
         }
       }
-
-      if(mustCross && Number(this?.authCompanyObj?.globalAuthState) === 1 && this?.authCompanyObj.authUrl) {
-          uni.showModal({
-          content: '由于签署渠道变更，需要重新企业认证',
-          confirmText: '去认证',
-          confirmColor: '#3277FF',
-          success: function (res) {
-            if (res.confirm) {
-              uni.redirectTo({
-                url: '/pages/user/company/authorize?path=' + encodeURIComponent(that.authCompanyObj.authUrl),
-              });
-            }
-          },
-        });
-        return;
-      }
-      // 认证中
-      if(mustCross && Number(this?.authCompanyObj?.globalAuthState) === 3) {
-          if(this?.authCompanyObj.authUrl) {
-            uni.showModal({
-              content: '企业认证中，请稍后再试',
-              confirmText: '继续认证',
-              confirmColor: '#3277FF',
-              success: function (res) {
-                if (res.confirm) {
-                  uni.redirectTo({
-                    url: '/pages/user/company/authorize?path=' + encodeURIComponent(that.authCompanyObj.authUrl),
-                  });
-                }
-              },
-            });
-            return;
-          } else {
-            uni.showModal({
-              content: '企业认证中，请稍后再试',
-              confirmText: '刷新认证状态',
-              confirmColor: '#3277FF',
-              success: function (res) {
-                if (res.confirm) {
-                  that.getCurrentCompanyState();
-                }
-              },
-            });
-            return;
-          }
-       }
 
       this.common.navigateTo(url);
     },
@@ -311,23 +322,37 @@ export default {
     getCurrentCompanyState(){
       getCompanyState({type:6}).then(res=> {
         this.authCompanyObj = res;
+        if(res.globalAuthState === 2) {
+          this.getIsAdmin()
+        } else {
+          this.admin = false;
+        }
       })
     },
     getIsAdmin() {
       isAdmin().then(res => {
         this.admin = res;
       })
+    },
+    logout() {
+      logout().then(() => {
+         uni.redirectTo({
+             url: '/pages/login/login',
+        });
+      });
     }
   },
   watch:{
     userInfo (value) {
     this.getCurrentState();
-    this.getIsAdmin()
+    if(!value.companyAccountId) {
+      this.admin = false;
+    }
      if(value.companyAccountId && value.authentication) {
         this.getCurrentCompanyState();
       }
     }
-  }
+  },
 };
 </script>
 
@@ -355,6 +380,9 @@ export default {
     .info-box {
       padding-bottom: 32rpx;
       border-bottom: 1px solid #e6e6e6;
+      /* .company-name{
+        font-size: 14rpx;
+      } */
     }
 
     .text-30 {
@@ -418,6 +446,45 @@ export default {
       margin-right: 20rpx;
       width: 40rpx;
       height: 40rpx;
+    }
+  }
+  .logout {
+    width: 686rpx;
+    height: 104rpx;
+    border-radius: 12rpx;
+    background: #FFFFFF;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 32rpx;
+    font-size: 28rpx;
+    text-align: center;
+    color: #FF0003;
+  }
+  .logout-txt {
+      color: #FF0000;
+  }
+}
+.popup {
+  overflow: hidden;
+  border-radius: 12rpx 12rpx 0 0;
+  background-color: #fff;
+  .tips {
+    width: 100%;
+    height: 104rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #b5b5b5;
+    font-size: 26rpx;
+  }
+  .row-popup {
+    width: 100%;
+    height: 104rpx;
+    border-bottom: 1px solid #f5f5f5;
+
+    &:last-child {
+      border: none;
     }
   }
 }

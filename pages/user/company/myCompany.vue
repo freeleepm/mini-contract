@@ -1,6 +1,6 @@
 <!--
  * @Description:
- * @LastEditTime: 2023-09-18 17:49:57
+ * @LastEditTime: 2023-10-26 15:22:50
  * @LastEditors: wudi
  * @Author: 刘仁秀
  * @Date: 2022-09-02 15:21:16
@@ -81,13 +81,13 @@
         >
           移除企业
         </view>
-        <view
+        <!-- <view
           v-if="checkedEnterprise.authentication !== 1"
           @click="deleteCompany"
           class="row-popup text-28 flex-ct color-error"
         >
           删除企业
-        </view>
+        </view> -->
         <view style="height: 32rpx; background-color: #f5f5f5"></view>
         <view class="row-popup text-28 flex-ct" @click="$refs.popupRef.close()">取消</view>
       </view>
