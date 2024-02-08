@@ -1,6 +1,6 @@
 <!--
  * @Description:
- * @LastEditTime: 2023-09-14 15:01:55
+ * @LastEditTime: 2023-11-02 18:22:04
  * @LastEditors: wudi
  * @Author: 刘仁秀
  * @Date: 2022-09-02 15:21:16
@@ -118,7 +118,6 @@ export default {
     // }else{
     // 	that.showPage = true
     // }
-    that.getAuthRecord()
   },
   onLoad(e) {
     that = this;
@@ -135,6 +134,7 @@ export default {
     if (that.type == 2) {
       that.success();
     }
+    that.getAuthRecord()
   },
   onUnload() {
     if (timer2) clearInterval(timer2);
@@ -238,6 +238,9 @@ export default {
     getAuthRecord() {
       authUserRecord().then(res => {
         this.authRecordObj = res;
+        // this.form.nickname = res.authName;
+        // this.form.idNumber = res.authName;
+        // this.form.phone = res.authName;
       });
     }
   },
@@ -254,52 +257,65 @@ export default {
         console.log('that.jumpUrl :', that.jumpUrl)
     },
     authRecordObj (obj) {
-      if (!obj) return;
-        if (obj.authState === 1) {
-          if(obj.authUrl) {
-            uni.showModal({
-              content: '您之前上传过认证资料，若继续操作请点击继续认证按钮',
-              confirmText: '继续认证',
-              cancelText: '我要重新认证',
-              confirmColor: '#dd524d',
-              cancelColor: '#999999',
-              success: function (res) {
-                if (res.confirm) {
-                  uni.redirectTo({
-                    url: '/pages/user/company/authorize?path=' + encodeURIComponent(obj.authUrl),
-                  });
-                }
-              },
-            });
-          } else {
-            uni.showModal({
-              content: '企业认证中，请等待',
-              confirmText: '刷新认证状态',
-              cancelText: '取消',
-              confirmColor: '#dd524d',
-              cancelColor: '#999999',
-              success: function (res) {
-                if (res.confirm) {
-                  that.getAuthRecord()
-                }
-              },
-            });
-          }
-        } else if (obj.authState === 2) {
-          that.success();
-        } else if(obj.authState === 3) {
-          uni.showModal({
-              content: obj.failReason,
-              confirmText: '重新认证',
-              cancelText: '取消',
-              confirmColor: '#dd524d',
-              cancelColor: '#999999',
-              success: function (res) {
-                if (res.confirm) {
-                  console.log('重新认证')
-                }
-              },
-            });
+      // obj.authState 认证状态
+      // 1:认证中(需分有无obj.authUrl,如果有就直接跳转obj.authUrl,没有就弹窗提示认证中请等待)
+      // 2:认证成功 直接跳转 success方法
+      // 3:认证失败 弹出提示框告知用户认证失败 关闭后可重新填写认证信息
+        if (!obj) return;
+        switch (obj.authState) {
+             case 1:
+            if(obj.authUrl) {
+              uni.showModal({
+                content: '您之前上传过认证资料，若继续操作请点击继续认证按钮',
+                confirmText: '继续认证',
+                cancelText: '重新认证',
+                confirmColor: '#dd524d',
+                cancelColor: '#999999',
+                success: function (res) {
+                  if (res.confirm) {
+                    uni.redirectTo({
+                      url: '/pages/user/company/authorize?path=' + encodeURIComponent(obj.authUrl),
+                    });
+                  }
+                },
+              });
+            } else {
+              uni.showModal({
+                content: '企业认证中，请等待',
+                confirmText: '刷新状态',
+                cancelText: '取消',
+                confirmColor: '#dd524d',
+                cancelColor: '#999999',
+                success: function (res) {
+                  if (res.confirm) {
+                    // 刷新认证状态
+                    that.getAuthRecord()
+                  }
+                },
+              });
+            }
+              break;
+              case 2:
+               that.success();
+              break;
+              case 3:
+                uni.showModal({
+                //认证失败原因
+                content: obj.failReason,
+                showCancel:false,
+                confirmText: '重新认证',
+                // cancelText: '取消',
+                confirmColor: '#dd524d',
+                // cancelColor: '#999999',
+                success: function (res) {
+                  if (res.confirm) {
+                    console.log('重新认证')
+                  }
+                },
+              });
+              break;
+            default:
+              break;
         }
     }
   }

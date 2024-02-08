@@ -2,12 +2,16 @@ import Vue from 'vue';
 import Vuex from 'vuex';
 Vue.use(Vuex);
 
-import { info } from '@/api/login.js';
-import { appletsLogin } from '@/api/login.js';
+import {
+  info
+} from '@/api/login.js';
+import {
+  appletsLogin
+} from '@/api/login.js';
 const store = new Vuex.Store({
   state: {
     userInfo: '',
-    token: '',
+    token: uni.getStorageSync('token') || '',
   },
   getters: {
     getUserInfo(state) {
@@ -23,20 +27,21 @@ const store = new Vuex.Store({
     },
   },
   actions: {
-    login({ commit }) {
-      commit('setToken', '');
-      commit('setUserInfo', '');
+    login({
+      commit
+    }) {
       return new Promise((resolve, reject) => {
         // #ifdef MP-WEIXIN
         uni.login({
           provider: 'weixin',
-          success: function (loginRes) {
+          success: function(loginRes) {
             appletsLogin({
-              code: loginRes.code,
-            })
+                code: loginRes.code,
+              })
               .then(res => {
                 if (res.token) {
                   commit('setToken', res.token);
+                  uni.setStorageSync('token', res.token);
                   commit('setUserInfo', res);
                   resolve(res);
                 } else {
@@ -60,7 +65,9 @@ const store = new Vuex.Store({
         // #endif
       });
     },
-    uinfo({ commit }) {
+    uinfo({
+      commit
+    }) {
       info().then(res => {
         commit('setUserInfo', res);
       });

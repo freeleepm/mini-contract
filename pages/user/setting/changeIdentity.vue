@@ -1,7 +1,7 @@
 <!--
  * @Description:
- * @LastEditTime: 2022-09-16 16:49:49
- * @LastEditors: 刘仁秀
+ * @LastEditTime: 2023-12-13 11:14:39
+ * @LastEditors: wudi
  * @Author: 刘仁秀
  * @Date: 2022-09-16 14:59:17
 -->
@@ -67,6 +67,7 @@
 <script>
 import userInfoApi from '@/api/api.js';
 import { mapState } from 'vuex';
+import userInfo from '@/api/api.js';
 export default {
   data() {
     return {
@@ -113,9 +114,10 @@ export default {
           confirmColor: '#3277FF',
           cancelColor: '#999999',
           success: res => {
+            console.log('item :', item)
             if (res.confirm) {
               userInfoApi
-                .IdentitySwitching(item.companyId || '')
+                .IdentitySwitching({companyId:item.companyId, identityType: item.companyId ? 1 : 0})
                 .then(res => {
                   uni.navigateBack({});
                 })

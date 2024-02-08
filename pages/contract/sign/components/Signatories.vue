@@ -7,7 +7,6 @@
           class="flex-ct add-item"
           @click="
             current = i;
-            getSignerRecordList()
             $refs.addSignerRef.open(0);
           "
         >
@@ -19,7 +18,6 @@
           class="flex-ct add-item"
           @click="
             current = i;
-            getSignerRecordList()
             $refs.addSignerRef.open(1);
           "
         >
@@ -66,16 +64,15 @@
     <view class="add-btn color-primary text-28" @click="addSign" v-if="signers.length < 10">
       +添加签署方
     </view>
-    <addSigner :signerRecordList="signerRecordList" ref="addSignerRef" @change="onChange"  @currentList="getCurrentList" @currentType="getCurrentType" :currentUserInfo="currentUserInfo" :companyName="companyName" :name="name" :mobile="mobile" />
+    <addSigner ref="addSignerRef" @change="onChange" :messageInfo="messageInfo" />
   </view>
 </template>
 
 <script>
 import { addSigner } from './addSigner';
-import userInfo from '@/api/api.js';
+import { mapState } from 'vuex';
 export default {
   components: { addSigner },
-  props:['currentUserInfo', 'companyName', 'name', 'mobile'],
   data() {
     return {
       current: -1,
@@ -93,9 +90,20 @@ export default {
         //   },
         // },
       ],
-      signerRecordList:[],
-      currentType:0
     };
+  },
+  props: {
+    currentSigner: {
+      type: Array,
+      default: () => [],
+    },
+    messageInfo: {
+      type: Object,
+      default: () => {},
+    },
+  },
+  computed: {
+    ...mapState(['token']),
   },
   methods: {
     del(i) {
@@ -115,12 +123,44 @@ export default {
       });
     },
     onChange(e) {
+      let flag = false;
+      if (this.signers.length) {
+        this.signers.forEach(item => {
+          console.log('item.company.agentMobile :', item.company.agentMobile);
+          console.log('item.person.mobile :', item.person.mobile);
+          console.log('e.company.agentMobile :', e.company.agentMobile);
+          console.log('e.person.mobile :', e.person.mobile);
+          if (
+            (item.company.agentMobile === e.company.agentMobile &&
+              item.company.agentMobile &&
+              e.company.agentMobile) ||
+            (item.person.mobile === e.company.agentMobile &&
+              item.person.mobile &&
+              e.company.agentMobile) ||
+            (item.company.agentMobile === e.person.mobile &&
+              item.company.agentMobile &&
+              e.person.mobile) ||
+            (item.person.mobile === e.person.mobile && item.person.mobile && e.person.mobile)
+          ) {
+            flag = true;
+          }
+        });
+      }
+      if (flag) {
+        uni.showToast({
+          title: '当前签署方已存在',
+          icon: 'none',
+          duration: 2000,
+        });
+        return;
+      }
       if (this.current === -1) {
         this.signers.push(e);
       } else {
         this.signers[this.current] = e;
       }
       this.signers = [...this.signers, ...[]];
+
       this.$emit('change', this.signers);
     },
     addSign() {
@@ -137,39 +177,25 @@ export default {
       //   },
       // });
       // this.$emit('change', this.signers);
-
-        this.current = -1;
-        this.getSignerRecordList()
-        this.$refs.addSignerRef.open(0);
-
-
+      if (!this.token) {
+        this.common.toLogin();
+        return;
+      }
+      this.current = -1;
+      this.$refs.addSignerRef.open(0);
     },
-    getSignerRecordList () {
-      userInfo.signerRecordList({userType:this.currentType}).then(res => {
-         this.signerRecordList = res;
-      });
-    },
-    getCurrentList (list) {
-      this.signerRecordList = list;
-    },
-    getCurrentType (type) {
-      this.currentType = type;
-    }
   },
-  watch:{
-    companyName (val) {
-      console.log('val :', val)
-      if(val) {
+  watch: {
+    companyName(val) {
+      console.log('val :', val);
+      if (val) {
         this.$refs.addSignerRef.open(1);
       }
     },
-    name (val) {
-      console.log('val :', val)
-      // if(val) {
-        // this.$refs.addSignerRef.open(0);
-      // }
-    }
-  }
+    currentSigner(val) {
+      this.signers = val;
+    },
+  },
 };
 </script>
 

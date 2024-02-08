@@ -1,50 +1,50 @@
 <template>
-  <view class="page">
-    <status-bar
-      title="人脸识别"
-      :HideBg="true"
-      :Embedded="true"
-      color="#FFFFFF"
-    ></status-bar>
-    <view class="box">
-      <cover-image
-        v-if="!showCamera"
-        class="cover-image"
-        src="https://static.secee.tech/static/mp-weixin/evaluate/camera-cover.png"
-        style="position: relative; width: 100%; height: 750rpx; display: block"
-      ></cover-image>
-      <camera
-        v-if="showCamera"
-        device-position="front"
-        flash="off"
-        @error="error"
-        @initdone="initdone"
-        style="width: 100%; height: 750rpx"
-      >
-        <cover-image
-          class="cover-image"
-          src="https://static.secee.tech/static/mp-weixin/evaluate/camera-cover.png"
-        ></cover-image>
-      </camera>
-      <view style="height: 120rpx">
-        <template v-if="errMsg">
-          <view class="tip error">{{ errMsg }}</view>
-          <view class="btn-2 lg" @click="takePhoto">点击重试</view>
-        </template>
-        <template v-else>
-          <view class="tip">请正对摄像头以保证面部采集准确</view>
-          <view class="seconds">
-            {{ seconds ? seconds + ' S' : '' }}
+  <view>
+    <template v-if="userInfo.witnessComparison">
+      <view class="page">
+        <status-bar title="识别" :HideBg="true" :Embedded="true" color="#FFFFFF"></status-bar>
+        <view class="box">
+          <cover-image
+            v-if="!showCamera"
+            class="cover-image"
+            src="https://static.secee.tech/static/mp-weixin/evaluate/camera-cover.png"
+            style="position: relative; width: 100%; height: 750rpx; display: block"
+          ></cover-image>
+          <camera
+            v-if="showCamera"
+            device-position="front"
+            flash="off"
+            @error="error"
+            @initdone="initdone"
+            style="width: 100%; height: 750rpx"
+          >
+            <cover-image
+              class="cover-image"
+              src="https://static.secee.tech/static/mp-weixin/evaluate/camera-cover.png"
+            ></cover-image>
+          </camera>
+          <view style="height: 120rpx">
+            <template v-if="errMsg">
+              <view class="tip error">{{ errMsg }}</view>
+              <view class="btn-2 lg" @click="takePhoto">点击重试</view>
+            </template>
+            <template v-else>
+              <view class="tip">请正对摄像头以保证面部采集准确</view>
+              <view class="seconds">
+                {{ seconds ? seconds + ' S' : '' }}
+              </view>
+            </template>
           </view>
-        </template>
+        </view>
       </view>
-    </view>
+    </template>
   </view>
 </template>
 
 <script>
 var that;
 import { upload } from '@/api/oss.js';
+import { mapState } from 'vuex';
 export default {
   data() {
     return {
@@ -57,8 +57,12 @@ export default {
       setTimeout: null,
     };
   },
+  computed: {
+    ...mapState(['userInfo']),
+  },
   onShow() {
     that = this;
+    if (that.timer) clearInterval(that.timer);
     that.showCamera = true;
     that.getSetting();
   },
@@ -126,32 +130,32 @@ export default {
         that.ctx = uni.createCameraContext();
         that.ctx.takePhoto({
           quality: 'high',
-          success: (res) => {
-            console.log('res :', res)
+          success: res => {
+            console.log('res :', res);
             that.src = res.tempImagePath;
-            upload([{path:res.tempImagePath, size:99999}])
-              .then((callback) => {
-                console.log('callback :', callback)
-                if(callback.length) {
+            upload([{ path: res.tempImagePath, size: 99999 }])
+              .then(callback => {
+                console.log('callback :', callback);
+                if (callback.length) {
                   setTimeout(() => {
-                  let pages = getCurrentPages();
-                  let prevPage = pages[pages.length - 2];
-                  let obj = {
-                    photoUrl:callback[0].url
-                  }
-                  prevPage.onShow(obj);
-                  uni.navigateBack();
-                }, 1000);
+                    let pages = getCurrentPages();
+                    let prevPage = pages[pages.length - 2];
+                    let obj = {
+                      photoUrl: callback[0].url,
+                    };
+                    prevPage.onShow(obj);
+                    uni.navigateBack();
+                  }, 0);
                 }
-            })
-              .catch((err) => {
+              })
+              .catch(err => {
                 that.errMsg = err;
                 clearInterval(that.timer);
                 that.seconds = '';
               });
           },
         });
-      }, 3000);
+      }, 5000);
     },
   },
 };

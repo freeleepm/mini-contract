@@ -1,6 +1,6 @@
 <!--
  * @Description:
- * @LastEditTime: 2023-10-10 16:37:42
+ * @LastEditTime: 2023-10-27 15:49:05
  * @LastEditors: wudi
  * @Author: 刘仁秀
  * @Date: 2022-09-02 15:21:16
@@ -8,38 +8,30 @@
 <template>
   <view class="page-base">
     <view class="search-box flex-ct">
-        <view class="search flex-fs">
-          <uni-icons
-            type="search"
-            size="24"
-            class="icon-search flex-ct"
-            color="#3277FF"
-          ></uni-icons>
-          <input
-            class="flex-1 text-28 color-base"
-            placeholder="请输入公司名称搜索"
-            v-model="params.companyName"
-            @confirm="confirm"
-          />
-          <uni-icons
-            v-if="params.companyName"
-            type="clear"
-            size="22"
-            class="flex-ct"
-            color="#E6E6E6"
-            @click="clear"
-          ></uni-icons>
-        </view>
+      <view class="search flex-fs">
+        <uni-icons type="search" size="24" class="icon-search flex-ct" color="#3277FF"></uni-icons>
+        <input
+          class="flex-1 text-28 color-base"
+          placeholder="请输入公司名称搜索"
+          v-model="params.companyName"
+          @confirm="confirm"
+        />
+        <uni-icons
+          v-if="params.companyName"
+          type="clear"
+          size="22"
+          class="flex-ct"
+          color="#E6E6E6"
+          @click="clear"
+        ></uni-icons>
       </view>
+    </view>
     <view class="list">
       <view v-for="(item, index) in list" :key="index" class="item" @click="handleEnterprise(item)">
         <view class="text-26 color-base">{{ item.companyName || '' }}</view>
         <view class="line-horizontal"></view>
         <view class="flex-fs">
-          <view
-            v-if="item.authState === 2"
-            class="tag-auth tag-auth__enterauth flex-ct text-20"
-          >
+          <view v-if="item.authState === 2" class="tag-auth tag-auth__enterauth flex-ct text-20">
             <image class="icon-auth" src="@/static/IconEnterpriseAuth.png"></image>
             企业认证
           </view>
@@ -70,7 +62,6 @@
       </BaseEmpty>
       <baseline v-if="showBaseline"></baseline>
     </view>
-
   </view>
 </template>
 
@@ -78,11 +69,12 @@
 import { getAuthCompanyList } from '@/api/company.js';
 import { info } from '@/api/login.js';
 import { mapState } from 'vuex';
+import setting from '@/static/config/setting.js';
 export default {
   data() {
     return {
       list: [],
-      loading: true,
+      loading: false,
       checkedEnterprise: null,
       params: {
         companyName: '',
@@ -90,9 +82,9 @@ export default {
         pageSize: 10,
       },
       noMore: false,
-      originType:null,
+      originType: null,
       // 搜索时没有数据的时候展示
-      noSearchData:false
+      noSearchData: false,
     };
   },
   computed: {
@@ -108,33 +100,32 @@ export default {
     if (uni.getStorageSync('refresh')) {
       uni.removeStorageSync('refresh');
       this.params.pageNum = 1;
-      this.loading = true;
+      // this.loading = true;
       this.list = [];
-      this.getList();
+      // this.getList();
     }
   },
   onLoad(e) {
-    this.getList();
-    console.log('e :', e)
-    if(e.originType) {
+    // this.getList();
+    console.log('e :', e);
+    if (e.originType) {
       this.originType = e.originType;
     }
   },
   methods: {
-
     /**
      * @description: 管理企业弹窗
      * @param {object} item
      * @return {*}
      */
     handleEnterprise(item) {
-      console.log('item :', item)
+      console.log('item :', item);
       this.checkedEnterprise = item;
       let pages = getCurrentPages();
       let prevPage = pages[pages.length - 2]; //上一个页面
-      let object={
-          companyName:item.companyName,
-      }
+      let object = {
+        companyName: item.companyName,
+      };
       prevPage.onShow(object);
       uni.navigateBack();
       // uni.redirectTo({
@@ -144,7 +135,7 @@ export default {
     getList(type) {
       this.noMore = false;
       getAuthCompanyList(this.params).then(data => {
-        if(type && type === 'confirm' && !data.rows.length) {
+        if (type && type === 'confirm' && !data.rows.length) {
           this.noSearchData = true;
         } else {
           this.noSearchData = false;
@@ -164,14 +155,14 @@ export default {
     clear() {
       this.params.companyName = '';
       this.params.pageNum = 1;
-      this.loading = true;
+      // this.loading = true;
       this.list = [];
-      this.getList();
+      // this.getList();
     },
   },
   onShareAppMessage() {
     return {
-      title: '邀您注册一合通小程序，签署合同>',
+      title: '邀您注册' + setting.appName + '小程序，签署合同>',
       desc: '',
       // path: '/pages/index/index?id=' + this.contractId + '&uid=' + this.userInfo.id,
       // path: '/pages/user/company/Certification',
@@ -186,10 +177,10 @@ export default {
     }
   },
   onPullDownRefresh() {
-    this.params.pageNum = 1;
-    this.loading = true;
-    this.list = [];
-    this.getList();
+    // this.params.pageNum = 1;
+    // this.loading = true;
+    // this.list = [];
+    // this.getList();
   },
 };
 </script>
@@ -289,15 +280,15 @@ export default {
 }
 .btn-box {
   .send-btn {
-      width: 598rpx;
-      height: 88rpx;
-      /* height: 84rpx;
+    width: 598rpx;
+    height: 88rpx;
+    /* height: 84rpx;
       width: 260rpx; */
-      line-height: 88rpx;
-      margin-top: 100rpx;
-      font-size: $uni-font-size-base;
-      background-color: $uni-color-primary;
-      white-space: nowrap;
-    }
+    line-height: 88rpx;
+    margin-top: 100rpx;
+    font-size: $uni-font-size-base;
+    background-color: $uni-color-primary;
+    white-space: nowrap;
+  }
 }
 </style>

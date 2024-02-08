@@ -27,8 +27,24 @@ function toLogin(txt) {
   });
 }
 
+function showAuthModal(params, content) {
+  uni.showModal({
+    title: '认证提醒',
+    content: content || '签署前需要完成个人认证，方可进行下一步操作',
+    confirmText: '去认证',
+    cancelText: '算了',
+    confirmColor: '#3277FF',
+    cancelColor: '#999999',
+    success: function(res) {
+      if (res.confirm) {
+        navigateTo('/pages/user/personal/Certification' + params);
+      }
+    },
+  });
+}
 export default {
   navigateTo,
   showToast,
-  toLogin
+  toLogin,
+  showAuthModal
 }

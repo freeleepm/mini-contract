@@ -1,3 +1,10 @@
+<!--
+ * @Author: wudi
+ * @Date: 2023-08-29 09:44:38
+ * @LastEditors: wudi
+ * @LastEditTime: 2023-12-14 14:37:07
+ * @Description:
+-->
 <template>
   <view class="info-box flex flex-1">
     <image v-if="item.signType === 2" class="img-avatar" src="/static/ImgDefEnterprise.png"></image>
@@ -34,18 +41,18 @@
           size="16"
           color="#FF731D"
         ></uni-icons>
-        <view class="text-24">拒签原因: {{ item.result || '' }}</view>
+        <view class="text-24 break-all">拒签原因: {{ item.result || '' }}</view>
       </view>
 
-      <view class="row-mark flex" v-if="item.asInitiator && item.result && item.state === 3">
+      <!-- <view class="row-mark flex" v-if="result && state === 3">
         <uni-icons
           class="icon-help-filled"
           type="help-filled"
           size="16"
           color="#FF731D"
         ></uni-icons>
-        <view class="text-24">撤销原因: {{ item.result || '' }}</view>
-      </view>
+        <view class="text-24 break-all">撤销原因: {{ result || '' }}</view>
+      </view> -->
     </view>
   </view>
 </template>
@@ -92,6 +99,9 @@ export default {
     .text-24 {
       color: #ff731d;
     }
+  }
+  .break-all {
+    word-break: break-all;
   }
 }
 </style>

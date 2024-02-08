@@ -17,6 +17,7 @@
       <BaseEmpty massage="暂无数据~"></BaseEmpty>
       <view class="btn-primary" @click="navigateTo('/pages/contract/sign/index')">签署合同</view>
     </view>
+    <tabbar />
   </view>
 </template>
 
@@ -37,42 +38,56 @@ export default {
           id: 0,
           state: '',
           self: '',
+          showStartWithMe: false,
           name: '全部',
+        },
+        {
+          id: 7,
+          state: '',
+          self: '',
+          showStartWithMe: true,
+          name: '我发起的',
         },
         {
           id: 1,
           state: 0,
           self: 1,
+          showStartWithMe: false,
           name: '待我处理',
         },
         {
           id: 2,
           state: 0,
           self: 0,
+          showStartWithMe: false,
           name: '待他人处理',
         },
         {
           id: 3,
           state: 1,
           self: '',
+          showStartWithMe: false,
           name: '已完成',
         },
         {
           id: 4,
           state: 2,
           self: '',
+          showStartWithMe: false,
           name: '已拒签',
         },
         {
           id: 5,
           state: 3,
           self: '',
+          showStartWithMe: false,
           name: '已撤销',
         },
         {
           id: 6,
           state: 4,
           self: '',
+          showStartWithMe: false,
           name: '已逾期',
         },
       ],
@@ -81,6 +96,7 @@ export default {
         pageSize: 10,
         state: '', // 0待处理,1已完成,2已拒签,3已撤销,4已逾期
         self: '', // 0查询他人,1查询自己,不传查询所有
+        showStartWithMe: false,
       },
       hasMore: false,
       loading: true,
@@ -94,6 +110,7 @@ export default {
       return !this.hasMore && !this.loading && this.params.pageNum > 1;
     },
     ...mapState(['token']),
+    ...mapState(['userInfo']),
   },
   onShow() {
     const type = uni.getStorageSync('contractType');
@@ -115,6 +132,7 @@ export default {
       this.loading = true;
       this.params.state = this.list[this.current].state;
       this.params.self = this.list[this.current].self;
+      this.params.showStartWithMe = this.list[this.current].showStartWithMe;
       this.params.pageNum = 1;
       if (!this.token) {
         this.loading = false;
@@ -144,6 +162,7 @@ export default {
       this.params.pageNum = 1;
       this.params.state = this.list[e].state;
       this.params.self = this.list[e].self;
+      this.params.showStartWithMe = this.list[e].showStartWithMe;
       this.loading = true;
       if (!this.token) {
         this.loading = false;
@@ -152,15 +171,23 @@ export default {
       this.getData();
     },
     navigateTo(url) {
-      var that = this;
       if (this.token) {
         this.common.navigateTo(url);
       } else {
         this.common.toLogin();
       }
     },
-  },
+    switchTab(url) {
+      if (!this.token) {
+        this.common.toLogin();
+        return;
+      }
 
+      uni.switchTab({
+        url,
+      });
+    },
+  },
   onReachBottom() {
     if (this.hasMore) {
       this.loading = true;

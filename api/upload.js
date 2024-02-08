@@ -1,4 +1,4 @@
-import config from '../config/config.js';
+import config from '@/static/config/index.js';
 import store from '../store/index.js';
 export function upload(file, url = '/upload/v1') {
   // #ifdef MP-WEIXIN

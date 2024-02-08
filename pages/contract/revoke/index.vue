@@ -1,7 +1,7 @@
 <!--
  * @Description:
- * @LastEditTime: 2022-09-16 14:17:43
- * @LastEditors: 刘仁秀
+ * @LastEditTime: 2023-12-14 17:57:42
+ * @LastEditors: wudi
  * @Author: 刘仁秀
  * @Date: 2022-09-02 15:21:16
 -->
@@ -39,15 +39,17 @@
     <view class="refuse-input">
       <textarea
         class="textarea-cause text-26"
-        v-model="changeValue1"
-        @input="getlenth"
-        maxlength="100"
+        @input="(e)=> {
+          e.target.value = e.target.value.slice(0, 200);
+          getlenth(e);
+        }"
+        maxlength="200"
         placeholder="请输入撤销原因"
       />
       <view class="text-count text-26">
         <text class="color-base">{{ length }}</text>
         /
-        <label>100</label>
+        <label>200</label>
       </view>
     </view>
     <view class="flex-sb row-width">
@@ -165,6 +167,10 @@ export default {
       this.common.navigateTo(url);
     },
     getlenth(e) {
+      if(e.detail.cursor >200) {
+        return;
+      }
+      this.changeValue1 = e.detail.value;
       this.length = e.detail.cursor;
     },
   },

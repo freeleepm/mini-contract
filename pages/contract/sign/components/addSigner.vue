@@ -1,16 +1,22 @@
 <template>
   <uni-popup ref="popupRef" type="bottom" class="color-base" :safe-area="false">
-    <view class="add-signer padding-safe">
+    <view class="add-signer">
       <view class="title bold text-32">添加签署方</view>
       <view class="form-box" :style="{ 'padding-bottom': KeyboardHeight + 'px' }">
         <view class="form-item flex-sb">
-          <!-- v-if="!currentUserInfo.companyCheck" -->
+          <!-- v-if="!userInfo.companyCheck" -->
           <text class="text-28 color-base text-required">签署方类型</text>
-          <view class="flex-ct switch-box">
-            <view class="switch" :class="{ active: signer.type === 0 }" @click="signer.type = 0">
+          <!-- 不能切换 -->
+          <view v-if="unSwitch === 1">
+            <view class="switch">
+              {{ signer.type === 0 ? '个人' : '企业' }}
+            </view>
+          </view>
+          <view class="flex-ct switch-box" v-else>
+            <view class="switch" :class="{ active: signer.type === 0 }" @click="tabChange(0)">
               个人
             </view>
-            <view class="switch" :class="{ active: signer.type === 1 }" @click="signer.type = 1">
+            <view class="switch" :class="{ active: signer.type === 1 }" @click="tabChange(1)">
               企业
             </view>
             <view class="bar" :style="{ left: signer.type === 1 ? '50%' : '0' }"></view>
@@ -20,7 +26,7 @@
           <view class="form-item flex-sb">
             <text class="text-28 color-base text-required">姓名</text>
             <input
-              v-if="currentUserInfo.personCheck"
+              v-if="userInfo.personCheck"
               :adjust-position="false"
               :disabled="true"
               type="text"
@@ -31,7 +37,7 @@
               placeholder="请选择"
             />
             <input
-             v-else
+              v-else
               type="text"
               @blur="KeyboardHeight = 0"
               @input="onInput($event, 1)"
@@ -57,7 +63,7 @@
           <view class="form-item flex-sb">
             <text class="text-28 color-base text-required">企业名称</text>
             <input
-              v-if="currentUserInfo.companyCheck"
+              v-if="userInfo.companyCheck"
               :adjust-position="false"
               :disabled="true"
               type="text"
@@ -104,54 +110,69 @@
               placeholder="请输入"
             />
           </view>
-
-
         </template>
         <view class="form-item flex-sb quick-add">
-            <text class="text-28 color-base">快捷添加</text>
+          <text class="text-28 color-base">快捷添加</text>
         </view>
         <template v-if="signerRecordList && signerRecordList.length">
           <view class="form-item flex-sb record-list">
-            <view class="record-item" v-for="(signer,sIndex) in signerRecordList" :key="sIndex">
-               <view class="info-box" @click="addSigner(signer)">
-                <view class="name">{{ signer.name }}</view>
-                <view class="mobile">{{ signer.mobile }}</view>
-               </view>
-               <view class="close" @click="delRecord(signer)">
+            <view
+              class="record-item"
+              v-for="(currentSigner, sIndex) in signerRecordList"
+              :key="sIndex"
+            >
+              <view class="info-box" @click="addSigner(currentSigner)">
+                <view class="left" v-if="signer.type === 0">
+                  <view class="name">{{ currentSigner.name }}</view>
+                  <view class="mobile">{{ currentSigner.mobile }}</view>
+                </view>
+                <view class="left-company" v-else>
+                  <view class="company-name">{{ currentSigner.name }}</view>
+                  <view class="bottom-box">
+                    <view class="name">{{ currentSigner.agentName }}</view>
+                    <view class="mobile">{{ currentSigner.mobile }}</view>
+                  </view>
+                </view>
+              </view>
+              <view v-if="!currentSigner.self" class="close" @click="delRecord(currentSigner)">
                 <uni-icons type="trash" size="20" color="#B3B3B3"></uni-icons>
               </view>
+              <view v-if="currentSigner.self" class="right">本人</view>
             </view>
           </view>
         </template>
         <template v-else>
           <view class="form-item flex-sb record-list">
-            <view class="record-item">
-               暂无记录
-            </view>
+            <view class="record-item" style="height: 80rpx">暂无记录</view>
           </view>
         </template>
         <view class="btn-primary" @click="onSubmit">确定</view>
       </view>
     </view>
-
   </uni-popup>
 </template>
 
 <script>
 import reg from '@/utils/reg.js';
 import userInfo from '@/api/api.js';
+import { mapState } from 'vuex';
 export default {
-  props:["signerRecordList", "currentUserInfo", 'companyName', 'name', 'mobile'],
+  computed: {
+    ...mapState(['userInfo']),
+  },
+  props: ['messageInfo', 'unSwitch'],
   data() {
     return {
       signer: '',
       KeyboardHeight: 0,
-      currentList:[]
+      currentList: [],
+      signerRecordList: [],
+      checkedList: [],
     };
   },
   created() {
     // companyCheck
-    // if(this.currentUserInfo.companyCheck) {
+    // if(this.userInfo.companyCheck) {
     //   this.signer = {
     //     type: 0, // 类型(0:个人;1:公司;)
     //     person: {
@@ -173,19 +194,21 @@ export default {
     // uni.offKeyboardHeightChange();
   },
   methods: {
-    open(type) {
+    open(type, item, list) {
       this.signer = {
-        type: this.signer.type || type || 0, // 类型(0:个人;1:公司;)
+        type: type || 0, // 类型(0:个人;1:公司;)
         person: {
-          name: '', // 用户名
-          mobile: '', // 手机号
+          name: item ? item.name : '', // 用户名
+          mobile: item ? item.mobile : '', // 手机号
         },
         company: {
-          name: '', // 公司名
-          agentName: '', // 经办人姓名
-          agentMobile: '', // 经办人手机
+          name: item ? item.name : '', // 公司名
+          agentName: item ? item.agentName : '', // 经办人姓名
+          agentMobile: item ? item.agentMobile : '', // 经办人手机
         },
       };
+      this.checkedList = list || [];
+      this.getSignerRecordList();
       this.$refs.popupRef.open();
     },
     onInput(e, t) {
@@ -220,6 +243,13 @@ export default {
           });
           return;
         }
+        if (this.checkedList.find(i => i.person && i.person.mobile === this.signer.person.mobile)) {
+          uni.showToast({
+            title: '该用户已是签署方，请勿重复添加！',
+            icon: 'none',
+          });
+          return;
+        }
       }
       if (this.signer.type === 1) {
         if (!this.signer.company.agentName) {
@@ -250,12 +280,23 @@ export default {
           });
           return;
         }
+        if (
+          this.checkedList.find(
+            i => i.company && i.company.agentMobile === this.signer.company.agentMobile
+          )
+        ) {
+          uni.showToast({
+            title: '该企业已是签署方，请勿重复添加！',
+            icon: 'none',
+          });
+          return;
+        }
       }
       this.$emit('change', JSON.parse(JSON.stringify(this.signer)));
       this.$refs.popupRef.close();
     },
     addSigner(item) {
-      if(Number(item.userType) === 0) {
+      if (Number(item.userType) === 0) {
         this.signer.person.name = item.name;
         this.signer.person.mobile = item.mobile;
       } else {
@@ -275,67 +316,59 @@ export default {
         cancelColor: '#999999',
         success: function (res) {
           if (res.confirm) {
-            userInfo.delSignerRecord(item).then(r=> {
-                uni.showToast({
-                  title: '删除成功',
-                  icon: 'none',
-                });
-                that.getSignerRecordList()
-            })
+            userInfo.delSignerRecord(item).then(r => {
+              uni.showToast({
+                title: '删除成功',
+                icon: 'none',
+              });
+              that.getSignerRecordList();
+            });
           } else if (res.cancel) {
             console.log('用户点击取消');
           }
         },
       });
     },
-    getSignerRecordList () {
-      userInfo.signerRecordList({userType:this.signer.type}).then(res => {
-         this.$emit('currentList', res)
+    getSignerRecordList() {
+      userInfo.signerRecordList({ userType: this.signer.type }).then(res => {
+        this.signerRecordList = res.filter(i => i.name);
       });
     },
-    jumpSearchCompany () {
+    jumpSearchCompany() {
       uni.navigateTo({
-        url:  "/pages/user/company/searchCompany"
-      })
+        url: '/pages/user/company/searchCompany',
+      });
     },
-    jumpSearchPerson () {
+    jumpSearchPerson() {
       uni.navigateTo({
-        url:  "/pages/user/personal/searchPerson"
-      })
+        url: '/pages/user/personal/searchPerson',
+      });
+    },
+    tabChange(type) {
+      this.signer = {
+        type: type, // 类型(0:个人;1:公司;)
+        person: {
+          name: '', // 用户名
+          mobile: '', // 手机号
+        },
+        company: {
+          name: '', // 公司名
+          agentName: '', // 经办人姓名
+          agentMobile: '', // 经办人手机
+        },
+      };
+      this.getSignerRecordList();
     },
   },
-  watch:{
-    'signer.type': {
-      handler(newVal, oldVal) {
-        this.signer = {
-          type: newVal || 0, // 类型(0:个人;1:公司;)
-          person: {
-            name: '', // 用户名
-            mobile: '', // 手机号
-          },
-          company: {
-            name: '', // 公司名
-            agentName: '', // 经办人姓名
-            agentMobile: '', // 经办人手机
-          },
-        };
-        this.$emit('currentType', newVal)
-        this.getSignerRecordList()
+  watch: {
+    'messageInfo.name'(val) {
+      if (val) {
+        this.signer.person.name = val || '';
       }
     },
-    companyName (val) {
-      if(val) {
-        this.signer.company.name = val
-      }
-    },
-    name (val) {
-      if(val) {
-        this.signer.person.name = val
-      }
-    },
-    mobile (val) {
-      if(val) {
-        this.signer.person.mobile = val
+    'messageInfo.companyName'(val) {
+      if (val) {
+        this.signer.company.name = val || '';
       }
     },
   },
@@ -345,6 +378,7 @@ export default {
 <style lang="scss" scoped>
 .add-signer {
   background-color: #ffffff;
+  padding-bottom: 20rpx;
   .title {
     text-align: center;
     padding-top: 34rpx;
@@ -352,7 +386,7 @@ export default {
   .form-box {
     padding-bottom: 32rpx;
     .form-item {
-      padding: 32rpx;
+      padding: 28rpx 32rpx;
       border-bottom: 1px solid $uni-border-color;
       input {
         flex: 1;
@@ -388,7 +422,7 @@ export default {
       }
     }
     .btn-primary {
-      margin: 32rpx 32rpx 0;
+      margin: 20rpx 32rpx 0;
       line-height: 88rpx;
     }
   }
@@ -396,30 +430,74 @@ export default {
     border: none !important;
     padding: 32rpx 32rpx 0 32rpx !important;
   }
-  .record-list{
+  .record-list {
     height: 500rpx;
     align-items: unset;
     flex-direction: column;
     justify-content: flex-start;
     overflow: scroll;
-    .record-item{
+    .record-item {
       font-size: 28rpx;
       width: 100%;
-      padding: 20rpx 0;
+      /* height: 80rpx; */
+      border-radius: 8rpx;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      &:first-of-type{
-        padding-top: 0;
+      background: #f1f1f169;
+      margin-top: 20rpx;
+      padding: 0 20rpx;
+      position: relative;
+      &:first-of-type {
+        /* padding-top: 0; */
+        margin-top: 0;
       }
-      .info-box{
-        display:flex;
-        .name{
-          font-weight: bold;
+      .info-box {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        height: 100%;
+        .left-company {
+          display: flex;
+          flex-direction: column;
+          padding: 20rpx 0;
+          .company-name {
+            width: 500rpx;
+          }
+          .bottom-box {
+            display: flex;
+            .mobile {
+              margin-left: 20rpx;
+            }
+          }
         }
-        .mobile {
-          margin-left: 20rpx;
+        .left {
+          display: flex;
+          align-items: center;
+          padding: 20rpx 0;
+          .name {
+            font-weight: bold;
+          }
+          .mobile {
+            margin-left: 30rpx;
+          }
         }
+      }
+      .right {
+        box-sizing: border-box;
+        background: #3277ff;
+        color: #fff;
+        width: 70rpx;
+        height: 40rpx;
+        border-radius: 0rpx 20rpx 0rpx 40rpx;
+        font-size: 22rpx;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        position: absolute;
+        right: 0;
+        top: 0;
+        padding-right: 10rpx;
       }
     }
   }

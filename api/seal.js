@@ -1,3 +1,10 @@
+/*
+ * @Author: wudi
+ * @Date: 2023-08-29 09:44:38
+ * @LastEditors: wudi
+ * @LastEditTime: 2023-10-25 14:07:51
+ * @Description:
+ */
 import request from '@/utils/request.js';
 
 export function list(data) {
@@ -71,6 +78,14 @@ export function meallist(data) {
   // 查询套餐列表
   return request({
     url: `/v2/meal`,
+    method: 'GET',
+  });
+}
+
+export function getSealAuthUrl(seal) {
+  // 获取印章授权链接
+  return request({
+    url: `/v3/company/member/${seal.id}/sealAuthUrl/${seal.sealId}`,
     method: 'GET',
   });
 }

@@ -1,5 +1,3 @@
-import config from '../config/config.js';
-
 export function isCount(num) {
   if (num) {
     if (num < 1000) return num

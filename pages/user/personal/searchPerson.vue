@@ -2,35 +2,30 @@
  * @Author: wudi
  * @Date: 2023-10-10 09:57:01
  * @LastEditors: wudi
- * @LastEditTime: 2023-10-10 17:39:37
+ * @LastEditTime: 2023-10-27 15:50:32
  * @Description:
 -->
 <template>
   <view class="page-base">
     <view class="search-box flex-ct">
-        <view class="search flex-fs">
-          <uni-icons
-            type="search"
-            size="24"
-            class="icon-search flex-ct"
-            color="#3277FF"
-          ></uni-icons>
-          <input
-            class="flex-1 text-28 color-base"
-            placeholder="请输入关键词搜索"
-            v-model="params.userName"
-            @confirm="confirm"
-          />
-          <uni-icons
-            v-if="params.userName"
-            type="clear"
-            size="22"
-            class="flex-ct"
-            color="#E6E6E6"
-            @click="clear"
-          ></uni-icons>
-        </view>
+      <view class="search flex-fs">
+        <uni-icons type="search" size="24" class="icon-search flex-ct" color="#3277FF"></uni-icons>
+        <input
+          class="flex-1 text-28 color-base"
+          placeholder="请输入用户全名搜索"
+          v-model="params.userName"
+          @confirm="confirm"
+        />
+        <uni-icons
+          v-if="params.userName"
+          type="clear"
+          size="22"
+          class="flex-ct"
+          color="#E6E6E6"
+          @click="clear"
+        ></uni-icons>
       </view>
+    </view>
     <view class="list">
       <view v-for="(item, index) in list" :key="index" class="item" @click="handlePersonal(item)">
         <view class="text-26 color-base person-info">
@@ -39,12 +34,9 @@
         </view>
         <view class="line-horizontal"></view>
         <view class="flex-fs">
-          <view
-            v-if="item.authState === 2"
-            class="tag-auth tag-auth__auth flex-ct text-20"
-          >
-          <image class="icon-auth" src="@/static/IconUserAuth.png"></image>
-              已实名
+          <view v-if="item.authState === 2" class="tag-auth tag-auth__auth flex-ct text-20">
+            <image class="icon-auth" src="@/static/IconUserAuth.png"></image>
+            已实名
           </view>
           <view v-else class="tag-auth tag-auth__unauth flex-ct text-20">
             <image class="icon-auth" src="@/static/IconUserUnAuth.png"></image>
@@ -61,7 +53,6 @@
       </BaseEmpty>
       <baseline v-if="showBaseline"></baseline>
     </view>
-
   </view>
 </template>
 
@@ -69,20 +60,21 @@
 import userInfoApi from '@/api/api.js';
 import { info } from '@/api/login.js';
 import { mapState } from 'vuex';
+import setting from '@/static/config/setting.js';
 export default {
   data() {
     return {
       list: [],
-      loading: true,
+      loading: false,
       params: {
         userName: '',
         pageNum: 1,
         pageSize: 10,
       },
       noMore: false,
-      originType:null,
+      originType: null,
       // 搜索时没有数据的时候展示
-      noSearchData:false
+      noSearchData: false,
     };
   },
   computed: {
@@ -98,40 +90,39 @@ export default {
     if (uni.getStorageSync('refresh')) {
       uni.removeStorageSync('refresh');
       this.params.pageNum = 1;
-      this.loading = true;
+      // this.loading = true;
       this.list = [];
-      this.getList();
+      // this.getList();
     }
   },
   onLoad(e) {
-    this.getList();
-    console.log('e :', e)
-    if(e.originType) {
+    // this.getList();
+    console.log('e :', e);
+    if (e.originType) {
       this.originType = e.originType;
     }
   },
   methods: {
-
     /**
      * @description: 个人
      * @param {object} item
      * @return {*}
      */
     handlePersonal(item) {
-      console.log('item :', item)
+      console.log('item :', item);
       let pages = getCurrentPages();
       let prevPage = pages[pages.length - 2]; //上一个页面
-      let object={
-          name:item.authName,
-          mobile: item?.mobile,
-      }
+      let object = {
+        name: item.authName,
+        mobile: item?.mobile,
+      };
       prevPage.onShow(object);
       uni.navigateBack();
     },
     getList(type) {
       this.noMore = false;
       userInfoApi.getAuthPersonList(this.params).then(data => {
-        if(type && type === 'confirm' && !data.rows.length) {
+        if (type && type === 'confirm' && !data.rows.length) {
           this.noSearchData = true;
         } else {
           this.noSearchData = false;
@@ -151,14 +142,14 @@ export default {
     clear() {
       this.params.userName = '';
       this.params.pageNum = 1;
-      this.loading = true;
+      // this.loading = true;
       this.list = [];
-      this.getList();
+      // this.getList();
     },
   },
   onShareAppMessage() {
     return {
-      title: '邀您注册一合通小程序，签署合同>',
+      title: '邀您注册' + setting.appName + '小程序，签署合同>',
       desc: '',
       // path: '/pages/index/index?id=' + this.contractId + '&uid=' + this.userInfo.id,
       // path: '/pages/user/company/Certification',
@@ -173,10 +164,10 @@ export default {
     }
   },
   onPullDownRefresh() {
-    this.params.pageNum = 1;
-    this.loading = true;
-    this.list = [];
-    this.getList();
+    // this.params.pageNum = 1;
+    // this.loading = true;
+    // this.list = [];
+    // this.getList();
   },
 };
 </script>
@@ -203,7 +194,7 @@ export default {
   overflow: hidden;
   margin-top: 20rpx;
   width: 686rpx;
-  .person-info{
+  .person-info {
     display: flex;
     justify-content: space-between;
   }
@@ -279,15 +270,15 @@ export default {
 }
 .btn-box {
   .send-btn {
-      width: 598rpx;
-      height: 88rpx;
-      /* height: 84rpx;
+    width: 598rpx;
+    height: 88rpx;
+    /* height: 84rpx;
       width: 260rpx; */
-      line-height: 88rpx;
-      margin-top: 100rpx;
-      font-size: $uni-font-size-base;
-      background-color: $uni-color-primary;
-      white-space: nowrap;
-    }
+    line-height: 88rpx;
+    margin-top: 100rpx;
+    font-size: $uni-font-size-base;
+    background-color: $uni-color-primary;
+    white-space: nowrap;
+  }
 }
 </style>

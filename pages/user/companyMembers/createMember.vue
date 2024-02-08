@@ -6,13 +6,13 @@
         <input
           class="text-28 color-base flex-1"
           v-model="form.name"
-          :maxlength="5"
+          :maxlength="10"
           placeholder="请输入姓名"
           placeholder-class="place"
         />
       </view>
       <view class="row flex-sb">
-        <view class="text-28 color-base text-required">一合通账号</view>
+        <view class="text-28 color-base text-required">{{ setting.appName }}账号</view>
         <input
           class="text-28 color-base flex-1"
           type="number"
@@ -51,11 +51,13 @@
 
 <script>
 import reg from '@/utils/reg.js';
+import setting from '@/static/config/setting.js';
 import { memberCreate, memberInfo, memberUpdate, memberDel } from '@/api/company.js';
 import { mapState, mapActions } from 'vuex';
 export default {
   data() {
     return {
+      setting,
       fastClick: true,
       form: {
         id: '',
@@ -168,7 +170,7 @@ export default {
       }
       if (!this.form.account.trim()) {
         return uni.showToast({
-          title: '请输入一合通账号',
+          title: '请输入' + this.setting.appName + '账号',
           icon: 'none',
         });
       }

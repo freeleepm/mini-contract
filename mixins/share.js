@@ -1,4 +1,4 @@
-import setting from '../config/setting.js';
+import setting from '@/static/config/setting.js';
 
 export default {
   onShareAppMessage() {

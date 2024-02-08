@@ -1,49 +1,30 @@
-<!--
- * @Description:
- * @LastEditTime: 2023-08-31 15:14:50
- * @LastEditors: wudi
- * @Author: 刘仁秀
- * @Date: 2022-09-02 15:21:16
--->
 <template>
   <view class="page-base">
-    <view class="container-card" style="padding-bottom: 0">
-      <view class="title flex-ct text-30 bold color-base">
-        <view class="decorate flex-sb">
-          <view class="decorate-small"></view>
-          <view class="decorate-big"></view>
-        </view>
-        <view class="color-primary">一合通</view>
-        服务
-        <view class="decorate flex-sb">
-          <view class="decorate-big"></view>
-          <view class="decorate-small"></view>
-        </view>
+    <view class="title flex-fs text-30 bold color-base width-full">
+      <view class="decorate flex-sb">
+        <view class="decorate-small"></view>
+        <view class="decorate-big"></view>
       </view>
-      <view class="row-type flex-sb">
+      <view class="color-primary">{{ setting.appName }}</view>
+      服务
+      <view class="decorate flex-sb">
+        <view class="decorate-big"></view>
+        <view class="decorate-small"></view>
+      </view>
+    </view>
+
+    <view class="container-card" style="padding-bottom: 0">
+      <view class="row-type">
         <view
           v-for="(item, i) in mealList"
           :key="i"
           class="card-type flex-fs color-base"
-          :class="{ 'card-type-active': form.id == item.id }"
           @click="tab(item)"
         >
-          <view>
-            <view class="text-30 bold">{{ item.name }}</view>
-            <view class="text-24 color-base-minor">有效期1年</view>
-          </view>
-          <image
-            v-if="item.type === 0"
-            class="img-back-person"
-            src="@/static/ImgBackPerson.png"
-          ></image>
-          <image v-else class="img-back-enterprise" src="@/static/ImgBackEnterprise2.png"></image>
-          <uni-icons
-            class="icon-checkbox flex-ct"
-            type="checkbox-filled"
-            size="18"
-            color="#3277FF"
-          ></uni-icons>
+          <image v-if="item.type === 1" src="/static/IconCon2.png" class="icon"></image>
+          <image v-else src="/static/IconCon.png" class="icon"></image>
+          <view class="name bold">{{ item.name }}</view>
+          <view class="date" :class="{ company: item.type === 1 }">有效期1年</view>
         </view>
       </view>
       <view v-if="form.type == 1" class="flex-fs row">
@@ -70,10 +51,6 @@
           <view class="number-box__add flex-ct color-white" @click="change(add)"></view>
         </view>
       </view>
-      <view class="flex-fs row">
-        <view class="key text-26 color-base-minor">支付金额</view>
-        <view class="text-30 color-error bold">￥{{ (form.price * form.share) | money }}</view>
-      </view>
     </view>
 
     <view class="container-card text-26 color-base-minor">
@@ -95,14 +72,20 @@
       </view>
     </view>
 
-    <view class="btn-box flex-sb">
-      <navigator open-type="navigateBack" hover-class="none" class="btn-vice text-32">
-        取消
-      </navigator>
-      <view class="btn-primary text-32" :class="{ disabled: !form.share }" @click="submit">
-        立即购买
+    <btn-fixed>
+      <view class="flex-sb">
+        <view class="flex-fs pay-money">
+          <view class="text-24" style="margin-right: 12rpx; color: #666666">支付金额</view>
+          <view class="text-30 bold" style="color: #ff0000">
+            <text class="text-24">￥</text>
+            {{ (form.price * form.share) | money }}
+          </view>
+        </view>
+        <view class="btn-primary text-32" :class="{ disabled: !form.share }" @click="submit">
+          立即购买
+        </view>
       </view>
-    </view>
+    </btn-fixed>
   </view>
 </template>
 
@@ -111,9 +94,11 @@ var that, fastClick;
 import { pay, meallist } from '@/api/seal.js';
 import { appletsLogin } from '@/api/login.js';
 import { mapState } from 'vuex';
+import setting from '@/static/config/setting.js';
 export default {
   data() {
     return {
+      setting,
       form: {
         id: '', // 套餐id
         type: 0, // 套餐类型 0个人套餐,1企业套餐
@@ -129,23 +114,26 @@ export default {
   onLoad(e) {
     that = this;
     fastClick = true;
-    meallist().then(res => {
-      this.mealList = res || [];
+    meallist().then(response => {
+      let res = response || [];
+      const type = parseInt(e.type) || 0;
+      res = res.filter(i => i.type === type);
+      this.mealList = res;
       if (res.length) {
-        const type = parseInt(e.type) || 0;
-        this.form.id = res[type].id;
-        this.form.price = res[type].price;
-        this.form.type = res[type].type;
+        this.form.id = res[0].id;
+        this.form.price = res[0].price;
+        this.form.type = res[0].type;
+        this.form.share = type === 0 ? 1 : 10;
       }
     });
   },
   methods: {
     tab(item) {
-      if (item.type == 0) this.form.share = 1;
-      if (item.type == 1) this.form.share = 10;
-      this.form.id = item.id;
-      this.form.type = item.type;
-      this.form.price = item.price;
+      // if (item.type == 0) this.form.share = 1;
+      // if (item.type == 1) this.form.share = 10;
+      // this.form.id = item.id;
+      // this.form.type = item.type;
+      // this.form.price = item.price;
     },
     change(arithmetic, e) {
       switch (this.form.type) {
@@ -219,9 +207,10 @@ export default {
                   signType: res.result.signType,
                   paySign: res.result.paySign,
                   success: function (resj) {
-                    uni.redirectTo({
-                      url: '/pages/user/package/comboDetails',
-                    });
+                    // uni.redirectTo({
+                    //   url: '/pages/user/package/comboDetails',
+                    // });
+                    uni.navigateBack();
                   },
                   fail: function (err) {
                     fastClick = true;
@@ -265,77 +254,43 @@ export default {
 }
 
 .title {
-  margin-top: 8rpx;
-  margin-bottom: 40rpx;
+  margin: 32rpx 32rpx 0 32rpx;
 }
 
 .row-type {
-  padding: 10rpx;
-  margin-right: -40rpx;
-  flex-wrap: wrap;
+  margin-top: -32rpx;
   .card-type {
     box-sizing: border-box;
     position: relative;
-    padding-left: 28rpx;
-    /* flex: 1; */
-    width: calc(50% - 40rpx);
-    height: 170rpx;
-    background: #f5f5f5;
-    border-radius: 12rpx;
-    margin-right: 40rpx;
-    margin-bottom: 40rpx;
-    &::after {
-      content: '';
+    width: 100%;
+    height: 120rpx;
+    border-bottom: 1px solid #f2f2f2;
+    .icon {
+      width: 48rpx;
+      height: 48rpx;
+      margin-right: 16rpx;
     }
-  }
-
-  .text-30 {
-    position: relative;
-    z-index: 1;
-    margin-bottom: 14rpx;
-  }
-
-  .card-type-active {
-    box-shadow: 0 0 0 1px $uni-color-primary;
-    background: #e6eeff;
-    color: $uni-color-primary;
-
-    .icon-checkbox {
-      display: flex;
+    .name {
+      font-size: 40rpx;
+      margin-right: 16rpx;
     }
-  }
-  .card-type-disabled {
-    opacity: 0.75;
-  }
-  .icon-checkbox {
-    position: absolute;
-    right: 20rpx;
-    top: 20rpx;
-    display: none;
-    width: 24rpx;
-    height: 24rpx;
-  }
-
-  .img-back-person {
-    position: absolute;
-    right: 20rpx;
-    bottom: 20rpx;
-    width: 69rpx;
-    height: 78rpx;
-  }
-
-  .img-back-enterprise {
-    position: absolute;
-    right: 16rpx;
-    bottom: 20rpx;
-    width: 82rpx;
-    height: 77rpx;
+    .date {
+      color: $uni-color-primary;
+      background: #ebf1ff;
+      line-height: 48rpx;
+      padding: 0 12rpx;
+      font-size: 28rpx;
+      &.company {
+        color: #7a4100;
+        background: #fff8eb;
+      }
+    }
   }
 }
 
 .row {
-  height: 100rpx;
-  border-bottom: 1px solid #e6e6e6;
+  height: 120rpx;
+  border-bottom: 1px solid #f2f2f2;
   .number-box {
     box-sizing: border-box;
     overflow: hidden;
@@ -389,18 +344,11 @@ export default {
   }
 }
 
-.btn-box {
-  width: 686rpx;
-  margin-top: 60rpx;
-}
-
-.btn-primary,
-.btn-vice {
+.btn-primary {
   width: 324rpx;
   height: 88rpx;
   border-radius: 8rpx;
 }
-
 .decorate {
   margin: 0 24rpx;
   width: 38rpx;

@@ -8,19 +8,19 @@
   >
     <view class="flex-fs flex-1" v-if="file">
       <image
-        v-if="file.name.indexOf('.doc') > -1"
+        v-if="file.name && file.name.indexOf('.doc') > -1"
         class="icon-doc"
         src="@/static/IconDoc.png"
       ></image>
       <image
-        v-else-if="file.name.indexOf('.pdf') > -1"
+        v-else-if="file.name && file.name.indexOf('.pdf') > -1"
         class="icon-doc"
         src="@/static/IconPdf.png"
       ></image>
       <image v-else class="icon-doc" src="@/static/IconPdf.png"></image>
       <view class="flex-1">
-        <view class="text-name text-elps text-26 color-base">{{ file.name }}</view>
-        <view class="text-24 color-grey-minor">{{ file.size | size }}</view>
+        <view class="text-name text-elps text-28 bold color-base">{{ file.name }}</view>
+        <view class="text-24 color-grey-minor" v-if="file.size">{{ file.size | size }}</view>
       </view>
     </view>
     <slot></slot>

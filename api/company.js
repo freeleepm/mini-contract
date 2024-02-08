@@ -26,7 +26,7 @@ export function detail(data) {
 export function remove(data) {
   // 移除企业
   return request({
-    url: `/company/v1/` + data.id + '?verificationCode=' + data.verificationCode,
+    url: `/company/v1/${data.id}?verificationCode=${data.verificationCode}`,
     method: 'DELETE',
     data,
   });
@@ -72,7 +72,7 @@ export function backfill(data) {
 export function ocr(data) {
   // ocr
   return request({
-    url: `/v3/company/ocr?fileUrl=` + data.license,
+    url: `/v1/ocr/license?fileUrl=` + data.license,
     method: 'GET',
   });
 }
@@ -88,7 +88,7 @@ export function companyAuth(data) {
 export function sign(data) {
   // 合同签订
   return request({
-    url: `/v3/contract`,
+    url: `/v5/contract`,
     method: 'POST',
     data,
   });
@@ -214,6 +214,24 @@ export function getAuthCompanyList(data) {
   return request({
     url: `/v3/company/auth/list`,
     method: 'GET',
+    data,
+  });
+}
+
+export function individualFace3Factors(data) {
+  // 用户认证三要素（人脸图片）
+  return request({
+    url: `/v3/u/auth/individualFaceThreeFactors`,
+    method: 'POST',
+    data,
+  });
+}
+
+export function idcardOcr(data) {
+  // 身份证识别
+  return request({
+    url: `/v1/ocr/id-card`,
+    method: 'POST',
     data,
   });
 }

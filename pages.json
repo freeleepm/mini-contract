@@ -1,6 +1,5 @@
 {
-  "pages": [
-    {
+  "pages": [{
       "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "",
@@ -43,6 +42,13 @@
       "path": "pages/contract/revoke/index",
       "style": {
         "navigationBarTitleText": "撤销合同",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/contract/sign/template",
+      "style": {
+        "navigationBarTitleText": "发起签署",
         "enablePullDownRefresh": false
       }
     },
@@ -122,7 +128,7 @@
       }
     },
     {
-      "path": "pages/user/personal/CertificationFace",
+      "path": "pages/user/personal/CertificationThree",
       "style": {
         "navigationBarTitleText": "个人认证",
         "enablePullDownRefresh": false
@@ -248,37 +254,76 @@
         "navigationBarTitleText": "成员印章管理",
         "enablePullDownRefresh": false
       }
+    },
+    {
+      "path": "pages/contract/sign/signByTemplate",
+      "style": {
+        "navigationBarTitleText": "发起签署",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/home/draft/index",
+      "style": {
+        "navigationBarTitleText": "草稿发起",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/user/mySign/index",
+      "style": {
+        "navigationBarTitleText": "个人签名",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/user/mySign/create",
+      "style": {
+        "navigationBarTitleText": "添加签名",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/user/file/shareFile",
+      "style": {
+        "navigationBarTitleText": "分享文件",
+        "enablePullDownRefresh": false
+      }
     }
   ],
   "tabBar": {
-    "color": "#666666",
-    "selectedColor": "#3277FF",
+    "color": "#ffffff",
+    "selectedColor": "#ffffff",
     "backgroundColor": "#FFFFFF",
     "borderStyle": "white",
-    "list": [
-      {
+    "list": [{
         "text": "首页",
         "pagePath": "pages/home/index",
-        "iconPath": "static/tabbar/IconTabbarHome.png",
-        "selectedIconPath": "static/tabbar/IconTabbarHomeActive.png"
+        "iconPath": "static/tabbar/t.png",
+        "selectedIconPath": "static/tabbar/t.png"
       },
       {
+        "text": "合同模板",
+        "pagePath": "pages/home/contractTemplate/index",
+        "iconPath": "static/tabbar/t.png",
+        "selectedIconPath": "static/tabbar/t.png"
+      }, {
         "text": "发起签署",
-        "pagePath": "pages/contract/sign/index",
-        "iconPath": "static/tabbar/IconTabbarContract.png",
-        "selectedIconPath": "static/tabbar/IconTabbarContractActive.png"
+        "pagePath": "pages/contract/sign/template",
+        "iconPath": "static/tabbar/t.png",
+        "selectedIconPath": "static/tabbar/t.png"
       },
       {
         "text": "合同管理",
         "pagePath": "pages/contract/index",
-        "iconPath": "static/tabbar/IconTabbarContract.png",
-        "selectedIconPath": "static/tabbar/IconTabbarContractActive.png"
+        "iconPath": "static/tabbar/t.png",
+        "selectedIconPath": "static/tabbar/t.png"
       },
       {
         "text": "我的",
         "pagePath": "pages/user/index",
-        "iconPath": "static/tabbar/IconTabbarMine.png",
-        "selectedIconPath": "static/tabbar/IconTabbarMineActive.png"
+        "iconPath": "static/tabbar/t.png",
+        "selectedIconPath": "static/tabbar/t.png"
       }
     ]
   },

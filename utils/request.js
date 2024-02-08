@@ -1,11 +1,11 @@
 /*
- * @Description:
- * @LastEditTime: 2023-09-01 10:17:04
+ * @Author: wudi
+ * @Date: 2023-12-11 14:42:14
  * @LastEditors: wudi
- * @Author: 刘仁秀
- * @Date: 2022-09-02 15:21:16
+ * @LastEditTime: 2023-12-14 17:11:31
+ * @Description:
  */
-import config from '../config/config.js';
+import config from '@/static/config/index.js';
 import store from '../store/index.js';
 
 function request(obj) {
@@ -25,12 +25,13 @@ function request(obj) {
       data,
       dataType: 'json',
       header: headers,
-      success: function (res) {
+      success: function(res) {
         if (res.data && res.data.flag) {
           resolve(res.data.data);
         } else {
           if (res.data.code == 1000) {
             store.commit('setToken', '');
+            uni.removeStorageSync('token');
             store.commit('setUserInfo', '');
             uni.showModal({
               title: '异地登录提醒',
@@ -38,7 +39,7 @@ function request(obj) {
               confirmText: '去登录',
               confirmColor: '#3277FF',
               showCancel: false,
-              success: function (res) {
+              success: function(res) {
                 if (res.confirm) {
                   uni.reLaunch({
                     url: '/pages/login/login?logout=1',
@@ -48,10 +49,16 @@ function request(obj) {
             });
             reject();
           } else if (res.data.code == 1010 || res.data.code == 1051) {
+            store.commit('setToken', '');
+            uni.removeStorageSync('token');
+            store.commit('setUserInfo', '');
             // token过期
-            this.$store.dispatch('login').then(res => {
-              resolve(request(obj));
+            uni.reLaunch({
+              url: '/pages/login/login',
             });
+            // this.$store.dispatch('login').then(res => {
+            //   resolve(request(obj));
+            // });
           } else {
             reject();
             uni.showToast({
@@ -62,7 +69,7 @@ function request(obj) {
           }
         }
       },
-      fail: function (res) {
+      fail: function(res) {
         reject();
         uni.showToast({
           title: '网络异常，请检查网络！',
