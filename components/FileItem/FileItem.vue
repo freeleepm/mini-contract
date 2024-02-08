@@ -8,12 +8,12 @@
   >
     <view class="flex-fs flex-1" v-if="file">
       <image
-        v-if="file.name.indexOf('.doc') > -1"
+        v-if="file.name && file.name.indexOf('.doc') > -1"
         class="icon-doc"
         src="@/static/IconDoc.png"
       ></image>
       <image
-        v-else-if="file.name.indexOf('.pdf') > -1"
+        v-else-if="file.name && file.name.indexOf('.pdf') > -1"
         class="icon-doc"
         src="@/static/IconPdf.png"
       ></image>

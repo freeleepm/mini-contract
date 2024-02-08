@@ -13,10 +13,10 @@
             </view>
           </view>
           <view class="flex-ct switch-box" v-else>
-            <view class="switch" :class="{ active: signer.type === 0 }" @click="signer.type = 0">
+            <view class="switch" :class="{ active: signer.type === 0 }" @click="tabChange(0)">
               个人
             </view>
-            <view class="switch" :class="{ active: signer.type === 1 }" @click="signer.type = 1">
+            <view class="switch" :class="{ active: signer.type === 1 }" @click="tabChange(1)">
               企业
             </view>
             <view class="bar" :style="{ left: signer.type === 1 ? '50%' : '0' }"></view>
@@ -167,6 +167,7 @@ export default {
       KeyboardHeight: 0,
       currentList: [],
       signerRecordList: [],
+      checkedList: [],
     };
   },
   created() {
@@ -193,8 +194,7 @@ export default {
     // uni.offKeyboardHeightChange();
   },
   methods: {
-    open(type, item) {
-      console.log(item);
+    open(type, item, list) {
       this.signer = {
         type: type || 0, // 类型(0:个人;1:公司;)
         person: {
@@ -207,6 +207,7 @@ export default {
           agentMobile: item ? item.agentMobile : '', // 经办人手机
         },
       };
+      this.checkedList = list || [];
       this.getSignerRecordList();
       this.$refs.popupRef.open();
     },
@@ -242,6 +243,13 @@ export default {
           });
           return;
         }
+        if (this.checkedList.find(i => i.person && i.person.mobile === this.signer.person.mobile)) {
+          uni.showToast({
+            title: '该用户已是签署方，请勿重复添加！',
+            icon: 'none',
+          });
+          return;
+        }
       }
       if (this.signer.type === 1) {
         if (!this.signer.company.agentName) {
@@ -268,6 +276,17 @@ export default {
         if (!this.signer.company.name) {
           uni.showToast({
             title: '请输入公司名',
+            icon: 'none',
+          });
+          return;
+        }
+        if (
+          this.checkedList.find(
+            i => i.company && i.company.agentMobile === this.signer.company.agentMobile
+          )
+        ) {
+          uni.showToast({
+            title: '该企业已是签署方，请勿重复添加！',
             icon: 'none',
           });
           return;
@@ -312,7 +331,7 @@ export default {
     },
     getSignerRecordList() {
       userInfo.signerRecordList({ userType: this.signer.type }).then(res => {
-        this.signerRecordList = res;
+        this.signerRecordList = res.filter(i => i.name);
       });
     },
     jumpSearchCompany() {
@@ -325,25 +344,23 @@ export default {
         url: '/pages/user/personal/searchPerson',
       });
     },
+    tabChange(type) {
+      this.signer = {
+        type: type, // 类型(0:个人;1:公司;)
+        person: {
+          name: '', // 用户名
+          mobile: '', // 手机号
+        },
+        company: {
+          name: '', // 公司名
+          agentName: '', // 经办人姓名
+          agentMobile: '', // 经办人手机
+        },
+      };
+      this.getSignerRecordList();
+    },
   },
   watch: {
-    'signer.type': {
-      handler(newVal, oldVal) {
-        this.signer = {
-          type: newVal || 0, // 类型(0:个人;1:公司;)
-          person: {
-            name: '', // 用户名
-            mobile: '', // 手机号
-          },
-          company: {
-            name: '', // 公司名
-            agentName: '', // 经办人姓名
-            agentMobile: '', // 经办人手机
-          },
-        };
-        this.getSignerRecordList();
-      },
-    },
     'messageInfo.name'(val) {
       if (val) {
         this.signer.person.name = val || '';

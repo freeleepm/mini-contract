@@ -41,6 +41,7 @@
     <view style="position: relative; top: 200rpx" v-if="!loading && !CategoryList.length">
       <BaseEmpty massage="没有找到相关范本" />
     </view>
+    <tabbar />
   </view>
 </template>
 
@@ -94,11 +95,13 @@ export default {
       });
     },
     tabChange(id, i) {
-      this.current = i;
-      this.query.categoryId = id;
-      this.query.pageNum = 1;
-      this.loading = true;
-      this.getList();
+      if (this.query.categoryId !== id) {
+        this.current = i;
+        this.query.categoryId = id;
+        this.query.pageNum = 1;
+        this.loading = true;
+        this.getList();
+      }
     },
     getList() {
       templateList(this.query)

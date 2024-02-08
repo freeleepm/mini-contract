@@ -9,9 +9,12 @@
   <view class="page-base">
     <view class="container-card flex-col">
       <view class="text-26 color-base">从聊天记录中导入</view>
-      <view class="tip text-24 color-grey-minor">签署文件最大5M，支持格式为pdf、doc、docx</view>
+      <view class="tip text-24 color-grey-minor">
+        签署文件最大5M，支持格式为pdf、doc、docx、png、jpg、jpeg
+      </view>
 
-      <view class="btn-primary text-30" @click="uploadFile">本地文件</view>
+      <!-- <view class="btn-primary text-30" @click="uploadFile">本地文件</view> -->
+      <view class="btn-primary text-30" @click="openAction">选择文件</view>
     </view>
 
     <view class="container-card">
@@ -50,7 +53,6 @@
           bg="#ffffff"
           border
           @click.native="openFile(item)"
-          @longpress.native="handleDel(item.id, i)"
         >
           <uni-icons
             type="checkbox-filled"
@@ -58,12 +60,16 @@
             color="#3277FF"
             v-if="pick == 1 && id == item.id"
           ></uni-icons>
+          <view @click.stop="del(item.id, i)" v-if="!pick">
+            <uni-icons type="trash" size="20" color="#dd524d"></uni-icons>
+          </view>
         </FileItem>
       </view>
-
+      <Images ref="image" @success="onSuccess" />
       <loadMore v-if="loading"></loadMore>
       <baseline v-if="showBaseline"></baseline>
       <BaseEmpty v-if="noData" massage="暂无相关文件" style="padding-top: 32rpx"></BaseEmpty>
+      <backTop ref="top" />
     </view>
   </view>
 </template>
@@ -72,9 +78,11 @@
 import { list, create, remove } from '@/api/file.js';
 import { upload } from '@/api/oss.js';
 import { info } from '@/api/login.js';
+import Images from './components/Images';
 var that,
   fastClick = true;
 export default {
+  components: { Images },
   data() {
     return {
       loading: true,
@@ -109,10 +117,7 @@ export default {
     },
   },
   onPullDownRefresh() {
-    that.params.pageNum = 1;
-    that.loading = true;
-    that.list = [];
-    that.getList();
+    that.clear();
   },
   onReachBottom() {
     if (that.noMore) {
@@ -157,6 +162,31 @@ export default {
         uni.stopPullDownRefresh();
       });
     },
+    openAction() {
+      uni.showActionSheet({
+        title: '选择上传文件',
+        itemList: ['微信文件', '手机图片'],
+        success: function (res) {
+          if (res.tapIndex === 0) {
+            that.uploadFile();
+          } else if (res.tapIndex === 1) {
+            that.$refs.image.pickImg();
+          }
+        },
+      });
+    },
+    onSuccess(file) {
+      console.log(file);
+      create(file).then(callbackFile => {
+        console.log(callbackFile);
+        if (that.pick == 1) {
+          uni.$emit('file', callbackFile);
+          uni.navigateBack();
+        } else {
+          that.list.unshift(callbackFile);
+        }
+      });
+    },
     uploadFile() {
       // #ifdef H5
       uni.chooseFile({
@@ -171,13 +201,13 @@ export default {
             uni.showLoading({
               title: '正在上传',
             });
-			// 跳过图片压缩的大小限制
-			let size = res.tempFiles[0].size
-			res.tempFiles[0].size = 10485760 - 1
+            // 跳过图片压缩的大小限制
+            let size = res.tempFiles[0].size;
+            res.tempFiles[0].size = 10485760 - 1;
             upload([res.tempFiles[0]]).then(urls => {
               if (urls) {
-				let obj = urls[0]
-				obj.size = size
+                let obj = urls[0];
+                obj.size = size;
                 create(obj).then(file => {
                   if (file) {
                     if (that.pick == 1) {
@@ -211,20 +241,22 @@ export default {
               uni.showLoading({
                 title: '正在上传',
               });
-			  // 跳过图片压缩的大小限制
-			  let size = res.tempFiles[0].size
-			  res.tempFiles[0].size = 10485760 - 1
+              // 跳过图片压缩的大小限制
+              let size = res.tempFiles[0].size;
+              res.tempFiles[0].size = 10485760 - 1;
               upload([res.tempFiles[0]]).then(urls => {
                 if (urls) {
-					let obj = urls[0]
-					obj.size = size
+                  let obj = urls[0];
+                  obj.size = size;
                   create(obj).then(file => {
                     uni.hideLoading();
+                    console.log(file);
                     if (file) {
                       if (that.pick == 1) {
                         uni.$emit('file', file);
                         uni.navigateBack();
                       } else {
+                        console.log('--------');
                         that.list.unshift(file);
                       }
                     }
@@ -248,9 +280,6 @@ export default {
             if (res.tapIndex === 0) {
               that.del(id, i);
             }
-          },
-          fail: function (res) {
-            console.log(res.errMsg);
           },
         });
       }

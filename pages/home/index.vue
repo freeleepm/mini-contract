@@ -1,25 +1,8 @@
 <template>
   <view>
-    <view class="outer-box" v-if="userInfo">
-      <view class="flex-fs" @click="$refs.checkUserRef.open()">
-        <view class="text-28 contract-title">
-          <text class="name text-elps">
-            {{  Number(userInfo.identityType) === 1 ? userInfo.companyName : userInfo.nickname || userInfo.phone }}
-          </text>
-          <text class="contract-pages">（剩余{{  Number(userInfo.identityType) === 1 ? userInfo.companyMealCount || 0 :  userInfo.individualMealCount || 0}}份）</text>
-        </view>
-        <image class="arrow-down" src="@/static/arrow-down.png"></image>
-      </view>
-      <checkUser ref="checkUserRef" :check="false" backType="mine" />
-    </view>
-    <view class="outer-box" v-else>
-      <view>您还未登录，登录后即可使用完整功能。</view>
-      <view class="login-btn" @click="jumpLogin">立即登录</view>
-    </view>
-
+    <LoginTip />
     <view class="home">
       <banner />
-
       <view class="flex-sb menu-list">
         <view class="menu-item flex-col" @click="switchTab(2)">
           <view class="num" :class="{ 'num-warn': balanceQuery.myHandle }">
@@ -34,6 +17,11 @@
           </view>
           <view class="text-26 color-base">待他人处理</view>
         </view>
+        <view class="line-vertical"></view>
+        <view class="menu-item flex-col" @click="navigateTo('/pages/home/draft/index', 1)">
+          <image src="/static/icon-draft-btn.png" class="icon"></image>
+          <view class="text-26 color-base">草稿发起</view>
+        </view>
         <!-- <view class="line-vertical"></view>
       <view class="menu-item flex-col" @click="navigateTo('/pages/contract/sign/index', 1)">
         <view class="num flex-ct">
@@ -42,7 +30,10 @@
         <view class="text-26 color-base">签署合同</view>
       </view> -->
       </view>
-      <contractTemplateBox @onClick="navigateTo('/pages/home/contractTemplate/index', 1)" />
+      <!-- <view style="margin-top: 32rpx">
+        <contractTemplateBox @onClick="e => navigateTo(e, 1)" />
+      </view> -->
+
       <!-- 最近文件 -->
       <view class="file-list">
         <view class="file-list-title flex-sb">
@@ -65,6 +56,7 @@
         </view>
       </view>
     </view>
+    <tabbar />
   </view>
 </template>
 
@@ -73,7 +65,7 @@ import userInfoApi from '@/api/api.js';
 import contractTemplateBox from './components/contractTemplateBox';
 import contractCard from './components/contractCard';
 import banner from './components/banner';
-import { mapState,mapActions } from 'vuex';
+import { mapState, mapActions } from 'vuex';
 import setting from '@/static/config/setting.js';
 export default {
   components: { contractTemplateBox, contractCard, banner },
@@ -118,6 +110,12 @@ export default {
     navigateTo(url, checkLogin) {
       if (checkLogin && !this.token) {
         this.common.toLogin();
+        return;
+      }
+      if (url === '/pages/home/contractTemplate/index') {
+        uni.switchTab({
+          url: '/pages/home/contractTemplate/index',
+        });
         return;
       }
       this.common.navigateTo(url);
@@ -208,68 +206,26 @@ export default {
         }
       });
     },
-    jumpLogin(){
-      uni.redirectTo({
-		      url: '/pages/login/login',
-		   });
-    }
   },
-  onHide(){
-    if(!this.userInfo) {
-      console.log('this.userInfo :', this.userInfo)
-      console.log('this.token :', this.token)
+  onHide() {
+    if (!this.userInfo) {
+      console.log('this.userInfo :', this.userInfo);
+      console.log('this.token :', this.token);
       uni.redirectTo({
         url: '/pages/login/login',
       });
     }
   },
-  watch:{
+  watch: {
     userInfo(value) {
-      console.log('value :', value)
+      console.log('value :', value);
       this.init();
-    }
+    },
   },
 };
 </script>
 
 <style lang="scss" scoped>
-.outer-box {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 28rpx;
-  background: #f6f9ff;
-  color: #343434;
-  width: 100%;
-  padding: 24rpx 32rpx;
-  z-index: 1;
-  .login-btn {
-    border-radius: 26rpx;
-    background: #3478f7;
-    padding: 12rpx 16rpx;
-    font-size: 24rpx;
-    text-align: center;
-    color: #ffffff;
-  }
-  .contract-title {
-    font-size: 28rpx;
-    font-weight: 600;
-    display: flex;
-    .name{
-      display: block;
-      max-width: 450rpx;
-    }
-    .contract-pages {
-      display: block;
-      font-weight: 200;
-    }
-  }
-
-  .arrow-down {
-    width: 16rpx;
-    height: 12rpx;
-  }
-}
 .home {
   overflow: hidden;
   min-height: 100vh;
@@ -291,9 +247,16 @@ export default {
 
     .menu-item {
       flex: 1;
+      .icon {
+        width: 36rpx;
+        height: 36rpx;
+        margin-bottom: 16rpx;
+        position: relative;
+        top: 8rpx;
+      }
       .num {
         position: relative;
-        line-height: 51rpx;
+        line-height: 52rpx;
         font-size: 40rpx;
         font-family: DINPro-Bold, DINPro;
         font-weight: bold;
@@ -335,4 +298,15 @@ export default {
     }
   }
 }
+// @supports (bottom: constant(safe-area-inset-bottom)) {
+//   /deep/ .identity {
+//     padding-bottom: calc(constant(safe-area-inset-bottom) + 124rpx) !important;
+//   }
+// }
+
+// @supports (bottom: env(safe-area-inset-bottom)) {
+//   /deep/ .identity {
+//     padding-bottom: calc(env(safe-area-inset-bottom) + 124rpx) !important;
+//   }
+// }
 </style>

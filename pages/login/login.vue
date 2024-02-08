@@ -53,7 +53,7 @@
           </view>
         </view>
         <view class="btn btn-primary flex-ct" :class="{ disabled: disabledNext }" @click="submit">
-          下一步
+          登 录
         </view>
       </view>
       <checkBox @change="e => (checked = e)" :check="checked" />
@@ -102,8 +102,7 @@ export default {
       return !this.form.phone || this.form.verificationCode.length !== 6;
     },
   },
-  onShow() {
-  },
+  onShow() {},
   onLoad(e) {
     that = this;
     fastClick = true;
@@ -202,7 +201,6 @@ export default {
                     )
                   )
                     .then(data => {
-
                       if (data.token) {
                         that.$store.commit('setToken', data.token);
                         uni.setStorageSync('token', data.token);

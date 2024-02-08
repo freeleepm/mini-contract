@@ -1,13 +1,6 @@
-<!--
- * @Description:
- * @LastEditTime: 2022-09-15 15:56:22
- * @LastEditors: 刘仁秀
- * @Author: 刘仁秀
- * @Date: 2022-09-02 15:21:16
--->
 <template>
   <view class="page-base">
-    <view style="height: 76rpx">
+    <!-- <view style="height: 76rpx">
       <view class="v-tabs-box flex-ct">
         <v-tabs
           style="width: 80%"
@@ -29,7 +22,6 @@
             份
           </view>
           <view>总量</view>
-          <!-- <view>{{ current==0?'个人套餐总量':'企业套餐总量' }}</view> -->
         </view>
         <view class="line"></view>
         <view class="count-item">
@@ -39,6 +31,17 @@
           </view>
           <view>剩余量</view>
         </view>
+      </view>
+    </view>
+  -->
+    <view class="flex-fs top-box">
+      <image src="/static/IconCon.png" class="icon"></image>
+      <view class="bold">
+        剩余电子合同
+        <text class="color-error">
+          {{ showMealCount.surplusShareCount || 0 }}
+        </text>
+        份
       </view>
     </view>
 
@@ -135,6 +138,9 @@ export default {
     }
     that.init();
   },
+  onShow() {
+    this.init();
+  },
   computed: {
     noData() {
       return !this.loading && !this.list.length;
@@ -143,7 +149,7 @@ export default {
       return !this.noMore && !this.loading && this.list.length > 5;
     },
     showMealCount() {
-      return this.MealCount ? this.MealCount.find(i => i.type === this.current) : '';
+      return this.MealCount ? this.MealCount.find(i => i.type === Number(this.current)) : '';
     },
   },
   methods: {
@@ -226,6 +232,24 @@ export default {
   margin-top: 300rpx;
   width: 100%;
 }
+
+.top-box {
+  width: 686rpx;
+  border-radius: 12rpx;
+  background: white;
+  height: 120rpx;
+  padding: 0 28rpx;
+  margin-top: 32rpx;
+  .icon {
+    width: 48rpx;
+    height: 48rpx;
+    margin-right: 20rpx;
+  }
+  .bold {
+    font-size: 36rpx;
+  }
+}
+
 .count-box {
   background: linear-gradient(to bottom, #ffffff, #f5f5f5);
   width: 100%;

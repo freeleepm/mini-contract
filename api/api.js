@@ -47,6 +47,13 @@ let userInfo = {
       method: 'GET',
     });
   },
+  urgeContract: id => {
+    // 合同详情
+    return request({
+      url: `/v5/contract/${id}/urgeContract`,
+      method: 'POST',
+    });
+  },
   balanceQuery: () => {
     // 合同详情
     return request({

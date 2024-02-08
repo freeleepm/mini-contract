@@ -1,6 +1,6 @@
 <template>
   <uni-popup ref="popupRef" type="bottom" class="color-base" :safe-area="false">
-    <view class="identity">
+    <view class="identity" @click.stop>
       <!-- padding-safe -->
       <view class="flex-sb text-32">
         <view class="color-base-minor" @click="$refs.popupRef.close()">取消</view>
@@ -46,10 +46,11 @@
             color="#3277FF"
           ></uni-icons>
         </view>
-
-
       </view>
-      <view @click="toCreate(`/pages/user/company/Certification?originType=${backType}`, 1)" class="text-26 color-primary add-company">
+      <view
+        @click="toCreate(`/pages/user/company/Certification?originType=${backType}`, 1)"
+        class="text-26 color-primary add-company"
+      >
         <!-- :class="{
         disabled: !userInfo.authentication,
       }" -->
@@ -69,10 +70,10 @@ export default {
       type: Boolean,
       default: true,
     },
-    backType:{
-      type:String,
-      default:''
-    }
+    backType: {
+      type: String,
+      default: '',
+    },
   },
   data() {
     return {
@@ -104,11 +105,14 @@ export default {
         });
     },
     comfirmIdentity() {
-      console.log('this.contract[this.contractCheckedIndex] :', this.contract[this.contractCheckedIndex])
+      console.log(
+        'this.contract[this.contractCheckedIndex] :',
+        this.contract[this.contractCheckedIndex]
+      );
       const companyId =
         this.contractCheckedIndex === -1 ? '' : this.contract[this.contractCheckedIndex].companyId;
       userInfoApi
-        .IdentitySwitching({companyId, identityType: companyId ? 1 : 0})
+        .IdentitySwitching({ companyId, identityType: companyId ? 1 : 0 })
         .then(res => {
           this.uinfo();
           this.$refs.popupRef.close();
@@ -148,11 +152,12 @@ export default {
 .identity {
   box-sizing: border-box;
   padding: 44rpx 32rpx 100rpx 32rpx;
+  padding-bottom: calc(constant(safe-area-inset-bottom) + 32rpx);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 32rpx);
   min-height: 520rpx;
   background: #ffffff;
   border-radius: 12rpx 12rpx 0px 0px;
   position: relative;
-
   .list {
     overflow-y: scroll;
     max-height: 40vh;
@@ -179,12 +184,7 @@ export default {
     text-align: center;
     font-size: 32rpx;
     font-weight: bold;
-    border-top: 1px dotted;
-    position: fixed;
-    bottom: 0;
-    left: 50%;
-    transform: translate(-50%, 0);
-    width: 100%;
+    border-top: 1px dashed;
     padding: 16rpx 0;
     z-index: 5;
     background: #fff;

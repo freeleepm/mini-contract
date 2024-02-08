@@ -26,7 +26,7 @@ export function detail(data) {
 export function remove(data) {
   // 移除企业
   return request({
-    url: `/company/v1/` + data.id + '?verificationCode=' + data.verificationCode,
+    url: `/company/v1/${data.id}?verificationCode=${data.verificationCode}`,
     method: 'DELETE',
     data,
   });
@@ -88,7 +88,7 @@ export function companyAuth(data) {
 export function sign(data) {
   // 合同签订
   return request({
-    url: `/v4/contract`,
+    url: `/v5/contract`,
     method: 'POST',
     data,
   });

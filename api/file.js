@@ -58,7 +58,7 @@ export function templateCategory(templateId) {
 export function createByTemplate(templateId) {
   // 基于合同模板发起合同签署
   return request({
-    url: `/v4/contract/create-by-template`,
+    url: `/v5/contract/create-by-template`,
     method: 'GET',
   });
 }
@@ -67,6 +67,14 @@ export function addTempStorage(data) {
   // 临时存储通过模板发起合同参数
   return request({
     url: `/v1/contract/template/temp-storage`,
+    method: 'POST',
+    data
+  });
+}
+export function imagesToPdf(data) {
+  // 图片转pdf
+  return request({
+    url: `/v1/contract-tools/images-to-pdf`,
     method: 'POST',
     data
   });

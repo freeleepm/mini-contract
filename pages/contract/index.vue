@@ -17,6 +17,7 @@
       <BaseEmpty massage="暂无数据~"></BaseEmpty>
       <view class="btn-primary" @click="navigateTo('/pages/contract/sign/index')">签署合同</view>
     </view>
+    <tabbar />
   </view>
 </template>
 
@@ -37,56 +38,56 @@ export default {
           id: 0,
           state: '',
           self: '',
-          showStartWithMe:false,
+          showStartWithMe: false,
           name: '全部',
         },
         {
           id: 7,
           state: '',
           self: '',
-          showStartWithMe:true,
+          showStartWithMe: true,
           name: '我发起的',
         },
         {
           id: 1,
           state: 0,
           self: 1,
-          showStartWithMe:false,
+          showStartWithMe: false,
           name: '待我处理',
         },
         {
           id: 2,
           state: 0,
           self: 0,
-          showStartWithMe:false,
+          showStartWithMe: false,
           name: '待他人处理',
         },
         {
           id: 3,
           state: 1,
           self: '',
-          showStartWithMe:false,
+          showStartWithMe: false,
           name: '已完成',
         },
         {
           id: 4,
           state: 2,
           self: '',
-          showStartWithMe:false,
+          showStartWithMe: false,
           name: '已拒签',
         },
         {
           id: 5,
           state: 3,
           self: '',
-          showStartWithMe:false,
+          showStartWithMe: false,
           name: '已撤销',
         },
         {
           id: 6,
           state: 4,
           self: '',
-          showStartWithMe:false,
+          showStartWithMe: false,
           name: '已逾期',
         },
       ],
@@ -95,7 +96,7 @@ export default {
         pageSize: 10,
         state: '', // 0待处理,1已完成,2已拒签,3已撤销,4已逾期
         self: '', // 0查询他人,1查询自己,不传查询所有
-        showStartWithMe:false
+        showStartWithMe: false,
       },
       hasMore: false,
       loading: true,

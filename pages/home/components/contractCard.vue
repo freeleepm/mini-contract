@@ -1,10 +1,11 @@
 <template>
   <navigator :url="'/pages/contract/detail/index?id=' + item.id" hover-class="none" class="item">
-    <view class="title flex-sb">
+    <view class="title">
+      <image src="/static/icon-file.png" class="icon"></image>
       <view class="name flex-1 text-28 bold">
         {{ item.name || '' }}
       </view>
-      <view class="tag-status text-26 flex-ct" :class="'status-color-' + item.state">
+      <view class="tag-status text-24 flex-ct" :class="'status-color-' + item.state">
         {{ item.state | stateHandle }}
       </view>
       <!-- <contractState :state="item.state" type="primary" /> -->
@@ -54,6 +55,12 @@ export default {
     background-color: #f7f9ff;
     border-bottom: 1px solid rgba(230, 230, 230, 0.5);
     overflow: hidden;
+    display: flex;
+    .icon {
+      width: 40rpx;
+      height: 40rpx;
+      margin-right: 12rpx;
+    }
     .name {
       white-space: break-spaces;
       word-break: break-all;
