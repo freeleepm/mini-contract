@@ -2,7 +2,7 @@
   ===============
 
 
-当前最新版本：v1.9.0 (发布时间：2024-01-03)
+当前最新版本：v2.0.0 (发布时间：2024-02-08)
 
 
 
@@ -10,7 +10,7 @@
 
 [![输入图片说明](https://img.shields.io/static/v1?label=Author&message=重庆弈联数聚科技有限公司&color=blue)](https://www.yi-types.com)
 
-[![输入图片说明](https://img.shields.io/static/v1?label=version&message=1.9.1&color=green)](https://www.yi-types.com)
+[![输入图片说明](https://img.shields.io/static/v1?label=version&message=2.0.0&color=green)](https://www.yi-types.com)
 
 
 
@@ -167,7 +167,7 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 
 ### 功能模块
 
-```
+```html
 业务功能
 ├─登录注册
 │  ├─账号方式
@@ -216,6 +216,8 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 #### 用户端（移动端）
 > 首页能快速的发起合同的签署，签署人或者公司支持多选择（就是支持多人或者多公司同时签署），同时还能设置本次签署合同的有效果期，从而避免地一些法律风险
 
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_12.png)
+
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_03.png)
 
 
@@ -229,6 +231,15 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 > 登录应用之后能查看到相应的功能，企业管理，印章管理，签署的文件管理，签署额度购买等等 
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_05.png)
+
+
+
+>  用户或者企业可自行设置和上传自己的个人性的签名，骑缝章
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_13.png)
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_14.png)
+
 
 
 
@@ -262,6 +273,30 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_11.png)
 
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_15.png)
+
+
+
+> 批量发起签署，一对多，生成多份合同，针对一方数据固定，另外一方或者多方不固定，统一设置之后，同时批量生成多份合同，提升发起合同效率（针对一些人力资源行业可以一个公司主体不变，对应多个其它方签署）
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_19.png)
+
+
+
+
+
+> 为了快速创建合同，可通通过快速生成一份在线合同，免去下载合同之后又上传的麻烦
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_16.png)
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_17.png)
+
+
+
+
+> 在未签署合同的时候，还可以支持临时合同文件的管理和上传（您可以拿我们的来当成云盘了，哈哈）
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_18.png)
 
 
 
@@ -413,6 +448,21 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_13.png)
 
 ### 最近更新
+
+##### V2.0.0 更新日志
+
+- [x] 【新增】新增全新风格的页面，提升整体用户体验
+- [x] 【新增】支持一对多批量发起合同，提升发起效率（用于一个主体对应多个不同签署人的业务地场景）
+- [x] 【新增】支持个性签名，用户可定义自己的签名样式
+- [x] 【新增】智能快速合同生成（通过手机拍照或者上传图片即可快速生成一份在线合同）
+- [x] 【新增】草稿箱，解决因为某些事情打断了签署工作
+- [x] 【新增】发起人催办，确保合同能在有效期内完成签署
+- [x] 【新增】文件管理（用于临时保存文件，您也可以拿我们的来当云盘了，哈哈）
+- [x] 【新增】合同详情页面便捷分享按钮，能快速分享给待签署人
+- [x] 【优化】其它体验
+- [x] 【修复】已知bug
+
+
 
 ##### V1.5.5 更新日志
 
