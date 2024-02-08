@@ -1,11 +1,11 @@
 Mini-Contract(Free and Open Source Electronic Contracts)
 ===============
 
-Current Latest Version: v1.5.5 (Release Date: 2023-12-14)
+Current Latest Version: v2.0.0 (Release Date: 2024-02-08)
 
 [![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)
 [![输入图片说明](https://img.shields.io/static/v1?label=Author&message=重庆弈联数聚科技有限公司&color=blue)](https://wwww.yi-types.com)
-[![输入图片说明](https://img.shields.io/static/v1?label=version&message=1.5.5&color=green)](https://wwww.yi-types.com)
+[![输入图片说明](https://img.shields.io/static/v1?label=version&message=2.0.0&color=green)](https://wwww.yi-types.com)
 
 
 #### Introduction
@@ -204,6 +204,12 @@ Project Screenshots
 
 > The homepage allows for quick initiation of contract signing, supporting multiple selections of signatories or companies (i.e., simultaneous signing by multiple individuals or companies), and also enables setting the validity period of the contract for this signing, thereby avoiding potential legal risks.
 
+
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_12.png)
+
+
+
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_03.png)
 
 
@@ -220,6 +226,14 @@ Project Screenshots
 
 
 
+> Users or businesses can independently set and upload their own personalized signatures and seals.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_13.png)
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_14.png)
+
+
+
 > Before signing, individuals are required to complete "real-name authentication," "ID card verification," "facial recognition," and other processes to ensure the authenticity of the information.
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_06.png)
@@ -229,6 +243,46 @@ Project Screenshots
 > In the signing details, you can view the signing status information of the contract signatories and all parties involved. The signing parties can also click to sign the document, with signing methods including "handwritten signature" and "seal" options. 
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_07.png)
+
+
+
+> As an enterprise administrator, you have the ability to manage members of the organization and grant them the authority to sign documents
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_09.png)
+
+
+
+> After completing the real-name authentication process for the enterprise, you can automatically generate compliant CA certificate signatures. As an enterprise administrator, you can set different signing permissions for each member.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_10.png)
+
+
+
+> The platform provides a wide range of rich contract templates for your use, and we regularly update these templates. As a developer, you can enjoy these templates for free.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_11.png)
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_15.png)
+
+
+
+> Batch initiating signature, one-to-many, generating multiple contracts, with fixed data for one party and variable data for the other party/parties. After setting the parameters, multiple contracts can be generated simultaneously, improving the efficiency of initiating contracts (applicable to industries such as human resources where one company entity remains the same but multiple other parties need to sign).
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_19.png)
+
+
+
+> To quickly create contracts, you can use the option of generating an online contract directly, eliminating the hassle of downloading and then uploading the contract.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_16.png)
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_17.png)
+
+
+
+> Even before signing the contract, it is possible to support the management and uploading of temporary contract files (you can think of it as using our platform as a cloud storage, haha).
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_18.png)
 
 
 
@@ -242,6 +296,56 @@ Project Screenshots
 > The web-based user interface allows users to sign and view their contracts in the backend.
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_01.png)
+
+
+
+> On the web user interface, there is support for signing contracts online. By clicking on "Sign," you will be redirected to the corresponding signing page.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_02.png)
+
+
+
+> In English, it means "Handwritten signature and upload your unique personal signature information."
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_03.png)
+
+>  Web user interface supports switching between different identities, such as "personal" and "business".
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_04.png)
+
+
+
+> As a business manager, you can also manage members on the web platform.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_05.png)
+
+
+
+> Adding a member can be done by entering their "phone number" and "name".
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_06.png)
+
+
+
+>  On the web platform, you can also perform queries based on the status of contract signings, such as "Initiated by me", "Pending my action", "Pending others' action", "Completed", "Rejected", "Cancelled", and "Overdue".
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_07.png)
+
+
+
+> As a company manager or an individual, you can view all the signed and archived contracts on the web platform. It supports online viewing, downloading, and other operations.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_08.png)
+
+
+
+> The web management portal also supports operations such as changing accounts and modifying passwords.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_09.png)
+
+
+
+
 
 #### Platform Interface
 
@@ -287,56 +391,104 @@ Project Screenshots
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_07.png)
 
+
+
+***Sideways classification***
+
+> The new operations platform allows for the independent operation of contract templates, making platform management more flexible and convenient. Once the operations platform establishes contract templates, all contract users and businesses can benefit from the pre-set templates provided by the operations platform.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_08.png)
+
+
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_09.png)
+
+
+
+>  When setting up the contract template, it is possible to pre-set the signatory roles as "individual" or "enterprise". Currently, a single template supports up to 10 signatory objects.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_10.png)
+
+
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_12.png)
+
+
+
+
+
+> The contract template supports dynamically setting parameter information inside it, and it can also pre-set some parameter information in advance, greatly increasing the flexibility of the contract.
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_13.png)
+
+
+
 ### Updates Logs
+
+##### v 2.0.0
+
+[New] Introducing a brand new page style, enhancing the overall user experience.
+
+- [x] **[New]** Support for one-to-many bulk contract initiation, improving efficiency in scenarios where a single entity corresponds to multiple signatories.
+- [x] **[New]** Support for personalized signatures, allowing users to define their own signature styles.
+- [x] **[New]** Intelligent rapid contract generation, enabling quick generation of online contracts through mobile phone camera or image upload.
+- [x] **[New]** Drafts feature to address interruptions during the signing process.
+- [x] **[New]** Initiator reminders to ensure contracts are signed within the valid period.
+- [x] **[New]** File management feature for temporary file storage, doubling as a cloud drive.
+- [x] **[New]**  Convenient share button on the contract details page for quick sharing with signatories.
+- [x] **[Optimization]** Other user experience improvements.
+- [x] **[Bug Fix]** Known bugs have been addressed.
+
+
 
 ##### v 1.5.5 
 
-- [x]  [New] Added "ID Card Comparison" in the real-name authentication process
-- [x]  [New] Send SMS notifications to signing parties upon completion
-- [x]  [New] Support for signing parties who are not the initiators (can delegate contract initiation)
-- [x]  [Optimization] Improved experience for switching between corporate and individual ID cards
-- [x] [Optimization] Enhanced user experience
-- [x] [Bug Fix] Fixed known issues
+- [x] **[New]** Added "ID Card Comparison" in the real-name authentication process
+- [x] **[New]** Send SMS notifications to signing parties upon completion
+- [x] **[New]** Support for signing parties who are not the initiators (can delegate contract initiation)
+- [x] **[Optimization]** Improved experience for switching between corporate and individual ID cards
+- [x] **[Optimization]** Enhanced user experience
+- [x] **[Bug Fix]**  Fixed known issues
 
 
 
 #####  v 1.5.0
-- [x]  [New] Added non-evidence chain contract signing (suitable for daily internal approval within enterprises)
-- [x]  [Optimization] Seal management
-- [x]  [Optimization] Corporate real-name authentication logic
-- [x]  [Optimization] Evidence chain multi-channel signing logic
-- [x]  [Upgrade] Third-party plugin version
-- [x]  [Optimization] Privacy protection agreement content
-- [x]  [Optimization] User experience
-- [x] [Bug Fix] Fixed known issues
+- [x] **[New]** Added non-evidence chain contract signing (suitable for daily internal approval within enterprises)
+- [x] **[Optimization]** Seal management
+- [x] **[Optimization]** Corporate real-name authentication logic
+- [x] **[Optimization]**  Evidence chain multi-channel signing logic
+- [x] **[[Upgrade]**  Third-party plugin version
+- [x] **[Optimization]** Privacy protection agreement content
+- [x] **[Optimization]** User experience
+- [x] **[Bug Fix]**  Fixed known issues
 
 
 
 
 ##### v 1.1.2
 
-- [x]  [New] Added support for backend management to view enterprise contract information
-- [x]  [Optimization] Improved user experience
-- [x]  [Bug Fix] Fixed known issues
+- [x] **[New]**  Added support for backend management to view enterprise contract information
+- [x] **[Optimization]** Improved user experience
+- [x] **[Bug Fix]**   Fixed known issues
 
 
 
 
 ##### v 1.1.1 
 
-- [x] [Optimization] Adjusted the number of electronic contract packages for enterprises and individuals
-- [x]  [Optimization] Improved user experience
-- [x]  [Bug Fix] Fixed known issues
+- [x] **[Optimization]** Adjusted the number of electronic contract packages for enterprises and individuals
+- [x] **[Optimization]** Improved user experience
+- [x] **[Bug Fix]**  Fixed known issues
 
 
 
 ##### v 1.1.0 
 
-- [x]  [New] Added a variety of contract templates
-- [x]  [New] In-app contract signing for improved user experience
-- [x]  [New] SMS notifications for signatories to avoid delayed communication
-- [x]  [Optimization] Enhanced user experience
-- [x]  [Bug Fix] Fixed known issues
+- [x] **[New]** Added a variety of contract templates
+- [x] **[New]** In-app contract signing for improved user experience
+- [x] **[New]** SMS notifications for signatories to avoid delayed communication
+- [x] **[Optimization]** Enhanced user experience
+- [x] **[Bug Fix]**  Fixed known issues
 
 
 
