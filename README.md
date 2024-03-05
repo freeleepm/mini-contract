@@ -14,7 +14,7 @@
 
 
 
-#### 介绍
+### 介绍
 
 
 
@@ -50,6 +50,26 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 
 1. 仅允许用于个人学习研究使用；
 2. 禁止将本开源的代码和资源进行任何形式任何名义的出售。
+
+
+
+### 业务场景
+
+1. 人力派遣公司
+
+   > 频繁签署合同，纸质合同成本高，批量签署合同的业务场景
+
+2. 金融公司
+
+   > 通过线上完成合同签署，留存有及时有效的合同管理合同
+
+3. 市场销售签单公司
+
+   > 对一些网络销售的产品进行销售的时候，需要快速达成合作，立刻签署合同的场景
+
+4. 租赁公司
+
+   > 需要对一些线下租赁公司进行快速合同签署，线上合同管理，查询和合同到期自动提醒的场景
 
 
 
@@ -445,6 +465,14 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_13.png)
 
+
+
+
+
+
+
+
+
 ### 最近更新
 
 ##### V2.0.0 更新日志
@@ -532,6 +560,19 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 如果你有任何对 Mini-Contract 产品上的想法、意见或建议，或商务上的合作需求，请扫码添加 Mini-Contract 项目团队进一步沟通：
 ![输入图片说明](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/shawn_huangxing_qrcode.png)
 
-## 捐赠
+## 产品认可
+
+> 从产品对外开源之后，得到了特别多朋友们的关注和认可最终我们也达成了一些深度的合作，目前我们已经合作超过200+以上的合作伙伴，这当中有“企业”的朋友也有一些“个人独立开发者”
+
+
+![输入图片说明](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/img/hp_001.png)
+![输入图片说明](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/img/hp_002.png)
+![输入图片说明](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/img/hp_003.png)
+![输入图片说明](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/img/hp_004.png)
+![输入图片说明](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/img/hp_005.png)
+
+
+
+## 给个鼓励
 
 如果觉得还不错，请 Watching，Starred，Fork 吧 ☺

@@ -42,6 +42,26 @@ For commercial use, please contact the technical team below for licensing detail
 
 
 
+### Business Scenarios
+
+1. Human Resource Dispatch Company
+
+   > Facing the need for frequent contract signings, the high cost of paper contracts, and the requirement for bulk contract signings.
+
+2. Financial Company
+
+   > Seeking to complete contract signings online, ensuring the retention of timely and effective contract management.
+
+3. Sales Sign-off Company
+
+   > Engaged in the rapid collaboration and immediate signing of contracts when selling products through online channels in the market.
+
+4. Leasing Company
+
+   > Requiring quick contract signings for offline leasing companies, along with online contract management, query functionalities, and automatic reminders for contract expiration.
+
+
+
 
 Directory Structure
 -----------------------------------
