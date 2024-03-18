@@ -553,7 +553,7 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 ### 交流合作
 
 如果你想加入我们的开源交流群，请扫码添加 Mini-Contract 项目团队，加入群聊：
-![输入图片说明](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/shawn_company_qrcode.png)
+![输入图片说明](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/shawn_huangxing_qrcode.png)
 
 
 
