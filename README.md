@@ -318,6 +318,14 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 
 
 
+> 同时目前支持批量签署合同能力（主要是针对在一对多的签署场景当中，如：甲方信息固定，乙方信息不固定的业务场景）
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_20.png)
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_21.png)
+
+
+
 > 参与签署的人可以收到签署的短信信息提醒，在有效期内点击链接可以到H5或者小程序里面进行签署，所有签署人都签署完成之后有短信通知提示
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_08.png)
@@ -467,6 +475,16 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 
 
 
+### 操作演示（小程序端）
+
+> 证据链方式
+
+<video width="320" height="700" controls> <source src="https://leepm.oss-cn-beijing.aliyuncs.com/public-images/2024040902.mp4" type="video/mp4"> </video>
+
+> 非证据链方式
+
+<video width="320" height="700" controls> <source src="https://leepm.oss-cn-beijing.aliyuncs.com/public-images/2024040901.mp4" type="video/mp4"> </video>
+
 
 
 
@@ -547,6 +565,11 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 * 在线演示：
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_qrcode.png)
+
+
+### Star走势图
+
+[![Star History Chart](https://api.star-history.com/svg?repos=freeleepm/mini-contract&type=Date)](https://star-history.com/#freeleepm/mini-contract&Date)
 
 
 

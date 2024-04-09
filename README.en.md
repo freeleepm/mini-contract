@@ -306,6 +306,16 @@ Project Screenshots
 
 
 
+> Simultaneously, the current capability supports batch contract signing (primarily targeting business scenarios where one party's information remains constant while the other party's information varies, such as scenarios with a fixed Party A and a variable Party B).
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_20.png)
+
+![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_21.png)
+
+
+
+
+
 > Signatories involved in the contract can receive SMS reminders about the signing process. Within the validity period, they can click the link to access the H5 or mini program to complete the signing. Once all signatories have completed the signing, a text message notification will be sent to inform them.
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_08.png)
@@ -440,6 +450,18 @@ Project Screenshots
 > The contract template supports dynamically setting parameter information inside it, and it can also pre-set some parameter information in advance, greatly increasing the flexibility of the contract.
 
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_13.png)
+
+
+
+### Operation Demonstration (Mini Program version)
+
+> Chain of Evidence
+
+<video width="320" height="700" controls> <source src="https://leepm.oss-cn-beijing.aliyuncs.com/public-images/2024040902.mp4" type="video/mp4"> </video>
+
+> Non-Chain of Evidence
+
+<video width="320" height="700" controls> <source src="https://leepm.oss-cn-beijing.aliyuncs.com/public-images/2024040901.mp4" type="video/mp4"> </video>
 
 
 
