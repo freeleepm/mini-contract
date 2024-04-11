@@ -463,7 +463,6 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 
 > 在设置合同横版的时候，可提前设置好该模板预设好的签署方“个人”、“企业”，目前单个横版最多支持10个签署对象
 
-
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_10.png)
 ![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_12.png)
 
@@ -479,11 +478,13 @@ Mini-Contract 是基于企业实际项目经验精心打造的成果，采用简
 
 > 证据链方式
 
-<video width="320" height="700" controls> <source src="https://leepm.oss-cn-beijing.aliyuncs.com/public-images/2024040902.mp4" type="video/mp4"> </video>
+<img src="http://imgs.leepm.com/public-images/2024040902.gif" alt="show" width="300" />
+
+
 
 > 非证据链方式
 
-<video width="320" height="700" controls> <source src="https://leepm.oss-cn-beijing.aliyuncs.com/public-images/2024040901.mp4" type="video/mp4"> </video>
+<img src="http://imgs.leepm.com/public-images/2024040901.gif" alt="show" width="300" />
 
 
 

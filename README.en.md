@@ -455,13 +455,18 @@ Project Screenshots
 
 ### Operation Demonstration (Mini Program version)
 
-> Chain of Evidence
+> 证据链方式
 
-<video width="320" height="700" controls> <source src="https://leepm.oss-cn-beijing.aliyuncs.com/public-images/2024040902.mp4" type="video/mp4"> </video>
+<img src="https://leepm.oss-cn-beijing.aliyuncs.com/public-images/2024040902.gif" alt="show" />
 
-> Non-Chain of Evidence
 
-<video width="320" height="700" controls> <source src="https://leepm.oss-cn-beijing.aliyuncs.com/public-images/2024040901.mp4" type="video/mp4"> </video>
+
+> 非证据链方式
+
+<img src="https://leepm.oss-cn-beijing.aliyuncs.com/public-images/2024040901.gif" alt="show" />
+
+
+
 
 
 
