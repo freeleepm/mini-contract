@@ -1,11 +1,11 @@
 Mini-Contract(Free and Open Source Electronic Contracts)
 ===============
 
-Current Latest Version: v2.0.0 (Release Date: 2024-02-08)
+Current Latest Version: v2.0.0 (Release Date: 2024-08-20)
 
 [![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)
-[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=重庆弈联数聚科技有限公司&color=blue)](https://wwww.yi-types.com)
-[![输入图片说明](https://img.shields.io/static/v1?label=version&message=2.0.0&color=green)](https://wwww.yi-types.com)
+[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)
+[![输入图片说明](https://img.shields.io/static/v1?label=version&message=2.0.0&color=green)](https://gitee.com/leepm/mini-contract)
 
 
 #### Introduction
