@@ -1,7 +1,7 @@
 Mini-Contract(Free and Open Source Electronic Contracts)
 ===============
 
-Current Latest Version: v2.0.0 (Release Date: 2024-08-20)
+Current Latest Version: v2.10 (Release Date: 2024-08-22)
 
 [![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)
 [![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)
@@ -14,7 +14,9 @@ Current Latest Version: v2.0.0 (Release Date: 2024-08-20)
 
 <h3 align="center">Mini-Contract</h3>
 
-⭐️⭐️⭐️   Mini-Contract is an open-source product that has been separated from the commercial product "YiHetong" by "Chongqing Yeeco Technology Co., Ltd." This tool provides a comprehensive solution customized for industry-specific needs and business scenarios. It enables convenient online contract signing, ensuring security, compliance, and reliability. It builds a time-saving and efficient closed-loop service system for small and medium-sized enterprises and users, creating a worry-free legal protection system. The underlying electronic contract technology is based on "eSign" and other "contract vendors," which are nationally certified and secure.
+🔥🔥🔥  Mini-Contract is a self-developed, proprietary-free and open-source electronic contract product that offers a one-stop contract signing solution. Our product innovatively adopts two signing modes: "Evidence Chain" and "Non-Evidence Chain", supporting various functions such as online electronic signatures, electronic contracts, electronic seals, electronic contract SDK, electronic contract API, multi-party contract initiation, and interlocking seals.
+
+In terms of data security, Mini-Contract strictly adheres to regulatory compliance, independently operating and managing contracts to ensure that your contract information receives optimal protection. We provide Web-based management, H5, WeChat Mini Program platforms, and deeply personalized comprehensive customized solutions to meet your management needs in different scenarios. As a platform product, our underlying security is based on the Ant Judicial Chain, which has received national certification, ensuring safety and reliability. We support data and project privatization on-premises to reduce the risk of data leaks, while also ensuring the legality and security of contracts.
 
 
 
