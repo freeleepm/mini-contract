@@ -1,28 +1,67 @@
 Mini-Contract(Free and Open Source Electronic Contracts)
 ===============
 
-Current Latest Version: v2.1.0 (Release Date: 2024-08-22)
+Current Latest Version: v2.1.0 (Release Date: 2025-02-06)
 
-[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)
-[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)
-[![输入图片说明](https://img.shields.io/static/v1?label=version&message=2.0.0&color=green)](https://gitee.com/leepm/mini-contract)
-
-
-#### Introduction
+[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=2.1.0&color=green)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.com/freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.com/freeleepm/mini-contract)
 
 
 
 <h3 align="center">Mini-Contract</h3>
 
-🔥🔥🔥  Mini-Contract is a self-developed, proprietary-free and open-source electronic contract product that offers a one-stop contract signing solution. Our product innovatively adopts two signing modes: "Evidence Chain" and "Non-Evidence Chain", supporting various functions such as online electronic signatures, electronic contracts, electronic seals, electronic contract SDK, electronic contract API, multi-party contract initiation, and interlocking seals.
-
-In terms of data security, Mini-Contract strictly adheres to regulatory compliance, independently operating and managing contracts to ensure that your contract information receives optimal protection. We provide Web-based management, H5, WeChat Mini Program platforms, and deeply personalized comprehensive customized solutions to meet your management needs in different scenarios. As a platform product, our underlying security is based on the Ant Judicial Chain, which has received national certification, ensuring safety and reliability. We support data and project privatization on-premises to reduce the risk of data leaks, while also ensuring the legality and security of contracts.
+🚀🚀🚀 As a free and open-source product with independent intellectual property rights, Mini-Contract has always been committed to "making digital contract signing development simpler". At the same time, Mini-Contract is also an open-source electronic signature solution designed for developers. It innovatively adopts a "dual-mode engine" architecture and meets the needs of all scenarios from judicial-level contract signing to lightweight collaboration through a modular design. As the first open-source electronic signature platform to support both evidence chain and non-evidence chain dual modes, we have helped over 100 enterprise customers achieve digital transformation of their contract signing processes.
 
 
 
-### Why Choose Mini-Contract ?
+#### Dual-mode Engine (Flexible Scenario Adaptation)
 
-Mini-Contract aggregates various electronic contract solution providers in the market, so you don't need to integrate with each contract vendor one by one, saving you time and effort. We have already handled this integration for you, and you only need a single interface to access all our service providers. Additionally, you can enjoy our interface channel prices. Mini-Contract is the result of our real-world project experience, offering concise code, the latest technology stack, and is suitable for front-end developers with various needs. It is also the preferred choice for small and medium-sized enterprises, as it can help reduce over 80% of the repetitive work in front-end projects. If you don't mind using our user interface style, you can quickly launch your project without worrying about copyright issues.
+**Judicial-grade Evidence Chain Mode**
+Built on Ant Judicial Chain's blockchain-based evidence storage system, generates timestamped and digital-fingerprinted evidence reports for each contract, ensuring compliance with the "Electronic Signature Law". Certified by the National Industrial Information Security Development Research Center, particularly suitable for high-value scenarios like financial lending, HR contracts, and IP agreements, with millisecond-level response time for evidence queries.
+
+
+
+**Lightweight Non-evidence Chain Mode**
+Utilizes self-developed distributed storage technology with smart routing algorithms that reduce API call costs by 60%. Developers can achieve full lifecycle contract management without third-party evidence storage integration, ideal for high-frequency scenarios like internal approvals, supplier reconciliations, and rapid signings, supporting millions of daily signing requests.
+
+
+
+#### Third-party developer-friendly
+
+**Plug-and-Play Toolkit**
+* Cloud-hosted e-signature/seal services
+* Multi-party contract collaboration (supports 50+ signatories parallel operation)
+* Smart perforated seal generation engine (pixel-level positioning accuracy)
+* Omni-channel signing pages (Web/H5/Mini Program adaptive)
+
+**Deep Open Capabilities**
+
+* Multi-language SDKs (Java/Python/Go)
+* Rich open API interfaces
+
+
+
+### Why Choose Mini-Contract?
+
+**All-in-One Integration Solution**
+We integrate mainstream e-contract service providers (including but not limited to Fadada, eSign, Junzisign) with standardized API integration solutions. Developers can quickly connect multiple services through unified interfaces without separate vendor integrations, saving over 90% integration time. Pre-built vendor certification system helps accelerate compliance review.
+
+
+
+**Cost Optimization Advantages**
+Through bulk-purchasing scale effects, we offer more competitive interface pricing than official channels (15-30% average discount). Supports on-demand vendor combinations to avoid single-vendor lock-in risks, ensuring truly controllable costs.
+
+
+
+**Enterprise-Grade Tech Architecture**
+Built with Vue3 + TypeScript + Pinia:
+- Modular design: On-demand loading of vendor features
+- Responsive layout: Perfect PC/mobile dual-screen adaptation
+- Configuration-driven development: 90% common requirements achievable through configuration
+- Full TypeScript support: Comprehensive TS type definitions and API documentation
+
+**Rapid Deployment (Out-of-Box Solutions)**
+- Standardized UI component library: 30+ business-validated contract template components (commercially usable under MIT license)
+- Full-process monitoring: End-to-end tracking from contract creation to archiving with evidence storage
 
 
 
@@ -46,21 +85,12 @@ For commercial use, please contact the technical team below for licensing detail
 
 ### Business Scenarios
 
-1. Human Resource Dispatch Company
+* **HR Companies:** Frequent contract signing scenarios with high costs of paper contracts, requiring bulk contract signing solutions  
+* **Financial Institutions:** Online contract signing requirements with needs for maintaining timely and valid contract management that meets legal compliance  
 
-   > Facing the need for frequent contract signings, the high cost of paper contracts, and the requirement for bulk contract signings.
+* **Sales & Marketing Companies:** Scenarios requiring quick partnership establishment and immediate contract signing for online product sales collaborations  
 
-2. Financial Company
-
-   > Seeking to complete contract signings online, ensuring the retention of timely and effective contract management.
-
-3. Sales Sign-off Company
-
-   > Engaged in the rapid collaboration and immediate signing of contracts when selling products through online channels in the market.
-
-4. Leasing Company
-
-   > Requiring quick contract signings for offline leasing companies, along with online contract management, query functionalities, and automatic reminders for contract expiration.
+* **Leasing Companies:** Needs for rapid contract signing with offline tenants, online contract management, query capabilities, and automatic renewal reminder systems  
 
 
 
@@ -216,9 +246,7 @@ Project Screenshots
 ----
 
 
-
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_01.png)
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_02.png)
+![](.images/yihetong_02.png)
 
 
 
@@ -228,91 +256,91 @@ Project Screenshots
 
 
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_12.png)
+![](.images/yihetong_12.png)
 
 
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_03.png)
+![](.images/yihetong_03.png)
 
 
 
 > As an enterprise, you need to complete "enterprise authentication" and "legal representative real-name authentication" before signing. Additionally, if the quota is used up during the usage, you can purchase more quota on your own.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_04.png)
+![](.images/yihetong_04.png)
 
 
 
 > After logging into the application, you can access various features such as enterprise management, seal management, document signing management, signing quota purchase, and more.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_05.png)
+![](.images/yihetong_05.png)
 
 
 
 > Users or businesses can independently set and upload their own personalized signatures and seals.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_13.png)
+![](.images/yihetong_13.png)
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_14.png)
+![](.images/yihetong_14.png)
 
 
 
 > Before signing, individuals are required to complete "real-name authentication," "ID card verification," "facial recognition," and other processes to ensure the authenticity of the information.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_06.png)
+![](.images/yihetong_06.png)
 
 
 
 > In the signing details, you can view the signing status information of the contract signatories and all parties involved. The signing parties can also click to sign the document, with signing methods including "handwritten signature" and "seal" options. 
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_07.png)
+![](.images/yihetong_07.png)
 
 
 
 > As an enterprise administrator, you have the ability to manage members of the organization and grant them the authority to sign documents
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_09.png)
+![](.images/yihetong_09.png)
 
 
 
 > After completing the real-name authentication process for the enterprise, you can automatically generate compliant CA certificate signatures. As an enterprise administrator, you can set different signing permissions for each member.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_10.png)
+![](.images/yihetong_10.png)
 
 
 
 > The platform provides a wide range of rich contract templates for your use, and we regularly update these templates. As a developer, you can enjoy these templates for free.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_11.png)
+![](.images/yihetong_11.png)
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_15.png)
+![](.images/yihetong_15.png)
 
 
 
 > Batch initiating signature, one-to-many, generating multiple contracts, with fixed data for one party and variable data for the other party/parties. After setting the parameters, multiple contracts can be generated simultaneously, improving the efficiency of initiating contracts (applicable to industries such as human resources where one company entity remains the same but multiple other parties need to sign).
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_19.png)
+![](.images/yihetong_19.png)
 
 
 
 > To quickly create contracts, you can use the option of generating an online contract directly, eliminating the hassle of downloading and then uploading the contract.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_16.png)
+![](.images/yihetong_16.png)
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_17.png)
+![](.images/yihetong_17.png)
 
 
 
 > Even before signing the contract, it is possible to support the management and uploading of temporary contract files (you can think of it as using our platform as a cloud storage, haha).
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_18.png)
+![](.images/yihetong_18.png)
 
 
 
 > Simultaneously, the current capability supports batch contract signing (primarily targeting business scenarios where one party's information remains constant while the other party's information varies, such as scenarios with a fixed Party A and a variable Party B).
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_20.png)
+![](.images/yihetong_20.png)
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_21.png)
+![](.images/yihetong_21.png)
 
 
 
@@ -320,60 +348,60 @@ Project Screenshots
 
 > Signatories involved in the contract can receive SMS reminders about the signing process. Within the validity period, they can click the link to access the H5 or mini program to complete the signing. Once all signatories have completed the signing, a text message notification will be sent to inform them.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_08.png)
+![](.images/yihetong_08.png)
 
 
 #### User Interface (Web)
 
 > The web-based user interface allows users to sign and view their contracts in the backend.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_01.png)
+![](.images/yihetong_pc_01.png)
 
 
 
 > On the web user interface, there is support for signing contracts online. By clicking on "Sign," you will be redirected to the corresponding signing page.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_02.png)
+![](.images/yihetong_pc_02.png)
 
 
 
 > In English, it means "Handwritten signature and upload your unique personal signature information."
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_03.png)
+![](.images/yihetong_pc_03.png)
 
 >  Web user interface supports switching between different identities, such as "personal" and "business".
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_04.png)
+![](.images/yihetong_pc_04.png)
 
 
 
 > As a business manager, you can also manage members on the web platform.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_05.png)
+![](.images/yihetong_pc_05.png)
 
 
 
 > Adding a member can be done by entering their "phone number" and "name".
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_06.png)
+![](.images/yihetong_pc_06.png)
 
 
 
 >  On the web platform, you can also perform queries based on the status of contract signings, such as "Initiated by me", "Pending my action", "Pending others' action", "Completed", "Rejected", "Cancelled", and "Overdue".
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_07.png)
+![](.images/yihetong_pc_07.png)
 
 
 
 > As a company manager or an individual, you can view all the signed and archived contracts on the web platform. It supports online viewing, downloading, and other operations.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_08.png)
+![](.images/yihetong_pc_08.png)
 
 
 
 > The web management portal also supports operations such as changing accounts and modifying passwords.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_pc_09.png)
+![](.images/yihetong_pc_09.png)
 
 
 
@@ -385,43 +413,43 @@ Project Screenshots
 
 > Gain insights into basic information about all users on the contract platform and aggregate and summarize data.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_01.png)
+![](.images/yihetong_admin_01.png)
 
 ***Personal Certification***
 
 > The platform can view desensitized basic information for all personal certifications.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_02.png)
+![](.images/yihetong_admin_02.png)
 
 ***Company Certification***
 
 > The platform can view desensitized basic information for all company certifications.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_03.png)
+![](.images/yihetong_admin_03.png)
 
 ***Sales Orders***
 
 > The platform can view all contract sales information.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_04.png)
+![](.images/yihetong_admin_04.png)
 
 ***Service Usage***
 
 > The platform can view all contract usage and consumption information.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_05.png)
+![](.images/yihetong_admin_05.png)
 
 ***Pricing Settings***
 
 > The platform can set prices based on contract operational needs.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_06.png)
+![](.images/yihetong_admin_06.png)
 
 ***Account Management***
 
 > The platform can configure user permissions based on different roles.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_07.png)
+![](.images/yihetong_admin_07.png)
 
 
 
@@ -429,21 +457,21 @@ Project Screenshots
 
 > The new operations platform allows for the independent operation of contract templates, making platform management more flexible and convenient. Once the operations platform establishes contract templates, all contract users and businesses can benefit from the pre-set templates provided by the operations platform.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_08.png)
+![](.images/yihetong_admin_08.png)
 
 
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_09.png)
+![](.images/yihetong_admin_09.png)
 
 
 
 >  When setting up the contract template, it is possible to pre-set the signatory roles as "individual" or "enterprise". Currently, a single template supports up to 10 signatory objects.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_10.png)
+![](.images/yihetong_admin_10.png)
 
 
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_12.png)
+![](.images/yihetong_admin_12.png)
 
 
 
@@ -451,7 +479,7 @@ Project Screenshots
 
 > The contract template supports dynamically setting parameter information inside it, and it can also pre-set some parameter information in advance, greatly increasing the flexibility of the contract.
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_admin_13.png)
+![](.images/yihetong_admin_13.png)
 
 
 
@@ -547,19 +575,19 @@ Project Screenshots
 
 * Online Demo：
 
-![](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/yihetong_qrcode.png)
+![](.images/yihetong_qrcode.png)
 
 
 
 ### Contact and Collaboration
 
 If you would like to join our open-source discussion group, please scan the QR code to add the Mini-Contract project team and join the group chat:
-![输入图片说明](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/shawn_company_qrcode.png)
+![输入图片说明](.images/shawn_company_qrcode.png)
 
 
 
 If you have any ideas, suggestions, or business collaboration needs regarding the Mini-Contract product, please scan the QR code to add the Mini-Contract project team for further communication:
-![输入图片说明](https://leepm.oss-cn-beijing.aliyuncs.com/public-images/shawn_huangxing_qrcode.png)
+![输入图片说明](.images/shawn_huangxing_qrcode.png)
 
 ## Donations
 
