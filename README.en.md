@@ -560,28 +560,28 @@ Project Screenshots
 
 > User web portal, you can sign and view your contracts in the backend
 
-![](.images/pc/01_pc.png)
+![](.images/pc/pc_01@4x.png)
 
 
 
-![](.images/pc/02_pc.png)
+![](.images/pc/pc_02@4x.png)
 
 > PC also supports login via mobile phone number + password and SMS verification code;
 
 
 
-![](.images/pc/03_pc.png)
+![](.images/pc/pc_03@4x.png)
 
 > The workspace supports viewing basic contract information
 
 
 
-![](.images/pc/04_pc.png)
-![](.images/pc/16_pc.jpeg)
-![](.images/pc/11_pc.jpeg)
-![](.images/pc/12_pc.jpeg)
-![](.images/pc/13_pc.jpeg)
-![](.images/pc/14_pc.jpeg)
+![](.images/pc/pc_04@4x.png)
+![](.images/pc/pc_16@4x.png)
+![](.images/pc/pc_11@4x.png)
+![](.images/pc/pc_12@4x.png)
+![](.images/pc/pc_13@4x.png)
+![](.images/pc/pc_14@4x.png)
 
 
 > View all contract information, supports online signing and viewing contract progress status
@@ -591,11 +591,11 @@ Project Screenshots
 
 
 
-![](.images/pc/05_pc.png)
-![](.images/pc/06_pc.png)
-![](.images/pc/17_pc.jpeg)
-![](.images/pc/18_pc.jpeg)
-![](.images/pc/19_pc.jpeg)
+![](.images/pc/pc_05@4x.png)
+![](.images/pc/pc_06@4x.png)
+![](.images/pc/pc_17@4x.png)
+![](.images/pc/pc_18@4x.png)
+![](.images/pc/pc_19@4x.png)
 
 > Create and manage personal seals and enterprise seals by yourself 
 
@@ -604,24 +604,24 @@ Project Screenshots
 
 
 
-![](.images/pc/07_pc.png)
+![](.images/pc/pc_07@4x.png)
 
 
-![](.images/pc/08_pc.png)
+![](.images/pc/pc_08@4x.png)
 
- ![](.images/pc/20_pc.jpeg)
- ![](.images/pc/21_pc.jpeg)
+ ![](.images/pc/pc_20@4x.png)
+ ![](.images/pc/pc_21@4x.png)
 
 > Administrators support creating contract templates
 
 
-![](.images/pc/09_pc.png)
-![](.images/pc/21_pc.png)
+![](.images/pc/pc_09@4x.png)
+![](.images/pc/pc_21@4x.png)
 
 > Administrators can invite enterprise employees
 
 
-![](.images/pc/10_pc.png)
+![](.images/pc/pc_10@4x.png)
 
 > View personal basic information
 
@@ -640,75 +640,6 @@ Project Screenshots
 - [x] 【New】Brand new technical architecture
 - [x] 【New】Tianyan Audit (Intelligent contract review)
 - [x] 【New】AI Drafting (AIGC contract generation)
-
-
-
-
-##### V2.0.0 Update Log
-
-- [x] 【New】Added brand new page style, improving overall user experience
-- [x] 【New】Support one-to-many batch contract initiation, improving initiation efficiency (for business scenarios where one entity corresponds to multiple different signers)
-- [x] 【New】Support personalized signatures, users can define their own signature styles
-- [x] 【New】Intelligent quick contract generation (quickly generate an online contract by taking photos with your phone or uploading images)
-- [x] 【New】Draft box, solving the problem of signing work being interrupted by certain things
-- [x] 【New】Initiator reminder, ensuring contracts are completed within the validity period
-- [x] 【New】File management (for temporary file storage, you can also use ours as cloud storage, haha)
-- [x] 【New】Contract details page convenient sharing button, can quickly share to signers
-- [x] 【Optimization】Other experiences
-- [x] 【Fixed】Known bugs
-
-
-
-##### V1.5.5 Update Log
-
-- [x] 【New】Support adding "person-certificate comparison" to real-name authentication process
-- [x] 【New】SMS notification to signing parties after signing is completed
-- [x] 【New】Support signer being different from initiator (can initiate contracts on behalf)
-- [x] 【Optimization】Enterprise and personal identity switching experience
-
-- [x] 【Optimization】User experience
-- [x] 【Fixed】Known bugs
-
-
-
-##### V1.5.0 Update Log
-- [x] 【New】Non-evidence chain contract signing (can be used for internal daily approvals within enterprises)
-- [x] 【Optimization】Seal management
-- [x] 【Optimization】Enterprise real-name authentication logic
-- [x] 【Optimization】Evidence chain multi-channel signing logic
-- [x] 【Upgrade】Third-party plugin versions
-- [x] 【Optimization】Privacy protection agreement content
-- [x] 【Optimization】User experience
-- [x] 【Fixed】Known bugs
-
-
-
-
-##### V1.1.2 Update Log
-
-- [x] 【New】Support backend management to view enterprise contract situations
-- [x] 【Optimization】User experience
-- [x] 【Fixed】Known bugs
-
-
-
-##### V1.1.1 Update Log
-
-- [x] 【Optimization】Enterprise and personal electronic contract package quotas
-- [x] 【Optimization】User experience
-- [x] 【Fixed】Known bugs
-
-
-
-##### V1.1.0 Update Log
-
-- [x] 【New】Rich and diverse contract templates
-- [x] 【New】In-app contract signing, improving user experience
-- [x] 【New】Signer SMS notification, avoiding delayed messages
-- [x] 【Optimization】User experience
-- [x] 【Fixed】Known bugs
-
-
 
 
 ### Technical Documentation
