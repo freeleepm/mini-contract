@@ -1,0 +1,345 @@
+<script>
+/**
+ * 企业印章创建页面
+ * 
+ * 通过WebView加载统一的印章创建应用
+ * - 与个人印章创建逻辑保持一致（使用相同的seal模块）
+ * - 区别在于需要传递 enterpriseId 参数
+ * - 支持手写签名、上传图片、模板生成三种创建方式
+ */
+import { getSealPageUrl } from '../../api/seals/index';
+
+export default {
+  data() {
+    return {
+			// 企业ID
+			enterpriseId: null,
+			
+			// 创建页面URL
+			createUrl: '',
+			
+			// 页面加载状态
+			loading: true,
+			
+			// 错误信息
+			errorMessage: ''
+		}
+	},
+	
+	onLoad(options) {
+		console.log('[企业印章创建] 页面加载，参数:', options);
+		
+		// 获取企业ID
+		if (options.enterpriseId) {
+			this.enterpriseId = parseInt(options.enterpriseId);
+			console.log('[企业印章创建] 企业ID:', this.enterpriseId);
+		} else {
+			console.error('[企业印章创建] ❌ 缺少企业ID参数');
+			this.errorMessage = '缺少企业ID参数';
+			uni.showModal({
+				title: '错误',
+				content: '缺少必要的企业ID参数，请返回重试',
+				showCancel: false,
+				confirmText: '返回',
+				success: () => {
+					uni.navigateBack();
+				}
+			});
+			return;
+		}
+		
+		// 构建创建页面URL
+		this.buildCreateUrl();
+  },
+  
+  methods: {
+		/**
+		 * 构建企业印章创建页面URL
+		 */
+		async buildCreateUrl() {
+			try {
+				// 使用统一印章应用，mode=seal-create，并传递 enterpriseId
+				this.createUrl = await getSealPageUrl('seal-create', undefined, {
+					enterpriseId: this.enterpriseId
+				});
+				
+				console.log('[企业印章创建] ✅ 统一应用创建URL (含 Seal-Token 和 enterpriseId):', this.createUrl);
+				
+			} catch (error) {
+				console.error('[企业印章创建] ❌ 构建URL失败:', error);
+				this.errorMessage = '印章创建页面加载失败';
+				uni.showToast({
+					title: this.errorMessage,
+					icon: 'none'
+				});
+			}
+			// ✅ 不在这里设置 loading = false，应该在 handleLoad 中设置
+		},
+		
+		/**
+		 * H5页面加载完成
+		 */
+		handleLoad(e) {
+			console.log('[企业印章创建] 页面加载完成:', e);
+			
+			this.loading = false;
+			
+			uni.hideLoading();
+		},
+		
+		/**
+		 * 页面加载失败
+		 */
+		handleError(e) {
+			console.error('[企业印章创建] 页面加载失败:', e);
+			
+			this.loading = false;
+			this.errorMessage = '页面加载失败，请检查网络连接';
+			
+			uni.hideLoading();
+			
+			uni.showModal({
+				title: '错误',
+				content: '页面加载失败，请检查网络连接或联系技术支持',
+				showCancel: true,
+				confirmText: '重试',
+				cancelText: '返回',
+        success: (res) => {
+					if (res.confirm) {
+						// 重试：清除错误并重新构建URL
+						this.errorMessage = '';
+						this.buildCreateUrl();
+					} else {
+						uni.navigateBack();
+					}
+				}
+			});
+		},
+		
+		/**
+		 * 接收页面消息
+		 */
+		handleMessage(e) {
+			console.log('[企业印章创建] 收到消息:', e);
+			
+			const messages = e.detail.data;
+			if (!messages || messages.length === 0) {
+								return;
+							}
+							
+			const data = messages[messages.length - 1];
+			console.log('[企业印章创建] 处理消息:', data);
+			
+			switch(data.type) {
+				case 'seal-created':
+					this.handleSealCreated(data.data);
+					break;
+					
+				case 'close':
+					this.handleClose();
+					break;
+					
+				case 'error':
+					this.handleCreateError(data.data?.message || '未知错误');
+					break;
+					
+				default:
+					console.log('[企业印章创建] 未知消息类型:', data.type);
+			}
+		},
+		
+		/**
+		 * 印章创建成功处理
+		 */
+		handleSealCreated(sealInfo) {
+			console.log('[企业印章创建] 创建成功:', sealInfo);
+			
+			uni.hideLoading();
+			
+			uni.showToast({
+				title: '企业印章创建成功',
+				icon: 'success',
+				duration: 1500
+			});
+			
+			setTimeout(() => {
+				// 返回上一页并触发刷新事件
+				uni.navigateBack();
+				
+				// 发送全局事件通知企业印章列表刷新
+				uni.$emit('refreshEnterpriseSealList');
+			}, 1500);
+		},
+		
+		/**
+		 * 用户取消创建
+		 */
+		handleClose() {
+			console.log('[企业印章创建] 用户取消操作');
+			
+			uni.hideLoading();
+			
+			uni.navigateBack();
+		},
+		
+		/**
+		 * 创建错误处理
+		 */
+		handleCreateError(message) {
+			console.error('[企业印章创建] 创建错误:', message);
+        
+        uni.hideLoading();
+				
+			uni.showModal({
+				title: '错误',
+				content: message || '印章创建过程中出现错误',
+				showCancel: false,
+				confirmText: '确定'
+			});
+		},
+		
+		/**
+		 * 重新加载页面
+		 */
+		reloadPage() {
+			console.log('[企业印章创建] 重新加载页面');
+			
+			// 清除错误状态
+			this.errorMessage = '';
+			this.loading = true;
+			
+			// 重新构建URL（会自动显示loading）
+			this.buildCreateUrl();
+    }
+  }
+}
+</script>
+
+<template>
+  <view class="seal-create-container">
+    <!-- 加载中提示（不显示文字，只显示加载动画） -->
+    <view v-if="loading" class="loading-container">
+      <view class="loading-spinner"></view>
+    </view>
+    
+    <!-- 错误提示 -->
+    <view v-if="errorMessage" class="error-container">
+      <text class="fa fa-exclamation-circle error-icon"></text>
+      <text class="error-text">{{ errorMessage }}</text>
+      <view class="error-buttons">
+        <view class="error-btn secondary" @click="() => uni.navigateBack()">
+          <text class="btn-text">返回</text>
+        </view>
+        <view class="error-btn primary" @click="reloadPage">
+          <text class="fa fa-refresh btn-icon"></text>
+          <text class="btn-text">重新加载</text>
+        </view>
+      </view>
+    </view>
+    
+    <!-- WebView -->
+    <web-view 
+      v-if="createUrl && !errorMessage"
+      :src="createUrl"
+      @load="handleLoad"
+      @error="handleError"
+      @message="handleMessage"
+    ></web-view>
+  </view>
+</template>
+
+<style scoped>
+@import url('../../static/styles/fontawesome.css');
+
+.seal-create-container {
+  flex: 1;
+  background-color: #f7f9fc;
+}
+
+/* ============ 加载中样式 ============ */
+.loading-container {
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-spinner {
+  width: 60rpx;
+  height: 60rpx;
+  border: 4rpx solid #e5e5e5;
+  border-top-color: #00C28A;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ============ 错误提示样式 ============ */
+.error-container {
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  padding: 60rpx;
+}
+
+.error-icon {
+  font-family: FontAwesome;
+  font-size: 100rpx;
+  color: #F56C6C;
+  margin-bottom: 30rpx;
+}
+
+.error-text {
+  font-size: 28rpx;
+  color: #909399;
+  text-align: center;
+  margin-bottom: 50rpx;
+  line-height: 1.6;
+}
+
+.error-buttons {
+  flex-direction: row;
+  justify-content: center;
+  gap: 30rpx;
+}
+
+.error-btn {
+  flex-direction: row;
+  align-items: center;
+  padding: 20rpx 40rpx;
+  border-radius: 44rpx;
+  min-width: 180rpx;
+  justify-content: center;
+}
+
+.error-btn.primary {
+  background-color: #00C28A;
+}
+
+.error-btn.secondary {
+  background-color: #F5F7FA;
+  border: 1rpx solid #DCDFE6;
+}
+
+.btn-icon {
+  font-family: FontAwesome;
+  font-size: 28rpx;
+  margin-right: 8rpx;
+}
+
+.error-btn.primary .btn-icon,
+.error-btn.primary .btn-text {
+  color: #FFFFFF;
+}
+
+.error-btn.secondary .btn-text {
+  color: #606266;
+}
+
+.btn-text {
+  font-size: 28rpx;
+}
+</style>

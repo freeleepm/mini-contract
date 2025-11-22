@@ -1,0 +1,264 @@
+<template>
+	<view class="error-container">
+		<!-- 错误图标 -->
+		<view class="error-icon-wrapper">
+			<text class="fa fa-triangle-exclamation error-icon"></text>
+		</view>
+		
+		<!-- 错误标题 -->
+		<text class="error-title">{{ title }}</text>
+		
+		<!-- 错误信息 -->
+		<text class="error-text">{{ errorMessage }}</text>
+		
+		<!-- 错误提示 -->
+		<view v-if="showTips" class="error-tips">
+			<text v-for="(tip, index) in tips" :key="index" class="tips-item">{{ tip }}</text>
+		</view>
+		
+		<!-- 操作按钮 -->
+		<view class="error-actions">
+			<view v-if="showBackButton" class="action-btn secondary" @tap="handleBack">
+				<text class="btn-text">{{ backButtonText }}</text>
+			</view>
+			<view v-if="showRetryButton" class="action-btn primary" @tap="handleRetry">
+				<text class="btn-text">{{ retryButtonText }}</text>
+			</view>
+		</view>
+		
+		<!-- 客服联系 -->
+		<view v-if="showContactSupport" class="contact-support" @tap="handleContactSupport">
+			<text class="fa fa-phone"></text>
+			<text class="support-text">{{ contactSupportText }}</text>
+		</view>
+	</view>
+</template>
+
+<script>
+export default {
+	name: 'H5ErrorContainer',
+	props: {
+		// 错误标题
+		title: {
+			type: String,
+			default: '无法加载页面'
+		},
+		// 错误信息
+		errorMessage: {
+			type: String,
+			required: true
+		},
+		// 是否显示提示信息
+		showTips: {
+			type: Boolean,
+			default: true
+		},
+		// 提示信息数组
+		tips: {
+			type: Array,
+			default: () => [
+				'• 请确保网络连接正常',
+				'• H5 服务可能暂时不可用',
+				'• 如问题持续，请联系技术支持'
+			]
+		},
+		// 是否显示返回按钮
+		showBackButton: {
+			type: Boolean,
+			default: true
+		},
+		// 返回按钮文本
+		backButtonText: {
+			type: String,
+			default: '返回'
+		},
+		// 是否显示重试按钮
+		showRetryButton: {
+			type: Boolean,
+			default: true
+		},
+		// 重试按钮文本
+		retryButtonText: {
+			type: String,
+			default: '重试'
+		},
+		// 是否显示联系客服
+		showContactSupport: {
+			type: Boolean,
+			default: true
+		},
+		// 联系客服文本
+		contactSupportText: {
+			type: String,
+			default: '联系客服'
+		}
+	},
+	methods: {
+		handleBack() {
+			this.$emit('back')
+		},
+		handleRetry() {
+			this.$emit('retry')
+		},
+		handleContactSupport() {
+			this.$emit('contact-support')
+		}
+	}
+}
+</script>
+
+<style>
+/* FontAwesome 基础样式 */
+.fa {
+	font-family: 'Font Awesome 6 Free';
+	font-size: 26rpx;
+	font-style: normal;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* 错误容器 */
+.error-container {
+	flex: 1;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	padding: 60rpx 40rpx;
+	background-color: #F7F9FC;
+}
+
+/* 错误图标 */
+.error-icon-wrapper {
+	width: 160rpx;
+	height: 160rpx;
+	border-radius: 80rpx;
+	background-color: rgba(245, 108, 108, 0.1);
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 40rpx;
+}
+
+.error-icon {
+	font-size: 80rpx;
+	color: #F56C6C;
+}
+
+/* 错误标题 */
+.error-title {
+	font-size: 36rpx;
+	font-weight: 600;
+	color: #303133;
+	margin-bottom: 20rpx;
+	text-align: center;
+}
+
+/* 错误信息 */
+.error-text {
+	font-size: 28rpx;
+	color: #606266;
+	text-align: center;
+	line-height: 44rpx;
+	margin-bottom: 40rpx;
+	white-space: pre-line;
+}
+
+/* 错误提示 */
+.error-tips {
+	width: 100%;
+	background-color: #FFF;
+	border-radius: 16rpx;
+	padding: 30rpx;
+	margin-bottom: 40rpx;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.tips-item {
+	font-size: 26rpx;
+	color: #909399;
+	line-height: 40rpx;
+	margin-bottom: 16rpx;
+}
+
+.tips-item:last-child {
+	margin-bottom: 0;
+}
+
+/* 操作按钮 */
+.error-actions {
+	width: 100%;
+	flex-direction: row;
+	justify-content: space-between;
+	margin-bottom: 30rpx;
+}
+
+.action-btn {
+	flex: 1;
+	height: 88rpx;
+	border-radius: 44rpx;
+	align-items: center;
+	justify-content: center;
+	margin: 0 10rpx;
+}
+
+.action-btn:first-child {
+	margin-left: 0;
+}
+
+.action-btn:last-child {
+	margin-right: 0;
+}
+
+.action-btn.primary {
+	background-color: #00C28A;
+}
+
+.action-btn.primary:active {
+	opacity: 0.9;
+}
+
+.action-btn.secondary {
+	background-color: #F5F7FA;
+	border: 1rpx solid #DCDFE6;
+}
+
+.action-btn.secondary:active {
+	background-color: #E4E7ED;
+}
+
+.action-btn.primary .btn-text {
+	color: #FFFFFF;
+}
+
+.action-btn.secondary .btn-text {
+	color: #606266;
+}
+
+.btn-text {
+	font-size: 30rpx;
+	font-weight: 500;
+}
+
+/* 联系客服 */
+.contact-support {
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	padding: 20rpx;
+}
+
+.contact-support:active {
+	opacity: 0.7;
+}
+
+.contact-support .fa {
+	font-size: 28rpx;
+	color: #1890FF;
+	margin-right: 8rpx;
+}
+
+.support-text {
+	font-size: 28rpx;
+	color: #1890FF;
+}
+</style>
+

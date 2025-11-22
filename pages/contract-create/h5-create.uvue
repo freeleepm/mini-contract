@@ -1,0 +1,828 @@
+<script>
+/**
+ * H5创建合同页面（WebView容器 + JSBridge）
+ * 
+ * 功能：
+ * - 统一H5印章应用架构入口
+ * - 提供完整的JSBridge接口
+ * - 支持文件选择、相机调用、文件上传等原生能力
+ * 
+ * 支持的创建类型：
+ * - template: 模板创建
+ * - file: 文件上传创建
+ * - image: 图片上传创建
+ * 
+ * @author 小华同学AI
+ * @date 2025-11-02
+ */
+import { getSealPageUrl } from '../../api/seals/index';
+
+export default {
+	data() {
+		return {
+			// H5页面URL
+			createUrl: '',
+			
+			// 页面加载状态
+			loading: true,
+			
+			// 错误信息
+			errorMessage: '',
+			
+			// 创建类型：template/file/image
+			createType: 'template',
+			
+			// 预选的模板ID
+			templateId: '',
+			
+		// 草稿ID（继续编辑草稿时使用）
+		draftId: '',
+		
+		// JSBridge状态
+		bridgeReady: false,
+		
+		// LocalStorage轮询定时器
+		pollTimer: null as number | null,
+	}
+},
+	
+	onLoad(options) {
+		console.log('[H5容器] 页面加载，参数:', options);
+		
+		// 获取创建类型
+		this.createType = options.type || 'template';
+		console.log('[H5容器] 创建类型:', this.createType);
+		
+		// 获取模板ID（如果有）
+		if (options.templateId) {
+			this.templateId = options.templateId;
+			console.log('[H5容器] 模板ID:', this.templateId);
+		}
+		
+		// 获取草稿ID（如果有）
+		if (options.draftId) {
+			this.draftId = options.draftId;
+			console.log('[H5容器] 草稿ID:', this.draftId);
+		}
+		
+		// 初始化JSBridge
+		this.initBridge();
+		
+		// 构建H5创建页面URL
+		this.buildCreateUrl();
+	},
+	
+	onUnload() {
+		console.log('[H5容器] 页面卸载');
+		// 清理LocalStorage轮询定时器
+		if (this.pollTimer) {
+			clearInterval(this.pollTimer);
+			this.pollTimer = null;
+		}
+		// WebView会自动清理资源
+	},
+	
+	methods: {
+	/**
+	 * 初始化JSBridge
+	 */
+	initBridge() {
+		console.log('[JSBridge] 初始化');
+		this.bridgeReady = true;
+			
+		// uni-app的WebView已经自动支持postMessage通信
+		// H5应用可以使用 uni.postMessage 或 window.parent.postMessage 发送消息
+		// 我们在 handleMessage 方法中接收这些消息
+		
+		// 启动LocalStorage轮询机制（接收H5通过LocalStorage发送的消息）
+		this.startPollingH5Messages();
+	},
+	
+	/**
+	 * 启动LocalStorage轮询机制
+	 * 用于接收H5通过LocalStorage发送的消息
+	 */
+	startPollingH5Messages() {
+		console.log('[JSBridge] 启动LocalStorage轮询机制');
+		
+		// 每100ms检查一次是否有来自H5的消息
+		this.pollTimer = setInterval(() => {
+			this.checkH5Messages();
+		}, 100);
+	},
+	
+	/**
+	 * 检查H5消息
+	 */
+	checkH5Messages() {
+		try {
+			// 获取所有localStorage的key
+			const keys = uni.getStorageInfoSync().keys;
+			
+			// 找出所有来自H5的bridge消息
+			const bridgeKeys = keys.filter(key => key.startsWith('bridge_h5_to_native_'));
+			
+			bridgeKeys.forEach(key => {
+				try {
+					const messageStr = uni.getStorageSync(key);
+					if (messageStr) {
+						const message = JSON.parse(messageStr);
+						
+						console.log('[JSBridge] 收到H5 LocalStorage消息:', message);
+						
+						// 处理消息（调用handleMessage中的逻辑）
+						this.handleH5LocalStorageMessage(message);
+						
+						// 删除已处理的消息
+						uni.removeStorageSync(key);
+					}
+				} catch (error) {
+					console.error('[JSBridge] 解析H5消息失败:', error);
+				}
+			});
+		} catch (error) {
+			console.error('[JSBridge] 检查H5消息失败:', error);
+		}
+	},
+	
+	/**
+	 * 处理来自H5 LocalStorage的消息
+	 */
+	handleH5LocalStorageMessage(data) {
+		if (!data || !data.action) return;
+		
+		console.log('[JSBridge] 处理H5 LocalStorage消息:', data);
+		
+		// 根据action类型分发处理（与handleMessage中的逻辑一致）
+		switch(data.action) {
+			case 'chooseFile':
+				this.handleChooseFile(data);
+				break;
+			
+			case 'chooseImage':
+				this.handleChooseImage(data);
+				break;
+			
+			case 'takePhoto':
+				this.handleTakePhoto(data);
+				break;
+			
+			case 'compressImage':
+				this.handleCompressImage(data);
+				break;
+			
+			case 'uploadFile':
+				this.handleUploadFile(data);
+				break;
+			
+			case 'created':
+				this.handleCreateCompleted(data.taskId);
+				break;
+			
+			case 'formSubmitted':
+				console.log('[JSBridge] 表单提交成功，任务ID:', data.taskId);
+				this.handleFormSubmitted(data.taskId);
+				break;
+				
+			case 'cancel':
+			case 'close':
+				console.log('[JSBridge] 取消/关闭请求');
+				uni.navigateBack();
+				break;
+			
+			default:
+				console.log('[JSBridge] 未知消息类型:', data.action);
+		}
+	},
+		
+	/**
+	 * 构建H5创建页面URL（使用统一应用）
+	 */
+	async buildCreateUrl() {
+		try {
+			// 构建额外参数
+			const params: Record<string, string | number> = {};
+				
+				// 添加创建类型参数
+				params.type = this.createType;
+			
+			// 如果有模板ID，添加到参数中
+			if (this.templateId) {
+				params.templateId = this.templateId;
+					console.log('[H5容器] 携带模板ID参数:', this.templateId);
+				}
+				
+				// 如果有草稿ID，添加到参数中
+				if (this.draftId) {
+					params.draftId = this.draftId;
+					console.log('[H5容器] 携带草稿ID参数:', this.draftId);
+				}
+				
+				// 使用统一的印章应用，mode=create，type区分创建方式
+			this.createUrl = await getSealPageUrl('create', '', params);
+				console.log('[H5容器] ✅ H5页面URL已生成 (type=' + this.createType + '):', this.createUrl);
+				
+				uni.showLoading({
+					title: '加载创建页面...'
+				});
+			} catch (error) {
+				console.error('[H5容器] 构建URL失败:', error);
+				this.errorMessage = '创建页面加载失败';
+				uni.showToast({
+					title: this.errorMessage,
+					icon: 'none'
+				});
+			}
+		},
+		
+		/**
+		 * H5页面加载完成
+		 */
+		handleLoad(e) {
+			console.log('[H5创建] 页面加载完成:', e);
+			
+			this.loading = false;
+			
+			// 隐藏加载提示
+			uni.hideLoading();
+			
+			uni.showToast({
+				title: '页面加载完成',
+				icon: 'success',
+				duration: 1500
+			});
+		},
+		
+		/**
+		 * H5页面加载失败
+		 */
+		handleError(e) {
+			console.error('[H5创建] 页面加载失败:', e);
+			
+			this.loading = false;
+			this.errorMessage = 'H5页面加载失败，请检查网络连接';
+			
+			uni.hideLoading();
+			
+			uni.showModal({
+				title: '错误',
+				content: 'H5页面加载失败，请检查网络连接或联系技术支持',
+				showCancel: true,
+				confirmText: '重试',
+				cancelText: '返回',
+				success: (res) => {
+					if (res.confirm) {
+						// 重试
+						this.buildCreateUrl();
+					} else {
+						// 返回
+						uni.navigateBack();
+					}
+				}
+			});
+		},
+		
+		/**
+		 * 接收H5页面消息（JSBridge核心）
+		 */
+		handleMessage(e) {
+			console.log('[JSBridge] 收到H5消息:', e);
+			
+			// 获取消息数据
+			const messages = e.detail.data;
+			if (!messages || messages.length === 0) {
+				return;
+			}
+			
+			// 取最后一条消息
+			const data = messages[messages.length - 1];
+			console.log('[JSBridge] 处理消息:', data);
+			
+			// 根据action类型分发处理
+			switch(data.action || data.type) {
+				// ===== 文件相关 =====
+				case 'chooseFile':
+					this.handleChooseFile(data);
+					break;
+				
+				// ===== 相机/图片相关 =====
+				case 'chooseImage':
+					this.handleChooseImage(data);
+					break;
+				
+				case 'takePhoto':
+					this.handleTakePhoto(data);
+					break;
+				
+				// ===== 文件处理 =====
+				case 'compressImage':
+					this.handleCompressImage(data);
+					break;
+				
+				case 'uploadFile':
+					this.handleUploadFile(data);
+					break;
+				
+				// ===== 结果通知 =====
+				case 'created':
+					this.handleCreateCompleted(data.taskId);
+					break;
+				
+				case 'formSubmitted':
+					console.log('[JSBridge] 表单提交成功，任务ID:', data.taskId);
+					this.handleFormSubmitted(data.taskId);
+					break;
+					
+				case 'cancel':
+				case 'close':
+					console.log('[JSBridge] 取消/关闭请求');
+					uni.navigateBack();
+					break;
+				
+				case 'ready':
+					console.log('[JSBridge] H5页面已准备就绪');
+					break;
+					
+				case 'ERROR':
+					this.handleH5Error(data.message);
+					break;
+					
+				default:
+					console.log('[JSBridge] 未知消息类型:', data.action || data.type);
+			}
+		},
+		
+		/**
+		 * JSBridge: 选择文件
+		 */
+		async handleChooseFile(data) {
+			const { callbackId, options = {} } = data;
+			
+			try {
+				console.log('[JSBridge] 选择文件，参数:', options);
+				
+				// 调用uni-app的文件选择器
+				uni.chooseFile({
+					count: options.count || 1,
+					extension: options.extension || ['pdf', 'doc', 'docx'],
+					success: (res) => {
+						// 处理文件信息
+						const files = res.tempFiles.map(file => ({
+							path: file.path,
+							name: file.name,
+							size: file.size,
+							type: file.type || this.getFileType(file.name)
+						}));
+						
+						console.log('[JSBridge] 文件选择成功:', files);
+						
+						// 返回结果给H5（通过postMessage或LocalStorage）
+						this.postMessageToH5({
+							action: 'chooseFileResult',
+							callbackId: callbackId,
+							success: true,
+							data: { files }
+						});
+					},
+					fail: (error) => {
+						console.error('[JSBridge] 文件选择失败:', error);
+						this.postMessageToH5({
+							action: 'chooseFileResult',
+							callbackId: callbackId,
+							success: false,
+							error: error.errMsg || '文件选择失败'
+						});
+					}
+				});
+			} catch (error) {
+				console.error('[JSBridge] 文件选择异常:', error);
+				this.postMessageToH5({
+					action: 'chooseFileResult',
+					callbackId: callbackId,
+					success: false,
+					error: '文件选择异常'
+				});
+			}
+		},
+		
+		/**
+		 * JSBridge: 选择图片
+		 */
+		async handleChooseImage(data) {
+			const { callbackId, options = {} } = data;
+			
+			try {
+				console.log('[JSBridge] 选择图片，参数:', options);
+				
+				uni.chooseImage({
+					count: options.count || 9,
+					sizeType: options.sizeType || ['original', 'compressed'],
+					sourceType: options.sourceType || ['album', 'camera'],
+					success: (res) => {
+						// 处理图片信息
+						const images = res.tempFilePaths.map((path, index) => ({
+							path: path,
+							size: res.tempFiles[index]?.size || 0
+						}));
+						
+						console.log('[JSBridge] 图片选择成功:', images);
+						
+						this.postMessageToH5({
+							action: 'chooseImageResult',
+							callbackId: callbackId,
+							success: true,
+							data: { images }
+						});
+					},
+					fail: (error) => {
+						console.error('[JSBridge] 图片选择失败:', error);
+						this.postMessageToH5({
+							action: 'chooseImageResult',
+							callbackId: callbackId,
+							success: false,
+							error: error.errMsg || '图片选择失败'
+						});
+					}
+				});
+			} catch (error) {
+				console.error('[JSBridge] 图片选择异常:', error);
+				this.postMessageToH5({
+					action: 'chooseImageResult',
+					callbackId: callbackId,
+					success: false,
+					error: '图片选择异常'
+				});
+			}
+		},
+		
+		/**
+		 * JSBridge: 拍照
+		 */
+		async handleTakePhoto(data) {
+			const { callbackId } = data;
+			
+			try {
+				console.log('[JSBridge] 拍照');
+				
+				uni.chooseImage({
+					count: 1,
+					sourceType: ['camera'],
+					success: (res) => {
+						const image = {
+							path: res.tempFilePaths[0],
+							size: res.tempFiles[0]?.size || 0
+						};
+						
+						console.log('[JSBridge] 拍照成功:', image);
+						
+						this.postMessageToH5({
+							action: 'takePhotoResult',
+							callbackId: callbackId,
+							success: true,
+							data: { image }
+						});
+					},
+					fail: (error) => {
+						console.error('[JSBridge] 拍照失败:', error);
+						this.postMessageToH5({
+							action: 'takePhotoResult',
+							callbackId: callbackId,
+							success: false,
+							error: error.errMsg || '拍照失败'
+						});
+					}
+				});
+			} catch (error) {
+				console.error('[JSBridge] 拍照异常:', error);
+				this.postMessageToH5({
+					action: 'takePhotoResult',
+					callbackId: callbackId,
+					success: false,
+					error: '拍照异常'
+				});
+			}
+		},
+		
+		/**
+		 * JSBridge: 压缩图片
+		 */
+		async handleCompressImage(data) {
+			const { callbackId, imagePath, quality = 80 } = data;
+			
+			try {
+				console.log('[JSBridge] 压缩图片:', imagePath);
+				
+				uni.compressImage({
+					src: imagePath,
+					quality: quality,
+					success: (res) => {
+						console.log('[JSBridge] 图片压缩成功');
+						
+						this.postMessageToH5({
+							action: 'compressImageResult',
+							callbackId: callbackId,
+							success: true,
+							data: {
+								compressedPath: res.tempFilePath
+							}
+						});
+					},
+					fail: (error) => {
+						console.error('[JSBridge] 图片压缩失败:', error);
+						this.postMessageToH5({
+							action: 'compressImageResult',
+							callbackId: callbackId,
+							success: false,
+							error: error.errMsg || '图片压缩失败'
+						});
+					}
+				});
+			} catch (error) {
+				console.error('[JSBridge] 图片压缩异常:', error);
+				this.postMessageToH5({
+					action: 'compressImageResult',
+					callbackId: callbackId,
+					success: false,
+					error: '图片压缩异常'
+				});
+			}
+		},
+		
+		/**
+		 * JSBridge: 上传文件
+		 */
+		async handleUploadFile(data) {
+			const { callbackId, filePath, fileName } = data;
+			
+			try {
+				console.log('[JSBridge] 上传文件:', fileName);
+				
+				// 显示上传进度
+				uni.showLoading({ title: '上传中...' });
+				
+				// 获取API基础URL和token
+				const API_BASE_URL = 'http://localhost:48080'; // TODO: 从配置读取
+				const token = uni.getStorageSync('token');
+				
+				// 上传文件
+				const uploadTask = uni.uploadFile({
+					url: `${API_BASE_URL}/admin-api/infra/file/upload`,
+					filePath: filePath,
+					name: 'file',
+					header: {
+						'Authorization': 'Bearer ' + token
+					},
+					success: (uploadRes) => {
+						uni.hideLoading();
+						
+						try {
+							const result = JSON.parse(uploadRes.data);
+							
+							if (result.code === 0) {
+								console.log('[JSBridge] 文件上传成功:', result.data);
+								
+								this.postMessageToH5({
+									action: 'uploadFileResult',
+									callbackId: callbackId,
+									success: true,
+									data: {
+										fileId: result.data.id || result.data,
+										fileUrl: result.data.url || result.data
+									}
+								});
+							} else {
+								throw new Error(result.msg || '上传失败');
+							}
+						} catch (parseError) {
+							console.error('[JSBridge] 解析上传结果失败:', parseError);
+							throw new Error('解析响应失败');
+						}
+					},
+					fail: (error) => {
+						uni.hideLoading();
+						console.error('[JSBridge] 文件上传失败:', error);
+						
+						this.postMessageToH5({
+							action: 'uploadFileResult',
+							callbackId: callbackId,
+							success: false,
+							error: error.errMsg || '文件上传失败'
+						});
+					}
+				});
+				
+				// 监听上传进度
+				uploadTask.onProgressUpdate((progress) => {
+					console.log('[JSBridge] 上传进度:', progress.progress + '%');
+					this.postMessageToH5({
+						action: 'uploadProgress',
+						callbackId: callbackId,
+						progress: progress.progress
+					});
+				});
+				
+			} catch (error) {
+				uni.hideLoading();
+				console.error('[JSBridge] 文件上传异常:', error);
+				
+				this.postMessageToH5({
+					action: 'uploadFileResult',
+					callbackId: callbackId,
+					success: false,
+					error: error.message || '文件上传异常'
+				});
+			}
+		},
+		
+		/**
+		 * 向H5发送消息
+		 * 注意：uni-app的web-view组件可能不支持直接postMessage
+		 * 这里使用LocalStorage中转方案
+		 */
+		postMessageToH5(message) {
+			console.log('[JSBridge] 发送消息到H5:', message);
+			
+			// 方案：通过LocalStorage中转
+			const messageKey = `bridge_native_to_h5_${message.callbackId || Date.now()}`;
+			uni.setStorageSync(messageKey, JSON.stringify(message));
+			
+			// 触发storage事件（H5端需要轮询检查）
+			// 注意：这个方案在实际应用中需要H5端配合轮询检查
+		},
+		
+		/**
+		 * 获取文件类型
+		 */
+		getFileType(fileName) {
+			const ext = fileName.split('.').pop().toLowerCase();
+			const typeMap = {
+				'pdf': 'application/pdf',
+				'doc': 'application/msword',
+				'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+				'jpg': 'image/jpeg',
+				'jpeg': 'image/jpeg',
+				'png': 'image/png'
+			};
+			return typeMap[ext] || 'application/octet-stream';
+		},
+		
+		/**
+		 * 创建合同完成
+		 */
+		handleCreateCompleted(taskId) {
+			console.log('[H5创建] 创建完成，任务ID:', taskId);
+			
+			// 显示成功提示
+			uni.showModal({
+				title: '创建成功',
+				content: '合同已成功创建',
+				showCancel: false,
+				success: () => {
+					// 返回并刷新列表
+					// 通过事件总线或其他方式通知列表页刷新
+					uni.$emit('contract-created', { taskId });
+					
+					// 返回上一页
+					uni.navigateBack();
+				}
+			});
+		},
+		
+		/**
+		 * 表单提交成功
+		 */
+		handleFormSubmitted(taskId) {
+			console.log('[H5创建] 表单提交成功，任务ID:', taskId);
+			
+			// 显示成功提示并返回
+			uni.showToast({
+				title: '表单提交成功',
+				icon: 'success',
+				duration: 1500,
+				success: () => {
+					// 通知列表页刷新
+					uni.$emit('contract-updated', { taskId });
+					
+					// 延迟返回，让用户看到成功提示
+					setTimeout(() => {
+						uni.navigateBack();
+					}, 1500);
+				}
+			});
+		},
+		
+		/**
+		 * H5错误处理
+		 */
+		handleH5Error(message) {
+			console.error('[H5创建] H5错误:', message);
+			
+			uni.showModal({
+				title: '错误',
+				content: message || '创建过程中出现错误',
+				showCancel: false
+			});
+		}
+	}
+}
+</script>
+
+<template>
+	<view class="h5-create-container">
+		<!-- 加载中提示 -->
+		<view v-if="loading" class="loading-container">
+			<view class="loading-spinner"></view>
+			<text class="loading-text">加载创建页面中...</text>
+		</view>
+		
+		<!-- 错误提示 -->
+		<view v-if="errorMessage" class="error-container">
+			<text class="fa fa-exclamation-circle error-icon"></text>
+			<text class="error-text">{{ errorMessage }}</text>
+		</view>
+		
+		<!-- WebView -->
+		<web-view 
+			v-if="createUrl && !errorMessage"
+			:src="createUrl"
+			@load="handleLoad"
+			@error="handleError"
+			@message="handleMessage"
+		></web-view>
+	</view>
+</template>
+
+<style>
+/* FontAwesome基础样式 */
+.fa {
+	font-family: FontAwesome;
+	font-size: 26rpx;
+	font-style: normal;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* 页面容器 */
+.h5-create-container {
+	width: 100%;
+	height: 100%;
+	background-color: #F7F9FC;
+}
+
+/* 加载中容器 */
+.loading-container {
+	width: 100%;
+	height: 100%;
+	align-items: center;
+	justify-content: center;
+}
+
+.loading-spinner {
+	width: 80rpx;
+	height: 80rpx;
+	border-width: 4rpx;
+	border-style: solid;
+	border-color: #E4E7ED;
+	border-top-color: #00C28A;
+	border-radius: 40rpx;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+.loading-text {
+	font-size: 28rpx;
+	color: #909399;
+	margin-top: 30rpx;
+}
+
+/* 错误容器 */
+.error-container {
+	width: 100%;
+	height: 100%;
+	align-items: center;
+	justify-content: center;
+	padding: 60rpx;
+}
+
+.error-icon {
+	font-size: 100rpx;
+	color: #F56C6C;
+	margin-bottom: 30rpx;
+}
+
+.error-text {
+	font-size: 30rpx;
+	color: #606266;
+	text-align: center;
+	line-height: 50rpx;
+}
+</style>
+

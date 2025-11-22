@@ -1,0 +1,476 @@
+<template>
+	<view class="page-container">
+		<scroll-view class="scroll-view" scroll-y="true">
+			<!-- Hero区域 -->
+			<view class="hero-section">
+			<view class="hero-icon">
+				<text class="fa fa-eye hero-icon-text"></text>
+			</view>
+			<text class="hero-title">AI天眼审查</text>
+			<text class="hero-subtitle">专业合同风险智能识别系统</text>
+			<text class="hero-desc">基于大语言模型深度分析，秒级定位合同风险点</text>
+		</view>
+
+		<!-- 核心特色卡片 -->
+		<view class="features-section">
+			<text class="section-title">核心能力</text>
+			
+			<view class="feature-card">
+				<view class="feature-icon-wrapper blue">
+					<text class="fa fa-clock feature-icon"></text>
+				</view>
+				<view class="feature-content">
+					<text class="feature-title">秒级响应</text>
+					<text class="feature-desc">智能算法快速扫描，平均响应时间小于10秒</text>
+				</view>
+			</view>
+
+			<view class="feature-card">
+				<view class="feature-icon-wrapper green">
+					<text class="fa fa-shield-halved feature-icon"></text>
+				</view>
+				<view class="feature-content">
+					<text class="feature-title">三级风险识别</text>
+					<text class="feature-desc">高危、中危、低危分级预警，精准定位风险条款</text>
+				</view>
+			</view>
+
+			<view class="feature-card">
+				<view class="feature-icon-wrapper orange">
+					<text class="fa fa-arrows-rotate feature-icon"></text>
+				</view>
+				<view class="feature-content">
+					<text class="feature-title">智能修改建议</text>
+					<text class="feature-desc">AI提供专业法律意见，给出可落地的修改方案</text>
+				</view>
+			</view>
+
+			<view class="feature-card">
+				<view class="feature-icon-wrapper purple">
+					<text class="fa fa-eye feature-icon"></text>
+				</view>
+				<view class="feature-content">
+					<text class="feature-title">精准定位</text>
+					<text class="feature-desc">风险条款一键跳转，支持按段落、页码、关键词定位</text>
+				</view>
+			</view>
+		</view>
+
+		<!-- 使用场景 -->
+		<view class="scenarios-section">
+			<text class="section-title">适用场景</text>
+			<view class="scenario-tags">
+				<view class="scenario-tag">
+					<text class="fa fa-circle-check scenario-tag-icon"></text>
+					<text class="scenario-tag-text">劳动合同</text>
+				</view>
+				<view class="scenario-tag">
+					<text class="fa fa-circle-check scenario-tag-icon"></text>
+					<text class="scenario-tag-text">销售合同</text>
+				</view>
+				<view class="scenario-tag">
+					<text class="fa fa-circle-check scenario-tag-icon"></text>
+					<text class="scenario-tag-text">租赁协议</text>
+				</view>
+				<view class="scenario-tag">
+					<text class="fa fa-circle-check scenario-tag-icon"></text>
+					<text class="scenario-tag-text">服务协议</text>
+				</view>
+				<view class="scenario-tag">
+					<text class="fa fa-circle-check scenario-tag-icon"></text>
+					<text class="scenario-tag-text">采购合同</text>
+				</view>
+				<view class="scenario-tag">
+					<text class="fa fa-circle-check scenario-tag-icon"></text>
+					<text class="scenario-tag-text">保密协议</text>
+				</view>
+			</view>
+		</view>
+
+		<!-- 使用流程 -->
+		<view class="process-section">
+			<text class="section-title">使用流程</text>
+			<view class="process-list">
+				<view class="process-item">
+					<view class="item-badge">1</view>
+					<view class="item-body">
+						<text class="item-title">选择已完成的合同</text>
+					</view>
+				</view>
+				
+				<view class="process-item">
+					<view class="item-badge">2</view>
+					<view class="item-body">
+						<text class="item-title">点击"AI审查"按钮</text>
+					</view>
+				</view>
+				
+				<view class="process-item">
+					<view class="item-badge">3</view>
+					<view class="item-body">
+						<text class="item-title">等待AI分析完成</text>
+					</view>
+				</view>
+				
+				<view class="process-item">
+					<view class="item-badge">4</view>
+					<view class="item-body">
+						<text class="item-title">查看风险报告</text>
+					</view>
+				</view>
+			</view>
+		</view>
+		</scroll-view>
+
+		<!-- 底部操作栏 -->
+		<view class="bottom-bar">
+			<view class="bottom-btn secondary" @click="goToContractList">
+				<text class="fa fa-circle-check bottom-btn-icon"></text>
+				<text class="bottom-btn-text">选择合同</text>
+			</view>
+			<view class="bottom-btn primary" @click="goToHistory">
+				<text class="fa fa-clock bottom-btn-icon"></text>
+				<text class="bottom-btn-text">审查历史</text>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script>
+export default {
+	data() {
+		return {}
+	},
+	methods: {
+		// 跳转到合同列表（选择合同进行审查）
+		goToContractList(): void {
+			uni.switchTab({
+				url: '/pages/contract-manage/index'
+			})
+		},
+		
+		// 跳转到审查历史（查看所有审查记录）
+		goToHistory(): void {
+			uni.navigateTo({
+				url: '/pages/contract-audit/history'
+			})
+		}
+	}
+}
+</script>
+
+<style>
+/* 页面容器 */
+.page-container {
+	flex: 1;
+	background-color: #F7F9FC;
+}
+
+/* 滚动视图 */
+.scroll-view {
+	flex: 1;
+}
+
+/* Hero区域 */
+.hero-section {
+	align-items: center;
+	padding: 50rpx 20rpx;
+	background-color: #1890FF;
+	border-radius: 10rpx;
+	margin: 0 16rpx 16rpx 16rpx;
+	box-shadow: none;
+}
+
+.hero-icon {
+	width: 120rpx;
+	height: 120rpx;
+	background-color: #FFFFFF;
+	border-radius: 60rpx;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 30rpx;
+}
+
+.hero-icon-text {
+	font-size: 64rpx;
+	color: #1890FF;
+}
+
+.hero-title {
+	font-size: 48rpx;
+	font-weight: 700;
+	color: #FFFFFF;
+	margin-bottom: 16rpx;
+}
+
+.hero-subtitle {
+	font-size: 28rpx;
+	color: rgba(255, 255, 255, 0.9);
+	margin-bottom: 12rpx;
+}
+
+.hero-desc {
+	font-size: 24rpx;
+	color: rgba(255, 255, 255, 0.8);
+	text-align: center;
+	padding: 0 20rpx;
+	line-height: 40rpx;
+}
+
+/* 特色区域 */
+.features-section {
+	margin: 0 16rpx 16rpx 16rpx;
+	padding: 0 20rpx;
+}
+
+.section-title {
+	font-size: 32rpx;
+	font-weight: 600;
+	color: #303133;
+	margin-bottom: 16rpx;
+}
+
+.feature-card {
+	background-color: #FFFFFF;
+	border-radius: 8rpx;
+	padding: 20rpx;
+	margin-bottom: 12rpx;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+	flex-direction: row;
+	align-items: center;
+	transition: all 0.3s ease;
+}
+
+.feature-card:active {
+	transform: scale(0.98);
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+}
+
+.feature-icon-wrapper {
+	width: 80rpx;
+	height: 80rpx;
+	border-radius: 40rpx;
+	align-items: center;
+	justify-content: center;
+	margin-right: 24rpx;
+}
+
+.feature-icon-wrapper.blue {
+	background-color: rgba(24, 144, 255, 0.1);
+}
+
+.feature-icon-wrapper.green {
+	background-color: rgba(0, 194, 138, 0.1);
+}
+
+.feature-icon-wrapper.orange {
+	background-color: rgba(250, 173, 20, 0.1);
+}
+
+.feature-icon-wrapper.purple {
+	background-color: rgba(124, 77, 255, 0.1);
+}
+
+.feature-icon {
+	font-size: 36rpx;
+}
+
+.feature-icon-wrapper.blue .feature-icon {
+	color: #1890FF;
+}
+
+.feature-icon-wrapper.green .feature-icon {
+	color: #00C28A;
+}
+
+.feature-icon-wrapper.orange .feature-icon {
+	color: #FAAD14;
+}
+
+.feature-icon-wrapper.purple .feature-icon {
+	color: #7C4DFF;
+}
+
+.feature-content {
+	flex: 1;
+}
+
+.feature-title {
+	font-size: 30rpx;
+	font-weight: 600;
+	color: #303133;
+	margin-bottom: 8rpx;
+}
+
+.feature-desc {
+	font-size: 24rpx;
+	color: #909399;
+	line-height: 36rpx;
+}
+
+/* 使用场景 */
+.scenarios-section {
+	margin: 0 16rpx 16rpx 16rpx;
+	padding: 0 20rpx;
+}
+
+.scenario-tags {
+	flex-direction: row;
+	flex-wrap: wrap;
+}
+
+.scenario-tag {
+	flex-direction: row;
+	align-items: center;
+	background-color: #FFFFFF;
+	border-radius: 24rpx;
+	padding: 8rpx 16rpx;
+	margin-right: 10rpx;
+	margin-bottom: 10rpx;
+	box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.04);
+}
+
+.scenario-tag-icon {
+	font-size: 24rpx;
+	color: #00C28A;
+	margin-right: 8rpx;
+}
+
+.scenario-tag-text {
+	font-size: 26rpx;
+	color: #606266;
+}
+
+/* 使用流程 */
+.process-section {
+	margin: 0 16rpx 16rpx 16rpx;
+	padding: 0 20rpx;
+	padding-bottom: 120rpx; /* 为底部操作栏留出空间 */
+}
+
+.process-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+}
+
+.process-item {
+	background-color: #FFFFFF;
+	border-radius: 8rpx;
+	padding: 16rpx 20rpx;
+	box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.04);
+	flex-direction: row;
+	align-items: center;
+	border: 1rpx solid #EBEEF5;
+	transition: all 0.3s ease;
+}
+
+.process-item:active {
+	transform: scale(0.98);
+	box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.15);
+}
+
+.item-badge {
+	width: 56rpx;
+	height: 56rpx;
+	background-color: #1890FF;
+	border-radius: 28rpx;
+	color: #FFFFFF;
+	font-size: 28rpx;
+	font-weight: 600;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.item-body {
+	flex: 1;
+	margin-left: 24rpx;
+}
+
+.item-title {
+	font-size: 30rpx;
+	color: #303133;
+	font-weight: 500;
+	line-height: 42rpx;
+}
+
+/* 底部操作栏 */
+.bottom-bar {
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	background-color: #FFFFFF;
+	padding: 12rpx 16rpx;
+	box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.05);
+	flex-direction: row;
+	align-items: center;
+}
+
+.bottom-btn {
+	flex: 1;
+	height: 88rpx;
+	border-radius: 44rpx;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.25s ease;
+}
+
+.bottom-btn:active {
+	opacity: 0.9;
+	transform: scale(0.98);
+}
+
+.bottom-btn.secondary {
+	background-color: #F5F7FA;
+	border: 1rpx solid #DCDFE6;
+	margin-right: 16rpx;
+}
+
+.bottom-btn.primary {
+	background-color: #1890FF;
+	box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.3);
+}
+
+.bottom-btn-icon {
+	font-size: 30rpx;
+	margin-right: 8rpx;
+}
+
+.bottom-btn.secondary .bottom-btn-icon {
+	color: #606266;
+}
+
+.bottom-btn.primary .bottom-btn-icon {
+	color: #FFFFFF;
+}
+
+.bottom-btn-text {
+	font-size: 30rpx;
+	font-weight: 500;
+}
+
+.bottom-btn.secondary .bottom-btn-text {
+	color: #606266;
+}
+
+.bottom-btn.primary .bottom-btn-text {
+	color: #FFFFFF;
+}
+
+/* FontAwesome 图标样式 */
+.fa {
+	font-family: 'Font Awesome 6 Free';
+	font-weight: 900;
+	font-size: 26rpx;
+	font-style: normal;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	display: inline-block;
+	line-height: 1;
+	text-rendering: auto;
+}
+</style>
+

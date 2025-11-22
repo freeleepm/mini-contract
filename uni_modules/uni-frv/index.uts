@@ -1,0 +1,67 @@
+// uni-frv 实人认证模块
+
+// 认证参数接口
+interface CertifyParams {
+    certifyId: string;    // 认证ID，从服务端获取
+    name: string;         // 用户真实姓名
+    idCardNumber: string; // 身份证号码
+}
+
+// 认证结果回调
+type CertifyCallback = (result: {code: number, message: string, data?: any}) => void;
+
+/**
+ * 实人认证模块
+ */
+export class FrvModule {
+    /**
+     * 启动实人认证
+     * @param params 认证参数
+     * @param callback 认证结果回调
+     */
+    start(params: CertifyParams, callback: CertifyCallback): void {
+        // 检查参数
+        if (!params.certifyId) {
+            callback({code: -1, message: '缺少认证ID'});
+            return;
+        }
+        
+        if (!params.name) {
+            callback({code: -1, message: '缺少姓名'});
+            return;
+        }
+        
+        if (!params.idCardNumber) {
+            callback({code: -1, message: '缺少身份证号'});
+            return;
+        }
+        
+        try {
+            // 调用原生实人认证API
+            // 注意：这里使用模拟实现，实际项目中应该调用真实的API
+            console.log('启动实人认证:', JSON.stringify(params));
+            
+            // 模拟认证过程
+            setTimeout(() => {
+                // 模拟认证成功
+                callback({code: 0, message: '认证成功', data: {
+                    certifyId: params.certifyId,
+                    passed: true
+                }});
+            }, 2000);
+            
+            // 实际项目中应该使用类似以下代码调用原生API
+            // const module = uni.requireNativePlugin('FaceRecognition');
+            // module.startFacialRecognitionVerify({
+            //    certifyId: params.certifyId,
+            //    name: params.name,
+            //    idNumber: params.idCardNumber
+            // }, (result) => {
+            //     callback(result);
+            // });
+        } catch (e) {
+            console.error('实人认证异常:', e);
+            callback({code: -2, message: '认证过程发生异常'});
+        }
+    }
+} 

@@ -1,0 +1,582 @@
+<template>
+  <view class="page-container">
+    <!-- 标题区域 -->
+    <view class="header-section">
+      <text class="header-title">AI起草合同</text>
+      <text class="header-subtitle">与AI对话，快速起草专业合同</text>
+    </view>
+
+    <!-- 内容滚动区域 -->
+    <scroll-view class="content-scroll" scroll-y="true">
+      <view class="content-wrapper">
+        <!-- 推荐话术卡片 -->
+        <view class="section">
+          <view class="section-header">
+            <text class="section-title">推荐话术</text>
+            <text class="section-subtitle">选择一个话术快速开始</text>
+          </view>
+
+          <!-- 话术列表 -->
+          <view class="template-list">
+            <view 
+              v-for="template in templateList" 
+              :key="template.id"
+              class="template-card"
+              @click="handleTemplateClick(template)"
+            >
+              <view class="template-icon">
+                <text class="fa fa-file-text-o"></text>
+              </view>
+              <view class="template-content">
+                <text class="template-title">{{ template.title }}</text>
+                <text class="template-description">{{ template.description }}</text>
+                <text class="template-use-count">使用次数: {{ template.useCount }}</text>
+              </view>
+              <view class="template-arrow">
+                <text class="fa fa-angle-right"></text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 最近对话 -->
+        <view class="section">
+          <view class="section-header">
+            <text class="section-title">最近对话</text>
+            <text class="section-link" @click="handleViewAllHistory">
+              <text class="link-text">查看全部</text>
+              <text class="fa fa-angle-right"></text>
+            </text>
+          </view>
+
+          <!-- 对话列表 -->
+          <view class="conversation-list" v-if="conversationList.length > 0">
+            <view 
+              v-for="conversation in conversationList" 
+              :key="conversation.id"
+              class="conversation-card"
+              @click="handleConversationClick(conversation)"
+            >
+              <view class="conversation-header">
+                <text class="conversation-title">{{ conversation.title }}</text>
+                <text class="conversation-time">{{ formatTime(conversation.lastMessageTime) }}</text>
+              </view>
+              <view class="conversation-footer">
+                <text class="conversation-status">{{ getStatusText(conversation.status) }}</text>
+                <text class="conversation-messages">{{ conversation.totalMessages }}条消息</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 空状态 -->
+          <view class="empty-state" v-else>
+            <text class="fa fa-comments-o empty-icon"></text>
+            <text class="empty-text">{{ loadError ? '加载失败' : '暂无对话记录' }}</text>
+            <text class="empty-hint">{{ loadError ? '请检查网络连接' : '点击上方话术或下方按钮开始对话' }}</text>
+            <button v-if="loadError" class="retry-button" @click="loadData">
+              <text class="fa fa-refresh"></text>
+              <text class="retry-text">重试</text>
+            </button>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+
+    <!-- 底部操作按钮 -->
+    <view class="bottom-bar">
+      <button class="bottom-button" @click="handleStartNewChat">
+        <text class="fa fa-plus button-icon"></text>
+        <text class="button-text">开始新对话</text>
+      </button>
+    </view>
+  </view>
+</template>
+
+<script>
+import { getTemplateList, getConversationPage, createConversation, incrementTemplateUse } from '../../api/ai-draft/index.uts'
+
+export default {
+  data() {
+    return {
+      templateList: [],
+      conversationList: [],
+      loading: false,
+      loadError: false
+    }
+  },
+  onLoad() {
+    this.loadData()
+  },
+  onShow() {
+    // 页面显示时重新加载数据，以便在返回时刷新
+    if (!this.loading) {
+      this.loadData()
+    }
+  },
+  methods: {
+    async loadData() {
+      this.loading = true
+      this.loadError = false
+      
+      try {
+        // 加载推荐话术
+        const templatesRes = await getTemplateList()
+        console.log('推荐话术响应:', templatesRes)
+        
+        if (templatesRes.code === 0 || templatesRes.code === 200) {
+          this.templateList = templatesRes.data || []
+          console.log('推荐话术加载成功:', this.templateList.length, '条')
+        } else {
+          console.error('推荐话术加载失败:', templatesRes.msg)
+          this.templateList = []
+        }
+
+        // 加载最近对话（最多显示3条）
+        const conversationsRes = await getConversationPage({
+          pageNo: 1,
+          pageSize: 3
+        })
+        console.log('最近对话响应:', conversationsRes)
+        
+        if (conversationsRes.code === 0 || conversationsRes.code === 200) {
+          const data = conversationsRes.data || { total: 0, list: [] }
+          this.conversationList = data.list || []
+          console.log('最近对话加载成功:', this.conversationList.length, '条')
+        } else {
+          console.error('最近对话加载失败:', conversationsRes.msg)
+          this.conversationList = []
+        }
+      } catch (error) {
+        console.error('加载数据失败:', error)
+        this.loadError = true
+        uni.showToast({
+          title: '加载失败，请检查网络',
+          icon: 'none',
+          duration: 2000
+        })
+      } finally {
+        this.loading = false
+      }
+    },
+    
+    async handleTemplateClick(template) {
+      console.log('点击了模板:', template.title)
+      uni.showLoading({
+        title: '创建对话中...',
+        mask: true
+      })
+      
+      try {
+        // 增加使用次数
+        console.log('增加模板使用次数...')
+        await incrementTemplateUse(template.id)
+        
+        // 创建新对话
+        console.log('创建新对话...')
+        const res = await createConversation({
+          title: template.title,
+          contractType: template.contractType
+        })
+        console.log('创建对话响应:', res)
+        
+        uni.hideLoading()
+        
+        if (res.code === 0 || res.code === 200) {
+          console.log('创建成功，准备跳转...')
+          // 跳转到对话页面，带上初始提示词
+          uni.navigateTo({
+            url: `/pages/ai-draft/chat?conversationId=${res.data}&prompt=${encodeURIComponent(template.prompt || template.description)}`,
+            fail: (err) => {
+              console.error('跳转失败:', err)
+              uni.showToast({
+                title: '页面跳转失败',
+                icon: 'none'
+              })
+            }
+          })
+        } else {
+          console.error('创建对话失败:', res.msg)
+          uni.showToast({
+            title: res.msg || '创建对话失败',
+            icon: 'none',
+            duration: 2000
+          })
+        }
+      } catch (error) {
+        console.error('创建对话异常:', error)
+        uni.hideLoading()
+        uni.showToast({
+          title: '网络异常，请重试',
+          icon: 'none',
+          duration: 2000
+        })
+      }
+    },
+    
+    handleConversationClick(conversation) {
+      uni.navigateTo({
+        url: `/pages/ai-draft/chat?conversationId=${conversation.id}`
+      })
+    },
+    
+    async handleStartNewChat() {
+      console.log('点击了开始新对话按钮')
+      uni.showLoading({
+        title: '创建中...',
+        mask: true
+      })
+      
+      try {
+        console.log('开始调用创建对话API...')
+        const res = await createConversation({
+          title: '新对话'
+        })
+        console.log('创建对话响应:', res)
+        
+        uni.hideLoading()
+        
+        if (res.code === 0 || res.code === 200) {
+          console.log('创建成功，对话ID:', res.data)
+          uni.showToast({
+            title: '创建成功',
+            icon: 'success',
+            duration: 1000
+          })
+          
+          // 延迟跳转，让用户看到成功提示
+          setTimeout(() => {
+            console.log('跳转到聊天页面...')
+            uni.navigateTo({
+              url: `/pages/ai-draft/chat?conversationId=${res.data}`,
+              fail: (err) => {
+                console.error('跳转失败:', err)
+                uni.showToast({
+                  title: '页面跳转失败',
+                  icon: 'none'
+                })
+              }
+            })
+          }, 1000)
+        } else {
+          console.error('创建失败:', res.msg)
+          uni.showToast({
+            title: res.msg || '创建失败',
+            icon: 'none',
+            duration: 2000
+          })
+        }
+      } catch (error) {
+        console.error('创建对话异常:', error)
+        uni.hideLoading()
+        uni.showToast({
+          title: '网络异常，请重试',
+          icon: 'none',
+          duration: 2000
+        })
+      }
+    },
+    
+    handleViewAllHistory() {
+      uni.navigateTo({
+        url: '/pages/ai-draft/history'
+      })
+    },
+    
+    getStatusText(status) {
+      const statusMap = {
+        0: '进行中',
+        1: '已生成',
+        2: '已签署'
+      }
+      return statusMap[status] || '未知'
+    },
+    
+    formatTime(time) {
+      if (!time) return ''
+      const date = new Date(time)
+      const now = new Date()
+      const diff = now - date
+      
+      if (diff < 60000) return '刚刚'
+      if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前'
+      if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前'
+      return date.toLocaleDateString()
+    }
+  }
+}
+</script>
+
+<style>
+.page-container {
+  flex: 1;
+  background-color: #F7F9FC;
+}
+
+.header-section {
+  padding: 60rpx 30rpx 40rpx;
+  background: linear-gradient(135deg, #1890FF 0%, #00C28A 100%);
+}
+
+.header-title {
+  font-size: 48rpx;
+  font-weight: 600;
+  color: #FFFFFF;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.header-subtitle {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.9);
+  display: block;
+}
+
+.content-scroll {
+  flex: 1;
+}
+
+.content-wrapper {
+  padding: 30rpx;
+}
+
+.section {
+  margin-bottom: 40rpx;
+}
+
+.section-header {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #303133;
+}
+
+.section-subtitle {
+  font-size: 24rpx;
+  color: #909399;
+}
+
+.section-link {
+  flex-direction: row;
+  align-items: center;
+}
+
+.link-text {
+  font-size: 28rpx;
+  color: #1890FF;
+  margin-right: 8rpx;
+}
+
+/* 推荐话术样式 */
+.template-list {
+  gap: 20rpx;
+}
+
+.template-card {
+  background-color: #FFFFFF;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  flex-direction: row;
+  align-items: center;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+  margin-bottom: 20rpx;
+}
+
+.template-icon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 40rpx;
+  background-color: #F0F7FF;
+  align-items: center;
+  justify-content: center;
+  margin-right: 24rpx;
+}
+
+.template-icon .fa {
+  font-family: FontAwesome;
+  font-size: 40rpx;
+  color: #1890FF;
+}
+
+.template-content {
+  flex: 1;
+}
+
+.template-title {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #303133;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.template-description {
+  font-size: 24rpx;
+  color: #909399;
+  display: block;
+  margin-bottom: 8rpx;
+  lines: 2;
+}
+
+.template-use-count {
+  font-size: 22rpx;
+  color: #C0C4CC;
+  display: block;
+}
+
+.template-arrow {
+  margin-left: 16rpx;
+}
+
+.template-arrow .fa {
+  font-family: FontAwesome;
+  font-size: 32rpx;
+  color: #C0C4CC;
+}
+
+/* 对话列表样式 */
+.conversation-list {
+  gap: 16rpx;
+}
+
+.conversation-card {
+  background-color: #FFFFFF;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+  margin-bottom: 16rpx;
+}
+
+.conversation-header {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.conversation-title {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #303133;
+  flex: 1;
+}
+
+.conversation-time {
+  font-size: 24rpx;
+  color: #909399;
+  margin-left: 16rpx;
+}
+
+.conversation-footer {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.conversation-status {
+  font-size: 24rpx;
+  color: #00C28A;
+}
+
+.conversation-messages {
+  font-size: 24rpx;
+  color: #909399;
+}
+
+/* 空状态 */
+.empty-state {
+  align-items: center;
+  padding: 80rpx 0;
+}
+
+.empty-icon {
+  font-family: FontAwesome;
+  font-size: 96rpx;
+  color: #DCDFE6;
+  margin-bottom: 24rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #909399;
+  margin-bottom: 12rpx;
+  display: block;
+}
+
+.empty-hint {
+  font-size: 24rpx;
+  color: #C0C4CC;
+  display: block;
+  margin-bottom: 30rpx;
+}
+
+.retry-button {
+  margin-top: 20rpx;
+  padding: 20rpx 40rpx;
+  background-color: #1890FF;
+  border-radius: 22rpx;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  border: none;
+}
+
+.retry-button .fa {
+  font-family: FontAwesome;
+  font-size: 28rpx;
+  color: #FFFFFF;
+  margin-right: 12rpx;
+}
+
+.retry-text {
+  font-size: 28rpx;
+  color: #FFFFFF;
+}
+
+/* 底部操作栏 */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #FFFFFF;
+  padding: 20rpx 30rpx;
+  box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.bottom-button {
+  height: 88rpx;
+  border-radius: 12rpx;
+  background-color: #00C28A;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  border: none;
+}
+
+.button-icon {
+  font-family: FontAwesome;
+  font-size: 28rpx;
+  color: #FFFFFF;
+  margin-right: 12rpx;
+}
+
+.button-text {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #FFFFFF;
+}
+
+.fa {
+  font-family: FontAwesome;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+</style>
+

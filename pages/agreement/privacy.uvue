@@ -1,0 +1,220 @@
+<script>
+	/**
+	 * 隐私政策页面
+	 */
+	export default {
+		methods: {
+			// 返回上一页
+			goBack(): void {
+				uni.navigateBack();
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="privacy-container">
+		
+		<!-- 内容区域 -->
+		<scroll-view scroll-y="true" class="content">
+			<view class="privacy-content">
+				<view class="privacy-title">
+					<text class="date">更新日期：2025年01月01日</text>
+					<text class="date">生效日期：2025年01月01日</text>
+				</view>
+				
+				<view class="privacy-section">
+					<text class="section-content">Mini Contract Pro（以下简称"我们"或"本平台"）非常重视用户隐私政策并严格遵守相关的法律规定。请您仔细阅读《隐私政策》后再继续使用。如果您继续使用我们的服务，表示您已经仔细阅读并明确同意本政策的所有内容。</text>
+				</view>
+				
+				<view class="privacy-section">
+					<text class="section-title">一、信息收集与使用</text>
+					<text class="section-content">1.1 为了向您提供更好的服务，我们可能会收集您的以下信息：</text>
+					<text class="section-content">  (1) 账号信息：您在注册、登录及使用我们的服务时，需要提供手机号码进行验证码登录/注册。</text>
+					<text class="section-content">  (2) 个人身份信息：在使用实名认证、电子签名等功能时，我们需要收集您的真实姓名、身份证号码、人脸识别信息等，以确保电子签名的法律效力。</text>
+					<text class="section-content">  (3) 企业信息：如您创建企业账户或以企业身份使用服务，我们会收集企业名称、统一社会信用代码、营业执照、法定代表人信息等。</text>
+					<text class="section-content">  (4) 签名和印章：您创建的个人签名、企业印章图片将被安全存储，用于电子合同签署。</text>
+					<text class="section-content">  (5) 合同内容：您创建、签署、管理的电子合同内容及相关附件。</text>
+					<text class="section-content">  (6) 设备信息：设备型号、操作系统版本、唯一设备标识符、IP地址、网络状态等信息。</text>
+					<text class="section-content">  (7) 日志信息：您使用服务的详细记录，包括操作时间、操作类型、IP地址等，这些日志用于审计和安全保护。</text>
+					<text class="section-content">  (8) 位置信息：在某些场景下（如签署合同时），我们可能会收集您的地理位置信息，以增强安全性。</text>
+					
+					<text class="section-content">1.2 我们收集这些信息的目的在于：</text>
+					<text class="section-content">  (1) 向您提供电子合同创建、签署、审核、管理等核心服务；</text>
+					<text class="section-content">  (2) 完成实名认证，确保电子签名的合法性和有效性；</text>
+					<text class="section-content">  (3) 进行企业账户管理和成员权限管理；</text>
+					<text class="section-content">  (4) 生成和管理个人签名及企业印章；</text>
+					<text class="section-content">  (5) 验证签署人身份，防止冒名签署；</text>
+					<text class="section-content">  (6) 保存合同签署记录和日志，提供法律证据支持；</text>
+					<text class="section-content">  (7) 改进服务质量，提供定制化的合同模板推荐；</text>
+					<text class="section-content">  (8) 回应您的问题或请求，提供客户支持；</text>
+					<text class="section-content">  (9) 遵守法律法规的要求，配合监管部门的审计和调查。</text>
+				</view>
+				
+				<view class="privacy-section">
+					<text class="section-title">二、信息存储</text>
+					<text class="section-content">2.1 信息存储的地点：我们会按照法律法规规定，将境内收集的用户个人信息存储在中国境内。</text>
+					<text class="section-content">2.2 信息存储的期限：我们仅在为实现服务目的所必需的时间内，或按照法律法规的规定保留您的个人信息。</text>
+					<text class="section-content">2.3 信息安全保护：我们使用各种安全技术和程序，以防信息的丢失、不当使用、未经授权阅览或披露。例如，在某些服务中，我们将利用加密技术（例如SSL）来保护您提供的个人信息。但请您理解，由于技术的限制以及可能存在的各种恶意手段，即便我们尽最大努力加强安全措施，也无法始终保证信息百分之百的安全。</text>
+				</view>
+				
+				<view class="privacy-section">
+					<text class="section-title">三、信息共享与披露</text>
+					<text class="section-content">3.1 信息共享：除以下情形外，未经您同意，我们不会与任何第三方分享您的个人信息：</text>
+					<text class="section-content">  (1) 根据法律法规的规定或政府主管部门的要求；</text>
+					<text class="section-content">  (2) 为了保护我们的用户或社会公众的利益、财产或安全免遭损害；</text>
+					<text class="section-content">  (3) 在合并、收购或破产清算时，如涉及到个人信息转让，我们会要求新的持有您个人信息的公司、组织继续受本政策的约束，否则我们将要求该公司、组织重新征得您的授权同意。</text>
+					
+					<text class="section-content">3.2 委托处理：我们可能会委托合作伙伴为您提供某些服务或代表我们履行职能，我们仅会出于正当、合法、必要的目的向这些合作伙伴提供您的信息，并且受本隐私政策中所声明目的的约束。我们会通过签署协议等方式要求合作伙伴对您的个人信息保密。</text>
+					
+					<text class="section-content">3.3 为了遵守法律、执行或适用我们的使用条件和其他协议，或者为了保护本平台、您或其他本平台用户的权利及其财产或安全，我们可在认为必要且适当的情况下透露您的个人信息。</text>
+				</view>
+				
+				<view class="privacy-section">
+					<text class="section-title">四、您的权利</text>
+					<text class="section-content">4.1 按照中国相关的法律、法规、标准，以及其他国家、地区的通行做法，我们保障您对自己的个人信息行使以下权利：</text>
+					<text class="section-content">  (1) 访问和更正您的个人信息；</text>
+					<text class="section-content">  (2) 删除您的个人信息；</text>
+					<text class="section-content">  (3) 改变您授权同意的范围；</text>
+					<text class="section-content">  (4) 获取您个人信息的副本；</text>
+					<text class="section-content">  (5) 注销账号。</text>
+					
+					<text class="section-content">4.2 您可以通过本平台的账号设置或者联系我们的客服来行使上述权利。在技术可行的前提下，我们将尽合理商业努力满足您的请求。</text>
+				</view>
+				
+				<view class="privacy-section">
+					<text class="section-title">五、Cookie和同类技术的使用</text>
+					<text class="section-content">5.1 为确保网站正常运转、为您获得更轻松的访问体验，我们会在您的计算机或移动设备上存储名为Cookie的小数据文件。Cookie通常包含标识符、站点名称以及一些号码和字符。我们使用Cookie来保存您的偏好、维持您的登录状态等。</text>
+					<text class="section-content">5.2 您可根据自己的偏好管理或删除Cookie。您可以清除计算机上保存的所有Cookie，大部分网络浏览器都设有阻止Cookie的功能。但如果您这么做，您需要在每一次访问我们的网站时更改用户设置。</text>
+				</view>
+				
+				<view class="privacy-section">
+					<text class="section-title">六、隐私政策的更新</text>
+					<text class="section-content">6.1 我们可能会不定时修改本隐私政策的条款，该等修改构成本隐私政策的一部分。如该等修改造成您在本隐私政策下权利的实质减少，我们将在修改生效前通过在主页上显著位置提示或向您发送电子邮件或以其他方式通知您。在该种情况下，若您继续使用我们的服务，即表示同意受经修改的本隐私政策的约束。</text>
+				</view>
+				
+				<view class="privacy-section">
+					<text class="section-title">七、未成年人保护</text>
+					<text class="section-content">7.1 我们非常重视对未成年人个人信息的保护。根据相关法律法规，若您是18周岁以下的未成年人，在使用我们的服务前，应事先取得您的家长或法定监护人的同意。</text>
+					<text class="section-content">7.2 对于经家长或监护人同意而收集未成年人个人信息的情况，我们只会在法律法规允许、家长或监护人明确同意或者保护未成年人所必要的情况下使用或公开披露此信息。</text>
+				</view>
+				
+				<view class="privacy-section">
+					<text class="section-title">八、如何联系我们</text>
+					<text class="section-content">8.1 如您对本隐私政策有任何疑问、意见或建议，可通过以下方式与我们联系：</text>
+					<text class="section-content">  电子邮件：shawn@leepm.com</text>
+					<text class="section-content">  在线客服：通过App内的"个人中心-帮助中心"联系我们</text>
+					<text class="section-content">  用户反馈：通过App内的"个人中心-意见反馈"提交您的问题</text>
+					<text class="section-content">8.2 一般情况下，我们将在收到您的问题后15个工作日内回复。</text>
+					<text class="section-content">8.3 如果您对我们的回复不满意，特别是您认为我们的个人信息处理行为损害了您的合法权益，您还可以向网信、电信、公安及工商等监管部门进行投诉或举报。</text>
+				</view>
+				
+				<view class="privacy-footer">
+					<text class="footer-text">Mini Contract Pro</text>
+				</view>
+			</view>
+		</scroll-view>
+	</view>
+</template>
+
+<style>
+	.privacy-container {
+		flex: 1;
+		background-color: #F7F9FC;
+	}
+	
+	/* 顶部导航 */
+	.header {
+		height: 90rpx;
+		background-color: #FFFFFF;
+		flex-direction: row;
+		align-items: center;
+		padding: 0 32rpx;
+		padding-top: var(--status-bar-height);
+		border-bottom: 1rpx solid #EEEEEE;
+	}
+	
+	.header-left, .header-right {
+		width: 80rpx;
+		height: 80rpx;
+		justify-content: center;
+		align-items: center;
+	}
+	
+	.icon-back {
+		font-size: 36rpx;
+		color: #333333;
+	}
+	
+	.header-title {
+		flex: 1;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.title-text {
+		font-size: 32rpx;
+		font-weight: 600;
+		color: #333333;
+	}
+	
+	/* 内容区域 */
+	.content {
+		flex: 1;
+		padding: 32rpx;
+	}
+	
+	.privacy-content {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 40rpx 32rpx;
+		margin-bottom: 32rpx;
+	}
+	
+	.privacy-title {
+		margin-bottom: 40rpx;
+		align-items: center;
+	}
+	
+	.privacy-title .title {
+		font-size: 36rpx;
+		font-weight: bold;
+		color: #333333;
+		margin-bottom: 16rpx;
+		text-align: center;
+	}
+	
+	.privacy-title .date {
+		font-size: 24rpx;
+		color: #999999;
+		text-align: center;
+	}
+	
+	.privacy-section {
+		margin-bottom: 32rpx;
+	}
+	
+	.section-title {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #333333;
+		margin-bottom: 24rpx;
+	}
+	
+	.section-content {
+		font-size: 28rpx;
+		color: #666666;
+		line-height: 1.6;
+		margin-bottom: 16rpx;
+	}
+	
+	.privacy-footer {
+		margin-top: 60rpx;
+		align-items: center;
+	}
+	
+	.footer-text {
+		font-size: 28rpx;
+		color: #999999;
+	}
+</style> 

@@ -1,0 +1,273 @@
+<script lang="uts">
+	let firstBackTime = 0
+	export default {
+		onLaunch: function () {
+			console.log('App Launch')
+			
+			// 初始化uni-id配置
+			this.initUniId()
+			
+			// 图标现在使用CSS Mask + SVG技术，实现简约平面设计
+			console.log('已实现简约平面图标系统，使用CSS Mask + SVG技术，符合现代简约设计原则')
+		},
+		onShow: function () {
+			console.log('App Show')
+		},
+		onHide: function () {
+			console.log('App Hide')
+		},
+		// #ifdef APP-ANDROID
+		onLastPageBackPress: function () {
+			console.log('App LastPageBackPress')
+			if (firstBackTime == 0) {
+				uni.showToast({
+					title: '再按一次退出应用',
+					position: 'bottom',
+				})
+				firstBackTime = Date.now()
+				setTimeout(() => {
+					firstBackTime = 0
+				}, 2000)
+			} else if (Date.now() - firstBackTime < 2000) {
+				firstBackTime = Date.now()
+				uni.exit()
+			}
+		},
+		// #endif
+		onExit: function () {
+			console.log('App Exit')
+		},
+		
+		methods: {
+			// 初始化uni-id配置
+			initUniId(): void {
+				console.log('初始化uni-id配置')
+				
+				// 初始化uni-id配置
+				try {
+					// 检查是否有本地存储的 token
+					const token = uni.getStorageSync('token')
+					const refreshToken = uni.getStorageSync('refreshToken')
+					
+					if (token) {
+						console.log('检测到用户已登录，token存在')
+						// token 存在，认为用户已登录
+						// 恢复用户登录状态
+						
+						// 检查是否有用户信息
+						const userInfo = uni.getStorageSync('userInfo')
+						if (!userInfo) {
+							console.log('token存在但用户信息缺失，需要重新获取')
+							// 可以在这里调用API获取用户信息
+						}
+					} else {
+						console.log('用户未登录，token不存在')
+					}
+					
+					// 检查实名认证状态
+					const kycStatus = uni.getStorageSync('kycStatus')
+					if (kycStatus) {
+						console.log('用户已完成实名认证')
+					}
+				} catch (e) {
+					console.error('初始化uni-id配置失败:', e)
+				}
+			}
+		}
+	}
+</script>
+
+<style>
+	/* #ifndef APP-PLUS-NVUE */
+	/* 引入FontAwesome图标字体 - 本地版本，解决网络依赖问题 */
+		@import url("./static/styles/fontawesome.css");
+	/* #endif */
+
+	/* 自定义全局样式 */
+	.uni-row {
+		flex-direction: row;
+	}
+
+	.uni-column {
+		flex-direction: column;
+	}
+	
+	/* 解决H5的tabbar野蛮的全局加了after伪类占位导致的空白 start*/
+	uni-page-body::after {
+		display: none !important;
+	}
+	/* 解决H5的tabbar野蛮的全局加了after伪类占位导致的空白 end*/
+	
+	/* 图标样式通过独立的CSS文件管理 */
+	
+	/* 全局样式 - 主题色调整为绿色 */
+	:root {
+		--primary-color: #00C28A; /* 主题绿色 */
+		--primary-light: #4AD8A8; /* 浅绿色 */
+		--primary-dark: #00A070; /* 深绿色 */
+		--primary-bg: #F0FBF7; /* 背景浅绿 */
+		--text-color: #333333; /* 主文本色 */
+		--text-color-secondary: #666666; /* 次要文本色 */
+		--text-color-light: #999999; /* 浅色文本 */
+		--border-color: #EEEEEE; /* 边框色 */
+		--bg-color: #FFFFFF; /* 背景色 */
+		--bg-color-gray: #F5F7FA; /* 灰色背景 */
+	}
+	
+	/* 全局样式变量 */
+	page {
+		background-color: #F7F9FC;
+		font-size: 28rpx;
+		color: #333333;
+		line-height: 1.5;
+	}
+	
+	/* 通用卡片样式 */
+	.card {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		box-shadow: 0 2rpx 10rpx 0 rgba(0, 0, 0, 0.05);
+		margin-bottom: 20rpx;
+	}
+	
+	/* 通用按钮样式 */
+	.primary-button {
+		background-color: #00C28A;
+		color: #FFFFFF;
+		font-size: 28rpx;
+		border-radius: 100rpx;
+		padding: 16rpx 32rpx;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.secondary-button {
+		background-color: #007BFF;
+		color: #FFFFFF;
+		font-size: 28rpx;
+		border-radius: 100rpx;
+		padding: 16rpx 32rpx;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	/* 文本样式 */
+	.heading {
+		font-size: 36rpx;
+		font-weight: bold;
+		color: #333333;
+		margin-bottom: 20rpx;
+	}
+	
+	.subheading {
+		font-size: 30rpx;
+		font-weight: bold;
+		color: #333333;
+		margin-bottom: 16rpx;
+	}
+	
+	.text-primary {
+		color: #00C28A;
+	}
+	
+	.text-secondary {
+		color: #666666;
+	}
+	
+	.text-error {
+		color: #F5222D;
+	}
+	
+	.text-grey {
+		color: #999999;
+	}
+	
+	.text-small {
+		font-size: 24rpx;
+	}
+	
+	.text-large {
+		font-size: 32rpx;
+	}
+	
+	.text-bold {
+		font-weight: bold;
+	}
+	
+	/* 布局辅助类 */
+	.flex-row {
+		flex-direction: row;
+	}
+	
+	.flex-column {
+		flex-direction: column;
+	}
+	
+	.flex-center {
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.flex-between {
+		justify-content: space-between;
+	}
+	
+	.flex-wrap {
+		flex-wrap: wrap;
+	}
+	
+	.flex-1 {
+		flex: 1;
+	}
+	
+	/* 间距类 */
+	.margin-sm {
+		margin: 10rpx;
+	}
+	
+	.margin {
+		margin: 20rpx;
+	}
+	
+	.margin-lg {
+		margin: 30rpx;
+	}
+	
+	.padding-sm {
+		padding: 10rpx;
+	}
+	
+	.padding {
+		padding: 20rpx;
+	}
+	
+	.padding-lg {
+		padding: 30rpx;
+	}
+
+	/* 全局样式 */
+	.page-container {
+		padding: 30rpx;
+	}
+
+	.btn-primary {
+		background-color: var(--primary-color);
+		color: #ffffff;
+		border-radius: 10rpx;
+		height: 90rpx;
+		line-height: 90rpx;
+		text-align: center;
+		font-size: 32rpx;
+	}
+
+	.btn-outline {
+		background-color: #ffffff;
+		color: var(--primary-color);
+		border: 1px solid var(--primary-color);
+		border-radius: 10rpx;
+		height: 90rpx;
+		line-height: 90rpx;
+		text-align: center;
+		font-size: 32rpx;
+	}
+</style>

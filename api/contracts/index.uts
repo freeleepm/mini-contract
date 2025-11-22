@@ -1,0 +1,343 @@
+/**
+ * 合同（签署任务）相关API - 对接后台真实接口
+ * 
+ * 注意：后台使用的是 SealSignTask（签署任务），这里统一称为"合同"以符合业务语义
+ * 注意：Contract模块使用统一的版本化路径 /api/v1/seal
+ */
+
+import { get, post, put, del } from '../index';
+
+// ==================== 枚举定义 ====================
+
+/**
+ * 合同状态枚举（对应后台 SealSignTask 状态）
+ * 注意：后端状态码从1开始，不是从0开始！
+ */
+export enum ContractStatus {
+	DRAFT = 1,           // 草稿
+	SIGNING = 2,         // 签署中
+	COMPLETED = 3,       // 已完成
+	CANCELLED = 4,       // 已撤销
+	REJECTED = 5,        // 已拒签
+	EXPIRED = 6,         // 已过期
+	FORM_FILLING = 7     // 表单填写中
+}
+
+/**
+ * 参与人签署状态（对应后台 SealSignTaskParticipantStatusEnum）
+ * 注意：后端定义了5个状态，前端必须完全对应！
+ */
+export enum ParticipantStatus {
+	PENDING = 0,        // 待处理（后端：PENDING）
+	FORM_FILLED = 1,    // 表单已填写（后端：FORM_FILLED）
+	SIGNED = 2,         // 已签署（后端：SIGNED）
+	REJECTED = 3,       // 已拒绝（后端：REJECTED）
+	CANCELLED = 4       // 已取消（后端：CANCELLED）
+}
+
+// ==================== 数据类型定义 ====================
+
+/**
+ * 分页参数
+ */
+export interface PageParams {
+	pageNo?: number;
+	pageSize?: number;
+	name?: string;            // 合同名称搜索
+	status?: ContractStatus;  // 状态筛选（单个状态）
+	statusList?: number[];    // 状态列表筛选（多个状态）
+	createTime?: string[];    // 创建时间范围
+	roleFilter?: string;      // 角色筛选：creator-我创建的, signer-待我签署的, all-全部
+}
+
+/**
+ * 参与人信息
+ */
+export interface ParticipantInfo {
+	userId: number;
+	userName: string;
+	userAvatar?: string;
+	signStatus: ParticipantStatus;
+	signTime?: string;
+	signIp?: string;
+	sealId?: number;
+	sealName?: string;
+	sealImageUrl?: string;
+	order: number;  // 签署顺序
+}
+
+/**
+ * 合同基本信息
+ */
+export interface Contract {
+        id: string;
+	name: string;                // 合同名称
+	status: ContractStatus;      // 状态
+	templateId?: string;         // 模板ID（如果从模板创建）
+	fileUrl: string;             // 待签署文件URL
+	signedFileUrl?: string;      // 已签署文件URL
+	createTime: string;          // 创建时间
+	deadline?: string;           // 截止时间
+	reason?: string;             // 拒绝原因
+	participants: ParticipantInfo[]; // 参与人列表
+}
+
+/**
+ * 合同列表响应
+ */
+export interface ContractListResponse {
+	list: Contract[];
+	total: number;
+	pageSize: number;
+	pageNo: number;
+}
+
+/**
+ * 合同统计信息
+ */
+export interface ContractStatistics {
+	totalCount: number;      // 总数
+	draftCount: number;      // 草稿
+	signingCount: number;    // 签署中
+	completedCount: number;  // 已完成
+	cancelledCount: number;  // 已撤销
+	rejectedCount: number;   // 已拒签
+	expiredCount: number;    // 已过期
+	
+	// 以下是为了兼容旧版UI的字段
+	waitingMe?: number;      // 待我签署（计算得出）
+	waitingOthers?: number;  // 待他人签署（计算得出）
+	completed?: number;      // 已完成（同completedCount）
+	draft?: number;          // 草稿（同draftCount）
+	total?: number;          // 总数（同totalCount）
+}
+
+/**
+ * 签署权限验证结果
+ */
+export interface SignPermission {
+	canView: boolean;        // 是否可查看
+	canSign: boolean;        // 是否可签署
+	canEdit: boolean;        // 是否可编辑
+	canDownload: boolean;    // 是否可下载
+	reason?: string;         // 权限限制原因
+	taskStatus: ContractStatus;
+	participantStatus?: ParticipantStatus;
+}
+
+/**
+ * 创建合同请求参数
+ */
+export interface CreateContractParams {
+	name: string;                // 合同名称
+	fileUrl: string;             // 文件URL（必须先上传文件）
+	templateId?: string;         // 模板ID（可选）
+	deadline?: string;           // 截止时间（可选）
+	participants: {              // 参与人列表
+		userId: number;
+		order: number;           // 签署顺序
+		sealId?: number;         // 指定印章ID（可选）
+	}[];
+}
+
+// ==================== API方法 ====================
+
+/**
+ * 获取合同统计信息
+ */
+export function getContractStatistics(): Promise<ContractStatistics> {
+	return get<ContractStatistics>(`/api/v1/seal/sign-task/statistics`);
+}
+
+/**
+ * 获取合同列表（分页）
+ */
+export function getContractPage(params: PageParams): Promise<ContractListResponse> {
+	return get<ContractListResponse>(`/api/v1/seal/sign-task/page`, params);
+}
+
+/**
+ * 获取合同详情
+ */
+export function getContract(id: string): Promise<Contract> {
+	return get<Contract>(`/api/v1/seal/sign-task/get`, { id });
+}
+
+/**
+ * 创建合同
+ */
+export function createContract(data: CreateContractParams): Promise<{ id: string }> {
+	return post<{ id: string }>(`/api/v1/seal/sign-task/create`, data);
+}
+
+/**
+ * 撤销合同
+ * 注意：DELETE 请求的参数应该在 URL 中，不是 request body
+ */
+export function cancelContract(id: string): Promise<void> {
+	// ✅ 修复：将 id 作为 query parameter 拼接到 URL 中
+	return del<void>(`/api/v1/seal/sign-task/cancel?id=${id}`);
+}
+
+/**
+ * 删除合同（逻辑删除已结束的任务）
+ * 注意：DELETE 请求的参数应该在 URL 中，不是 request body
+ */
+export function deleteContract(id: string): Promise<void> {
+	// ✅ 修复：将 id 作为 query parameter 拼接到 URL 中
+	return del<void>(`/api/v1/seal/sign-task/delete?id=${id}`);
+}
+
+/**
+ * 催签（暂时使用空实现，后续可扩展）
+ */
+export function urgeContract(id: string): Promise<void> {
+	// TODO: 后台可能需要添加催签接口
+	return post<void>(`/api/v1/seal/sign-task/${id}/urge`, {});
+}
+
+/**
+ * 下载合同
+ */
+export function downloadContract(id: string): Promise<{ url: string }> {
+	return get<{ url: string }>(`/api/v1/seal/sign-tasks/${id}/download`);
+}
+
+/**
+ * 验证签署权限
+ */
+export function validateSignPermission(taskId: string): Promise<SignPermission> {
+	return get<SignPermission>(`/api/v1/seal/sign-task/validate-permission`, { taskId });
+}
+
+/**
+ * 批量获取合同状态
+ */
+export function getContractStatusList(taskIds: string[]): Promise<Contract[]> {
+	return post<Contract[]>(`/api/v1/seal/sign-task/get-status-list`, { taskIds });
+}
+
+// ==================== 工具函数 ====================
+
+/**
+ * 获取合同状态名称
+ */
+export function getContractStatusName(status: ContractStatus): string {
+	const statusMap: Record<number, string> = {
+		[ContractStatus.DRAFT]: '草稿',
+		[ContractStatus.FORM_FILLING]: '表单填写中',
+		[ContractStatus.SIGNING]: '待签署',
+		[ContractStatus.COMPLETED]: '已完成',
+		[ContractStatus.CANCELLED]: '已撤销',
+		[ContractStatus.REJECTED]: '已拒签',
+		[ContractStatus.EXPIRED]: '已过期'
+	};
+	return statusMap[status] || '未知';
+}
+
+/**
+ * 获取合同状态样式类名
+ */
+export function getContractStatusClass(status: ContractStatus): string {
+	const classMap: Record<number, string> = {
+		[ContractStatus.DRAFT]: 'status-draft',
+		[ContractStatus.FORM_FILLING]: 'status-form-filling',
+		[ContractStatus.SIGNING]: 'status-signing',
+		[ContractStatus.COMPLETED]: 'status-completed',
+		[ContractStatus.CANCELLED]: 'status-cancelled',
+		[ContractStatus.REJECTED]: 'status-rejected',
+		[ContractStatus.EXPIRED]: 'status-expired'
+	};
+	return classMap[status] || 'status-unknown';
+}
+
+/**
+ * 获取合同状态颜色
+ */
+export function getContractStatusColor(status: ContractStatus): string {
+	const colorMap: Record<number, string> = {
+		[ContractStatus.DRAFT]: '#909399',          // 灰色
+		[ContractStatus.FORM_FILLING]: '#FAAD14',   // 橙色（表单填写中）
+		[ContractStatus.SIGNING]: '#1890FF',        // 蓝色
+		[ContractStatus.COMPLETED]: '#00C28A',      // 绿色
+		[ContractStatus.CANCELLED]: '#909399',      // 灰色
+		[ContractStatus.REJECTED]: '#F56C6C',       // 红色
+		[ContractStatus.EXPIRED]: '#FAAD14'         // 橙色
+	};
+	return colorMap[status] || '#909399';
+}
+
+/**
+ * 获取参与人签署状态名称
+ */
+export function getParticipantStatusName(status: ParticipantStatus): string {
+	const statusMap: Record<number, string> = {
+		[ParticipantStatus.PENDING]: '待处理',
+		[ParticipantStatus.FORM_FILLED]: '表单已填写',
+		[ParticipantStatus.SIGNED]: '已签署',
+		[ParticipantStatus.REJECTED]: '已拒绝',
+		[ParticipantStatus.CANCELLED]: '已取消'
+	};
+	return statusMap[status] || '未知';
+}
+
+/**
+ * 计算待我签署和待他人签署数量
+ * 注意：这需要根据当前用户ID和参与人列表计算
+ */
+export function calculateWaitingCounts(
+	contracts: Contract[],
+	currentUserId: number
+): { waitingMe: number; waitingOthers: number } {
+	let waitingMe = 0;
+	let waitingOthers = 0;
+	
+	for (const contract of contracts) {
+		if (contract.status === ContractStatus.SIGNING) {
+			// 检查当前用户是否是参与人
+			const myParticipant = contract.participants.find(
+				p => p.userId === currentUserId
+			);
+			
+			if (myParticipant && myParticipant.signStatus === ParticipantStatus.PENDING) {
+				waitingMe++;
+			} else if (myParticipant && myParticipant.signStatus === ParticipantStatus.SIGNED) {
+				// 当前用户已签署，检查是否有其他人未签署
+				const hasOthersNotSigned = contract.participants.some(
+					p => p.userId !== currentUserId && p.signStatus === ParticipantStatus.PENDING
+				);
+				if (hasOthersNotSigned) {
+					waitingOthers++;
+				}
+			}
+		}
+	}
+	
+	return { waitingMe, waitingOthers };
+}
+
+// 默认导出
+export default {
+	// API方法
+	getContractStatistics,
+	getContractPage,
+	getContract,
+	createContract,
+	cancelContract,
+	deleteContract,
+    urgeContract,
+	downloadContract,
+	validateSignPermission,
+	getContractStatusList,
+	
+	// 工具函数
+	getContractStatusName,
+	getContractStatusClass,
+	getContractStatusColor,
+	getParticipantStatusName,
+	calculateWaitingCounts,
+	
+	// 枚举
+	ContractStatus,
+	ParticipantStatus
+};

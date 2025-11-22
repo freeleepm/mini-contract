@@ -1,0 +1,211 @@
+<script>
+	/**
+	 * 用户协议页面
+	 */
+	export default {
+		methods: {
+			// 返回上一页
+			goBack(): void {
+				uni.navigateBack();
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="agreement-container">
+		
+		<!-- 内容区域 -->
+		<scroll-view scroll-y="true" class="content">
+			<view class="agreement-content">
+				<view class="agreement-title">
+					<text class="date">更新日期：2025年01月01日</text>
+					<text class="date">生效日期：2025年01月01日</text>
+				</view>
+				
+				<view class="agreement-section">
+					<text class="section-title">一、总则</text>
+					<text class="section-content">1.1 本协议是您与捷Mini Contract Pro（以下简称"本平台"）之间关于您使用本平台服务所订立的协议。</text>
+					<text class="section-content">1.2 本协议描述本平台与用户之间关于服务使用的权利义务。"用户"是指注册、登录、使用本服务的个人或企业。</text>
+					<text class="section-content">1.3 您在使用本平台提供的各项服务之前，应仔细阅读本协议。如您不同意本协议及/或随时对其的修改，您可以选择不使用本平台的服务；一旦您使用本平台的服务，即视为您已了解并完全同意本协议各项内容。</text>
+				</view>
+				
+				<view class="agreement-section">
+					<text class="section-title">二、用户注册与账号管理</text>
+					<text class="section-content">2.1 用户资格：您确认，在您完成注册程序或实际使用本平台服务时，您应当是具备完全民事权利能力和完全民事行为能力的自然人、法人或其他组织。若您不具备前述主体资格，请勿使用本平台服务，否则您及您的监护人应承担因此而导致的一切后果。</text>
+					<text class="section-content">2.2 注册信息：在使用本服务前，您必须注册一个"Mini Contract Pro"账号。注册时，您应提供真实、准确、完整的个人或企业信息，并在信息发生变更时及时更新相关信息。若您提供的信息不真实、不准确或不完整，您可能无法使用本服务或在使用过程中受到限制。</text>
+					<text class="section-content">2.3 账号安全：您应妥善保管账号及密码信息，因您保管不善可能导致遭受盗号或密码失窃，责任由您自行承担。您同意，如发现有他人冒用或盗用您的账号及密码或发生其他任何安全问题时，应立即通知本平台。</text>
+				</view>
+				
+				<view class="agreement-section">
+					<text class="section-title">三、服务内容与规则</text>
+					<text class="section-content">3.1 服务内容：本平台主要提供以下服务：</text>
+					<text class="section-content">  (1) 电子合同创建：支持通过模板、上传文件、上传图片等方式创建电子合同；</text>
+					<text class="section-content">  (2) 合同签署：提供个人签名和企业印章的电子签署功能；</text>
+					<text class="section-content">  (3) 合同审核：支持设置审核流程，进行多级审核；</text>
+					<text class="section-content">  (4) 合同管理：提供合同存储、查询、下载、归档等管理功能；</text>
+					<text class="section-content">  (5) 企业管理：支持企业账户创建、成员管理、印章管理等功能；</text>
+					<text class="section-content">  (6) 模板市场：提供丰富的合同模板供用户选择使用；</text>
+					<text class="section-content">  (7) 实名认证：提供个人和企业的实名认证服务；</text>
+					<text class="section-content">  (8) 其他本平台实际提供的相关服务。</text>
+					<text class="section-content">3.2 服务规则：您在使用本服务时，须遵守中华人民共和国相关法律法规、本协议及平台发布的其他规则。您不得利用本服务从事违法违规行为，包括但不限于：</text>
+					<text class="section-content">  (1) 上传、发布、传送含有违反国家法律法规、危害国家安全、泄露国家秘密、破坏国家统一、损害国家荣誉和利益的内容；</text>
+					<text class="section-content">  (2) 上传、发布、传送含有侮辱、诽谤、教唆、恐吓等内容的信息；</text>
+					<text class="section-content">  (3) 上传、发布、传送含有欺诈、虚假、不准确或具误导性的内容；</text>
+					<text class="section-content">  (4) 侵犯他人知识产权、商业秘密等合法权利的行为；</text>
+					<text class="section-content">  (5) 冒用他人名义签署合同或未经授权代表他人/企业签署合同；</text>
+					<text class="section-content">  (6) 利用本平台的漏洞或技术缺陷进行恶意操作；</text>
+					<text class="section-content">  (7) 其他违反法律法规、社会公德或损害他人合法权益的行为。</text>
+				</view>
+				
+				<view class="agreement-section">
+					<text class="section-title">四、电子签名及电子合同效力</text>
+					<text class="section-content">4.1 依据《中华人民共和国电子签名法》，数据电文形式的合同与纸质合同具有同等法律效力。通过本平台签署的电子合同，与纸质合同具有同等法律效力。</text>
+					<text class="section-content">4.2 您确认并同意，在本平台上通过点击确认或类似方式所签署的电子合同、作出的承诺或确认，均是您真实意思表示。</text>
+					<text class="section-content">4.3 您应对您在本平台上签署的所有电子合同及相关操作承担法律责任。</text>
+				</view>
+				
+				<view class="agreement-section">
+					<text class="section-title">五、用户信息保护</text>
+					<text class="section-content">5.1 本平台重视用户信息的保护，在您使用本服务的过程中，本平台将按照相关法律法规及本平台隐私政策的规定收集、使用、存储和共享您的个人信息。</text>
+					<text class="section-content">5.2 未经您的同意，本平台不会向任何第三方提供、公开或共享您的个人信息，但以下情况除外：</text>
+					<text class="section-content">  (1) 法律法规、监管要求或司法程序所必须；</text>
+					<text class="section-content">  (2) 为保护本平台、用户或公众的权益免遭损害；</text>
+					<text class="section-content">  (3) 符合本平台在隐私政策中的相关规定。</text>
+				</view>
+				
+				<view class="agreement-section">
+					<text class="section-title">六、知识产权</text>
+					<text class="section-content">6.1 本平台所有内容，包括但不限于文字、图片、音频、视频、软件、程序、版面设计等均受中华人民共和国法律法规及相应的国际条约保护，本平台及相关权利人享有相应的知识产权。</text>
+					<text class="section-content">6.2 未经本平台或相关权利人的书面许可，您不得以任何方式擅自使用、修改、复制、公开传播、改变、散布、发行或公开发表本平台的内容。</text>
+				</view>
+				
+				<view class="agreement-section">
+					<text class="section-title">七、服务变更、中断或终止</text>
+					<text class="section-content">7.1 本平台可能会对服务内容进行变更，也可能会中断、中止或终止服务。</text>
+					<text class="section-content">7.2 您理解并同意，本平台有权在必要时修改、中断或终止部分或全部服务。若服务变更、中断或终止给您造成损失的，您同意放弃追究本平台的责任。</text>
+				</view>
+				
+				<view class="agreement-section">
+					<text class="section-title">八、免责声明</text>
+					<text class="section-content">8.1 您理解并同意，在使用本服务的过程中，可能会遇到不可抗力等风险因素，导致本服务发生中断。不可抗力是指不能预见、不能克服并不能避免且对一方或双方造成重大影响的客观事件。</text>
+					<text class="section-content">8.2 本平台依据法律法规、本协议约定获得处理违法违规内容的权利，该权利不构成本平台的义务或承诺，本平台不能保证及时发现违法行为或进行相应处理。</text>
+				</view>
+				
+				<view class="agreement-section">
+					<text class="section-title">九、其他条款</text>
+					<text class="section-content">9.1 本协议构成您与本平台之间就服务使用达成的完整协议，并取代您与本平台先前就本服务达成的任何口头或书面协议。</text>
+					<text class="section-content">9.2 本协议的任何条款无论因何种原因无效或不具可执行性，其余条款仍有效并具有约束力。</text>
+					<text class="section-content">9.3 本协议的解释、效力及纠纷的解决，适用于中华人民共和国大陆地区法律。若您和本平台之间发生任何纠纷或争议，首先应友好协商解决，协商不成的，您同意将纠纷或争议提交本平台所在地有管辖权的人民法院管辖。</text>
+					<text class="section-content">9.4 本协议的标题仅为方便阅读而设，不影响对本协议任何条款的解释。</text>
+				</view>
+				
+				<view class="agreement-footer">
+					<text class="footer-text">Mini Contract Pro</text>
+				</view>
+			</view>
+		</scroll-view>
+	</view>
+</template>
+
+<style>
+	.agreement-container {
+		flex: 1;
+		background-color: #F7F9FC;
+	}
+	
+	/* 顶部导航 */
+	.header {
+		height: 90rpx;
+		background-color: #FFFFFF;
+		flex-direction: row;
+		align-items: center;
+		padding: 0 32rpx;
+		padding-top: var(--status-bar-height);
+		border-bottom: 1rpx solid #EEEEEE;
+	}
+	
+	.header-left, .header-right {
+		width: 80rpx;
+		height: 80rpx;
+		justify-content: center;
+		align-items: center;
+	}
+	
+	.icon-back {
+		font-size: 36rpx;
+		color: #333333;
+	}
+	
+	.header-title {
+		flex: 1;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.title-text {
+		font-size: 32rpx;
+		font-weight: 600;
+		color: #333333;
+	}
+	
+	/* 内容区域 */
+	.content {
+		flex: 1;
+		padding: 32rpx;
+	}
+	
+	.agreement-content {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 40rpx 32rpx;
+		margin-bottom: 32rpx;
+	}
+	
+	.agreement-title {
+		margin-bottom: 40rpx;
+		align-items: center;
+	}
+	
+	.agreement-title .title {
+		font-size: 36rpx;
+		font-weight: bold;
+		color: #333333;
+		margin-bottom: 16rpx;
+		text-align: center;
+	}
+	
+	.agreement-title .date {
+		font-size: 24rpx;
+		color: #999999;
+		text-align: center;
+	}
+	
+	.agreement-section {
+		margin-bottom: 32rpx;
+	}
+	
+	.section-title {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #333333;
+		margin-bottom: 24rpx;
+	}
+	
+	.section-content {
+		font-size: 28rpx;
+		color: #666666;
+		line-height: 1.6;
+		margin-bottom: 16rpx;
+	}
+	
+	.agreement-footer {
+		margin-top: 60rpx;
+		align-items: center;
+	}
+	
+	.footer-text {
+		font-size: 28rpx;
+		color: #999999;
+	}
+</style> 

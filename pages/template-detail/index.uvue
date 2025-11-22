@@ -1,0 +1,1297 @@
+<script lang="uts">
+	import { getTemplateDetail } from '../../api/templates/index';
+	import type { TemplateDetail } from '../../api/templates/index';
+	import { getSealPageUrl } from '../../api/seals/index';
+	import { formatDateTime } from '../../utils/date';
+	import { kycGuardMixin } from '../../utils/kyc-check';
+	import KycModal from '../../components/KycModal.uvue';
+	
+	export default {
+		mixins: [kycGuardMixin],
+		components: {
+			KycModal
+		},
+		data() {
+			return {
+				// 模板ID
+				templateId: '',
+				// 模板详情
+				templateDetail: null as TemplateDetail | null,
+				// 加载状态
+				isLoading: false,
+			// H5预览页面URL
+			viewUrl: '',
+			// PDF预览图加载状态
+			imageLoading: true
+			}
+		},
+		onLoad(options: any) {
+		// 检查实名认证状态
+		this.checkKycStatus();
+		
+			// 从路由参数中获取模板ID
+			if (options && options.id) {
+				this.templateId = options.id;
+				console.log('加载模板详情，ID:', this.templateId);
+				// 获取模板详情
+				this.getTemplateDetail();
+			} else {
+				uni.showToast({
+					title: '模板ID不存在',
+					icon: 'none'
+				});
+				// 延迟返回
+				setTimeout(() => {
+					uni.navigateBack();
+				}, 1500);
+			}
+		},
+		methods: {
+			// 获取模板详情
+			async getTemplateDetail(): Promise<void> {
+				if (this.isLoading) return;
+				
+				this.isLoading = true;
+				
+				uni.showLoading({
+					title: '加载中'
+				});
+				
+				try {
+					// 使用真实API
+					const detail = await getTemplateDetail(this.templateId);
+					
+					this.templateDetail = detail;
+					
+					console.log('模板详情加载成功:', detail);
+				} catch (error) {
+					console.error('获取模板详情失败:', error);
+					uni.showToast({
+						title: '加载失败，请重试',
+						icon: 'none'
+					});
+				} finally {
+					this.isLoading = false;
+					uni.hideLoading();
+				}
+			},
+			
+	// 预览模板（带字段位置标记）
+	async handlePreview(): Promise<void> {
+		if (!this.templateDetail) return;
+		
+		console.log('[模板详情] 🆕 准备使用新的模板预览模式:', {
+			id: this.templateId,
+			name: this.templateDetail.name,
+			content: this.templateDetail.content,
+			fieldCount: this.getAllFields().length
+		});
+		
+		// 构建模板预览 H5 URL - 使用新的 template-preview 模式
+		const fileUrl = this.templateDetail.content || this.templateDetail.previewUrl;
+		
+		if (!fileUrl) {
+			uni.showToast({
+				title: '模板文件不存在',
+				icon: 'none'
+			});
+			return;
+		}
+		
+		// 使用新的 getSealPageUrl 函数，传入 template-preview 模式
+		// ✅ getSealPageUrl 现在是异步函数，需要 await
+		// 🔧 修复：传递 templateId 参数（而不是 fileUrl）
+		this.viewUrl = await getSealPageUrl('template-preview', undefined, {
+			templateId: Number(this.templateId)
+		});
+			
+			console.log('[模板详情] ✅ 生成H5模板预览URL:', this.viewUrl);
+			
+			// 跳转到 WebView 页面（创建新页面或使用现有的 h5-view 页面）
+			uni.navigateTo({
+				url: `/pages/template-preview/h5-preview?url=${encodeURIComponent(this.viewUrl)}`
+			});
+		},
+			
+		// 使用此模板创建合同
+		handleUseTemplate(): void {
+			if (!this.templateDetail) return;
+		
+		// 先检查实名认证状态
+		if (!this.checkCanProceed()) {
+			console.log('[模板详情] 未完成实名认证，显示提示弹窗');
+			return;
+		}
+			
+			console.log('[模板详情] 使用模板创建合同:', this.templateId);
+			
+			// 跳转到H5创建合同页面，传递模板ID
+			uni.navigateTo({
+				url: `/pages/contract-create/h5-create?templateId=${this.templateId}`
+			});
+		},
+			
+			// 格式化时间
+			formatTime(dateTime: string | null): string {
+				return formatDateTime(dateTime);
+			},
+			
+			// 获取签署方类型显示文字
+		getSignatoryTypeText(type: string): string {
+			return type === 'enterprise' ? '企业' : '个人';
+		},
+		
+		// 获取所有字段列表（从签署方中提取）
+		getAllFields(): any[] {
+			const allFields: any[] = [];
+			if (this.templateDetail && this.templateDetail.signatories) {
+				this.templateDetail.signatories.forEach((signatory: any, index: number) => {
+					if (signatory.fields && signatory.fields.length > 0) {
+						signatory.fields.forEach((field: any) => {
+							allFields.push({
+								...field,
+								signatoryIndex: index,
+								signatoryName: signatory.name,
+								signatoryType: signatory.type
+							});
+						});
+					}
+				});
+			}
+			return allFields;
+		},
+		
+		// 计算字段标记的样式位置
+		getFieldMarkerStyle(field: any): object {
+			// 将后端返回的坐标转换为CSS样式对象
+			// 注意：这里需要根据实际的PDF尺寸和显示尺寸进行缩放
+			// 假设PDF宽度为595pt（A4），显示宽度为690rpx（屏幕宽度-60rpx边距）
+			const scaleX = 690 / 595;
+			const scaleY = scaleX; // 保持比例
+			
+			const left = (field.positionX || 0) * scaleX;
+			const top = (field.positionY || 0) * scaleY;
+			const width = (field.width || 100) * scaleX;
+			const height = (field.height || 30) * scaleY;
+			
+			return {
+				left: `${left}rpx`,
+				top: `${top}rpx`,
+				width: `${width}rpx`,
+				height: `${height}rpx`
+			};
+		},
+		
+		// 根据签署方索引获取颜色类
+		getSignatoryColorClass(signatoryIndex: number): string {
+			if (signatoryIndex === 0) {
+				return 'signatory-1';
+			} else if (signatoryIndex === 1) {
+				return 'signatory-2';
+			} else {
+				return 'signatory-other';
+			}
+		},
+		
+		// 显示字段详情
+		showFieldDetail(field: any): void {
+			const message = `字段名称：${field.name}\n所属签署方：${field.signatoryName}\n所在页码：第 ${field.pageNumber} 页\n字段类型：${field.type}\n是否必填：${field.required ? '是' : '否'}`;
+			
+			uni.showModal({
+				title: '字段详情',
+				content: message,
+				showCancel: false,
+				confirmText: '知道了'
+			});
+		},
+		
+		// 获取PDF预览图URL
+		getPreviewImageUrl(): string {
+			if (!this.templateDetail) return '';
+			
+			// 优先级：
+			// 1. previewImage - 专门的PDF预览图（高清）
+			// 2. image - 模板缩略图
+			// 3. thumbnail - 小缩略图
+			// 4. content - PDF文件URL（某些情况下可能是图片格式）
+			return this.templateDetail.previewImage 
+				|| this.templateDetail.image 
+				|| this.templateDetail.thumbnail 
+				|| '';
+		},
+		
+		// PDF预览图加载完成
+		onImageLoad(): void {
+			console.log('[模板详情] PDF预览图加载完成');
+			this.imageLoading = false;
+		},
+		
+		// PDF预览图加载失败
+		onImageError(): void {
+			console.error('[模板详情] PDF预览图加载失败');
+			this.imageLoading = false;
+					uni.showToast({
+				title: 'PDF预览图加载失败',
+				icon: 'none',
+				duration: 2000
+			});
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="template-detail">
+		<!-- 内容区域 -->
+		<scroll-view scroll-y="true" class="content">
+			<!-- 加载中 -->
+			<view v-if="isLoading" class="loading-container">
+				<view class="loading-spinner"></view>
+				<text class="loading-text">加载中...</text>
+			</view>
+			
+			<!-- 模板详情 -->
+			<view v-else-if="templateDetail" class="detail-content">
+				<!-- 模板基本信息 -->
+				<view class="template-info-card">
+					<view class="template-header">
+						<view class="template-title-row">
+							<text class="template-title">{{ templateDetail.name }}</text>
+							<view v-if="templateDetail.isOfficial" class="official-badge">
+								<text class="icon icon-check-circle badge-icon"></text>
+								<text class="badge-text">官方</text>
+			</view>
+			</view>
+						<text v-if="templateDetail.description" class="template-desc">{{ templateDetail.description }}</text>
+		</view>
+		
+					<!-- 模板元信息 -->
+					<view class="template-meta">
+						<view class="meta-item">
+							<text class="icon icon-folder meta-icon"></text>
+							<text class="meta-text">{{ templateDetail.categoryName || '未分类' }}</text>
+				</view>
+						<view class="meta-item">
+							<text class="icon icon-chart-line meta-icon"></text>
+							<text class="meta-text">{{ templateDetail.usageCount || 0 }} 次使用</text>
+			</view>
+						<view v-if="templateDetail.isHot" class="meta-item hot-tag">
+							<text class="icon icon-fire meta-icon"></text>
+							<text class="meta-text">热门</text>
+				</view>
+			</view>
+		</view>
+		
+			<!-- 模板预览（字段位置可视化） -->
+			<view class="template-preview-card">
+				<view class="preview-header-row">
+					<view class="preview-header">
+						<text class="icon icon-file-pdf section-icon"></text>
+						<text class="section-title">字段位置预览</text>
+							</view>
+					<view class="preview-actions" v-if="templateDetail.content">
+						<view class="view-pdf-btn" @click="handlePreview">
+							<text class="icon icon-expand view-pdf-icon"></text>
+							<text class="view-pdf-text">查看完整PDF</text>
+						</view>
+						</view>
+					</view>
+				<text class="preview-tip">在PDF预览图上直观查看字段位置 · 点击字段查看详情</text>
+				
+				<!-- PDF预览图容器（带字段标记） -->
+				<view class="pdf-preview-container" v-if="getPreviewImageUrl()">
+					<view class="pdf-page-wrapper">
+						<!-- PDF预览图 -->
+						<image 
+							class="pdf-page-image" 
+							:src="getPreviewImageUrl()" 
+							mode="widthFix"
+							@load="onImageLoad"
+							@error="onImageError"
+						></image>
+						
+						<!-- 加载提示 -->
+						<view class="image-loading" v-if="imageLoading">
+							<text class="loading-spinner"></text>
+							<text class="loading-text">加载PDF预览中...</text>
+					</view>
+						
+						<!-- 字段标记叠加层 -->
+						<view class="fields-overlay" v-if="!imageLoading && getAllFields().length > 0">
+							<view 
+								v-for="(field, index) in getAllFields()" 
+								:key="'field-' + index"
+								class="field-marker"
+								:class="getSignatoryColorClass(field.signatoryIndex)"
+								:style="getFieldMarkerStyle(field)"
+								@click="showFieldDetail(field)"
+							>
+								<view class="field-marker-border"></view>
+								<view class="field-marker-label">
+									<text class="field-label-text">{{ field.name }}</text>
+					</view>
+				</view>
+				</view>
+			</view>
+			
+				<!-- 字段快速浏览列表 -->
+				<view class="fields-quick-list" v-if="getAllFields().length > 0">
+					<text class="quick-list-title">
+						<text class="icon icon-clipboard-list"></text>
+						字段清单（{{ getAllFields().length }}个）
+					</text>
+					<view class="fields-grid">
+					<view
+								v-for="(field, index) in getAllFields()" 
+								:key="'quick-' + index"
+								class="quick-field-chip"
+								@click="showFieldDetail(field)"
+							>
+								<view class="quick-field-dot" :class="getSignatoryColorClass(field.signatoryIndex)"></view>
+								<text class="quick-field-name">{{ field.name }}</text>
+								<text class="quick-field-page">P{{ field.pageNumber }}</text>
+						</view>
+								</view>
+					</view>
+						</view>
+						
+			<!-- 无预览图提示 -->
+			<view class="no-preview-container" v-else>
+				<text class="icon icon-file-pdf no-preview-icon"></text>
+				<text class="no-preview-text">暂无PDF预览图</text>
+				<text class="no-preview-hint">点击下方按钮查看完整PDF</text>
+				<view class="preview-btn-wrapper" v-if="templateDetail.content">
+					<view class="preview-btn" @click="handlePreview">
+						<text class="icon icon-eye preview-btn-icon"></text>
+						<text class="preview-btn-text">预览完整PDF</text>
+								</view>
+				</view>
+						</view>
+						
+			<!-- 字段图例 -->
+			<view class="field-legend" v-if="getAllFields().length > 0">
+				<text class="legend-title">
+					<text class="icon icon-info-circle"></text>
+					颜色说明：
+				</text>
+				<view class="legend-items">
+						<view class="legend-item">
+							<view class="legend-color signatory-1"></view>
+							<text class="legend-text">第一签署方</text>
+					</view>
+						<view class="legend-item">
+							<view class="legend-color signatory-2"></view>
+							<text class="legend-text">第二签署方</text>
+				</view>
+						<view class="legend-item">
+							<view class="legend-color signatory-other"></view>
+							<text class="legend-text">其他签署方</text>
+			</view>
+					</view>
+				</view>
+					</view>
+					
+				<!-- 模板变量说明（如果有） -->
+				<view v-if="templateDetail.variables && templateDetail.variables.length > 0" class="template-variables-card">
+					<text class="section-title">需要填写的信息</text>
+					<view class="variables-list">
+						<view v-for="(variable, index) in templateDetail.variables" :key="index" class="variable-item">
+							<view class="variable-header">
+								<text class="variable-name">{{ variable.name }}</text>
+								<view v-if="variable.required" class="required-tag">
+									<text class="required-text">必填</text>
+						</view>
+							</view>
+							<text v-if="variable.placeholder" class="variable-placeholder">{{ variable.placeholder }}</text>
+							</view>
+						</view>
+					</view>
+					
+				<!-- 签署方信息（如果有） -->
+				<view v-if="templateDetail.signatories && templateDetail.signatories.length > 0" class="template-signatories-card">
+					<text class="section-title">签署方信息</text>
+					<view class="signatories-list">
+						<view v-for="(signatory, index) in templateDetail.signatories" :key="index" class="signatory-item">
+							<view class="signatory-header">
+								<view class="signatory-name-row">
+									<text class="signatory-name">{{ signatory.name }}</text>
+									<view class="signatory-type-tag">
+										<text class="signatory-type-text">{{ getSignatoryTypeText(signatory.type) }}</text>
+							</view>
+						</view>
+								<view v-if="signatory.needSign" class="sign-badge">
+									<text class="icon icon-signature sign-icon"></text>
+									<text class="sign-text">需要签署</text>
+							</view>
+						</view>
+						
+							<!-- 签署方关联字段 -->
+							<view v-if="signatory.fields && signatory.fields.length > 0" class="signatory-fields">
+							<text class="fields-title">需要填写/签署的位置：</text>
+							<view class="fields-list">
+								<view v-for="(field, fidx) in signatory.fields" :key="fidx" class="field-chip">
+									<text class="icon icon-edit field-icon"></text>
+									<text class="field-name">{{ field.name }}</text>
+									<text class="field-page">第{{ field.pageNumber }}页</text>
+							</view>
+						</view>
+							</view>
+						</view>
+						</view>
+					</view>
+					
+				<!-- 模板更新时间 -->
+				<view class="template-time-card">
+					<view class="time-item">
+						<text class="icon icon-clock time-icon"></text>
+						<text class="time-text">更新于 {{ formatTime(templateDetail.updateTime) }}</text>
+					</view>
+				</view>
+			</view>
+		</scroll-view>
+		
+	<!-- 底部固定操作栏 -->
+	<view class="bottom-bar" v-if="templateDetail">
+		<view class="bottom-button primary full-width" @click="handleUseTemplate">
+			<text class="icon icon-plus-circle btn-icon"></text>
+			<text class="btn-text">使用此模版</text>
+			</view>
+		</view>
+	
+	<!-- 实名认证提示弹窗 - 使用统一组件 -->
+	<kyc-modal 
+		:visible="showKycModal"
+		description="为保障合同的法律效力，使用模板创建合同前需要完成实名认证。"
+		@close="closeKycModal"
+		@confirm="goToKyc"
+	/>
+	</view>
+</template>
+
+<style>
+/* FontAwesome基础样式 */
+.fa {
+	font-family: FontAwesome;
+	font-size: 26rpx;
+	font-style: normal;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* 页面容器 */
+	.template-detail {
+		flex: 1;
+		background-color: #F7F9FC;
+	}
+	
+/* 内容滚动区域 */
+.content {
+		flex: 1;
+	padding-bottom: 140rpx; /* 为底部操作栏预留空间 */
+}
+
+/* 加载中容器 */
+.loading-container {
+	width: 100%;
+	height: 100%;
+		align-items: center;
+		justify-content: center;
+	padding-top: 200rpx;
+}
+
+.loading-spinner {
+		width: 80rpx;
+		height: 80rpx;
+	border-width: 4rpx;
+	border-style: solid;
+	border-color: #E4E7ED;
+	border-top-color: #00C28A;
+	border-radius: 40rpx;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+.loading-text {
+	font-size: 28rpx;
+	color: #909399;
+	margin-top: 30rpx;
+}
+
+/* 详情内容区域 */
+.detail-content {
+	padding: 30rpx;
+}
+
+/* 通用卡片样式 */
+.template-info-card,
+.template-preview-card,
+.template-variables-card,
+.template-signatories-card,
+.template-time-card {
+		background-color: #FFFFFF;
+	border-radius: 16rpx;
+	padding: 32rpx;
+	margin-bottom: 24rpx;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+/* 模板基本信息 */
+.template-header {
+	margin-bottom: 24rpx;
+	}
+	
+	.template-title-row {
+		flex-direction: row;
+		align-items: center;
+	margin-bottom: 16rpx;
+	}
+	
+	.template-title {
+	font-size: 36rpx;
+	font-weight: 600;
+	color: #303133;
+	flex: 1;
+	margin-right: 16rpx;
+}
+
+.official-badge {
+	display: flex;  /* 确保flex布局生效 */
+	flex-direction: row;
+		align-items: center;
+	background-color: rgba(0, 194, 138, 0.08);
+	padding: 6rpx 16rpx;
+	border-radius: 20rpx;
+}
+	
+.badge-icon {
+		font-size: 24rpx;
+	color: #00C28A;
+	margin-right: 6rpx;
+}
+
+.badge-text {
+	font-size: 22rpx;
+	color: #00C28A;
+	font-weight: 500;
+	}
+	
+	.template-desc {
+		font-size: 28rpx;
+	color: #606266;
+	line-height: 44rpx;
+}
+
+/* 模板元信息 */
+.template-meta {
+		flex-direction: row;
+	flex-wrap: wrap;
+	gap: 16rpx;
+}
+
+.meta-item {
+	display: flex;  /* 确保flex布局生效 */
+	flex-direction: row;
+		align-items: center;
+	background-color: #F5F7FA;
+	padding: 8rpx 16rpx;
+	border-radius: 20rpx;
+	}
+	
+.meta-item.hot-tag {
+	background-color: rgba(255, 108, 108, 0.08);
+	}
+	
+.meta-icon {
+		font-size: 24rpx;
+	color: #909399;
+	margin-right: 6rpx;
+}
+
+.meta-item.hot-tag .meta-icon {
+	color: #F56C6C;
+}
+
+.meta-text {
+		font-size: 24rpx;
+	color: #606266;
+}
+
+.meta-item.hot-tag .meta-text {
+	color: #F56C6C;
+}
+
+/* 模板缩略图 */
+.section-title {
+		font-size: 30rpx;
+	font-weight: 600;
+	color: #303133;
+	margin-bottom: 24rpx;
+	display: block;
+}
+
+.thumbnail-image {
+	width: 100%;
+	height: 400rpx;
+	border-radius: 12rpx;
+	background-color: #F5F7FA;
+}
+
+/* 模板变量列表 */
+.variables-list {
+	gap: 16rpx;
+}
+
+.variable-item {
+		padding: 20rpx;
+	background-color: #F7F8FA;
+	border-radius: 12rpx;
+	border: 1rpx solid #E4E7ED;
+	}
+	
+.variable-header {
+		flex-direction: row;
+		align-items: center;
+	margin-bottom: 8rpx;
+	}
+	
+.variable-name {
+		font-size: 28rpx;
+	color: #303133;
+	font-weight: 500;
+	flex: 1;
+}
+
+.required-tag {
+	background-color: rgba(245, 108, 108, 0.08);
+		padding: 4rpx 12rpx;
+	border-radius: 12rpx;
+}
+
+.required-text {
+	font-size: 22rpx;
+	color: #F56C6C;
+}
+
+.variable-placeholder {
+	font-size: 24rpx;
+	color: #909399;
+	line-height: 38rpx;
+}
+
+/* 签署方列表 */
+.signatories-list {
+	gap: 20rpx;
+}
+
+.signatory-item {
+	padding: 24rpx;
+	background-color: #F7F8FA;
+	border-radius: 12rpx;
+	border: 1rpx solid #E4E7ED;
+}
+
+.signatory-header {
+	margin-bottom: 16rpx;
+}
+
+.signatory-name-row {
+		flex-direction: row;
+		align-items: center;
+	margin-bottom: 12rpx;
+}
+
+.signatory-name {
+	font-size: 30rpx;
+	color: #303133;
+	font-weight: 600;
+	flex: 1;
+	margin-right: 12rpx;
+}
+
+.signatory-type-tag {
+	background-color: rgba(24, 144, 255, 0.08);
+		padding: 4rpx 12rpx;
+	border-radius: 12rpx;
+}
+
+.signatory-type-text {
+	font-size: 22rpx;
+	color: #1890FF;
+}
+
+.sign-badge {
+	display: flex;  /* 确保flex布局生效 */
+	flex-direction: row;
+	align-items: center;
+	background-color: rgba(0, 194, 138, 0.08);
+	padding: 6rpx 16rpx;
+	border-radius: 20rpx;
+	align-self: flex-start;
+}
+
+.sign-icon {
+	font-size: 22rpx;
+	color: #00C28A;
+	margin-right: 6rpx;
+}
+
+.sign-text {
+	font-size: 22rpx;
+	color: #00C28A;
+	font-weight: 500;
+}
+
+/* 签署方字段 */
+.signatory-fields {
+	margin-top: 16rpx;
+	padding-top: 16rpx;
+	border-top: 1rpx solid #E4E7ED;
+}
+
+.fields-title {
+		font-size: 24rpx;
+	color: #606266;
+	margin-bottom: 12rpx;
+	display: block;
+}
+
+.fields-list {
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: 12rpx;
+}
+
+.field-chip {
+	display: flex;  /* 确保flex布局生效 */
+		flex-direction: row;
+		align-items: center;
+	background-color: #FFFFFF;
+	padding: 8rpx 16rpx;
+	border-radius: 20rpx;
+	border: 1rpx solid #DCDFE6;
+}
+
+.field-icon {
+	font-size: 22rpx;
+	margin-right: 8rpx;
+	color: #00C28A;
+}
+
+.field-name {
+	font-size: 22rpx;
+	color: #303133;
+	margin-right: 8rpx;
+}
+
+.field-page {
+	font-size: 20rpx;
+	color: #909399;
+}
+
+/* 时间信息 */
+.time-item {
+	display: flex;  /* 确保flex布局生效 */
+	flex-direction: row;
+	align-items: center;
+}
+
+.time-icon {
+	font-size: 24rpx;
+	color: #909399;
+	margin-right: 8rpx;
+}
+
+.time-text {
+	font-size: 24rpx;
+	color: #909399;
+}
+
+/* 底部固定操作栏 */
+.bottom-bar {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		background-color: #FFFFFF;
+	padding: 20rpx 30rpx;
+	box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+		flex-direction: row;
+	gap: 20rpx;
+	/* 安全区域适配 */
+	padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+}
+
+/* 底部按钮 */
+.bottom-button {
+	display: flex;  /* 确保flex布局生效 */
+	flex: 1;
+	height: 88rpx;
+	border-radius: 44rpx;
+		flex-direction: row;
+		align-items: center;
+	justify-content: center;
+	transition: opacity 0.3s;
+}
+
+.bottom-button:active {
+	opacity: 0.9;
+}
+
+/* 主要按钮（使用） */
+.bottom-button.primary {
+	background-color: #00C28A;
+}
+
+.bottom-button.primary .btn-icon {
+	color: #FFFFFF;
+}
+
+.bottom-button.primary .btn-text {
+	color: #FFFFFF;
+}
+
+/* 全宽按钮 */
+.bottom-button.full-width {
+	flex: none;
+	width: 100%;
+}
+	
+.btn-icon {
+	font-size: 32rpx;
+	margin-right: 8rpx;
+}
+
+.btn-text {
+	font-size: 30rpx;
+	font-weight: 500;
+}
+
+/* ==================== 字段位置预览样式 ==================== */
+
+/* 预览卡片头部行 */
+.preview-header-row {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+	margin-bottom: 12rpx;
+}
+
+/* 预览卡片头部 */
+.preview-header {
+	display: flex;  /* 确保flex布局生效 */
+	flex-direction: row;
+	align-items: center;
+}
+
+.preview-header .section-title {
+	display: inline-block;  /* 覆盖默认的block，使其参与flex布局 */
+	margin-bottom: 0;  /* 移除底部边距，避免影响对齐 */
+}
+
+.section-icon {
+	font-size: 32rpx;
+	color: #00C28A;
+	margin-right: 12rpx;
+}
+
+/* 预览操作按钮 */
+.preview-actions {
+	flex-shrink: 0;
+}
+
+.view-pdf-btn {
+	display: flex;  /* 确保flex布局生效 */
+	flex-direction: row;
+	align-items: center;
+	padding: 8rpx 16rpx;
+	background-color: rgba(24, 144, 255, 0.08);
+	border-radius: 20rpx;
+	cursor: pointer;
+	transition: background-color 0.2s;
+}
+
+.view-pdf-btn:active {
+	background-color: rgba(24, 144, 255, 0.15);
+}
+
+.view-pdf-icon {
+		font-size: 24rpx;
+	color: #1890FF;
+	margin-right: 6rpx;
+	}
+	
+.view-pdf-text {
+		font-size: 24rpx;
+	color: #1890FF;
+	font-weight: 500;
+}
+
+.preview-tip {
+	font-size: 24rpx;
+	color: #909399;
+	margin-bottom: 24rpx;
+}
+
+/* 图片加载中 */
+.image-loading {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	flex-direction: column;
+		align-items: center;
+	background-color: rgba(255, 255, 255, 0.95);
+	padding: 30rpx;
+	border-radius: 12rpx;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+}
+
+.loading-spinner {
+	width: 60rpx;
+	height: 60rpx;
+	border-width: 4rpx;
+	border-style: solid;
+	border-color: #E4E7ED;
+	border-top-color: #00C28A;
+	border-radius: 30rpx;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+.loading-text {
+	font-size: 24rpx;
+	color: #606266;
+		margin-top: 20rpx;
+	}
+	
+/* PDF预览容器 */
+.pdf-preview-container {
+	width: 100%;
+	background-color: #F7F9FC;
+	border-radius: 12rpx;
+	padding: 20rpx;
+	margin-bottom: 20rpx;
+}
+
+.pdf-page-wrapper {
+	position: relative;
+	width: 100%;
+	background-color: #FFFFFF;
+		border-radius: 8rpx;
+		overflow: hidden;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+}
+
+.pdf-page-image {
+	width: 100%;
+	display: block;
+}
+
+/* 字段标记叠加层 */
+.fields-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+		bottom: 0;
+	pointer-events: none;
+}
+
+.field-marker {
+	position: absolute;
+	pointer-events: all;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.field-marker:active {
+	transform: scale(1.05);
+}
+
+/* 字段标记边框 */
+.field-marker-border {
+	position: absolute;
+	top: 0;
+		left: 0;
+		right: 0;
+	bottom: 0;
+	border-width: 3rpx;
+	border-style: solid;
+	border-radius: 6rpx;
+	background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 字段标记标签 */
+.field-marker-label {
+	position: absolute;
+	bottom: 100%;
+	left: 0;
+	min-width: 120rpx;
+	padding: 4rpx 12rpx;
+	background-color: rgba(0, 0, 0, 0.75);
+	border-radius: 6rpx;
+	margin-bottom: 6rpx;
+	white-space: nowrap;
+}
+
+.field-label-text {
+	font-size: 22rpx;
+		color: #FFFFFF;
+	font-weight: 500;
+}
+
+/* 不同签署方的颜色 */
+.field-marker.signatory-1 .field-marker-border {
+	border-color: #1890FF;
+}
+
+.field-marker.signatory-2 .field-marker-border {
+	border-color: #52C41A;
+}
+
+.field-marker.signatory-other .field-marker-border {
+	border-color: #FA8C16;
+}
+
+/* 无字段提示 */
+.no-fields-tip {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	flex-direction: column;
+		align-items: center;
+	padding: 30rpx;
+	background-color: rgba(255, 255, 255, 0.95);
+	border-radius: 12rpx;
+}
+
+.tip-icon {
+	font-size: 48rpx;
+	color: #909399;
+	margin-bottom: 12rpx;
+}
+
+.tip-text {
+	font-size: 24rpx;
+	color: #909399;
+}
+
+/* 字段快速浏览列表 */
+.fields-quick-list {
+	padding-top: 20rpx;
+	margin-top: 20rpx;
+	border-top: 1rpx solid #EBEEF5;
+}
+
+.quick-list-title {
+	display: flex;  /* 确保flex布局生效 */
+	font-size: 26rpx;
+	color: #303133;
+	font-weight: 500;
+	margin-bottom: 16rpx;
+		flex-direction: row;
+	align-items: center;
+}
+
+.quick-list-title .fa {
+	margin-right: 8rpx;
+	color: #00C28A;
+}
+
+.fields-grid {
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: 12rpx;
+}
+
+.quick-field-chip {
+	display: flex;  /* 确保flex布局生效 */
+		flex-direction: row;
+		align-items: center;
+	padding: 8rpx 16rpx;
+	background-color: #F7F8FA;
+	border-radius: 20rpx;
+	border: 1rpx solid #E4E7ED;
+	cursor: pointer;
+	transition: all 0.2s;
+}
+
+.quick-field-chip:active {
+	transform: translateY(-2rpx);
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+}
+
+.quick-field-dot {
+	width: 16rpx;
+	height: 16rpx;
+		border-radius: 8rpx;
+	margin-right: 8rpx;
+	flex-shrink: 0;
+}
+
+.quick-field-dot.signatory-1 {
+	background-color: #1890FF;
+}
+
+.quick-field-dot.signatory-2 {
+	background-color: #52C41A;
+}
+
+.quick-field-dot.signatory-other {
+	background-color: #FA8C16;
+}
+
+.quick-field-name {
+	font-size: 24rpx;
+	color: #303133;
+	margin-right: 8rpx;
+}
+
+.quick-field-page {
+	font-size: 22rpx;
+	color: #909399;
+}
+
+/* 无预览图容器 */
+.no-preview-container {
+	width: 100%;
+	padding: 80rpx 0 40rpx;
+	flex-direction: column;
+	align-items: center;
+	background-color: #F7F9FC;
+	border-radius: 12rpx;
+	margin-bottom: 20rpx;
+}
+
+.no-preview-icon {
+	font-size: 96rpx;
+	color: #DCDFE6;
+	margin-bottom: 20rpx;
+}
+
+.no-preview-text {
+		font-size: 28rpx;
+	color: #909399;
+	margin-bottom: 12rpx;
+}
+
+.no-preview-hint {
+	font-size: 24rpx;
+	color: #C0C4CC;
+	margin-bottom: 30rpx;
+}
+
+.preview-btn-wrapper {
+	width: 100%;
+	padding: 0 40rpx;
+}
+
+.preview-btn {
+	display: flex;  /* 确保flex布局生效 */
+	width: 100%;
+	height: 88rpx;
+		flex-direction: row;
+		align-items: center;
+	justify-content: center;
+	background-color: #00C28A;
+	border-radius: 44rpx;
+	cursor: pointer;
+	transition: opacity 0.2s;
+}
+
+.preview-btn:active {
+	opacity: 0.9;
+}
+
+.preview-btn-icon {
+	font-size: 32rpx;
+	color: #FFFFFF;
+	margin-right: 8rpx;
+}
+
+.preview-btn-text {
+	font-size: 30rpx;
+	color: #FFFFFF;
+	font-weight: 500;
+}
+
+/* 字段图例 */
+.field-legend {
+	padding-top: 20rpx;
+	border-top: 1rpx solid #EBEEF5;
+}
+
+.legend-title {
+	display: flex;  /* 确保flex布局生效 */
+	font-size: 26rpx;
+	color: #303133;
+	font-weight: 500;
+	margin-bottom: 16rpx;
+	flex-direction: row;
+	align-items: center;
+}
+
+.legend-title .fa {
+	margin-right: 8rpx;
+	color: #1890FF;
+}
+
+.legend-items {
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: 24rpx;
+}
+
+.legend-item {
+	flex-direction: row;
+		align-items: center;
+	}
+	
+.legend-color {
+	width: 32rpx;
+	height: 20rpx;
+	border-radius: 4rpx;
+	margin-right: 8rpx;
+	border-width: 2rpx;
+	border-style: solid;
+}
+
+.legend-color.signatory-1 {
+	background-color: rgba(24, 144, 255, 0.1);
+	border-color: #1890FF;
+}
+
+.legend-color.signatory-2 {
+	background-color: rgba(82, 196, 26, 0.1);
+	border-color: #52C41A;
+}
+
+.legend-color.signatory-other {
+	background-color: rgba(250, 140, 22, 0.1);
+	border-color: #FA8C16;
+}
+
+.legend-text {
+	font-size: 24rpx;
+	color: #606266;
+}
+
+/* ==================== 字段位置预览样式结束 ==================== */
+</style> 

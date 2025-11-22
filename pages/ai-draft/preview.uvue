@@ -1,0 +1,402 @@
+<template>
+  <view class="container">
+    <!-- 导航栏 -->
+    <view class="navbar">
+      <view class="navbar-left" @tap="goBack">
+        <text class="fa fa-arrow-left navbar-icon"></text>
+      </view>
+      <view class="navbar-title">PDF预览</view>
+      <view class="navbar-right">
+        <text class="fa fa-share-alt navbar-icon" @tap="handleShare"></text>
+      </view>
+    </view>
+
+    <!-- PDF预览区域 -->
+    <scroll-view class="preview-scroll" scroll-y="true" v-if="!loading && pdfUrl">
+      <view class="preview-wrapper">
+        <!-- Web-view显示PDF -->
+        <web-view class="pdf-viewer" :src="pdfViewerUrl"></web-view>
+      </view>
+    </scroll-view>
+
+    <!-- 加载状态 -->
+    <view class="loading-container" v-if="loading">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">加载PDF中...</text>
+    </view>
+
+    <!-- 错误提示 -->
+    <view class="error-container" v-if="error">
+      <text class="fa fa-exclamation-triangle error-icon"></text>
+      <text class="error-text">{{ error }}</text>
+      <button class="retry-btn" @tap="loadPdf">重新加载</button>
+    </view>
+
+    <!-- 底部操作栏 -->
+    <view class="footer-bar" v-if="!loading && pdfUrl">
+      <button class="footer-btn secondary" @tap="handleDownload">
+        <text class="fa fa-download btn-icon"></text>
+        下载PDF
+      </button>
+      <button class="footer-btn primary" @tap="handleCreateSigning">
+        <text class="fa fa-file-signature btn-icon"></text>
+        发起签署
+      </button>
+    </view>
+  </view>
+</template>
+
+<script>
+import { exportPdf, getContract } from '../../api/ai-draft/index.uts'
+
+export default {
+  data() {
+    return {
+      contractId: 0,
+      pdfUrl: '',
+      pdfViewerUrl: '',
+      loading: false,
+      error: ''
+    }
+  },
+  onLoad(options) {
+    if (options.contractId) {
+      this.contractId = parseInt(options.contractId)
+      
+      // 检查是否已有PDF URL
+      if (options.pdfUrl) {
+        this.pdfUrl = decodeURIComponent(options.pdfUrl)
+        this.buildPdfViewerUrl()
+      } else {
+        // 如果没有PDF URL，则先导出
+        this.exportAndLoadPdf()
+      }
+    } else {
+      this.error = '合同ID缺失'
+    }
+  },
+  methods: {
+    goBack() {
+      uni.navigateBack()
+    },
+
+    /**
+     * 导出并加载PDF
+     */
+    async exportAndLoadPdf() {
+      this.loading = true
+      this.error = ''
+      
+      try {
+        // 1. 导出PDF
+        uni.showLoading({ title: '生成PDF中...', mask: true })
+        const exportRes = await exportPdf(this.contractId)
+        uni.hideLoading()
+
+        if (exportRes.code === 0 && exportRes.data.pdfUrl) {
+          this.pdfUrl = exportRes.data.pdfUrl
+          this.buildPdfViewerUrl()
+          
+          uni.showToast({
+            title: 'PDF生成成功',
+            icon: 'success',
+            duration: 1500
+          })
+        } else {
+          throw new Error(exportRes.msg || 'PDF生成失败')
+        }
+      } catch (error) {
+        console.error('导出PDF失败:', error)
+        this.error = error.message || 'PDF导出失败，请重试'
+        uni.showToast({
+          title: this.error,
+          icon: 'none'
+        })
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /**
+     * 加载PDF（如果已有URL）
+     */
+    loadPdf() {
+      if (this.pdfUrl) {
+        this.buildPdfViewerUrl()
+        this.error = ''
+      } else {
+        this.exportAndLoadPdf()
+      }
+    },
+
+    /**
+     * 构建PDF查看器URL
+     * 使用Mozilla PDF.js或其他PDF查看器
+     */
+    buildPdfViewerUrl() {
+      // 使用在线PDF查看器，或者自己部署的PDF.js
+      // 这里使用Google Docs Viewer作为示例
+      const encodedPdfUrl = encodeURIComponent(this.pdfUrl)
+      this.pdfViewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodedPdfUrl}`
+      
+      // 备选方案：使用PDF.js
+      // this.pdfViewerUrl = `/pdf-viewer.html?file=${encodedPdfUrl}`
+    },
+
+    /**
+     * 下载PDF
+     */
+    handleDownload() {
+      if (!this.pdfUrl) {
+        uni.showToast({
+          title: 'PDF未生成',
+          icon: 'none'
+        })
+        return
+      }
+
+      uni.showLoading({ title: '准备下载...', mask: true })
+      
+      // 使用uni-app的downloadFile API
+      uni.downloadFile({
+        url: this.pdfUrl,
+        success: (res) => {
+          uni.hideLoading()
+          if (res.statusCode === 200) {
+            uni.showToast({
+              title: '下载成功',
+              icon: 'success'
+            })
+            // 保存到相册或打开文件
+            uni.saveFile({
+              tempFilePath: res.tempFilePath,
+              success: (saveRes) => {
+                console.log('文件已保存:', saveRes.savedFilePath)
+              }
+            })
+          } else {
+            uni.showToast({
+              title: '下载失败',
+              icon: 'none'
+            })
+          }
+        },
+        fail: (err) => {
+          uni.hideLoading()
+          console.error('下载失败:', err)
+          uni.showToast({
+            title: '下载失败，请重试',
+            icon: 'none'
+          })
+        }
+      })
+    },
+
+    /**
+     * 分享PDF
+     */
+    handleShare() {
+      if (!this.pdfUrl) {
+        uni.showToast({
+          title: 'PDF未生成',
+          icon: 'none'
+        })
+        return
+      }
+
+      uni.share({
+        provider: 'weixin',
+        type: 0,
+        href: this.pdfUrl,
+        title: '合同PDF',
+        summary: '查看合同PDF文件',
+        success: () => {
+          uni.showToast({
+            title: '分享成功',
+            icon: 'success'
+          })
+        },
+        fail: (err) => {
+          console.error('分享失败:', err)
+          uni.showToast({
+            title: '分享失败',
+            icon: 'none'
+          })
+        }
+      })
+    },
+
+    /**
+     * 发起签署
+     */
+    handleCreateSigning() {
+      // 跳转到签署方配置页面
+      // 传递contractId和pdfUrl
+      uni.navigateTo({
+        url: `/pages/ai-draft/signing-config?contractId=${this.contractId}&pdfUrl=${encodeURIComponent(this.pdfUrl)}`
+      })
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.container {
+  flex: 1;
+  background-color: #f8f8f8;
+  display: flex;
+  flex-direction: column;
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 88rpx;
+  background-color: #fff;
+  border-bottom: 1rpx solid #eee;
+  padding: 0 30rpx;
+}
+
+.navbar-left,
+.navbar-right {
+  width: 80rpx;
+}
+
+.navbar-title {
+  flex: 1;
+  text-align: center;
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #303133;
+}
+
+.navbar-icon {
+  font-size: 40rpx;
+  color: #606266;
+}
+
+.preview-scroll {
+  flex: 1;
+}
+
+.preview-wrapper {
+  padding: 20rpx;
+  min-height: 100%;
+}
+
+.pdf-viewer {
+  width: 100%;
+  height: 100vh;
+  background-color: #fff;
+  border-radius: 16rpx;
+}
+
+.loading-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-spinner {
+  width: 80rpx;
+  height: 80rpx;
+  border: 6rpx solid #eee;
+  border-top-color: #00C28A;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  margin-top: 30rpx;
+  font-size: 28rpx;
+  color: #909399;
+}
+
+.error-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60rpx;
+}
+
+.error-icon {
+  font-size: 120rpx;
+  color: #F56C6C;
+  margin-bottom: 30rpx;
+}
+
+.error-text {
+  font-size: 30rpx;
+  color: #606266;
+  text-align: center;
+  margin-bottom: 40rpx;
+}
+
+.retry-btn {
+  background-color: #00C28A;
+  color: #fff;
+  border: none;
+  padding: 20rpx 60rpx;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+}
+
+.footer-bar {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: 140rpx;
+  background-color: #fff;
+  border-top: 1rpx solid #eee;
+  padding: 20rpx 30rpx;
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.footer-btn {
+  flex: 1;
+  height: 88rpx;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 10rpx;
+}
+
+.footer-btn.secondary {
+  background-color: #f5f7fa;
+  color: #606266;
+  border: 1rpx solid #dcdfe6;
+}
+
+.footer-btn.primary {
+  background-color: #00C28A;
+  color: #fff;
+  border: none;
+}
+
+.btn-icon {
+  font-size: 32rpx;
+  margin-right: 10rpx;
+}
+
+.fa {
+  font-family: FontAwesome;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+</style>
+

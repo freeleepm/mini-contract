@@ -1,0 +1,393 @@
+<template>
+  <view class="page-container">
+    <!-- 内容区域 -->
+    <scroll-view class="content-scroll" scroll-y="true">
+        <!-- 进度卡片 -->
+        <view class="progress-card">
+          <!-- 审查状态图标 -->
+          <view class="status-icon-wrapper">
+            <text v-if="task.status === 0" class="fa fa-spinner fa-spin status-icon processing"></text>
+            <text v-else-if="task.status === 1" class="fa fa-check-circle status-icon success"></text>
+            <text v-else class="fa fa-times-circle status-icon error"></text>
+          </view>
+
+          <!-- 状态文字 -->
+          <text class="status-text" :class="{
+            'processing': task.status === 0,
+            'success': task.status === 1,
+            'error': task.status === 2
+          }">
+            {{ getStatusText() }}
+          </text>
+
+          <!-- 进度提示 -->
+          <text class="progress-hint" v-if="task.status === 0">
+            AI正在分析合同条款，请稍候...
+          </text>
+
+          <!-- 审查类型 -->
+          <view class="info-row">
+            <text class="info-label">审查类型：</text>
+            <text class="info-value">{{ task.auditType === 1 ? '标准审查' : '深度审查' }}</text>
+          </view>
+
+          <!-- AI模型 -->
+          <view class="info-row" v-if="task.aiModel">
+            <text class="info-label">AI模型：</text>
+            <text class="info-value">{{ task.aiModel }}</text>
+          </view>
+
+          <!-- 开始时间 -->
+          <view class="info-row">
+            <text class="info-label">开始时间：</text>
+            <text class="info-value">{{ formatTime(task.startTime) }}</text>
+          </view>
+
+          <!-- 错误信息 -->
+          <view class="error-message" v-if="task.status === 2">
+            <text class="fa fa-exclamation-triangle error-icon"></text>
+            <text class="error-text">{{ task.errorMessage || '审查失败' }}</text>
+          </view>
+        </view>
+
+        <!-- 操作按钮 -->
+        <view class="action-buttons" v-if="task.status !== 0">
+          <!-- 审查成功：查看报告 -->
+          <view class="primary-btn" v-if="task.status === 1" @click="goToReport">
+            <text class="btn-text">查看审查报告</text>
+          </view>
+
+          <!-- 审查失败：重试 -->
+          <view class="primary-btn" v-if="task.status === 2" @click="retryAudit">
+            <text class="btn-text">重新审查</text>
+          </view>
+
+          <!-- 返回 -->
+          <view class="secondary-btn" @click="goBack">
+            <text class="btn-text">返回</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</template>
+
+<script lang="uts">
+import { get, post } from '../../api/index';
+
+export default {
+  data() {
+    return {
+      taskId: 0,
+      task: {
+        id: 0,
+        contractId: 0,
+        auditType: 1,
+        status: 0,
+        aiModel: '',
+        startTime: '',
+        endTime: '',
+        errorMessage: ''
+      },
+      pollTimer: null
+    }
+  },
+  onLoad(options) {
+    if (options.taskId) {
+      this.taskId = parseInt(options.taskId)
+      this.loadTaskStatus()
+      // 如果是处理中，开始轮询
+      this.startPolling()
+    }
+  },
+  onUnload() {
+    this.stopPolling()
+  },
+  methods: {
+    // 加载任务状态
+    async loadTaskStatus() {
+      try {
+        const data = await get<any>('/api/v1/seal/audit/status', {
+          taskId: this.taskId
+        });
+        this.task = data;
+        
+        // 如果已完成或失败，停止轮询
+        if (this.task.status !== 0) {
+          this.stopPolling();
+        }
+      } catch (error) {
+        console.error('加载任务状态失败', error);
+        uni.showToast({
+          title: error.message || '加载失败',
+          icon: 'none'
+        });
+      }
+    },
+
+    // 开始轮询
+    startPolling() {
+      if (this.pollTimer) return
+      
+      this.pollTimer = setInterval(() => {
+        this.loadTaskStatus()
+      }, 3000) // 每3秒轮询一次
+    },
+
+    // 停止轮询
+    stopPolling() {
+      if (this.pollTimer) {
+        clearInterval(this.pollTimer)
+        this.pollTimer = null
+      }
+    },
+
+    // 获取状态文字
+    getStatusText() {
+      const statusMap = {
+        0: 'AI审查中',
+        1: '审查完成',
+        2: '审查失败'
+      }
+      return statusMap[this.task.status] || '未知状态'
+    },
+
+    // 格式化时间
+    formatTime(timestamp) {
+      if (!timestamp) return '-'
+      // 将时间戳转换为日期对象
+      const date = new Date(timestamp)
+      // 格式化为 YYYY-MM-DD HH:mm:ss
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      const seconds = String(date.getSeconds()).padStart(2, '0')
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+    },
+
+    // 重试审查
+    async retryAudit() {
+      try {
+        uni.showLoading({ title: '正在重试...' });
+        
+        const newTaskId = await post<number>('/api/v1/seal/audit/retry', {
+          taskId: this.taskId
+        }, {
+          timeout: 180000  // AI审查需要3分钟超时
+        });
+        
+        uni.hideLoading();
+        
+        uni.showToast({
+          title: '重试成功',
+          icon: 'success'
+        });
+        
+        // 跳转到新任务的进度页
+        setTimeout(() => {
+          uni.redirectTo({
+            url: `/pages/contract-audit/progress?taskId=${newTaskId}`
+          });
+        }, 1000);
+      } catch (error) {
+        uni.hideLoading();
+        console.error('重试失败', error);
+        uni.showToast({
+          title: error.message || '网络错误',
+          icon: 'none'
+        });
+      }
+    },
+
+    // 查看报告
+    goToReport() {
+      uni.navigateTo({
+        url: `/pages/contract-audit/report?taskId=${this.taskId}`
+      });
+    },
+
+    // 返回
+    goBack() {
+      uni.navigateBack();
+  }
+  }
+}
+</script>
+
+<style>
+.page-container {
+  flex: 1;
+  background-color: #F7F9FC;
+}
+
+/* 内容滚动区 */
+.content-scroll {
+  flex: 1;
+  padding: 0;
+}
+
+/* 进度卡片 */
+.progress-card {
+  background-color: #FFFFFF;
+  border-radius: 0;
+  padding: 50rpx 32rpx;
+  align-items: center;
+  box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.04);
+}
+
+.status-icon-wrapper {
+  margin-bottom: 30rpx;
+}
+
+.status-icon {
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  font-size: 120rpx;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  display: inline-block;
+  line-height: 1;
+  text-rendering: auto;
+}
+
+.status-icon.processing {
+  color: #1890FF;
+}
+
+.status-icon.success {
+  color: #00C28A;
+}
+
+.status-icon.error {
+  color: #F56C6C;
+}
+
+.fa-spin {
+  animation: fa-spin 1s infinite linear;
+}
+
+@keyframes fa-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.status-text {
+  font-size: 40rpx;
+  font-weight: 600;
+  margin-bottom: 20rpx;
+}
+
+.status-text.processing {
+  color: #1890FF;
+}
+
+.status-text.success {
+  color: #00C28A;
+}
+
+.status-text.error {
+  color: #F56C6C;
+}
+
+.progress-hint {
+  font-size: 28rpx;
+  color: #909399;
+  margin-bottom: 40rpx;
+}
+
+.info-row {
+  width: 100%;
+  flex-direction: row;
+  padding: 20rpx 0;
+  border-top: 1rpx solid #F0F2F5;
+}
+
+.info-label {
+  font-size: 28rpx;
+  color: #909399;
+  width: 180rpx;
+}
+
+.info-value {
+  flex: 1;
+  font-size: 28rpx;
+  color: #303133;
+}
+
+.error-message {
+  width: 100%;
+  background-color: rgba(245, 108, 108, 0.1);
+  border-radius: 8rpx;
+  padding: 20rpx;
+  margin-top: 30rpx;
+  flex-direction: row;
+  align-items: center;
+}
+
+.error-icon {
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  font-size: 32rpx;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #F56C6C;
+  margin-right: 12rpx;
+}
+
+.error-text {
+  flex: 1;
+  font-size: 26rpx;
+  color: #F56C6C;
+}
+
+/* 操作按钮 */
+.action-buttons {
+  margin-top: 32rpx;
+  padding: 0 16rpx;
+}
+
+.primary-btn {
+  width: 100%;
+  height: 88rpx;
+  background-color: #00C28A;
+  border-radius: 44rpx;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16rpx;
+}
+
+.primary-btn:active {
+  opacity: 0.9;
+}
+
+.secondary-btn {
+  width: 100%;
+  height: 88rpx;
+  background-color: #F5F7FA;
+  border-radius: 44rpx;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid #DCDFE6;
+}
+
+.secondary-btn:active {
+  opacity: 0.9;
+}
+
+.btn-text {
+  font-size: 30rpx;
+  font-weight: 500;
+}
+
+.primary-btn .btn-text {
+  color: #FFFFFF;
+}
+
+.secondary-btn .btn-text {
+  color: #606266;
+}
+</style>
+

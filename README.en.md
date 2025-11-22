@@ -1,183 +1,249 @@
-Mini-Contract(Free and Open Source Electronic Contracts)
-===============
-
-Current Latest Version: v2.1.0 (Release Date: 2025-02-06)
-
-[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=2.1.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)
+  Mini Contract Pro (Free Open Source Electronic Contract)
+  ===============
 
 
+Current Latest Version: v3.0.0 (Release Date: November 22, 2025)
 
-<h3 align="center">Mini-Contract</h3>
-
-🚀🚀🚀 As a free and open-source product with independent intellectual property rights, Mini-Contract has always been committed to "making digital contract signing development simpler". At the same time, Mini-Contract is also an open-source electronic signature solution designed for developers. It innovatively adopts a "dual-mode engine" architecture and meets the needs of all scenarios from judicial-level contract signing to lightweight collaboration through a modular design. As the first open-source electronic signature platform to support both evidence chain and non-evidence chain dual modes, we have helped over 100 enterprise customers achieve digital transformation of their contract signing processes.
+[![License](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![Author](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![Version](https://img.shields.io/static/v1?label=version&message=3.0.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)
 
 
 
-#### Dual-mode Engine (Flexible Scenario Adaptation)
-
-**Judicial-grade Evidence Chain Mode**
-Built on Ant Judicial Chain's blockchain-based evidence storage system, generates timestamped and digital-fingerprinted evidence reports for each contract, ensuring compliance with the "Electronic Signature Law". Certified by the National Industrial Information Security Development Research Center, particularly suitable for high-value scenarios like financial lending, HR contracts, and IP agreements, with millisecond-level response time for evidence queries.
 
 
 
-**Lightweight Non-evidence Chain Mode**
-Utilizes self-developed distributed storage technology with smart routing algorithms that reduce API call costs by 60%. Developers can achieve full lifecycle contract management without third-party evidence storage integration, ideal for high-frequency scenarios like internal approvals, supplier reconciliations, and rapid signings, supporting millions of daily signing requests.
+
+<h3 align="center">Mini Contract Pro</h3>
 
 
 
-#### Third-party developer-friendly
+🚀🚀🚀  As a free open-source product with independent intellectual property rights, Mini Contract Pro has always adhered to the principle of "making digital contract development simpler". Mini-Contract-Pro is also an open-source electronic signature solution designed specifically for developers, innovatively adopting a "dual-mode engine" architecture. Through modular design, it meets the full-scenario requirements from judicial-level signing to lightweight collaboration. The first open-source electronic signature platform to support both evidence chain and non-evidence chain dual modes, we have helped 100+ enterprise customers achieve digital transformation of contract signing processes.
+
+
+
+####  Dual-Mode Engine (Flexibly Address Business Scenarios)
+
+**Judicial-Level Evidence Chain Mode**
+
+Based on the Ant Judicial Chain blockchain evidence storage system, it generates an evidence storage report including timestamps and digital fingerprints for each contract, ensuring contracts comply with the requirements of the "Electronic Signature Law". This mode has been certified by the National Industrial Information Security Development Research Center and is particularly suitable for high-value scenarios such as financial lending, human resources contracts, and intellectual property agreements, with evidence query response speeds reaching millisecond level.
+
+
+
+**Lightweight Non-Evidence Chain Mode**
+
+Adopting self-developed distributed storage technology, it reduces interface call costs by 60% through intelligent routing algorithms. Developers can implement full lifecycle contract management without connecting to third-party evidence storage institutions. It is particularly suitable for high-frequency scenarios such as internal approvals, supplier reconciliations, and quick signing, with a capacity to handle tens of millions of signing requests per day.
+
+
+
+#### Developer-Friendly
 
 **Plug-and-Play Toolkit**
-* Cloud-hosted e-signature/seal services
-* Multi-party contract collaboration (supports 50+ signatories parallel operation)
-* Smart perforated seal generation engine (pixel-level positioning accuracy)
-* Omni-channel signing pages (Web/H5/Mini Program adaptive)
+
+* Electronic signature/seal cloud hosting service
+
+* Multi-party contract collaborative editing (supports 50+ signing parties operating in parallel)
+
+* Intelligent riding seal generation engine (pixel-level positioning accuracy)
+
+* Full-channel signing pages (Web/H5/Mini Program/APP multi-platform adaptive)
+
+
 
 **Deep Open Capabilities**
 
-* Multi-language SDKs (Java/Python/Go)
-* Rich open API interfaces
+* Provides SDKs in multiple languages including Java/Python/Go
+
+* Opens rich API interfaces
 
 
 
-### Why Choose Mini-Contract?
+### Why Choose Mini Contract Pro?
 
 **All-in-One Integration Solution**
-We integrate mainstream e-contract service providers (including but not limited to Fadada, eSign, Junzisign) with standardized API integration solutions. Developers can quickly connect multiple services through unified interfaces without separate vendor integrations, saving over 90% integration time. Pre-built vendor certification system helps accelerate compliance review.
+We integrate mainstream electronic contract service providers in the market (including but not limited to Fadada, e-SignBao, Junziqian, etc.), providing standardized API integration solutions. Developers don't need to integrate with different vendors individually; they can quickly access multiple services through a unified interface, saving more than 90% of integration time. The pre-configured vendor qualification certification system can help you quickly pass compliance audits.
 
 
 
-**Cost Optimization Advantages**
-Through bulk-purchasing scale effects, we offer more competitive interface pricing than official channels (15-30% average discount). Supports on-demand vendor combinations to avoid single-vendor lock-in risks, ensuring truly controllable costs.
+**Cost Optimization Advantage**
+Through the scale effect of centralized procurement, we provide developers with more favorable interface prices than official channels (average discount of 15%-30%). Supports vendor combination selection on demand, avoiding single vendor lock-in risks, truly achieving controllable costs.
 
 
 
-**Enterprise-Grade Tech Architecture**
-Built with Vue3 + TypeScript + Pinia:
-- Modular design: On-demand loading of vendor features
-- Responsive layout: Perfect PC/mobile dual-screen adaptation
-- Configuration-driven development: 90% common requirements achievable through configuration
-- Full TypeScript support: Comprehensive TS type definitions and API documentation
+**Enterprise-Level Technical Architecture**
+Built on Vue3 + TypeScript + Pinia, adopting:
 
-**Rapid Deployment (Out-of-Box Solutions)**
-- Standardized UI component library: 30+ business-validated contract template components (commercially usable under MIT license)
-- Full-process monitoring: End-to-end tracking from contract creation to archiving with evidence storage
+- Modular design: Supports on-demand loading of service provider functions
+- Responsive layout: Perfectly adapts to PC/mobile dual platforms
+- Configuration-based development: 90% of common requirements can be implemented through configuration
+- Complete type support: Comprehensive TS type definitions and interface documentation
+
+
+
+**Rapid Implementation Capability (Providing Out-of-the-Box Solution)**
+
+- Standardized UI component library: Contains 30+ business-validated contract template components (MIT license for commercial use)
+- Full-link monitoring: Full-process tracking and evidence storage from contract creation to archiving
 
 
 
 ### Commercial Licensing
 
-The commercial version of the code is identical to the open-source version.
-
-Commercial licensing is perpetual and supports lifelong upgrades.
-
-For commercial use, please contact the technical team below for licensing details.
-
+1. The commercial version is identical to the open-source version in code, with no distinction;
+2. Commercial licensing is perpetual, supporting permanent upgrades;
+3. Commercial use requires authorization, and you can contact the technical team below for the authorization method.
 
 
 
 ### Open Source Notice
 
-1. Only allowed for personal study and research use.
-2. Prohibited from selling the code and resources in any form or under any name.
+1. Only allowed for personal learning and research use;
+2. Prohibited from selling this open-source code and resources in any form or name.
 
 
 
 ### Business Scenarios
 
-* **HR Companies:** Frequent contract signing scenarios with high costs of paper contracts, requiring bulk contract signing solutions  
-* **Financial Institutions:** Online contract signing requirements with needs for maintaining timely and valid contract management that meets legal compliance  
+* **Human Resources Companies:** Frequently signing contracts, high cost of paper contracts, batch contract signing business scenarios
+* **Financial Companies:** Complete contract signing online, retain timely and effective contract management
 
-* **Sales & Marketing Companies:** Scenarios requiring quick partnership establishment and immediate contract signing for online product sales collaborations  
+* **Market Sales Companies:** When selling products through online sales, need to quickly reach cooperation and immediately sign contracts
 
-* **Leasing Companies:** Needs for rapid contract signing with offline tenants, online contract management, query capabilities, and automatic renewal reminder systems  
-
+* **Rental Companies:** Need to quickly sign contracts for offline rental companies, online contract management, inquiry, and automatic contract expiration reminders
 
 
 
 Directory Structure
 -----------------------------------
 
-```
-├─App.vue                           // Application configuration, used for configuring global styles and event listeners
-├─index.html                        // Provides functionality for web page development and serves as a template
-├─jsconfig.json                     // Configuration for code linting, etc.
-├─main.js                           // Entry file
-├─manifest.json                     //  Configuration for application name, appid, logo, version, etc.
-├─pages.json                        // Configuration for page routes, navigation bars, tabs, and other page-related information
-├─README.md                         // Help documentation
-├─uni.scss                          // Pre-set SCSS variables for easy control of the application's style
-├─vue.config.js                     // Development settings
-├─api                               // Interface management, categorized by functionality
-├─components                        // Public component library
-│  ├─backTop                        // Back to top button
-│  ├─BaseEmpty                      //  Empty page
-│  ├─baseline                       // No more data
-│  ├─btn-fixed                      // Fixed bottom component (slot)
-│  ├─checkUser                      // Switch identity
-│  ├─contractState                  // Contract status
-│  ├─FileItem                       // File information
-│  ├─loading                        // Page loading
-│  ├─loadMore                       // Load more data
-│  ├─SwitchEnvironment              // Switch environment
-│  ├─tag-auth                       // User identity
-│  ├─userInfo                       // User information
-│  └─v-tabs                         // Tab switch
-├─config                            //  Configuration
-│  ├─config.js                      // System configuration (domain, etc.)
-│  ├─net.config.js                  // Domain configuration
-│  └─setting.js                     // Other global configurations (e.g., page sharing messages)
-├─filters                           // Filters
-├─mixins                            // Mixins
-│  └─share.js                       // Page sharing
-├─pages                             // Page folders
-│  ├─contract                       // Contract-related pages
-│  │  ├─index.vue                   // Contract home
-│  │  │    └─index.vue              // Contract details
-│  │  ├─sign                        // Initiate signing
-│  │  └─revoke                      // Revoke contract
-│  ├─home                           // Home
-│  │  └─contractTemplate            // Contract templates
-│  ├─index                          // Start page
-│  ├─login                          // Login and registration
-│  └─user                           // My account
-│     ├─company                     // Company-related
-│     │    ├─addCompany.vue         // Add company
-│     │    ├─addSeal.vue            // Add seal
-│     │    ├─authorize.vue          // Web-view page
-│     │    ├─Certification.vue      // Company certification
-│     │    ├─companySeal.vue        // Company seal management
-│     │    ├─create.vue             // Create company (deprecated)
-│     │    ├─myCompany.vue          // My company
-│     │    └─removeComfirm.vue      // Remove company
-│     ├─companyMembers              // Members
-│     │    ├─createMember.vue       // Add member
-│     │    └─index.vue              // Company members
-│     ├─createUser                  // Signers
-│     │    ├─addPerson.vue          // Add recent signers (deprecated)
-│     │    └─index.vue              // Recent signers
-│     ├─file                        // File management
-│     ├─package                     // Packages
-│     │    ├─buy.vue                // Purchase packages
-│     │    └─comboDetails.vue       // My packages
-│     ├─personal                    // Personal
-│     │    └─Certification.vue      // Personal certification
-│     └─setting                     // Settings
-│          ├─changeIdentity.vue     // Switch identity (deprecated)
-│          ├─password.vue           // Change password (deprecated)
-│          └─Privacy.vue            // Privacy statement
-├─static                            // Static resources storage, such as images, videos
-│  └─tabbar                         // Tabbar icons
-├─store                             // State management library
-├─style                             // Public style library
-├─uni_modules                       // Project components, pages, common modules, etc.
-├─unpackage                         // Build directory
-└─utils                             // Utilities
-   ├─cache.js                       // Cache management
-   ├─common.js                      // Common functions
-   ├─compress.js                    // Image compression
-   ├─reg.js                         // Common regular expressions
-   └─request.js                     // Network request settings
+```json
+mini-contract-pro/
+├── App.uvue                        // Application configuration, global styles, and lifecycle management
+├── main.uts                        // Application entry file
+├── index.html                      // H5 development template
+├── manifest.json                   // Application packaging configuration (app name, appid, version, etc.)
+├── pages.json                      // Page routing configuration, navigation bar, tabs, etc.
+├── package.json                    // Project dependency management
+├── uni.scss                        // SCSS global variable preset, unified application style
+├── vue.config.js                   // Development configuration
+├── README.md                       // Project documentation
+│
+├── api/                            // Interface management layer, classified by function
+│   ├── index.uts                   // API main entry, exporting all interfaces
+│   ├── auth.uts                    // Authentication-related interfaces
+│   ├── config.uts                  // Configuration management
+│   ├── auth/
+│   │   └── login.uts               // Login interface
+│   ├── ai-draft/
+│   │   └── index.uts               // AI drafting-related interfaces
+│   ├── contracts/
+│   │   └── index.uts               // Contract management interface
+│   ├── drafts/
+│   │   └── index.uts               // Draft management interface
+│   ├── enterprise/
+│   │   └── index.uts               // Enterprise management interface
+│   ├── seals/
+│   │   └── index.uts               // Seal management interface
+│   ├── templates/
+│   │   └── index.uts               // Template management interface
+│   ├── mock/                       // Mock data
+│   │   ├── index.uts
+│   │   └── templates.uts
+│   └── utils/
+│       └── download.uts            // Download utility functions
+│
+├── components/                     // Public component library
+│   ├── README.md                   // Component usage documentation
+│   ├── KycModal.uvue               // KYC authentication modal component
+│   ├── EnterpriseKycModal.uvue     // Enterprise KYC authentication modal
+│   ├── H5LoadingContainer.uvue     // H5 loading container
+│   ├── H5ErrorContainer.uvue       // H5 error container
+│   ├── KYC_GUARD_USAGE.md          // KYC guard usage guide
+│   ├── ENTERPRISE_KYC_MODAL_USAGE.md
+│   └── H5_SERVICE_CHECK_GUIDE.md
+│
+├── pages/                          // Page files (organized by functional modules)
+│   ├── login/
+│   │   └── index.uvue              // Login page
+│   ├── register/
+│   │   └── index.uvue              // Register page
+│   ├── index/
+│   │   └── index.uvue              // Home page
+│   ├── contract-manage/            // Contract management module
+│   │   ├── index.uvue              // Contract list
+│   │   └── draft.uvue              // Draft box
+│   ├── contract-create/            // Contract creation module
+│   │   ├── setup.uvue              // Creation setup
+│   │   ├── file.uvue               // File upload
+│   │   ├── image.uvue              // Image upload
+│   │   └── h5-create.uvue          // H5 creation page
+│   ├── contract-detail/            // Contract details
+│   │   └── index.uvue
+│   ├── contract-form/              // Contract form filling
+│   │   └── h5-fill.uvue
+│   ├── contract-sign/              // Contract signing module
+│   │   ├── index.uvue              // Signing page
+│   │   └── h5-sign.uvue            // H5 signing page
+│   ├── contract-view/              // Contract viewing
+│   │   └── h5-view.uvue
+│   ├── contract-review/            // Contract review
+│   │   └── index.uvue
+│   ├── contract-audit/             // Contract audit (Tianyan audit)
+│   │   ├── intro.uvue              // Audit introduction
+│   │   ├── progress.uvue           // Audit progress
+│   │   ├── report.uvue             // Audit report
+│   │   ├── risk-detail.uvue        // Risk details
+│   │   └── history.uvue            // Audit history
+│   ├── ai-draft/                   // AI drafting module
+│   │   ├── index.uvue              // AI drafting home
+│   │   ├── chat.uvue               // AI conversation page
+│   │   ├── editor.uvue             // Editor page
+│   │   ├── detail.uvue             // Details page
+│   │   ├── preview.uvue            // Preview page
+│   │   └── history.uvue            // History
+│   ├── template-market/            // Template market
+│   │   └── index.uvue
+│   ├── template-detail/            // Template details
+│   │   └── index.uvue
+│   ├── template-preview/           // Template preview
+│   │   └── index.uvue
+│   ├── enterprise/                 // Enterprise management module
+│   │   ├── list.uvue               // Enterprise list
+│   │   ├── add.uvue                // Add enterprise
+│   │   ├── detail.uvue             // Enterprise details
+│   │   ├── members.uvue            // Member management
+│   │   ├── member-invite.uvue      // Invite members
+│   │   ├── member-edit.uvue        // Edit member
+│   │   ├── seals.uvue              // Enterprise seal management
+│   │   ├── seal-create.uvue        // Create enterprise seal
+│   │   └── seal-authorize.uvue     // Seal authorization
+│   ├── profile/                    // Personal center module
+│   │   ├── index.uvue              // Personal center home
+│   │   ├── personal-info.uvue      // Personal information
+│   │   ├── seals.uvue              // Personal seal management
+│   │   ├── seal-create.uvue        // Create personal seal
+│   │   ├── settings.uvue           // Settings
+│   │   ├── notifications.uvue      // Notifications
+│   │   ├── packages.uvue           // Package management
+│   │   ├── help.uvue               // Help center
+│   │   └── about.uvue              // About application
+│   ├── kyc/                        // KYC authentication module
+│   │   └── index.uvue
+│   ├── agreement/                  // Agreement pages
+│   │   ├── user.uvue               // User agreement
+│   │   └── privacy.uvue            // Privacy policy
+│   └── pdf-preview/                // PDF preview
+
+├── utils/                          // Utility function library
+│   ├── date.uts                    // Date processing utilities
+│   ├── network.uts                 // Network request utilities
+│   └── kyc-check.uts               // KYC check utilities
+
+├── static/                         // Static resources
+│   └── [Images, fonts and other resource files]
+
+├── scripts/                        // Build scripts
+│   └── [Build-related scripts]
+
+└── uni_modules/                    // uni-app plugin modules
 ```
 
 
@@ -187,57 +253,189 @@ Technical Architecture
 
 #### Development Environment
 
-- Language: Vue 2.0
+- **Application Name**: JieYiQian (捷易签)
 
-- IDE (Front-end): VSCode, HBuilder
-
-- Dependency Management: npm
-
-
-
-#### Mobile Framework
-
-| Description       | Framework       | Description       | Framework       |
-| ------------------ | --------------- | ------------------ | --------------- |
-| Basic Framework    | uni-app         | JavaScript Version | ES6             |
-| Basic JS Framework | Vue.js          | Video Player      | Native video    |
-| Routing Management | Vue Router      | State Management  | Vuex            |
-| Network Requests  | axios           | CSS Pre-processing | SCSS            |
-| Map Engine        | map             |                  |                 |
+- **Framework**: uni-app + Vue 3
+- **Language**: UTS (TypeScript)
+- **Version**: 3.0.0
+- **Supported Platforms**: iOS, Android, H5, Mini Programs, APP
+- **IDE (Frontend)**: HBuilder
 
 
 
-### Function Modules
+## Core Functional Modules
 
+### 1. User System
+- **Login/Register**: User account management
+- **Real-name Authentication**: Personal KYC authentication
+- **Enterprise Authentication**: Enterprise-level KYC authentication
+
+### 2. Contract Management
+- **Create Contract**: Supports file upload, image upload, template creation
+- **Contract List**: View all contracts, supports filtering and searching
+- **Draft Management**: Save unfinished contract drafts
+- **Contract Details**: View complete contract information
+- **Contract Review**: Review contract content
+
+### 3. Contract Signing
+- **Signing Process**: Supports multi-party signing
+- **Signature Management**: Create and manage personal signatures
+- **Seal Management**: Create and manage personal/enterprise seals
+- **Signing Progress**: Real-time view of signing status
+
+### 4. Tianyan Audit (AI Audit)
+- **Audit Introduction**: Display audit function description
+- **Audit Progress**: Real-time display of audit progress
+- **Audit Report**: Generate detailed risk analysis report
+- **Risk Details**: View specific risk items
+- **Audit History**: View historical audit records
+
+### 5. AI Drafting
+- **AI Conversation**: Conversational contract drafting with AI
+- **Editor**: Edit AI-generated contracts
+- **Preview**: Preview contract content
+- **History**: View historical drafting records
+
+### 6. Template System
+- **Template Market**: Browse available contract templates
+- **Template Details**: View template detailed information
+- **Template Preview**: Preview template content
+- **Template Usage**: Create contracts based on templates
+
+### 7. Enterprise Management
+- **Enterprise List**: Manage multiple enterprise accounts
+- **Enterprise Details**: View enterprise information
+- **Member Management**: Add, edit, delete enterprise members
+- **Member Invitation**: Invite new members to join enterprise
+- **Enterprise Seals**: Create and manage enterprise-level seals
+- **Seal Authorization**: Control member permissions for seal usage
+
+### 8. Personal Center
+- **Personal Information**: Manage user basic information
+- **Personal Seals**: Create and manage personal seals
+- **Settings**: Application settings and preferences
+- **Notifications**: Message and notification management
+- **Package Management**: View and upgrade user packages
+- **Help Center**: FAQs and help documentation
+- **About Application**: Application information and version
+
+## Technology Stack
+
+### Frontend Framework
+- **uni-app**: Cross-platform development framework, supports iOS, Android, H5, Mini Programs
+- **Vue 3**: Progressive JavaScript framework
+- **UTS**: TypeScript variant for uni-app development
+
+### Development Tools
+- **@dcloudio/uni-ui**: uni-app official UI component library
+- **@dcloudio/uniapp-cli**: uni-app CLI tool
+
+### Style System
+- **SCSS**: CSS preprocessor, global variable management through uni.scss
+- **CSS Mask + SVG**: Modern minimalist icon system
+
+## API Interface Management
+
+All API interfaces are uniformly managed in the `api/` directory and classified by functional modules:
+
+- **Authentication Interface**: `api/auth.uts`, `api/auth/login.uts`
+- **Contract Interface**: `api/contracts/index.uts`
+- **Draft Interface**: `api/drafts/index.uts`
+- **Enterprise Interface**: `api/enterprise/index.uts`
+- **Seal Interface**: `api/seals/index.uts`
+- **Template Interface**: `api/templates/index.uts`
+- **AI Drafting Interface**: `api/ai-draft/index.uts`
+
+### Seal Management API Example
+
+```typescript
+// Get seal list
+getSealList(params: { identityType: number; enterpriseId?: number; })
+
+// Personal seal operations
+userSeal.create(data)
+userSeal.update(data)
+userSeal.delete(id)
+userSeal.page(params)
+
+// Enterprise seal operations
+enterpriseSeal.create(data)
+enterpriseSeal.update(data)
+enterpriseSeal.delete(id)
+enterpriseSeal.page(params)
+
+// Enterprise seal authorization
+enterpriseSeal.grantCreate(data)
+enterpriseSeal.grantDelete(id)
+enterpriseSeal.grantList(sealId)
 ```
-Business Functions
-├─Login and Registration
-│  ├─Account Method
-│  └─WeChat Authorization
-├─Home
-│  ├─Quick Contract Handling
-│  │  ├─To Be Processed by Me
-│  │  └─To Be Processed by Others
-│  └─Recent Contracts
-├─Contracts
-│  ├─To Be Processed by Me
-│  ├─To Be Processed by Others
-│  ├─Completed
-│  ├─Rejected
-│  ├─Revoked
-│  └─Overdue
-├─Initiate New Signing Contracts
-└─My Account
-   ├─My Company
-   ├─Company Seals
-   ├─File Management
-   ├─Package Management
-   ├─Privacy Policy
-   ├─Change Password
-   └─Personal Center
-      ├─Company Packages
-      └─Personal Packages
+
+## Development Guide
+
+### Environment Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Development mode
+npm run dev
+
+# Build production version
+npm run build
 ```
+
+### Page Development
+
+1. Create new page files (.uvue format) in the `pages/` directory
+2. Configure page routes in `pages.json`
+3. Use `uni.navigateTo()` for page navigation
+
+### Component Development
+
+1. Create new components (.uvue format) in the `components/` directory
+2. Import components in required pages
+3. Refer to `components/README.md` to understand existing components
+
+### API Calls
+
+```typescript
+// Import API
+import { userSeal } from '../../api/seals/index';
+
+// Call API
+userSeal.create(sealData)
+  .then(res => {
+    console.log('Success', res);
+  })
+  .catch(err => {
+    console.error('Failed', err);
+  });
+```
+
+## Important Documentation
+
+- **Component Documentation**: `components/README.md`
+- **KYC Usage Guide**: `components/KYC_GUARD_USAGE.md`
+- **Enterprise KYC Documentation**: `components/ENTERPRISE_KYC_MODAL_USAGE.md`
+- **H5 Service Check**: `components/H5_SERVICE_CHECK_GUIDE.md`
+- **Authentication API Documentation**: `API_DOCS_APP_AUTH.md`
+
+## FAQs
+
+### How to add a new page?
+1. Create a new folder and .uvue file in the `pages/` directory
+2. Add page configuration in `pages.json`
+3. Navigate to the new page using `uni.navigateTo()`
+
+### How to call backend API?
+All API calls are made through interface functions in the `api/` directory to ensure unified request management and error handling.
+
+### How to use KYC authentication?
+Refer to `components/KYC_GUARD_USAGE.md` and `components/ENTERPRISE_KYC_MODAL_USAGE.md` documentation.
+
+### How to handle H5 compatibility issues?
+Wrap H5 pages with `H5LoadingContainer` and `H5ErrorContainer` components, refer to `components/H5_SERVICE_CHECK_GUIDE.md`.
 
 
 
@@ -246,350 +444,303 @@ Project Screenshots
 ----
 
 
-![](.images/yihetong_02.png)
+![](.images/app/app_01@4x.png)
 
+> Currently supports login via mobile phone number and account in 2 ways;
+>
+> Currently we support multiple ways to initiate contracts including templates, files, images, etc.;
+>
+> We also support AI contract drafting;
+>
+> Tianyan audit is mainly for contract risk review;
 
 
-#### User Interface (Mobile)
 
-> The homepage allows for quick initiation of contract signing, supporting multiple selections of signatories or companies (i.e., simultaneous signing by multiple individuals or companies), and also enables setting the validity period of the contract for this signing, thereby avoiding potential legal risks.
+![](.images/app/app_02@4x.png)
 
+> Template center supports pre-setting rich contract templates for users or enterprise employees to select contract templates to quickly create contracts;
+>
+> Users can clearly understand the data and fields to be filled in the current contract template in the template details, so that they can easily know whether this template matches their needs;
 
 
-![](.images/yihetong_12.png)
 
+![](.images/app/app_03@4x.png)
 
+> File upload to create a contract, you can set the corresponding signers, the number of signers here is completely set by the contract initiator;
+>
+> Support multiple images uploaded and merged into PDF and then create contracts, also can set the corresponding signers, the number of signers here is completely set by the contract initiator;
 
-![](.images/yihetong_03.png)
 
 
+![](.images/app/app_04@4x.png)
 
-> As an enterprise, you need to complete "enterprise authentication" and "legal representative real-name authentication" before signing. Additionally, if the quota is used up during the usage, you can purchase more quota on your own.
+> After completing the basic information for creating a contract, you can initiate the contract creation;
 
-![](.images/yihetong_04.png)
 
 
+![](.images/app/app_05@4x.png)
 
-> After logging into the application, you can access various features such as enterprise management, seal management, document signing management, signing quota purchase, and more.
+> Contract management supports tab filtering of contracts with different statuses, and you can also view corresponding contract details by clicking on the contract
 
-![](.images/yihetong_05.png)
 
 
+![](.images/app/app_06@4x.png)
 
-> Users or businesses can independently set and upload their own personalized signatures and seals.
+> If the contract template requires filling in form information before signing, users need to fill in the form first before they can sign the contract;
 
-![](.images/yihetong_13.png)
 
-![](.images/yihetong_14.png)
 
+![](.images/app/app_07@4x.png)
 
+> During signing, it supports setting riding seals, free seals, and personal signatures;
 
-> Before signing, individuals are required to complete "real-name authentication," "ID card verification," "facial recognition," and other processes to ensure the authenticity of the information.
 
-![](.images/yihetong_06.png)
 
+![](.images/app/app_08@4x.png)
 
+> User's personal center, supports switching the current enterprise
 
-> In the signing details, you can view the signing status information of the contract signatories and all parties involved. The signing parties can also click to sign the document, with signing methods including "handwritten signature" and "seal" options. 
 
-![](.images/yihetong_07.png)
 
+![](.images/app/app_09@4x.png)
 
+> Users can freely add real-name enterprises, and the first user who creates an enterprise is the super administrator of that enterprise;
+>
+> After entering a certain enterprise, it supports enterprise-specific operations such as "contract creation", "contract management", "member management", "seal management", etc.;
+>
+> At the same time, uncertified enterprises also support enterprise real-name authentication
 
-> As an enterprise administrator, you have the ability to manage members of the organization and grant them the authority to sign documents
 
-![](.images/yihetong_09.png)
 
+![](.images/app/app_10@4x.png)
 
+> Administrators can authorize and manage seals;
 
-> After completing the real-name authentication process for the enterprise, you can automatically generate compliant CA certificate signatures. As an enterprise administrator, you can set different signing permissions for each member.
 
-![](.images/yihetong_10.png)
 
+![](.images/app/app_11@4x.png)
 
+> Administrators can also manage members
 
-> The platform provides a wide range of rich contract templates for your use, and we regularly update these templates. As a developer, you can enjoy these templates for free.
 
-![](.images/yihetong_11.png)
 
-![](.images/yihetong_15.png)
+![](.images/app/app_12@4x.png)
 
+> Users can create their own seals, supporting upload, handwriting, template generation, etc.
 
 
-> Batch initiating signature, one-to-many, generating multiple contracts, with fixed data for one party and variable data for the other party/parties. After setting the parameters, multiple contracts can be generated simultaneously, improving the efficiency of initiating contracts (applicable to industries such as human resources where one company entity remains the same but multiple other parties need to sign).
 
-![](.images/yihetong_19.png)
+![](.images/app/app_13@4x.png)
 
+> Enterprise users support uploading and template generation of enterprise seals, and the number of seals of the same type is also limited; 
 
 
-> To quickly create contracts, you can use the option of generating an online contract directly, eliminating the hassle of downloading and then uploading the contract.
 
-![](.images/yihetong_16.png)
+![](.images/app/app_14@4x.png)
 
-![](.images/yihetong_17.png)
+> Supports intelligent audit of contracts, provides corresponding audit reports, and provides users with intelligent analysis of risk levels for reference;
 
 
 
-> Even before signing the contract, it is possible to support the management and uploading of temporary contract files (you can think of it as using our platform as a cloud storage, haha).
+![](.images/app/app_15@4x.png)
 
-![](.images/yihetong_18.png)
+> For some personalized customers who hope to draft personalized contracts themselves, we currently support intelligent drafting through AI;
 
 
 
-> Simultaneously, the current capability supports batch contract signing (primarily targeting business scenarios where one party's information remains constant while the other party's information varies, such as scenarios with a fixed Party A and a variable Party B).
+![](.images/app/app_16@4x.png)
 
-![](.images/yihetong_20.png)
+> Drafted contract drafts can be edited and adjusted online to better meet your personalized needs;
 
-![](.images/yihetong_21.png)
 
 
 
 
+#### User Portal (Web)
 
-> Signatories involved in the contract can receive SMS reminders about the signing process. Within the validity period, they can click the link to access the H5 or mini program to complete the signing. Once all signatories have completed the signing, a text message notification will be sent to inform them.
+> User web portal, you can sign and view your contracts in the backend
 
-![](.images/yihetong_08.png)
+![](.images/pc/01_pc.png)
 
 
-#### User Interface (Web)
 
-> The web-based user interface allows users to sign and view their contracts in the backend.
+![](.images/pc/02_pc.png)
 
-![](.images/yihetong_pc_01.png)
+> PC also supports login via mobile phone number + password and SMS verification code;
 
 
 
-> On the web user interface, there is support for signing contracts online. By clicking on "Sign," you will be redirected to the corresponding signing page.
+![](.images/pc/03_pc.png)
 
-![](.images/yihetong_pc_02.png)
+> The workspace supports viewing basic contract information
 
 
 
-> In English, it means "Handwritten signature and upload your unique personal signature information."
+![](.images/pc/04_pc.png)
+![](.images/pc/16_pc.jpeg)
+![](.images/pc/11_pc.jpeg)
+![](.images/pc/12_pc.jpeg)
+![](.images/pc/13_pc.jpeg)
+![](.images/pc/14_pc.jpeg)
 
-![](.images/yihetong_pc_03.png)
 
->  Web user interface supports switching between different identities, such as "personal" and "business".
+> View all contract information, supports online signing and viewing contract progress status
 
-![](.images/yihetong_pc_04.png)
 
 
 
-> As a business manager, you can also manage members on the web platform.
 
-![](.images/yihetong_pc_05.png)
 
+![](.images/pc/05_pc.png)
+![](.images/pc/06_pc.png)
+![](.images/pc/17_pc.jpeg)
+![](.images/pc/18_pc.jpeg)
+![](.images/pc/19_pc.jpeg)
 
+> Create and manage personal seals and enterprise seals by yourself 
 
-> Adding a member can be done by entering their "phone number" and "name".
 
-![](.images/yihetong_pc_06.png)
 
 
 
->  On the web platform, you can also perform queries based on the status of contract signings, such as "Initiated by me", "Pending my action", "Pending others' action", "Completed", "Rejected", "Cancelled", and "Overdue".
 
-![](.images/yihetong_pc_07.png)
+![](.images/pc/07_pc.png)
 
 
+![](.images/pc/08_pc.png)
 
-> As a company manager or an individual, you can view all the signed and archived contracts on the web platform. It supports online viewing, downloading, and other operations.
+ ![](.images/pc/20_pc.jpeg)
+ ![](.images/pc/21_pc.jpeg)
 
-![](.images/yihetong_pc_08.png)
+> Administrators support creating contract templates
 
 
+![](.images/pc/09_pc.png)
+![](.images/pc/21_pc.png)
 
-> The web management portal also supports operations such as changing accounts and modifying passwords.
+> Administrators can invite enterprise employees
 
-![](.images/yihetong_pc_09.png)
 
+![](.images/pc/10_pc.png)
 
+> View personal basic information
 
 
 
-#### Platform Interface
+#### Platform Portal
 
-***Data Overview***
+> Coming soon.....
 
-> Gain insights into basic information about all users on the contract platform and aggregate and summarize data.
 
-![](.images/yihetong_admin_01.png)
 
-***Personal Certification***
+### Recent Updates
 
-> The platform can view desensitized basic information for all personal certifications.
+##### V 3.0 Pro Version
+- [x] 【New】Brand new page design style
+- [x] 【New】Brand new technical architecture
+- [x] 【New】Tianyan Audit (Intelligent contract review)
+- [x] 【New】AI Drafting (AIGC contract generation)
 
-![](.images/yihetong_admin_02.png)
 
-***Company Certification***
 
-> The platform can view desensitized basic information for all company certifications.
 
-![](.images/yihetong_admin_03.png)
+##### V2.0.0 Update Log
 
-***Sales Orders***
+- [x] 【New】Added brand new page style, improving overall user experience
+- [x] 【New】Support one-to-many batch contract initiation, improving initiation efficiency (for business scenarios where one entity corresponds to multiple different signers)
+- [x] 【New】Support personalized signatures, users can define their own signature styles
+- [x] 【New】Intelligent quick contract generation (quickly generate an online contract by taking photos with your phone or uploading images)
+- [x] 【New】Draft box, solving the problem of signing work being interrupted by certain things
+- [x] 【New】Initiator reminder, ensuring contracts are completed within the validity period
+- [x] 【New】File management (for temporary file storage, you can also use ours as cloud storage, haha)
+- [x] 【New】Contract details page convenient sharing button, can quickly share to signers
+- [x] 【Optimization】Other experiences
+- [x] 【Fixed】Known bugs
 
-> The platform can view all contract sales information.
 
-![](.images/yihetong_admin_04.png)
 
-***Service Usage***
+##### V1.5.5 Update Log
 
-> The platform can view all contract usage and consumption information.
+- [x] 【New】Support adding "person-certificate comparison" to real-name authentication process
+- [x] 【New】SMS notification to signing parties after signing is completed
+- [x] 【New】Support signer being different from initiator (can initiate contracts on behalf)
+- [x] 【Optimization】Enterprise and personal identity switching experience
 
-![](.images/yihetong_admin_05.png)
+- [x] 【Optimization】User experience
+- [x] 【Fixed】Known bugs
 
-***Pricing Settings***
 
-> The platform can set prices based on contract operational needs.
 
-![](.images/yihetong_admin_06.png)
+##### V1.5.0 Update Log
+- [x] 【New】Non-evidence chain contract signing (can be used for internal daily approvals within enterprises)
+- [x] 【Optimization】Seal management
+- [x] 【Optimization】Enterprise real-name authentication logic
+- [x] 【Optimization】Evidence chain multi-channel signing logic
+- [x] 【Upgrade】Third-party plugin versions
+- [x] 【Optimization】Privacy protection agreement content
+- [x] 【Optimization】User experience
+- [x] 【Fixed】Known bugs
 
-***Account Management***
 
-> The platform can configure user permissions based on different roles.
 
-![](.images/yihetong_admin_07.png)
 
+##### V1.1.2 Update Log
 
+- [x] 【New】Support backend management to view enterprise contract situations
+- [x] 【Optimization】User experience
+- [x] 【Fixed】Known bugs
 
-***Sideways classification***
 
-> The new operations platform allows for the independent operation of contract templates, making platform management more flexible and convenient. Once the operations platform establishes contract templates, all contract users and businesses can benefit from the pre-set templates provided by the operations platform.
 
-![](.images/yihetong_admin_08.png)
+##### V1.1.1 Update Log
 
+- [x] 【Optimization】Enterprise and personal electronic contract package quotas
+- [x] 【Optimization】User experience
+- [x] 【Fixed】Known bugs
 
 
-![](.images/yihetong_admin_09.png)
 
+##### V1.1.0 Update Log
 
-
->  When setting up the contract template, it is possible to pre-set the signatory roles as "individual" or "enterprise". Currently, a single template supports up to 10 signatory objects.
-
-![](.images/yihetong_admin_10.png)
-
-
-
-![](.images/yihetong_admin_12.png)
-
-
-
-
-
-> The contract template supports dynamically setting parameter information inside it, and it can also pre-set some parameter information in advance, greatly increasing the flexibility of the contract.
-
-![](.images/yihetong_admin_13.png)
-
-
-
-### Operation Demonstration (Mini Program version)
-
-> Chain of Evidence
-
-<div align="center" >
-    <img src="http://imgs.leepm.com/public-images/2024040902.gif"  width="300px"/>
-</div>
-
-
-
-> Non-Chain of Evidence
-
-<div align="center" >
-    <img src="http://imgs.leepm.com/public-images/2024040901.gif" width="300px" />
-</div>
-
-
-
-### Updates Logs
-
-##### v 2.0.0
-
-[New] Introducing a brand new page style, enhancing the overall user experience.
-
-- [x] **[New]** Support for one-to-many bulk contract initiation, improving efficiency in scenarios where a single entity corresponds to multiple signatories.
-- [x] **[New]** Support for personalized signatures, allowing users to define their own signature styles.
-- [x] **[New]** Intelligent rapid contract generation, enabling quick generation of online contracts through mobile phone camera or image upload.
-- [x] **[New]** Drafts feature to address interruptions during the signing process.
-- [x] **[New]** Initiator reminders to ensure contracts are signed within the valid period.
-- [x] **[New]** File management feature for temporary file storage, doubling as a cloud drive.
-- [x] **[New]**  Convenient share button on the contract details page for quick sharing with signatories.
-- [x] **[Optimization]** Other user experience improvements.
-- [x] **[Bug Fix]** Known bugs have been addressed.
-
-
-
-##### v 1.5.5 
-
-- [x] **[New]** Added "ID Card Comparison" in the real-name authentication process
-- [x] **[New]** Send SMS notifications to signing parties upon completion
-- [x] **[New]** Support for signing parties who are not the initiators (can delegate contract initiation)
-- [x] **[Optimization]** Improved experience for switching between corporate and individual ID cards
-- [x] **[Optimization]** Enhanced user experience
-- [x] **[Bug Fix]**  Fixed known issues
-
-
-
-#####  v 1.5.0
-- [x] **[New]** Added non-evidence chain contract signing (suitable for daily internal approval within enterprises)
-- [x] **[Optimization]** Seal management
-- [x] **[Optimization]** Corporate real-name authentication logic
-- [x] **[Optimization]**  Evidence chain multi-channel signing logic
-- [x] **[[Upgrade]**  Third-party plugin version
-- [x] **[Optimization]** Privacy protection agreement content
-- [x] **[Optimization]** User experience
-- [x] **[Bug Fix]**  Fixed known issues
-
-
-
-
-##### v 1.1.2
-
-- [x] **[New]**  Added support for backend management to view enterprise contract information
-- [x] **[Optimization]** Improved user experience
-- [x] **[Bug Fix]**   Fixed known issues
-
-
-
-
-##### v 1.1.1 
-
-- [x] **[Optimization]** Adjusted the number of electronic contract packages for enterprises and individuals
-- [x] **[Optimization]** Improved user experience
-- [x] **[Bug Fix]**  Fixed known issues
-
-
-
-##### v 1.1.0 
-
-- [x] **[New]** Added a variety of contract templates
-- [x] **[New]** In-app contract signing for improved user experience
-- [x] **[New]** SMS notifications for signatories to avoid delayed communication
-- [x] **[Optimization]** Enhanced user experience
-- [x] **[Bug Fix]**  Fixed known issues
+- [x] 【New】Rich and diverse contract templates
+- [x] 【New】In-app contract signing, improving user experience
+- [x] 【New】Signer SMS notification, avoiding delayed messages
+- [x] 【Optimization】User experience
+- [x] 【Fixed】Known bugs
 
 
 
 
 ### Technical Documentation
 
-* Online Demo：
+* Online Demo:
 
 ![](.images/yihetong_qrcode.png)
 
 
+### Star Trend
 
-### Contact and Collaboration
-
-If you would like to join our open-source discussion group, please scan the QR code to add the Mini-Contract project team and join the group chat:
-![输入图片说明](.images/shawn_company_qrcode.png)
+[![Star History Chart](https://api.star-history.com/svg?repos=freeleepm/mini-contract&type=Date)](https://star-history.com/#freeleepm/mini-contract&Date)
 
 
+### Communication and Cooperation
 
-If you have any ideas, suggestions, or business collaboration needs regarding the Mini-Contract product, please scan the QR code to add the Mini-Contract project team for further communication:
-![输入图片说明](.images/shawn_huangxing_qrcode.png)
+If you have any ideas, opinions, or suggestions about the Mini Contract Pro product, or commercial cooperation needs, please scan the code to contact the Mini Contract Pro project team for further communication:
+![Contact QR Code](.images/shawn_huangxing_qrcode.png)
 
-## Donations
+## Product Recognition
 
-If you find it useful, please consider Watching, Starred, and Forked ☺
+> Since the product was open-sourced, it has received attention and recognition from many friends, and we have ultimately reached some in-depth cooperation. Currently, we have cooperated with over 300+ partners, including both "enterprise" friends and some "individual independent developers"
 
+
+![Recognition](.images/img/hp_001.png)
+![Recognition](.images/img/hp_002.png)
+![Recognition](.images/img/hp_003.png)
+![Recognition](.images/img/hp_004.png)
+![Recognition](.images/img/hp_005.png)
+
+
+
+## Support Us
+
+If you think this project is good, please Watch, Star, and Fork it ☺

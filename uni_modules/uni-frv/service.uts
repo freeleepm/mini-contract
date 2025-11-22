@@ -1,0 +1,116 @@
+// 实人认证服务模块
+
+/**
+ * 获取认证ID
+ * @param name 用户真实姓名
+ * @param idCardNumber 身份证号码
+ * @returns Promise<string> 认证ID
+ */
+export function getCertifyId(name: string, idCardNumber: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        // 模拟API请求获取认证ID
+        console.log('获取认证ID, 姓名:', name, '身份证号:', idCardNumber)
+        
+        // 模拟网络请求延迟
+        setTimeout(() => {
+            // 实际项目中，应该调用云函数或API获取认证ID
+            // 这里使用模拟数据
+            const certifyId = 'mock-certify-id-' + Date.now()
+            
+            // 模拟成功
+            resolve(certifyId)
+            
+            // 模拟失败
+            // reject(new Error('获取认证ID失败'))
+        }, 1000)
+    })
+}
+
+/**
+ * 查询认证结果
+ * @param certifyId 认证ID
+ * @returns Promise<object> 认证结果
+ */
+export function getVerifyResult(certifyId: string): Promise<object> {
+    return new Promise((resolve, reject) => {
+        // 模拟API请求获取认证结果
+        console.log('查询认证结果, 认证ID:', certifyId)
+        
+        // 模拟网络请求延迟
+        setTimeout(() => {
+            // 实际项目中，应该调用云函数或API获取认证结果
+            // 这里使用模拟数据
+            const result = {
+                passed: true,
+                certifyId: certifyId,
+                gmtVerify: Date.now()
+            }
+            
+            // 模拟成功
+            resolve(result)
+            
+            // 模拟失败
+            // reject(new Error('查询认证结果失败'))
+        }, 1000)
+    })
+}
+
+// 实人认证服务
+
+/**
+ * 实人认证服务
+ * 提供获取认证ID和查询认证结果的功能
+ */
+export class FrvService {
+    /**
+     * 获取认证ID
+     * @param name 真实姓名
+     * @param idCardNumber 身份证号码
+     * @returns Promise<string> 认证ID
+     */
+    async getCertifyId(name: string, idCardNumber: string): Promise<string> {
+        // 这里应该调用后端API获取认证ID
+        // 模拟API调用
+        return new Promise((resolve, reject) => {
+            console.log('获取认证ID, 姓名:', name, '身份证号:', idCardNumber);
+            
+            // 模拟网络请求延迟
+            setTimeout(() => {
+                // 生成一个模拟的认证ID
+                const certifyId = 'mock-certify-id-' + Date.now();
+                resolve(certifyId);
+            }, 1000);
+        });
+    }
+    
+    /**
+     * 查询认证结果
+     * @param certifyId 认证ID
+     * @returns Promise<{passed: boolean, certifyId: string, gmtVerify: number, reason?: string}> 认证结果
+     */
+    async getVerifyResult(certifyId: string): Promise<{passed: boolean, certifyId: string, gmtVerify: number, reason?: string}> {
+        // 这里应该调用后端API查询认证结果
+        // 模拟API调用
+        return new Promise((resolve, reject) => {
+            console.log('查询认证结果, 认证ID:', certifyId);
+            
+            // 模拟网络请求延迟
+            setTimeout(() => {
+                // 模拟认证通过
+                resolve({
+                    passed: true,
+                    certifyId: certifyId,
+                    gmtVerify: Date.now()
+                });
+                
+                // 如果需要模拟认证失败:
+                // resolve({
+                //     passed: false,
+                //     certifyId: certifyId,
+                //     gmtVerify: Date.now(),
+                //     reason: '身份信息不匹配'
+                // });
+            }, 1000);
+        });
+    }
+} 

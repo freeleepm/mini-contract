@@ -1,0 +1,1530 @@
+<template>
+  <view class="page-layout">
+    <!-- 主体内容 -->
+    <scroll-view class="content-scroll" scroll-y="true">
+      <view class="content-padding">
+        <!-- 印章信息卡片 -->
+        <view class="seal-info-card">
+          <view class="seal-header">
+            <!-- 左侧：印章图片 -->
+            <view class="seal-image-wrapper">
+              <image
+                v-if="sealInfo.sealData"
+                class="seal-image"
+                :src="sealInfo.sealData"
+                mode="aspectFit"
+              />
+              <view v-else class="seal-placeholder">
+                <text class="icon icon-stamp placeholder-icon"></text>
+              </view>
+            </view>
+            
+            <!-- 右侧：印章信息 -->
+            <view class="seal-details">
+              <view class="seal-name-row">
+                <text class="seal-name">{{sealInfo.name || '印章信息加载中'}}</text>
+                <!-- 印章状态标识 -->
+                <view v-if="sealInfo.status === 1" class="status-tag status-disabled">
+                  <text class="icon icon-ban status-icon"></text>
+                  <text class="status-text">已禁用</text>
+                </view>
+                <view v-else-if="sealInfo.status === 0" class="status-tag status-active">
+                  <text class="icon icon-check-circle status-icon"></text>
+                  <text class="status-text">正常</text>
+                </view>
+              </view>
+              
+              <view class="seal-meta-list">
+                <view class="meta-row">
+                  <view class="meta-label-with-icon">
+                    <text class="icon icon-tag meta-icon"></text>
+                    <text class="meta-label">类型</text>
+                  </view>
+                  <view class="type-tag">
+                    <text class="type-tag-text">{{getSealTypeName(sealInfo.type)}}</text>
+                  </view>
+                </view>
+                
+                <view class="meta-row">
+                  <view class="meta-label-with-icon">
+                    <text class="icon icon-barcode meta-icon"></text>
+                    <text class="meta-label">编号</text>
+                  </view>
+                  <text class="meta-value">{{sealInfo.code || '-'}}</text>
+                </view>
+                
+                <view class="meta-row">
+                  <view class="meta-label-with-icon">
+                    <text class="icon icon-users meta-icon"></text>
+                    <text class="meta-label">授权</text>
+                  </view>
+                  <text class="meta-value highlight">{{grantList.length}} 人</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 授权成员卡片容器 -->
+        <view class="member-card-container">
+          <!-- 卡片头部 -->
+          <view class="card-header">
+            <view class="header-left">
+              <text class="card-title">授权成员</text>
+              <view class="count-badge">
+                <text class="count-text">{{grantList.length}}</text>
+              </view>
+            </view>
+            <!-- ✅ 禁用状态的印章不允许授权 -->
+            <view 
+              v-if="sealInfo.status !== 1"
+              class="add-member-btn" 
+              @click="showAddMemberModal"
+            >
+              <text class="icon icon-user-plus"></text>
+              <text class="add-btn-text">添加授权</text>
+            </view>
+            <view 
+              v-else
+              class="add-member-btn disabled" 
+              @click="handleDisabledSealClick"
+            >
+              <text class="icon icon-ban"></text>
+              <text class="add-btn-text">印章已禁用</text>
+            </view>
+          </view>
+
+          <!-- 加载状态 -->
+          <view class="state-loading" v-if="loading">
+            <view class="loading-ring"></view>
+            <text class="loading-text">加载中...</text>
+          </view>
+
+          <!-- 空状态 -->
+          <view class="state-empty" v-else-if="grantList.length === 0">
+            <view class="empty-icon-wrapper">
+              <text class="icon icon-user-times empty-icon"></text>
+            </view>
+            <text class="empty-title">暂无授权成员</text>
+            <text class="empty-desc">为确保用章安全，请立即为关键成员分配使用权限</text>
+          </view>
+
+          <!-- 授权成员列表 -->
+          <view v-else class="member-list">
+            <view
+              class="member-item"
+              v-for="item in grantList"
+              :key="item.id"
+            >
+              <!-- 头像显示策略：有头像显示图片，无头像显示文字头像 -->
+              <image
+                v-if="item.memberAvatar"
+                class="member-avatar"
+                :src="item.memberAvatar"
+                mode="aspectFill"
+              />
+              <view v-else class="member-avatar avatar-text-wrapper">
+                <text class="avatar-text">{{getFirstChar(item.memberName)}}</text>
+              </view>
+              
+              <view class="member-info">
+                <text class="member-name">{{item.memberName || '未知成员'}}</text>
+                <text class="member-time">{{formatDate(item.createTime)}}</text>
+              </view>
+              <view class="delete-btn" @click="confirmDeleteGrant(item)">
+                <text class="icon icon-trash"></text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+
+    <!-- 选择成员弹窗 -->
+    <uni-popup ref="addMemberPopup" type="center" :safe-area="true" background-color="transparent">
+      <view class="popup-container">
+        <view class="popup-handle"></view>
+        <view class="popup-header">
+          <text class="popup-title">选择授权成员</text>
+          <view class="popup-close" @click="closeAddMemberModal">
+            <text class="icon icon-x-circle close-icon"></text>
+          </view>
+        </view>
+        <view class="popup-search">
+          <view class="search-input-box">
+            <text class="icon icon-search search-prefix-icon"></text>
+            <input
+              class="search-input"
+              placeholder="搜索成员"
+              v-model="searchText"
+              @input="searchMembers"
+              placeholder-style="color: #BBBFC4"
+            />
+            <view v-if="searchText" class="search-clear" @click="searchText = ''; searchMembers()">
+              <text class="icon icon-clear clear-icon"></text>
+            </view>
+          </view>
+        </view>
+        <scroll-view class="popup-list" scroll-y="true">
+          <view
+            class="list-option"
+            v-for="member in filteredMembers"
+            :key="member.id"
+            :class="{
+              'selected': selectedMemberId === member.id,
+              'disabled': member.disabled
+            }"
+            @click="handleSelectMember(member)"
+          >
+            <!-- 头像显示策略：有头像显示图片，无头像显示文字头像 -->
+            <image
+              v-if="member.avatar"
+              class="option-avatar"
+              :src="member.avatar"
+              mode="aspectFill"
+            />
+            <view v-else class="option-avatar avatar-text-wrapper">
+              <text class="avatar-text">{{getFirstChar(member.nickname)}}</text>
+            </view>
+            
+            <view class="option-content">
+              <view class="option-header">
+                <text class="option-name">{{member.nickname}}</text>
+                <!-- ✅ 显示印章所有者标识 -->
+                <view v-if="member.isOwner" class="owner-badge">
+                  <text class="icon icon-crown owner-icon"></text>
+                  <text class="owner-text">所有者</text>
+                </view>
+                <!-- ✅ 显示已授权标识 -->
+                <view v-else-if="member.isGranted" class="granted-badge">
+                  <text class="icon icon-check-circle granted-icon"></text>
+                  <text class="granted-text">已授权</text>
+                </view>
+              </view>
+              <view class="option-role" :class="{
+                'role-owner': member.role === 1,
+                'role-admin': member.role === 2,
+                'role-member': member.role === 3
+              }">
+                <text class="role-text">{{getRoleName(member.role)}}</text>
+              </view>
+            </view>
+            <view class="option-check" v-if="!member.disabled">
+              <view class="check-radio" :class="{'checked': selectedMemberId === member.id}">
+                <text v-if="selectedMemberId === member.id" class="icon icon-check check-icon"></text>
+              </view>
+            </view>
+          </view>
+
+          <view class="no-results" v-if="filteredMembers.length === 0">
+            <text class="icon icon-search no-results-icon"></text>
+            <text class="no-results-text">未找到匹配成员</text>
+          </view>
+        </scroll-view>
+        <view class="popup-footer">
+          <view class="footer-btn btn-cancel" @click="closeAddMemberModal">
+            <text class="btn-text">取消</text>
+          </view>
+          <view
+            class="footer-btn btn-confirm"
+            :class="{'disabled': !selectedMemberId}"
+            @click="confirmAddGrant"
+          >
+            <text class="btn-text">确认授权</text>
+          </view>
+        </view>
+      </view>
+    </uni-popup>
+  </view>
+</template>
+
+<script>
+import { 
+  getEnterpriseSealDetail,
+  getSealGrantList,
+  createSealGrant,
+  deleteSealGrant,
+  getEnterpriseMemberPage
+} from '../../api/enterprise/index';
+
+export default {
+  data() {
+    return {
+      sealId: 0,
+      enterpriseId: 0,
+      loading: true,
+      sealInfo: {},
+      grantList: [],
+      
+      // 成员选择相关
+      memberList: [],
+      filteredMembers: [],
+      searchText: '',
+      selectedMemberId: null,
+      
+      // 分页参数
+      pageNo: 1,
+      pageSize: 50,
+      hasMoreMembers: false
+    };
+  },
+  onLoad(options) {
+    if (options && options.id) {
+      this.sealId = Number(options.id);
+    } else {
+      uni.showToast({
+        title: '缺少印章ID',
+        icon: 'none'
+      });
+      setTimeout(() => {
+        uni.navigateBack();
+      }, 1500);
+      return;
+    }
+    
+    if (options && options.enterpriseId) {
+      this.enterpriseId = Number(options.enterpriseId);
+    } else {
+      // 如果没有传入企业ID，则从缓存或全局状态获取
+      const currentEnterprise = uni.getStorageSync('currentEnterprise');
+      if (currentEnterprise) {
+        this.enterpriseId = currentEnterprise.id;
+      } else {
+        // 如果没有企业ID，提示并返回
+        uni.showToast({
+          title: '缺少企业信息',
+          icon: 'none'
+        });
+        setTimeout(() => {
+          uni.navigateBack();
+        }, 1500);
+        return;
+      }
+    }
+    
+    // ✅ 修正：优化数据加载顺序，确保成员列表先加载
+    this.loadData();
+  },
+  methods: {
+    // ✅ 新增：协调数据加载顺序的方法
+    async loadData() {
+      console.log('===== 开始加载印章授权页面数据 =====');
+      console.log('印章ID:', this.sealId);
+      console.log('企业ID:', this.enterpriseId);
+      
+      try {
+        // 并行加载印章详情和成员列表
+        await Promise.all([
+          this.loadSealDetail(),
+          this.loadMemberList()
+        ]);
+        
+        console.log('印章详情和成员列表加载完成');
+        console.log('成员列表数量:', this.memberList.length);
+        
+        // 成员列表加载完成后，再加载授权列表
+        await this.loadGrantList();
+        
+        console.log('所有数据加载完成');
+      } catch (error) {
+        console.error('加载数据失败:', error);
+      }
+    },
+    
+    // 加载印章详情
+    async loadSealDetail() {
+      try {
+        const res = await getEnterpriseSealDetail(this.sealId);
+        console.log('印章详情API返回:', res);
+        console.log('印章图片地址:', res?.imageUrl);
+        console.log('印章名称:', res?.name);
+        console.log('印章类型:', res?.type);
+        console.log('印章编号:', res?.code);
+        
+        // ✅ 修复：API 返回的是 imageUrl，页面期望的是 sealData
+        // ✅ 统一字段映射，确保兼容性
+        this.sealInfo = {
+          ...res,
+          sealData: res?.imageUrl || res?.sealData, // 兼容新旧字段名
+          code: res?.code || res?.id, // code可能不存在，使用id作为备选
+          userId: res?.ownerId || res?.userId || res?.createdBy // ✅ 印章所有者字段映射
+        };
+      } catch (error) {
+        console.error('获取印章详情失败:', error);
+        uni.showToast({
+          title: '获取印章信息失败',
+          icon: 'none'
+        });
+      }
+    },
+    
+    // 加载授权列表
+    async loadGrantList() {
+      try {
+        this.loading = true;
+        const res = await getSealGrantList(this.sealId);
+        
+        console.log('授权列表API原始返回:', JSON.stringify(res));
+        
+        // ✅ 修正：处理后端可能返回数组或对象的情况
+        let list = [];
+        if (Array.isArray(res)) {
+          // 如果返回的直接是数组
+          console.log('授权列表：后端返回的是数组');
+          list = res;
+        } else if (res && res.list) {
+          // 如果返回的是包含list字段的对象
+          console.log('授权列表：后端返回的是对象，包含list字段');
+          list = res.list;
+        } else if (res && typeof res === 'object') {
+          // 如果是其他对象格式，尝试作为数组处理
+          console.log('授权列表：后端返回的是对象，尝试作为单个授权记录');
+          list = [res];
+        }
+        
+        console.log('授权列表处理后的数据:', JSON.stringify(list));
+        console.log('授权列表数量:', list.length);
+        
+        this.grantList = list.map(item => {
+          // ✅ 修正：后端返回的字段是 userId，不是 enterpriseUserId
+          // 查找对应的成员信息，添加头像和昵称
+          const member = this.memberList.find(m => m.id === item.userId);
+          console.log(`授权记录 id=${item.id}: userId=${item.userId}, 找到的成员:`, member?.nickname || '未找到');
+          return {
+            ...item,
+            memberAvatar: member?.avatar || null, // 没有头像时设为null，以便显示文字头像
+            memberName: member?.nickname || '未知成员'
+          };
+        });
+        
+        console.log('最终授权列表:', JSON.stringify(this.grantList));
+        
+        // 更新成员列表，标识已授权的用户
+        this.updateFilteredMembersWithGrantStatus();
+      } catch (error) {
+        console.error('获取授权列表失败:', error);
+        uni.showToast({
+          title: '获取授权列表失败',
+          icon: 'none'
+        });
+      } finally {
+        this.loading = false;
+      }
+    },
+    
+    // 加载企业成员列表
+    async loadMemberList() {
+      try {
+        console.log('开始加载企业成员列表, 企业ID:', this.enterpriseId);
+        
+        const res = await getEnterpriseMemberPage({
+          enterpriseId: this.enterpriseId,
+          pageNo: this.pageNo,
+          pageSize: this.pageSize
+        });
+        
+        console.log('企业成员列表API返回:', JSON.stringify(res));
+        
+        this.memberList = res.list || [];
+        this.hasMoreMembers = this.memberList.length < (res.total || 0);
+        
+        console.log('成员列表加载完成，数量:', this.memberList.length);
+        console.log('成员列表:', JSON.stringify(this.memberList));
+      } catch (error) {
+        console.error('获取成员列表失败:', error);
+      }
+    },
+    
+    // 更新授权列表中的成员信息
+    updateGrantListMemberInfo() {
+      this.grantList = this.grantList.map(item => {
+        // ✅ 修正：后端返回的字段是 userId，不是 enterpriseUserId
+        const member = this.memberList.find(m => m.id === item.userId);
+        return {
+          ...item,
+          memberAvatar: member?.avatar || null,
+          memberName: member?.nickname || '未知成员'
+        };
+      });
+      
+      // 更新成员列表，标识已授权的用户
+      this.updateFilteredMembersWithGrantStatus();
+    },
+    
+    // ✅ 新增：更新成员列表，标识已授权的用户和印章所有者
+    updateFilteredMembersWithGrantStatus() {
+      // 获取已授权用户的ID列表
+      const grantedUserIds = this.grantList.map(grant => grant.userId);
+      
+      // 在成员列表中标记已授权状态和所有者状态
+      this.filteredMembers = this.memberList.map(member => {
+        const isOwner = member.id === this.sealInfo.userId; // 判断是否是印章所有者
+        const isGranted = grantedUserIds.includes(member.id);
+        
+        return {
+          ...member,
+          isOwner: isOwner,
+          isGranted: isGranted,
+          // 所有者或已授权的用户都不可选
+          disabled: isOwner || isGranted
+        };
+      });
+      
+      console.log('成员列表更新完成，印章所有者ID:', this.sealInfo.userId);
+    },
+    
+    // ✅ 新增：判断成员是否已授权
+    isMemberGranted(memberId) {
+      return this.grantList.some(grant => grant.userId === memberId);
+    },
+    
+    // 搜索成员
+    searchMembers() {
+      // 获取已授权用户的ID列表
+      const grantedUserIds = this.grantList.map(grant => grant.userId);
+      
+      if (!this.searchText) {
+        // 没有搜索词时，显示所有成员并标记已授权状态和所有者状态
+        this.filteredMembers = this.memberList.map(member => {
+          const isOwner = member.id === this.sealInfo.userId;
+          const isGranted = grantedUserIds.includes(member.id);
+          
+          return {
+            ...member,
+            isOwner: isOwner,
+            isGranted: isGranted,
+            disabled: isOwner || isGranted
+          };
+        });
+        return;
+      }
+      
+      // 搜索成员并标记已授权状态和所有者状态
+      this.filteredMembers = this.memberList
+        .filter(member => 
+          member.nickname.toLowerCase().includes(this.searchText.toLowerCase())
+        )
+        .map(member => {
+          const isOwner = member.id === this.sealInfo.userId;
+          const isGranted = grantedUserIds.includes(member.id);
+          
+          return {
+            ...member,
+            isOwner: isOwner,
+            isGranted: isGranted,
+            disabled: isOwner || isGranted
+          };
+        });
+    },
+    
+    // 显示添加成员弹窗
+    showAddMemberModal() {
+      this.searchText = '';
+      this.selectedMemberId = null;
+      // ✅ 标识已授权的用户
+      this.updateFilteredMembersWithGrantStatus();
+      this.$refs.addMemberPopup.open();
+    },
+    
+    // 处理禁用印章点击
+    handleDisabledSealClick() {
+      uni.showToast({
+        title: '该印章已被禁用，无法授权',
+        icon: 'none',
+        duration: 2000
+      });
+    },
+    
+    // 关闭添加成员弹窗
+    closeAddMemberModal() {
+      this.$refs.addMemberPopup.close();
+    },
+    
+    // 选择成员
+    handleSelectMember(member) {
+      // ✅ 如果是印章所有者，不允许授权
+      if (member.isOwner) {
+        uni.showToast({
+          title: '印章所有者无需授权',
+          icon: 'none',
+          duration: 2000
+        });
+        return;
+      }
+      
+      // ✅ 如果该成员已授权，则不允许选择
+      if (member.isGranted) {
+        uni.showToast({
+          title: '该用户已被授权',
+          icon: 'none'
+        });
+        return;
+      }
+      this.selectedMemberId = member.id;
+    },
+    
+    // 确认添加授权
+    async confirmAddGrant() {
+      if (!this.selectedMemberId) {
+        return;
+      }
+      
+      try {
+        uni.showLoading({
+          title: '授权中...'
+        });
+        
+        await createSealGrant({
+          sealId: this.sealId,
+          enterpriseUserId: this.selectedMemberId
+        });
+        
+        uni.showToast({
+          title: '授权成功',
+          icon: 'success'
+        });
+        
+        // 关闭弹窗
+        this.closeAddMemberModal();
+        
+        // 重新加载授权列表
+        this.loadGrantList();
+      } catch (error) {
+        console.error('授权失败:', error);
+        uni.showToast({
+          title: '授权失败，请重试',
+          icon: 'none'
+        });
+      } finally {
+        uni.hideLoading();
+      }
+    },
+    
+    // 确认删除授权
+    confirmDeleteGrant(grant) {
+      uni.showModal({
+        title: '确认删除',
+        content: `确定要删除${grant.memberName || '该成员'}的授权吗？`,
+        success: async (res) => {
+          if (res.confirm) {
+            await this.deleteGrant(grant.id);
+          }
+        }
+      });
+    },
+    
+    // 删除授权
+    async deleteGrant(id) {
+      try {
+        uni.showLoading({
+          title: '删除中...'
+        });
+        
+        await deleteSealGrant(id);
+        
+        uni.showToast({
+          title: '删除成功',
+          icon: 'success'
+        });
+        
+        // 从列表中移除该记录
+        this.grantList = this.grantList.filter(item => item.id !== id);
+      } catch (error) {
+        console.error('删除授权失败:', error);
+        uni.showToast({
+          title: '删除失败，请重试',
+          icon: 'none'
+        });
+      } finally {
+        uni.hideLoading();
+      }
+    },
+    
+    // 获取角色名称
+    getRoleName(role) {
+      const roleMap = {
+        1: '所有者',
+        2: '管理员',
+        3: '成员'
+      };
+      return roleMap[role] || '未知';
+    },
+    
+    // 获取印章类型名称
+    getSealTypeName(type) {
+      const typeMap = {
+        1: '公章',
+        2: '合同专用章',
+        3: '财务专用章',
+        4: '法人章',
+        5: '发票专用章',
+        6: '部门章',
+        7: '业务章'
+      };
+      return typeMap[type] || '其他';
+    },
+    
+    // 格式化日期
+    formatDate(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+    },
+    
+    // 获取用户名首字符（用于个性化头像）
+    getFirstChar(name) {
+      if (!name || name.length === 0) return '?';
+      return name.substring(0, 1);
+    }
+  }
+}
+</script>
+
+<style>
+@import url("../../static/styles/fontawesome.css");
+
+/* FontAwesome 图标基础样式 */
+.icon {
+  font-family: 'Font Awesome 6 Free', FontAwesome;
+  font-weight: 900;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 图标Unicode定义 */
+.icon-stamp::before { content: "\f5bf"; }
+.icon-tag::before { content: "\f02b"; }
+.icon-barcode::before { content: "\f02a"; }
+.icon-users::before { content: "\f0c0"; }
+.icon-user-plus::before { content: "\f234"; }
+.icon-user-circle::before { content: "\f2bd"; }
+.icon-user-times::before { content: "\f235"; }
+.icon-clock::before { content: "\f017"; }
+.icon-trash::before { content: "\f2ed"; }
+.icon-x-circle::before { content: "\f057"; }
+.icon-search::before { content: "\f002"; }
+.icon-clear::before { content: "\f057"; }
+.icon-check::before { content: "\f00c"; }
+
+.page-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #F5F7FA;
+}
+
+.content-scroll {
+  flex: 1;
+  height: 0;
+}
+
+.content-padding {
+  padding: 30rpx;
+}
+
+/* 印章信息卡片 */
+.seal-info-card {
+  background: #FFFFFF;
+  border-radius: 20rpx;
+  box-shadow: 0 4rpx 16rpx rgba(18, 36, 74, 0.06);
+  margin-bottom: 30rpx;
+  overflow: hidden;
+}
+
+.seal-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 36rpx 32rpx;
+  gap: 32rpx;
+}
+
+.seal-image-wrapper {
+  width: 180rpx;
+  height: 180rpx;
+  flex-shrink: 0;
+  background: #F7F9FC;
+  border-radius: 16rpx;
+  overflow: hidden;
+  border: 2rpx solid #E8ECF1;
+}
+
+.seal-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.seal-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F7F9FC;
+}
+
+.placeholder-icon {
+  font-size: 80rpx;
+  color: #CBD5E1;
+}
+
+.seal-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.seal-name-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 8rpx;
+}
+
+.seal-name {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #1E2A3B;
+  line-height: 1.3;
+}
+
+/* 印章状态标签样式 */
+.status-tag {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4rpx;
+  padding: 4rpx 10rpx;
+  border-radius: 16rpx;
+  font-size: 20rpx;
+}
+
+.status-tag.status-active {
+  background-color: rgba(0, 194, 138, 0.1);
+}
+
+.status-tag.status-active .status-icon {
+  color: #00C28A;
+}
+
+.status-tag.status-active .status-text {
+  color: #00C28A;
+}
+
+.status-tag.status-disabled {
+  background-color: rgba(245, 108, 108, 0.1);
+}
+
+.status-tag.status-disabled .status-icon {
+  color: #F56C6C;
+}
+
+.status-tag.status-disabled .status-text {
+  color: #F56C6C;
+}
+
+.status-icon {
+  font-size: 20rpx;
+}
+
+.status-text {
+  font-weight: 500;
+  font-size: 20rpx;
+}
+
+.seal-meta-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.meta-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48rpx;
+}
+
+.meta-label-with-icon {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10rpx;
+  flex-shrink: 0;
+}
+
+.meta-icon {
+  font-size: 28rpx;
+  color: #8B95A5;
+}
+
+.meta-label {
+  font-size: 28rpx;
+  color: #8B95A5;
+  line-height: 1.2;
+}
+
+.meta-value {
+  font-size: 30rpx;
+  color: #475569;
+  font-weight: 500;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.meta-value.highlight {
+  color: #00C28A;
+  font-weight: 600;
+}
+
+/* 类型标签样式 */
+.type-tag {
+  padding: 8rpx 18rpx;
+  background: rgba(24, 144, 255, 0.08);
+  border-radius: 22rpx;
+  border: 1rpx solid rgba(24, 144, 255, 0.2);
+}
+
+.type-tag-text {
+  font-size: 26rpx;
+  color: #1890FF;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.stat-icon {
+  font-size: 26rpx;
+  color: #1890FF;
+}
+
+.stat-text {
+  font-size: 26rpx;
+  color: #606266;
+}
+
+.stat-number {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1890FF;
+}
+
+/* 卡片容器 */
+.member-card-container {
+  background: #FFFFFF;
+  border-radius: 20rpx;
+  box-shadow: 0 4rpx 16rpx rgba(18, 36, 74, 0.06);
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx 30rpx;
+  border-bottom: 1rpx solid #F0F2F7;
+}
+
+.header-left {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.card-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #1E2A3B;
+  line-height: 1.2;
+}
+
+.count-badge {
+  min-width: 44rpx;
+  height: 40rpx;
+  padding: 0 14rpx;
+  border-radius: 20rpx;
+  background: #667EEA;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.count-text {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1;
+}
+
+.add-member-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10rpx;
+  padding: 14rpx 28rpx;
+  background: #00C28A;
+  border-radius: 40rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 194, 138, 0.25);
+}
+
+.add-member-btn .icon {
+  font-size: 26rpx;
+  color: #FFFFFF;
+  line-height: 1;
+}
+
+.add-btn-text {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #FFFFFF;
+  line-height: 1;
+}
+
+/* 禁用按钮样式 */
+.add-member-btn.disabled {
+  background: #C0C4CC;
+  box-shadow: none;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.add-member-btn.disabled .icon {
+  color: #FFFFFF;
+}
+
+.add-member-btn.disabled .add-btn-text {
+  color: #FFFFFF;
+}
+
+.state-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 140rpx 0;
+}
+
+.loading-ring {
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 50%;
+  border: 4rpx solid #DEE6F2;
+  border-top-color: #1E6ED8;
+  animation: spin 0.9s linear infinite;
+  margin-bottom: 18rpx;
+}
+
+.loading-text {
+  font-size: 26rpx;
+  color: #7A889F;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.state-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100rpx 40rpx;
+}
+
+.empty-icon-wrapper {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 60rpx;
+  background: #F0F4FF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24rpx;
+}
+
+.empty-icon {
+  font-size: 56rpx;
+  color: #8B9FC5;
+}
+
+.empty-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1E2A3B;
+  margin-bottom: 16rpx;
+}
+
+.empty-desc {
+  font-size: 26rpx;
+  color: #6E7C95;
+  text-align: center;
+  line-height: 1.6;
+  max-width: 500rpx;
+}
+
+.member-list {
+  padding: 8rpx 0;
+}
+
+.member-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 24rpx 30rpx;
+  border-bottom: 1rpx solid #F5F7FA;
+  transition: background 0.2s ease;
+}
+
+.member-item:last-child {
+  border-bottom: none;
+}
+
+.member-item:active {
+  background: #FAFBFC;
+}
+
+.member-avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  margin-right: 24rpx;
+  flex-shrink: 0;
+  background: #E8EAF6;
+  border: 2rpx solid #F0F2F5;
+}
+
+/* 文字头像样式 */
+.avatar-text-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #F0F7FF !important;
+  border: 2rpx solid rgba(24, 144, 255, 0.2) !important;
+}
+
+.avatar-text {
+  font-size: 36rpx;
+  color: #1890FF;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.member-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.member-name {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #1E2A3B;
+  line-height: 1.3;
+}
+
+.member-time {
+  font-size: 26rpx;
+  color: #8B95A5;
+  line-height: 1.3;
+}
+
+.delete-btn {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 50%;
+  background: rgba(245, 108, 108, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  transition: all 0.2s ease;
+}
+
+.delete-btn:active {
+  background: rgba(245, 108, 108, 0.15);
+  transform: scale(0.95);
+}
+
+.delete-btn .icon {
+  font-size: 26rpx;
+  color: #F56C6C;
+}
+
+/* Popup styles - 标准底部弹窗样式 */
+::v-deep .uni-popup__wrapper {
+  align-items: flex-end !important;
+}
+
+.popup-container {
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  max-height: 75vh;
+  width: 710rpx;
+  margin: 0 20rpx 40rpx;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 -8rpx 32rpx rgba(0, 0, 0, 0.12);
+}
+
+.popup-handle {
+  display: none;
+}
+
+.popup-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 28rpx 32rpx 24rpx;
+  flex-shrink: 0;
+}
+
+.popup-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #303133;
+  line-height: 1.2;
+}
+
+.popup-close {
+  width: 44rpx;
+  height: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.popup-close:active {
+  opacity: 0.6;
+}
+
+.close-icon {
+  font-size: 32rpx;
+  color: #909399;
+}
+
+.popup-search {
+  padding: 0 32rpx 20rpx;
+  flex-shrink: 0;
+}
+
+.search-input-box {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background: #F5F7FA;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  border: none;
+}
+
+.search-prefix-icon {
+  font-size: 28rpx;
+  color: #909399;
+  margin-right: 12rpx;
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  font-size: 26rpx;
+  color: #303133;
+  background: transparent;
+  line-height: 1.4;
+}
+
+.search-clear {
+  margin-left: 12rpx;
+  flex-shrink: 0;
+  width: 32rpx;
+  height: 32rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-icon {
+  font-size: 28rpx;
+  color: #C0C4CC;
+}
+
+.popup-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 32rpx 20rpx;
+  background: #FFFFFF;
+}
+
+.list-option {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 20rpx 0;
+  margin-bottom: 0;
+  background: #FFFFFF;
+  border: none;
+  border-bottom: 1rpx solid #F0F2F5;
+  border-radius: 0;
+  transition: all 0.2s ease;
+}
+
+.list-option:last-child {
+  border-bottom: none;
+}
+
+.list-option:active {
+  background: #FAFBFC;
+}
+
+.list-option.selected {
+  background: #F0F7FF;
+}
+
+/* ✅ 已授权用户的禁用样式 */
+.list-option.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  background: #F5F7FA !important;
+}
+
+.option-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+  background: #E8EAF6;
+  border: 2rpx solid #F0F2F5;
+}
+
+/* 弹窗选项中的文字头像字号稍小 */
+.option-avatar .avatar-text {
+  font-size: 32rpx;
+}
+
+.option-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+/* ✅ 名称和已授权标识的容器 */
+.option-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.option-name {
+  font-size: 28rpx;
+  color: #303133;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+/* ✅ 已授权标识样式 */
+/* 所有者标签样式 */
+.owner-badge {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4rpx;
+  padding: 4rpx 10rpx;
+  border-radius: 10rpx;
+  background: rgba(255, 193, 7, 0.15);
+}
+
+.owner-icon {
+  font-size: 20rpx;
+  color: #FFC107;
+  line-height: 1;
+}
+
+.owner-text {
+  font-size: 20rpx;
+  color: #FFC107;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* 已授权标签样式 */
+.granted-badge {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4rpx;
+  padding: 4rpx 10rpx;
+  border-radius: 10rpx;
+  background: rgba(0, 194, 138, 0.1);
+}
+
+.granted-icon {
+  font-size: 20rpx;
+  color: #00C28A;
+  line-height: 1;
+}
+
+.granted-text {
+  font-size: 20rpx;
+  color: #00C28A;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.option-role {
+  display: inline-flex;
+  padding: 4rpx 12rpx;
+  border-radius: 10rpx;
+  background: #F5F7FA;
+  align-self: flex-start;
+}
+
+.option-role.role-owner {
+  background: rgba(24, 144, 255, 0.1);
+}
+
+.option-role.role-admin {
+  background: rgba(0, 194, 138, 0.1);
+}
+
+.role-text {
+  font-size: 22rpx;
+  color: #909399;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.option-role.role-owner .role-text {
+  color: #1890FF;
+}
+
+.option-role.role-admin .role-text {
+  color: #00C28A;
+}
+
+.option-check {
+  margin-left: 16rpx;
+  flex-shrink: 0;
+}
+
+.check-radio {
+  width: 44rpx;
+  height: 44rpx;
+  border: 2rpx solid #DCDFE6;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.check-radio.checked {
+  border-color: #00C28A;
+  background: #00C28A;
+  border-width: 2rpx;
+}
+
+.check-icon {
+  font-size: 20rpx;
+  color: #FFFFFF;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 40rpx;
+}
+
+.no-results-icon {
+  font-size: 72rpx;
+  color: #C0C4CC;
+  margin-bottom: 24rpx;
+}
+
+.no-results-text {
+  font-size: 26rpx;
+  color: #909399;
+  line-height: 1.5;
+}
+
+.popup-footer {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+  padding: 20rpx 32rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid #F0F2F5;
+  background: #FFFFFF;
+  flex-shrink: 0;
+}
+
+.footer-btn {
+  flex: 1;
+  height: 88rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.footer-btn:active {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+.btn-cancel {
+  background: #F5F7FA;
+  border: none;
+}
+
+.btn-cancel .btn-text {
+  color: #606266;
+  font-size: 28rpx;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.btn-confirm {
+  background: #00C28A;
+  box-shadow: 0 4rpx 12rpx rgba(0, 194, 138, 0.25);
+}
+
+.btn-confirm .btn-text {
+  color: #FFFFFF;
+  font-size: 28rpx;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.btn-confirm.disabled {
+  background: #C0C4CC;
+  opacity: 0.6;
+  box-shadow: none;
+}
+</style> 

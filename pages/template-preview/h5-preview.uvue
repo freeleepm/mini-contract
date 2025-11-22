@@ -1,0 +1,104 @@
+<template>
+	<view class="container">
+		<web-view :src="h5Url" @message="handleMessage"></web-view>
+	</view>
+</template>
+
+<script lang="uts">
+	/**
+	 * 模板预览 WebView 页面
+	 * 
+	 * 作者: 小华同学AI
+	 * 日期: 2025-10-22
+	 * 
+	 * 功能:
+	 * 1. 加载 H5 模板预览页面（TemplatePreviewH5.vue）
+	 * 2. 监听 H5 页面的 postMessage 事件
+	 * 3. 处理 H5 页面的关闭、成功等消息
+	 */
+	export default {
+		data() {
+			return {
+				h5Url: '' // H5页面URL
+			}
+		},
+		onLoad(options: any) {
+			// 从路由参数中获取 H5 页面 URL
+			if (options && options.url) {
+				this.h5Url = decodeURIComponent(options.url);
+				console.log('[模板预览WebView] 加载H5页面:', this.h5Url);
+			} else {
+				uni.showToast({
+					title: 'URL参数缺失',
+					icon: 'none'
+				});
+				setTimeout(() => {
+					uni.navigateBack();
+				}, 1500);
+			}
+		},
+		methods: {
+			/**
+			 * 处理来自 H5 页面的 postMessage 消息
+			 * 
+			 * H5 页面可以通过 window.parent.postMessage 发送消息：
+			 * - { type: 'close' } - 关闭 WebView
+			 * - { type: 'success', data: ... } - 操作成功
+			 * - { type: 'cancel' } - 用户取消
+			 */
+			handleMessage(event: any): void {
+				console.log('[模板预览WebView] 收到H5消息:', event.detail.data);
+				
+				const messages = event.detail.data;
+				if (!messages || messages.length === 0) return;
+				
+				// 处理最新的消息
+				const message = messages[messages.length - 1];
+				
+				if (!message || !message.type) return;
+				
+				switch (message.type) {
+					case 'close':
+						// H5 请求关闭 WebView
+						console.log('[模板预览WebView] H5请求关闭');
+						uni.navigateBack();
+						break;
+						
+					case 'cancel':
+						// 用户取消操作
+						console.log('[模板预览WebView] 用户取消');
+						uni.navigateBack();
+						break;
+						
+					case 'success':
+						// 操作成功
+						console.log('[模板预览WebView] 操作成功:', message.data);
+						uni.showToast({
+							title: '操作成功',
+							icon: 'success'
+						});
+						setTimeout(() => {
+							uni.navigateBack();
+						}, 1500);
+						break;
+						
+					default:
+						console.log('[模板预览WebView] 未知消息类型:', message.type);
+						break;
+				}
+			}
+		},
+		onUnload() {
+			console.log('[模板预览WebView] 页面卸载');
+		}
+	}
+</script>
+
+<style>
+	.container {
+		width: 100%;
+		height: 100%;
+		flex: 1;
+	}
+</style>
+

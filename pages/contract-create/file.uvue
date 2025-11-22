@@ -1,0 +1,667 @@
+<script lang="uts">
+	import { saveDraft, getDraftDetail } from '../../api/drafts/index.uts'
+	
+	export default {
+		data() {
+			return {
+				isUploading: false,
+				uploadProgress: 0,
+				supportedFormats: ['.pdf', '.doc', '.docx'],
+				maxFileSize: 10 * 1024 * 1024, // 10MB
+				fileInfo: {
+					name: '',
+					size: 0,
+					type: '',
+					path: ''
+				},
+				draftId: '', // 草稿ID
+				isFromDraft: false, // 是否来自草稿
+				draftSaved: false // 是否已保存为草稿
+			}
+		},
+		onLoad(options) {
+			// 检查是否带有草稿ID参数
+			if(options.draft_id) {
+				this.draftId = options.draft_id;
+				this.isFromDraft = true;
+				this.loadDraftData();
+			}
+		},
+		methods: {
+			// 加载草稿数据
+			async loadDraftData(): Promise<void> {
+				try {
+					uni.showLoading({
+						title: '加载草稿中...'
+					});
+					
+					// 调用API获取草稿详情
+					const res = await getDraftDetail(this.draftId);
+					
+					if(res.code === 0) {
+						const { content, title } = res.data;
+						if(content && content.file_info) {
+							this.fileInfo.name = content.file_info.file_name || title;
+							this.fileInfo.size = content.file_info.file_size || 0;
+							this.fileInfo.type = content.file_info.file_type || '';
+							// 注意：这里无法直接获取本地路径，只能获取文件信息
+							// 在实际应用中，可能需要从服务器下载文件或使用缓存
+						}
+						uni.hideLoading();
+					} else {
+						throw new Error(res.message || '加载草稿失败');
+					}
+				} catch(e) {
+					uni.hideLoading();
+					uni.showToast({
+						title: '加载草稿失败',
+						icon: 'none'
+					});
+					console.error('加载草稿失败:', e);
+				}
+			},
+			
+			// 保存草稿
+			async saveDraft(): Promise<void> {
+				if(!this.fileInfo.name) {
+					uni.showToast({
+						title: '请先选择文件',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				try {
+					uni.showLoading({
+						title: '保存中...'
+					});
+					
+					// 准备草稿数据
+					const draftData = {
+						draft_id: this.draftId || '', // 如果有草稿ID则更新，否则新建
+						title: this.fileInfo.name, // 使用文件名作为草稿标题
+						type: 'file', // 草稿类型: 文件发起
+						step: 1, // 当前步骤: 文件上传
+						progress: 30, // 进度: 30%
+						content: {
+							file_info: {
+								file_name: this.fileInfo.name,
+								file_size: this.fileInfo.size,
+								file_type: this.fileInfo.type,
+								file_id: 'mock-file-id', // 模拟文件ID
+								file_url: this.fileInfo.path || 'mock-file-url' // 模拟文件URL
+							}
+						}
+					};
+					
+					// 调用保存草稿API
+					const res = await saveDraft(draftData);
+					
+					if(res.code === 0) {
+						// 保存成功，更新草稿ID
+						this.draftId = res.data.draft_id;
+						this.isFromDraft = true;
+						this.draftSaved = true;
+						
+						uni.hideLoading();
+						uni.showToast({
+							title: '草稿保存成功',
+							icon: 'success'
+						});
+					} else {
+						throw new Error(res.message || '保存草稿失败');
+					}
+				} catch(e) {
+					uni.hideLoading();
+					uni.showToast({
+						title: '保存草稿失败',
+						icon: 'none'
+					});
+					console.error('保存草稿失败:', e);
+				}
+			},
+			
+			chooseFile(): void {
+				// TODO: 实际实现中，需要使用uni.chooseFile API
+				// 由于uni-app x目前可能不支持此API，这里使用模拟数据
+				
+				// 模拟选择文件
+				setTimeout(() => {
+					this.fileInfo = {
+						name: '示例合同.pdf',
+						size: 2 * 1024 * 1024, // 2MB
+						type: 'pdf',
+						path: '/static/templates/loan.png' // 模拟文件路径
+					};
+				}, 500);
+			},
+			
+			uploadFile(filePath: string): void {
+				this.isUploading = true;
+				
+				// 模拟上传进度
+				let timer = setInterval(() => {
+					this.uploadProgress += 10;
+					if (this.uploadProgress >= 100) {
+						clearInterval(timer);
+						
+						// 模拟上传完成后的处理
+						setTimeout(() => {
+							this.isUploading = false;
+							this.proceedToNextStep();
+						}, 500);
+					}
+				}, 300);
+				
+				// TODO: 实际的文件上传实现
+			},
+			
+			cancelUpload(): void {
+				this.isUploading = false;
+				this.uploadProgress = 0;
+				
+				uni.showToast({
+					title: '已取消上传',
+					icon: 'none'
+				});
+			},
+			
+			proceedToNextStep(fileId: string = 'mock-file-id'): void {
+				uni.showToast({
+					title: '文件上传成功',
+					icon: 'success',
+					success: () => {
+						setTimeout(() => {
+							// 跳转到预览和签署区设置页面，如果是草稿则带上草稿ID
+							const url = `/pages/contract-create/setup?fileId=${fileId}&fileName=${encodeURIComponent(this.fileInfo.name)}&fileType=${this.fileInfo.type}${this.draftId ? '&draft_id=' + this.draftId : ''}`;
+							uni.navigateTo({
+								url: url
+							});
+						}, 1500);
+					}
+				});
+			},
+			
+			goBack(): void {
+				uni.navigateBack();
+			},
+			
+			// 获取文件类型图标
+			getFileTypeIcon(): string {
+				if (this.fileInfo.type === 'pdf') {
+					return 'icon-pdf';
+				} else if (this.fileInfo.type === 'doc' || this.fileInfo.type === 'docx') {
+					return 'icon-word';
+				} else {
+					return 'icon-file';
+				}
+			},
+			
+			// 格式化文件大小
+			formatFileSize(size: number): string {
+				if (size < 1024) {
+					return size + 'B';
+				} else if (size < 1024 * 1024) {
+					return (size / 1024).toFixed(1) + 'KB';
+				} else {
+					return (size / (1024 * 1024)).toFixed(1) + 'MB';
+				}
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="file-upload">
+		<!-- 顶部导航 -->
+		<view class="header">
+			<view class="header-left" @click="goBack">
+				<text class="icon icon-back"></text>
+			</view>
+			<view class="header-title">
+				<text class="title-text">文件发起</text>
+			</view>
+			<view class="header-right">
+				<text v-if="fileInfo.name" class="save-draft" @click="saveDraft">保存草稿</text>
+			</view>
+		</view>
+		
+		<!-- 上传区域 -->
+		<view class="content-container">
+			<view class="upload-container">
+				<!-- 未上传状态 -->
+				<view v-if="!isUploading && !fileInfo.name" class="upload-area">
+					<view class="upload-content">
+						<view class="upload-icon-container">
+							<text class="icon icon-file upload-icon"></text>
+						</view>
+						<text class="upload-title">添加文件</text>
+						<text class="upload-desc">支持PDF、Word文档等格式，最大10MB</text>
+					</view>
+					
+					<view class="action-buttons">
+						<button class="primary-button" @click="chooseFile">
+							<view class="button-content">
+								<text class="icon icon-file button-icon"></text>
+								<text class="button-text">选择文件</text>
+							</view>
+						</button>
+					</view>
+				</view>
+				
+				<!-- 上传中状态 -->
+				<view v-if="isUploading" class="uploading-container">
+					<view class="uploading-header">
+						<text class="uploading-title">文件上传中</text>
+						<text class="uploading-percent">{{uploadProgress}}%</text>
+					</view>
+					
+					<view class="progress-container">
+						<view class="progress-bg">
+							<view class="progress-fill" :style="{width: uploadProgress + '%'}"></view>
+						</view>
+					</view>
+					
+					<view class="file-preview">
+						<view class="file-icon-container">
+							<text class="icon icon-file file-icon"></text>
+						</view>
+						<view class="file-details">
+							<text class="file-name">{{fileInfo.name}}</text>
+							<text class="file-meta">{{formatFileSize(fileInfo.size)}}</text>
+						</view>
+					</view>
+					
+					<view class="action-buttons">
+						<button class="secondary-button" @click="cancelUpload">
+							<text class="button-text">取消上传</text>
+						</button>
+					</view>
+				</view>
+				
+				<!-- 已选择文件但未开始上传 -->
+				<view v-if="!isUploading && fileInfo.name" class="file-selected-container">
+					<view class="file-preview">
+						<view class="file-icon-container">
+							<text class="icon icon-file file-icon"></text>
+						</view>
+						<view class="file-details">
+							<text class="file-name">{{fileInfo.name}}</text>
+							<text class="file-meta">{{formatFileSize(fileInfo.size)}} | {{fileInfo.type.toUpperCase()}}</text>
+						</view>
+					</view>
+					
+					<view class="action-buttons row">
+						<button class="secondary-button flex-1" @click="chooseFile">
+							<text class="button-text">重新选择</text>
+						</button>
+						<button class="primary-button flex-1" @click="uploadFile('')">
+							<text class="button-text">继续</text>
+						</button>
+					</view>
+				</view>
+			</view>
+			
+			<!-- 上传提示和说明 -->
+			<view class="guidelines-container">
+				<text class="guidelines-title">上传须知</text>
+				
+				<view class="guidelines-list">
+					<view class="guideline-item">
+						<text class="icon icon-check guideline-icon"></text>
+						<text class="guideline-text">支持PDF、Word文档格式</text>
+					</view>
+					<view class="guideline-item">
+						<text class="icon icon-check guideline-icon"></text>
+						<text class="guideline-text">文件大小不超过10MB</text>
+					</view>
+					<view class="guideline-item">
+						<text class="icon icon-check guideline-icon"></text>
+						<text class="guideline-text">文档页数不超过100页</text>
+					</view>
+					<view class="guideline-item">
+						<text class="icon icon-check guideline-icon"></text>
+						<text class="guideline-text">支持扫描件、电子文档</text>
+					</view>
+				</view>
+				
+				<view class="security-note">
+					<text class="icon icon-security security-icon"></text>
+					<text class="security-text">文件将进行加密处理，全程保障您的文件安全</text>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<style>
+	/* 基础样式 */
+	.file-upload {
+		flex: 1;
+		background-color: #F5F7FA;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+	}
+	
+	.content-container {
+		flex: 1;
+		padding: 32rpx;
+	}
+	
+	/* 图标字体样式在App.uvue中全局定义 */
+	
+	/* 顶部导航栏 */
+	.header {
+		height: 90rpx;
+		background-color: #FFFFFF;
+		flex-direction: row;
+		align-items: center;
+		padding: 0 32rpx;
+		padding-top: var(--status-bar-height);
+		border-bottom: 1rpx solid #EEEEEE;
+	}
+	
+	.header-left, .header-right {
+		width: 80rpx;
+		height: 80rpx;
+		justify-content: center;
+		align-items: center;
+	}
+	
+	.icon-back {
+		font-family: 'Font Awesome 6 Free';
+		font-size: 36rpx;
+		color: #333333;
+	}
+	
+	.header-title {
+		flex: 1;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.title-text {
+		font-size: 32rpx;
+		font-weight: 600;
+		color: #333333;
+	}
+	
+	/* 上传容器 */
+	.upload-container {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		overflow: hidden;
+		margin-bottom: 32rpx;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+	}
+	
+	/* 未上传状态 */
+	.upload-area {
+		padding: 40rpx;
+	}
+	
+	.upload-content {
+		align-items: center;
+		margin-bottom: 40rpx;
+	}
+	
+	.upload-icon-container {
+		width: 120rpx;
+		height: 120rpx;
+		border-radius: 60rpx;
+		background-color: rgba(0, 194, 138, 0.1);
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 24rpx;
+	}
+	
+	.upload-icon {
+		font-size: 64rpx;
+		color: #00C28A;
+	}
+	
+	.upload-title {
+		font-size: 36rpx;
+		font-weight: bold;
+		color: #333333;
+		margin-bottom: 16rpx;
+	}
+	
+	.upload-desc {
+		font-size: 28rpx;
+		color: #999999;
+		text-align: center;
+	}
+	
+	/* 按钮样式 */
+	.action-buttons {
+		width: 100%;
+	}
+	
+	.row {
+		flex-direction: row;
+		justify-content: space-between;
+	}
+	
+	.flex-1 {
+		flex: 1;
+		margin: 0 10rpx;
+	}
+	
+	.primary-button {
+		background-color: #00C28A;
+		height: 88rpx;
+		border-radius: 44rpx;
+		justify-content: center;
+		align-items: center;
+	}
+	
+	.secondary-button {
+		background-color: #F5F7FA;
+		height: 88rpx;
+		border-radius: 44rpx;
+		justify-content: center;
+		align-items: center;
+		border: 1rpx solid #E0E0E0;
+	}
+	
+	/* 新增按钮内容容器样式，确保图标和文字垂直居中对齐 */
+	.button-content {
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		height: 100%;
+	}
+	
+	.button-icon {
+		font-size: 28rpx;
+		margin-right: 8rpx;
+		/* 确保图标垂直居中对齐 */
+		line-height: 28rpx;
+		height: 28rpx;
+	}
+	
+	.button-text {
+		font-size: 32rpx;
+		font-weight: 500;
+		/* 确保文字垂直居中对齐 */
+		line-height: 32rpx;
+		height: 32rpx;
+	}
+	
+	.primary-button .button-text {
+		color: #FFFFFF;
+	}
+	
+	.secondary-button .button-text {
+		color: #666666;
+	}
+	
+	/* 上传中状态 */
+	.uploading-container {
+		padding: 40rpx;
+	}
+	
+	.uploading-header {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 24rpx;
+	}
+	
+	.uploading-title {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #333333;
+	}
+	
+	.uploading-percent {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #00C28A;
+	}
+	
+	.progress-container {
+		margin-bottom: 32rpx;
+	}
+	
+	.progress-bg {
+		height: 8rpx;
+		background-color: #F0F0F0;
+		border-radius: 4rpx;
+		overflow: hidden;
+	}
+	
+	.progress-fill {
+		height: 100%;
+		background-color: #00C28A;
+		border-radius: 4rpx;
+	}
+	
+	/* 文件预览 */
+	.file-preview {
+		flex-direction: row;
+		align-items: center;
+		padding: 24rpx;
+		background-color: #F9F9F9;
+		border-radius: 12rpx;
+		margin-bottom: 32rpx;
+	}
+	
+	.file-icon-container {
+		width: 80rpx;
+		height: 80rpx;
+		background-color: #E6F7F1;
+		border-radius: 8rpx;
+		justify-content: center;
+		align-items: center;
+		margin-right: 20rpx;
+	}
+	
+	.file-icon {
+		font-size: 48rpx;
+		color: #00C28A;
+	}
+	
+	.file-details {
+		flex: 1;
+	}
+	
+	.file-name {
+		font-size: 30rpx;
+		color: #333333;
+		margin-bottom: 8rpx;
+		word-break: break-all;
+	}
+	
+	.file-meta {
+		font-size: 24rpx;
+		color: #999999;
+	}
+	
+	/* 已选择文件状态 */
+	.file-selected-container {
+		padding: 40rpx;
+	}
+	
+	/* 上传须知 */
+	.guidelines-container {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 32rpx;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+	}
+	
+	.guidelines-title {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #333333;
+		margin-bottom: 24rpx;
+		position: relative;
+		padding-left: 24rpx;
+	}
+	
+	.guidelines-title::before {
+		content: '';
+		position: absolute;
+		left: 0;
+		top: 8rpx;
+		width: 8rpx;
+		height: 32rpx;
+		background-color: #00C28A;
+		border-radius: 4rpx;
+	}
+	
+	.guidelines-list {
+		margin-bottom: 32rpx;
+	}
+	
+	.guideline-item {
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 16rpx;
+	}
+	
+	.guideline-icon {
+		font-size: 24rpx;
+		color: #00C28A;
+		margin-right: 16rpx;
+	}
+	
+	.guideline-text {
+		font-size: 28rpx;
+		color: #666666;
+		flex: 1;
+	}
+	
+	.security-note {
+		flex-direction: row;
+		align-items: center;
+		background-color: #F7F9FC;
+		padding: 16rpx;
+		border-radius: 8rpx;
+	}
+	
+	.security-icon {
+		font-size: 32rpx;
+		color: #4A90E2;
+		margin-right: 12rpx;
+	}
+	
+	.security-text {
+		font-size: 24rpx;
+		color: #999999;
+		flex: 1;
+	}
+	
+	.header-right {
+		width: 150rpx;
+		text-align: right;
+		padding-right: 30rpx;
+	}
+	
+	.save-draft {
+		font-size: 28rpx;
+		color: #4080FF;
+	}
+</style> 

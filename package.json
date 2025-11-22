@@ -1,0 +1,12 @@
+{
+  "name": "mini-contract",
+  "version": "1.0.0",
+  "description": "电子合同应用",
+  "main": "main.uts",
+  "scripts": {
+    "dev": "npx @dcloudio/uniapp-cli dev"
+  },
+  "dependencies": {
+    "@dcloudio/uni-ui": "^1.5.8"
+  }
+}

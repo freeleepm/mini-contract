@@ -1,0 +1,466 @@
+/**
+ * 模板相关模拟数据
+ */
+
+import type { Template, TemplateDetail, TemplateListParams, TemplateListResponse, TemplateInitiateParams } from '../templates/index';
+import { delay } from './index';
+
+// 模拟模板列表数据
+export async function getMockTemplateList(params: TemplateListParams): Promise<TemplateListResponse> {
+    await delay();
+    
+    const { category, keyword, page = 1, pageSize = 10 } = params;
+    
+    // 模拟模板数据
+    const templates: Template[] = [
+        {
+            id: 'template_loan_1',
+            name: '个人借款合同',
+            description: '适用于个人之间的借款约定，明确借款金额、期限、利息等内容',
+            category: 'loan',
+            image: '/static/templates/loan.png',
+            isOfficial: true,
+            isHot: true,
+            usageCount: 5280,
+            createTime: '2023-01-15 10:30:00',
+            updateTime: '2023-05-20 14:20:00'
+        },
+        {
+            id: 'template_lease_1',
+            name: '房屋租赁合同',
+            description: '适用于住宅房屋的出租与承租，规范租赁双方的权利义务关系',
+            category: 'lease',
+            image: '/static/templates/receipt.png',
+            isOfficial: true,
+            isHot: true,
+            usageCount: 4820,
+            createTime: '2023-02-10 09:15:00',
+            updateTime: '2023-06-05 11:40:00'
+        },
+        {
+            id: 'template_labor_1',
+            name: '劳动合同',
+            description: '规范用人单位与劳动者之间的权利和义务的法律文件',
+            category: 'labor',
+            image: '/static/templates/purchase.png',
+            isOfficial: true,
+            isHot: false,
+            usageCount: 3650,
+            createTime: '2023-03-05 14:20:00',
+            updateTime: '2023-06-18 09:30:00'
+        },
+        {
+            id: 'template_purchase_1',
+            name: '产品购销合同',
+            description: '适用于企业间产品买卖交易，明确产品规格、价格、交付方式等内容',
+            category: 'purchase',
+            image: '/static/templates/purchase.png',
+            isOfficial: true,
+            isHot: false,
+            usageCount: 2980,
+            createTime: '2023-03-20 16:45:00',
+            updateTime: '2023-07-01 10:15:00'
+        },
+        {
+            id: 'template_sales_1',
+            name: '销售代理协议',
+            description: '明确销售代理的授权范围、代理方式、佣金计算等内容',
+            category: 'sales',
+            image: '/static/templates/receipt.png',
+            isOfficial: true,
+            isHot: false,
+            usageCount: 1850,
+            createTime: '2023-04-12 11:30:00',
+            updateTime: '2023-07-15 15:20:00'
+        },
+        {
+            id: 'template_other_1',
+            name: '保密协议',
+            description: '用于保护商业秘密、技术信息等敏感信息的法律文件',
+            category: 'other',
+            image: '/static/templates/loan.png',
+            isOfficial: true,
+            isHot: false,
+            usageCount: 3120,
+            createTime: '2023-05-05 09:40:00',
+            updateTime: '2023-08-01 14:10:00'
+        }
+    ];
+    
+    // 根据分类筛选
+    let filteredTemplates = templates;
+    if (category && category !== 'all') {
+        filteredTemplates = templates.filter(item => item.category === category);
+    }
+    
+    // 根据关键字搜索
+    if (keyword) {
+        filteredTemplates = filteredTemplates.filter(item => 
+            item.name.includes(keyword) || item.description.includes(keyword)
+        );
+    }
+    
+    // 分页处理
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const pagedTemplates = filteredTemplates.slice(startIndex, endIndex);
+    
+    return {
+        list: pagedTemplates,
+        total: filteredTemplates.length,
+        hasMore: endIndex < filteredTemplates.length
+    };
+}
+
+// 获取热门模板
+export async function getMockHotTemplates(limit: number = 3): Promise<Template[]> {
+    await delay();
+    
+    // 模拟热门模板数据
+    const hotTemplates: Template[] = [
+        {
+            id: 'template_loan_1',
+            name: '个人借款合同',
+            description: '适用于个人之间的借款约定，明确借款金额、期限、利息等内容',
+            category: 'loan',
+            image: '/static/templates/loan.png',
+            isOfficial: true,
+            isHot: true,
+            usageCount: 5280,
+            createTime: '2023-01-15 10:30:00',
+            updateTime: '2023-05-20 14:20:00'
+        },
+        {
+            id: 'template_lease_1',
+            name: '房屋租赁合同',
+            description: '适用于住宅房屋的出租与承租，规范租赁双方的权利义务关系',
+            category: 'lease',
+            image: '/static/templates/receipt.png',
+            isOfficial: true,
+            isHot: true,
+            usageCount: 4820,
+            createTime: '2023-02-10 09:15:00',
+            updateTime: '2023-06-05 11:40:00'
+        },
+        {
+            id: 'template_purchase_1',
+            name: '产品购销合同',
+            description: '适用于企业间产品买卖交易，明确产品规格、价格、交付方式等内容',
+            category: 'purchase',
+            image: '/static/templates/purchase.png',
+            isOfficial: true,
+            isHot: false,
+            usageCount: 2980,
+            createTime: '2023-03-20 16:45:00',
+            updateTime: '2023-07-01 10:15:00'
+        }
+    ];
+    
+    return hotTemplates.slice(0, limit);
+}
+
+// 获取模板详情
+export async function getMockTemplateDetail(id: string): Promise<TemplateDetail> {
+    await delay();
+    
+    // 根据模板ID返回不同的详情
+    if (id === 'template_loan_1') {
+        return {
+            id: 'template_loan_1',
+            name: '个人借款合同',
+            description: '适用于个人之间的借款约定，明确借款金额、期限、利息等内容',
+            category: 'loan',
+            image: '/static/templates/loan.png',
+            isOfficial: true,
+            isHot: true,
+            usageCount: 5280,
+            createTime: '2023-01-15 10:30:00',
+            updateTime: '2023-05-20 14:20:00',
+            content: '<h1>个人借款合同</h1><p>甲方（出借人）：[出借人姓名]</p><p>乙方（借款人）：[借款人姓名]</p><p>甲乙双方就借款事宜达成如下协议：</p><h2>第一条 借款金额</h2><p>甲方借给乙方人民币[借款金额]元整（小写：￥[借款金额]元）。</p><h2>第二条 借款期限</h2><p>借款期限为[借款期限]个月，自[借款日期]起至[还款日期]止。</p><h2>第三条 借款用途</h2><p>本次借款用途为：[借款用途]。</p>',
+            previewUrl: '#',
+            variables: [
+                {
+                    key: 'lender_name',
+                    name: '出借人姓名',
+                    type: 'text',
+                    required: true,
+                    placeholder: '请输入出借人姓名'
+                },
+                {
+                    key: 'borrower_name',
+                    name: '借款人姓名',
+                    type: 'text',
+                    required: true,
+                    placeholder: '请输入借款人姓名'
+                },
+                {
+                    key: 'loan_amount',
+                    name: '借款金额',
+                    type: 'money',
+                    required: true,
+                    placeholder: '请输入借款金额'
+                },
+                {
+                    key: 'loan_term',
+                    name: '借款期限',
+                    type: 'number',
+                    required: true,
+                    placeholder: '请输入借款期限（月）'
+                },
+                {
+                    key: 'loan_date',
+                    name: '借款日期',
+                    type: 'date',
+                    required: true,
+                    placeholder: '请选择借款日期'
+                },
+                {
+                    key: 'repayment_date',
+                    name: '还款日期',
+                    type: 'date',
+                    required: true,
+                    placeholder: '请选择还款日期'
+                },
+                {
+                    key: 'loan_purpose',
+                    name: '借款用途',
+                    type: 'select',
+                    required: true,
+                    placeholder: '请选择借款用途',
+                    options: [
+                        { label: '个人消费', value: '个人消费' },
+                        { label: '创业投资', value: '创业投资' },
+                        { label: '教育支出', value: '教育支出' },
+                        { label: '医疗支出', value: '医疗支出' },
+                        { label: '其他用途', value: '其他用途' }
+                    ]
+                }
+            ]
+        };
+    } else if (id === 'template_lease_1') {
+        return {
+            id: 'template_lease_1',
+            name: '房屋租赁合同',
+            description: '适用于住宅房屋的出租与承租，规范租赁双方的权利义务关系',
+            category: 'lease',
+            image: '/static/templates/receipt.png',
+            isOfficial: true,
+            isHot: true,
+            usageCount: 4820,
+            createTime: '2023-02-10 09:15:00',
+            updateTime: '2023-06-05 11:40:00',
+            content: '<h1>房屋租赁合同</h1><p>出租方（甲方）：[出租方姓名]</p><p>承租方（乙方）：[承租方姓名]</p><p>甲乙双方就房屋租赁事宜达成如下协议：</p><h2>第一条 房屋基本情况</h2><p>房屋坐落于[房屋地址]，建筑面积[房屋面积]平方米。</p><h2>第二条 租赁期限</h2><p>租赁期共[租赁期限]个月，自[租赁开始日期]起至[租赁结束日期]止。</p><h2>第三条 租金及支付方式</h2><p>月租金为人民币[月租金]元整，按[支付方式]支付。</p>',
+            previewUrl: '#',
+            variables: [
+                {
+                    key: 'landlord_name',
+                    name: '出租方姓名',
+                    type: 'text',
+                    required: true,
+                    placeholder: '请输入出租方姓名'
+                },
+                {
+                    key: 'tenant_name',
+                    name: '承租方姓名',
+                    type: 'text',
+                    required: true,
+                    placeholder: '请输入承租方姓名'
+                },
+                {
+                    key: 'house_address',
+                    name: '房屋地址',
+                    type: 'text',
+                    required: true,
+                    placeholder: '请输入房屋详细地址'
+                },
+                {
+                    key: 'house_area',
+                    name: '房屋面积',
+                    type: 'number',
+                    required: true,
+                    placeholder: '请输入房屋面积（平方米）'
+                },
+                {
+                    key: 'lease_term',
+                    name: '租赁期限',
+                    type: 'number',
+                    required: true,
+                    placeholder: '请输入租赁期限（月）'
+                },
+                {
+                    key: 'lease_start',
+                    name: '租赁开始日期',
+                    type: 'date',
+                    required: true,
+                    placeholder: '请选择租赁开始日期'
+                },
+                {
+                    key: 'lease_end',
+                    name: '租赁结束日期',
+                    type: 'date',
+                    required: true,
+                    placeholder: '请选择租赁结束日期'
+                },
+                {
+                    key: 'monthly_rent',
+                    name: '月租金',
+                    type: 'money',
+                    required: true,
+                    placeholder: '请输入月租金'
+                },
+                {
+                    key: 'payment_method',
+                    name: '支付方式',
+                    type: 'select',
+                    required: true,
+                    placeholder: '请选择租金支付方式',
+                    options: [
+                        { label: '月付', value: '月付' },
+                        { label: '季付', value: '季付' },
+                        { label: '半年付', value: '半年付' },
+                        { label: '年付', value: '年付' }
+                    ]
+                }
+            ]
+        };
+    } else {
+        // 默认返回一个通用模板
+        return {
+            id,
+            name: '通用合同模板',
+            description: '适用于各种通用场景的合同模板',
+            category: 'other',
+            image: '/static/templates/purchase.png',
+            isOfficial: true,
+            isHot: false,
+            usageCount: 1500,
+            createTime: '2023-01-01 00:00:00',
+            updateTime: '2023-01-01 00:00:00',
+            content: '<h1>通用合同</h1><p>甲方：[甲方名称]</p><p>乙方：[乙方名称]</p><p>甲乙双方经友好协商，达成如下协议：</p><h2>第一条 合作内容</h2><p>[合作内容]</p><h2>第二条 合作期限</h2><p>自[开始日期]起至[结束日期]止。</p><h2>第三条 其他约定</h2><p>[其他约定]</p>',
+            previewUrl: '#',
+            variables: [
+                {
+                    key: 'party_a',
+                    name: '甲方名称',
+                    type: 'text',
+                    required: true,
+                    placeholder: '请输入甲方名称'
+                },
+                {
+                    key: 'party_b',
+                    name: '乙方名称',
+                    type: 'text',
+                    required: true,
+                    placeholder: '请输入乙方名称'
+                },
+                {
+                    key: 'cooperation_content',
+                    name: '合作内容',
+                    type: 'text',
+                    required: true,
+                    placeholder: '请输入合作内容'
+                },
+                {
+                    key: 'start_date',
+                    name: '开始日期',
+                    type: 'date',
+                    required: true,
+                    placeholder: '请选择开始日期'
+                },
+                {
+                    key: 'end_date',
+                    name: '结束日期',
+                    type: 'date',
+                    required: true,
+                    placeholder: '请选择结束日期'
+                },
+                {
+                    key: 'other_agreements',
+                    name: '其他约定',
+                    type: 'text',
+                    required: false,
+                    placeholder: '请输入其他约定（选填）'
+                }
+            ]
+        };
+    }
+}
+
+// 模拟使用模板发起合同
+export async function mockInitiateContract(params: TemplateInitiateParams): Promise<{ contractId: string }> {
+    await delay(1000);
+    
+    // 模拟生成合同ID
+    const contractId = 'contract_' + Date.now().toString();
+    
+    console.log('模板发起合同参数:', params);
+    console.log('生成的合同ID:', contractId);
+    
+    return { contractId };
+}
+
+/**
+ * 模拟数据类型定义
+ */
+
+// 草稿类型
+export type DraftType = 'file' | 'image' | 'template';
+
+// 草稿状态
+export type DraftStatus = 'draft';
+
+// 草稿项
+export interface Draft {
+  draft_id: string;
+  title: string;
+  type: DraftType;
+  status: DraftStatus;
+  create_time: number;
+  update_time: number;
+  progress: number;
+  step: number;
+  content: {
+    file_info?: {
+      file_id?: string;
+      file_url?: string;
+      file_name?: string;
+      file_size?: number;
+      file_type?: string;
+    };
+    template_info?: {
+      template_id?: string;
+      template_name?: string;
+      variables?: Record<string, string>;
+    };
+    signature_fields?: Array<{
+      id: string;
+      page: number;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      type: string;
+      signer_id: string;
+    }>;
+    signers?: Array<{
+      id: string;
+      name: string;
+      phone: string;
+      email?: string;
+      is_me?: boolean;
+    }>;
+  };
+}
+
+// 草稿列表响应
+export interface DraftListResponse {
+  total: number;
+  list: Draft[];
+}
+
+export default {
+    getMockTemplateList,
+    getMockHotTemplates,
+    getMockTemplateDetail,
+    mockInitiateContract
+};

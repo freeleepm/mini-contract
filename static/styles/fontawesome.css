@@ -1,0 +1,407 @@
+/*!
+ * Font Awesome 6.5.1 本地版本 - 适配uni-app-x
+ * 包含Solid和Brands图标系列
+ */
+
+/* Solid字体定义 */
+@font-face {
+  font-family: 'Font Awesome 6 Free';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('../fonts/fontawesome/fontawesome-webfont.woff2') format('woff2');
+}
+
+/* Brands字体定义 */
+@font-face {
+  font-family: 'Font Awesome 6 Brands';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/fontawesome/fontawesome-brands.woff2') format('woff2');
+}
+
+/* 基础类 */
+.fa,
+.fas,
+.fa-solid,
+.far,
+.fa-regular,
+.fab,
+.fa-brands {
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  display: inline-block;
+  font-style: normal;
+  font-variant: normal;
+  line-height: 1;
+  text-rendering: auto;
+}
+
+/* Solid样式 */
+.fas,
+.fa-solid {
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+}
+
+/* Brands样式 */
+.fab,
+.fa-brands {
+  font-family: 'Font Awesome 6 Brands';
+  font-weight: 400;
+}
+
+/* 向后兼容：旧版本fa类 */
+.fa {
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  display: inline-block;
+  line-height: inherit;  /* 继承父元素行高，确保与文字对齐 */
+  vertical-align: middle;  /* 垂直居中对齐 */
+}
+
+/* 基础类定义 - 解决合同管理页面图标不显示的问题 */
+.icon {
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  display: inline-block;
+  line-height: inherit;  /* 继承父元素行高，确保与文字对齐 */
+  vertical-align: middle;  /* 垂直居中对齐 */
+}
+
+/* 基础图标 - Solid样式 */
+.fa-user::before { content: "\f007"; }
+.fa-user-plus::before { content: "\f234"; }
+.fa-user-minus::before { content: "\f503"; }
+.fa-user-check::before { content: "\f4fc"; }
+.fa-user-times::before { content: "\f235"; }
+.fa-id-card::before { content: "\f2c2"; }
+.fa-id-badge::before { content: "\f2c1"; }
+.fa-robot::before { content: "\f544"; }
+.fa-lock::before { content: "\f023"; }
+.fa-eye::before { content: "\f06e"; }
+.fa-eye-slash::before { content: "\f070"; }
+.fa-home::before { content: "\f015"; }
+.fa-house::before { content: "\f015"; }
+.fa-search::before { content: "\f002"; }
+.fa-magnifying-glass::before { content: "\f002"; }
+.fa-envelope::before { content: "\f0e0"; }
+.fa-phone::before { content: "\f095"; }
+.fa-mobile::before { content: "\f3cd"; }
+.fa-mobile-alt::before { content: "\f3cd"; }
+.fa-calendar::before { content: "\f073"; }
+.fa-clock::before { content: "\f017"; }
+.fa-gear::before { content: "\f013"; }
+.fa-cog::before { content: "\f013"; }
+.fa-heart::before { content: "\f004"; }
+.fa-star::before { content: "\f005"; }
+.fa-check::before { content: "\f00c"; }
+.fa-times::before { content: "\f00d"; }
+.fa-xmark::before { content: "\f00d"; }
+.fa-plus::before { content: "\f067"; }
+.fa-minus::before { content: "\f068"; }
+.fa-edit::before { content: "\f044"; }
+.fa-pen::before { content: "\f304"; }
+.fa-pencil::before { content: "\f303"; }
+.fa-trash::before { content: "\f2ed"; }
+.fa-trash-can::before { content: "\f2ed"; }
+.fa-save::before { content: "\f0c7"; }
+.fa-floppy-disk::before { content: "\f0c7"; }
+.fa-download::before { content: "\f019"; }
+.fa-upload::before { content: "\f093"; }
+.fa-image::before { content: "\f03e"; }
+.fa-file::before { content: "\f15b"; }
+.fa-folder::before { content: "\f07b"; }
+.fa-fire::before { content: "\f06d"; }
+.fa-flame::before { content: "\f6df"; }
+.fa-crown::before { content: "\f521"; }
+
+/* 箭头图标 */
+.fa-arrow-up::before { content: "\f062"; }
+.fa-arrow-down::before { content: "\f063"; }
+.fa-arrow-left::before { content: "\f060"; }
+.fa-arrow-right::before { content: "\f061"; }
+.fa-chevron-up::before { content: "\f077"; }
+.fa-chevron-down::before { content: "\f078"; }
+.fa-chevron-left::before { content: "\f053"; }
+.fa-chevron-right::before { content: "\f054"; }
+.fa-angle-up::before { content: "\f106"; }
+.fa-angle-down::before { content: "\f107"; }
+.fa-angle-left::before { content: "\f104"; }
+.fa-angle-right::before { content: "\f105"; }
+.fa-send::before { content: "\f1d8"; }
+.fa-paper-plane::before { content: "\f1d8"; }
+
+/* 社交媒体图标 - Brands样式 */
+.fa-wechat::before { content: "\f1d7"; }
+.fa-weixin::before { content: "\f1d7"; }
+.fa-qq::before { content: "\f1d6"; }
+.fa-weibo::before { content: "\f18a"; }
+.fa-alipay::before { content: "\f642"; }
+
+/* 支付和商务图标 */
+.fa-credit-card::before { content: "\f09d"; }
+.fa-money-bill::before { content: "\f0d6"; }
+.fa-wallet::before { content: "\f555"; }
+.fa-shopping-cart::before { content: "\f07a"; }
+.fa-cart-shopping::before { content: "\f07a"; }
+.fa-shopping-bag::before { content: "\f290"; }
+.fa-coins::before { content: "\f51e"; }
+.fa-dollar-sign::before { content: "\f155"; }
+
+/* 状态图标 */
+.fa-info::before { content: "\f129"; }
+.fa-info-circle::before { content: "\f05a"; }
+.fa-circle-info::before { content: "\f05a"; }
+.fa-warning::before { content: "\f071"; }
+.fa-triangle-exclamation::before { content: "\f071"; }
+.fa-exclamation::before { content: "\f12a"; }
+.fa-exclamation-circle::before { content: "\f06a"; }
+.fa-circle-exclamation::before { content: "\f06a"; }
+.fa-question::before { content: "\f128"; }
+.fa-question-circle::before { content: "\f059"; }
+.fa-circle-question::before { content: "\f059"; }
+.fa-plus-circle::before { content: "\f055"; }
+.fa-circle-plus::before { content: "\f055"; }
+
+/* 文档图标 */
+.fa-file-pdf::before { content: "\f1c1"; }
+.fa-file-word::before { content: "\f1c2"; }
+.fa-file-excel::before { content: "\f1c3"; }
+.fa-file-powerpoint::before { content: "\f1c4"; }
+.fa-file-text::before { content: "\f15c"; }
+.fa-file-text-o::before { content: "\f0f6"; }
+.fa-file-lines::before { content: "\f15c"; }
+.fa-file-contract::before { content: "\f56c"; }
+.fa-file-signature::before { content: "\f573"; }
+.fa-clipboard::before { content: "\f328"; }
+.fa-clipboard-list::before { content: "\f46d"; }
+.fa-list::before { content: "\f03a"; }
+.fa-list-ul::before { content: "\f0ca"; }
+.fa-list-ol::before { content: "\f0cb"; }
+
+/* 合同管理页面图标定义 - icon-* 类名兼容 */
+.icon-back::before { content: "\f060"; } /* fa-arrow-left */
+.icon-search::before { content: "\f002"; } /* fa-search */
+.icon-filter::before { content: "\f0b0"; } /* fa-filter */
+.icon-bell::before { content: "\f0f3"; } /* fa-bell */
+.icon-undo::before { content: "\f0e2"; } /* fa-undo */
+.icon-signature::before { content: "\f5b7"; } /* fa-signature */
+.icon-download::before { content: "\f019"; } /* fa-download */
+.icon-plus::before { content: "\f067"; } /* fa-plus */
+.icon-list-check::before { content: "\f0ae"; } /* fa-tasks */
+.icon-check::before { content: "\f00c"; } /* fa-check */
+.icon-close::before { content: "\f00d"; } /* fa-times */
+.icon-right::before { content: "\f061"; } /* fa-arrow-right */
+.icon-fire::before { content: "\f06d"; } /* fa-fire */
+.icon-date::before { content: "\f017"; } /* fa-clock-o */
+.icon-user::before { content: "\f007"; } /* fa-user */
+.icon-file::before { content: "\f15b"; } /* fa-file-o */
+.icon-image::before { content: "\f03e"; } /* fa-picture-o */
+
+/* 个人中心页面图标定义 - icon-* 类名兼容 */
+.icon-user-check::before { content: "\f4fc"; }
+.icon-building::before { content: "\f1ad"; }
+.icon-edit::before { content: "\f044"; }
+.icon-edit-3::before { content: "\f303"; }
+.icon-bell::before { content: "\f0f3"; }
+.icon-shield::before { content: "\f3ed"; }
+.icon-package::before { content: "\f466"; }
+.icon-help-circle::before { content: "\f059"; }
+.icon-settings::before { content: "\f013"; }
+.icon-check::before { content: "\f00c"; }
+.icon-check-circle::before { content: "\f058"; }
+.icon-chevron-down::before { content: "\f078"; }
+.icon-chevron-right::before { content: "\f054"; }
+.icon-alert-triangle::before { content: "\f071"; }
+.icon-users::before { content: "\f0c0"; }
+.icon-key::before { content: "\f084"; }
+.icon-stamp::before { content: "\f5bf"; }
+.icon-plus::before { content: "\f067"; }
+.icon-user::before { content: "\f007"; }
+.icon-clock::before { content: "\f017"; }
+.icon-x-circle::before { content: "\f057"; }
+.icon-clear::before { content: "\f057"; } /* fa-times-circle */
+.icon-chart::before { content: "\f201"; } /* fa-line-chart */
+.icon-eye::before { content: "\f06e"; } /* fa-eye */
+.icon-empty::before { content: "\f15c"; } /* fa-file-text-o */
+
+/* 模板详情页面图标定义 - icon-* 类名兼容 */
+.icon-clipboard-list::before { content: "\f46d"; } /* 字段清单 */
+.icon-info-circle::before { content: "\f05a"; } /* 信息圆圈 */
+.icon-folder::before { content: "\f07b"; } /* 文件夹 */
+.icon-chart-line::before { content: "\f201"; } /* 折线图 */
+.icon-fire::before { content: "\f06d"; } /* 火焰 */
+.icon-file-pdf::before { content: "\f1c1"; } /* PDF文件 */
+.icon-expand::before { content: "\f065"; } /* 展开 */
+.icon-plus-circle::before { content: "\f055"; } /* 加号圆圈 */
+.icon-signature::before { content: "\f5b7"; } /* 签名 */
+
+/* 企业列表页面专用图标定义 */
+.fa-users::before { content: "\f0c0"; }
+.fa-user-group::before { content: "\e533"; } /* 用户组 - 参与人数 */
+.fa-calendar-days::before { content: "\f073"; }
+.fa-circle-check::before { content: "\f058"; }
+.fa-shield-halved::before { content: "\f3ed"; }
+.fa-arrows-rotate::before { content: "\f021"; }
+.fa-building::before { content: "\f1ad"; }
+.fa-certificate::before { content: "\f0a3"; }
+.fa-shield::before { content: "\f132"; }
+.fa-sign-out::before { content: "\f08b"; }
+
+/* 🔧 参与人信息卡片专用图标 */
+.fa-calendar-check::before { content: "\f274"; } /* 日历打勾 - 签署时间 */
+.fa-calendar-times::before { content: "\f273"; } /* 日历叉号 - 拒签时间 */
+.fa-hourglass-half::before { content: "\f252"; } /* 沙漏 - 等待中 */
+.fa-stamp::before { content: "\f5bf"; } /* 印章 */
+.fa-comment-dots::before { content: "\f4ad"; } /* 评论气泡 - 拒签原因 */
+.fa-ban::before { content: "\f05e"; } /* 禁止标志 - 已取消 */
+.fa-times-circle::before { content: "\f057"; } /* 圆圈叉号 - 已拒签 */
+.fa-check-circle::before { content: "\f058"; } /* 圆圈勾号 - 已签署 */
+.fa-user-slash::before { content: "\f506"; } /* 用户斜杠 - 无参与人 */
+
+/* 自定义社交图标 - 为了兼容现有代码 */
+.fa-weixin-custom::before { 
+  font-family: 'Font Awesome 6 Brands';
+  font-weight: 400;
+  content: "\f1d7"; 
+  color: #07C160; 
+}
+
+.fa-alipay-custom::before { 
+  font-family: 'Font Awesome 6 Brands';
+  font-weight: 400;
+  content: "\f642"; 
+  color: #1677FF; 
+}
+
+/* 位置和地图 */
+.fa-map-marker::before { content: "\f041"; }
+.fa-location-dot::before { content: "\f3c5"; }
+.fa-location-arrow::before { content: "\f124"; }
+.fa-globe::before { content: "\f0ac"; }
+
+/* 图表和数据 */
+.fa-chart-line::before { content: "\f201"; }
+.fa-chart-bar::before { content: "\f080"; }
+.fa-chart-pie::before { content: "\f200"; }
+
+/* 视图操作 */
+.fa-expand::before { content: "\f065"; }
+.fa-compress::before { content: "\f066"; }
+.fa-expand-arrows-alt::before { content: "\f31e"; }
+
+/* 签名和印章 */
+.fa-signature::before { content: "\f5b7"; }
+.fa-pen-nib::before { content: "\f5ad"; }
+
+/* 多媒体 */
+.fa-camera::before { content: "\f030"; }
+.fa-video::before { content: "\f03d"; }
+.fa-microphone::before { content: "\f130"; }
+.fa-volume-high::before { content: "\f028"; }
+.fa-volume-low::before { content: "\f027"; }
+.fa-volume-off::before { content: "\f026"; }
+
+/* 帮助中心页面图标 */
+.fa-book::before { content: "\f02d"; }
+.fa-gavel::before { content: "\f0e3"; }
+.fa-comment::before { content: "\f075"; }
+.fa-headphones::before { content: "\f025"; }
+
+/* 加载和刷新 */
+.fa-spinner::before { content: "\f110"; }
+.fa-circle-notch::before { content: "\f1ce"; }
+.fa-refresh::before { content: "\f021"; }
+.fa-rotate::before { content: "\f2f1"; }
+.fa-history::before { content: "\f1da"; }
+.fa-clock-rotate-left::before { content: "\f1da"; }
+
+/* 动画 */
+@-webkit-keyframes fa-spin {
+  0% { -webkit-transform: rotate(0deg); }
+  100% { -webkit-transform: rotate(359deg); }
+}
+
+@keyframes fa-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(359deg); }
+}
+
+.fa-spin {
+  -webkit-animation: fa-spin 2s infinite linear;
+  animation: fa-spin 2s infinite linear;
+}
+
+.fa-pulse {
+  -webkit-animation: fa-spin 1s infinite steps(8);
+  animation: fa-spin 1s infinite steps(8);
+}
+
+/* 尺寸调整 */
+.fa-xs { font-size: 0.75em; }
+.fa-sm { font-size: 0.875em; }
+.fa-lg { font-size: 1.25em; }
+.fa-xl { font-size: 1.5em; }
+.fa-2xl { font-size: 2em; }
+.fa-1x { font-size: 1em; }
+.fa-2x { font-size: 2em; }
+.fa-3x { font-size: 3em; }
+.fa-4x { font-size: 4em; }
+.fa-5x { font-size: 5em; }
+.fa-6x { font-size: 6em; }
+.fa-7x { font-size: 7em; }
+.fa-8x { font-size: 8em; }
+.fa-9x { font-size: 9em; }
+.fa-10x { font-size: 10em; }
+
+/* 固定宽度 */
+.fa-fw {
+  text-align: center;
+  width: 1.25em;
+}
+
+/* 边框 */
+.fa-border {
+  border: 0.08em solid #eee;
+  border-radius: 0.1em;
+  padding: 0.2em 0.25em 0.15em;
+}
+
+/* 列表图标 */
+.fa-ul {
+  list-style-type: none;
+  margin-left: 2.5em;
+  padding-left: 0;
+}
+
+.fa-ul > li {
+  position: relative;
+}
+
+.fa-li {
+  left: -2em;
+  position: absolute;
+  text-align: center;
+  width: 2em;
+  line-height: inherit;
+}
+
+/* 旋转和翻转 */
+.fa-rotate-90 { transform: rotate(90deg); }
+.fa-rotate-180 { transform: rotate(180deg); }
+.fa-rotate-270 { transform: rotate(270deg); }
+.fa-flip-horizontal { transform: scale(-1, 1); }
+.fa-flip-vertical { transform: scale(1, -1); }
+.fa-flip-both { transform: scale(-1, -1); }

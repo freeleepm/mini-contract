@@ -1,0 +1,115 @@
+/**
+ * 日期时间格式化工具函数
+ */
+
+/**
+ * 格式化日期时间为可读格式
+ * @param dateTimeStr ISO 8601格式的日期时间字符串 (例如: "2025-10-21T15:30:45")
+ * @returns 格式化后的字符串 (例如: "2025-10-21 15:30")
+ */
+export function formatDateTime(dateTimeStr: string | null): string {
+	if (!dateTimeStr) {
+		return '--';
+	}
+	
+	try {
+		// 处理 ISO 8601 格式 (2025-10-21T15:30:45)
+		const dateTime = new Date(dateTimeStr);
+		
+		if (isNaN(dateTime.getTime())) {
+			return dateTimeStr; // 无效日期，返回原始字符串
+		}
+		
+		const year = dateTime.getFullYear();
+		const month = String(dateTime.getMonth() + 1).padStart(2, '0');
+		const day = String(dateTime.getDate()).padStart(2, '0');
+		const hours = String(dateTime.getHours()).padStart(2, '0');
+		const minutes = String(dateTime.getMinutes()).padStart(2, '0');
+		
+		return `${year}-${month}-${day} ${hours}:${minutes}`;
+	} catch (e) {
+		console.error('日期格式化错误:', e);
+		return dateTimeStr;
+	}
+}
+
+/**
+ * 格式化日期为短格式
+ * @param dateTimeStr ISO 8601格式的日期时间字符串
+ * @returns 格式化后的字符串 (例如: "2025-10-21")
+ */
+export function formatDate(dateTimeStr: string | null): string {
+	if (!dateTimeStr) {
+		return '--';
+	}
+	
+	try {
+		const dateTime = new Date(dateTimeStr);
+		
+		if (isNaN(dateTime.getTime())) {
+			return dateTimeStr;
+		}
+		
+		const year = dateTime.getFullYear();
+		const month = String(dateTime.getMonth() + 1).padStart(2, '0');
+		const day = String(dateTime.getDate()).padStart(2, '0');
+		
+		return `${year}-${month}-${day}`;
+	} catch (e) {
+		console.error('日期格式化错误:', e);
+		return dateTimeStr;
+	}
+}
+
+/**
+ * 格式化为相对时间（例如：刚刚、5分钟前、昨天、3天前）
+ * @param dateTimeStr ISO 8601格式的日期时间字符串
+ * @returns 相对时间字符串
+ */
+export function formatRelativeTime(dateTimeStr: string | null): string {
+	if (!dateTimeStr) {
+		return '--';
+	}
+	
+	try {
+		const dateTime = new Date(dateTimeStr);
+		const now = new Date();
+		const diff = now.getTime() - dateTime.getTime();
+		
+		// 小于1分钟
+		if (diff < 60 * 1000) {
+			return '刚刚';
+		}
+		
+		// 小于1小时
+		if (diff < 60 * 60 * 1000) {
+			const minutes = Math.floor(diff / (60 * 1000));
+			return `${minutes}分钟前`;
+		}
+		
+		// 小于1天
+		if (diff < 24 * 60 * 60 * 1000) {
+			const hours = Math.floor(diff / (60 * 60 * 1000));
+			return `${hours}小时前`;
+		}
+		
+		// 小于7天
+		if (diff < 7 * 24 * 60 * 60 * 1000) {
+			const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+			return `${days}天前`;
+		}
+		
+		// 超过7天，返回具体日期
+		return formatDate(dateTimeStr);
+	} catch (e) {
+		console.error('相对时间格式化错误:', e);
+		return dateTimeStr;
+	}
+}
+
+export default {
+	formatDateTime,
+	formatDate,
+	formatRelativeTime
+};
+

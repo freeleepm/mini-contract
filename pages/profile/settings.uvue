@@ -1,0 +1,537 @@
+<script>
+	/**
+	 * 设置页面
+	 */
+	export default {
+		data() {
+			return {
+				settings: {
+					// 安全设置
+					security: {
+						faceVerify: true,  // 人脸验证
+						gestureLock: false, // 手势锁
+						biometrics: true    // 生物识别（指纹/面容）
+					},
+					// 签署设置
+					signing: {
+						autoSave: true,     // 自动保存草稿
+						previewBeforeSign: true, // 签署前预览
+						signatureNotify: true    // 签署提醒
+					},
+					// 隐私设置
+					privacy: {
+						historyRecord: true,  // 保存历史记录
+						locationService: false, // 位置服务
+						dataAnalysis: true     // 数据分析
+					},
+					// 清理缓存
+					cache: {
+						size: '23.5MB'  // 缓存大小
+					},
+					// 关于
+					about: {
+						version: 'v1.0.0',  // 版本号
+						buildNumber: '20230615'  // 构建号
+					}
+				},
+				// 是否显示退出登录确认框
+				showLogoutConfirm: false
+			}
+		},
+		methods: {
+			// 返回上一页
+			goBack(): void {
+				uni.navigateBack();
+			},
+			
+			// 切换开关设置
+			toggleSetting(group: string, key: string): void {
+				this.settings[group][key] = !this.settings[group][key];
+				this.saveSettings();
+			},
+			
+			// 保存设置
+			saveSettings(): void {
+				// 模拟保存设置
+				console.log('保存设置:', JSON.stringify(this.settings));
+				uni.showToast({
+					title: '设置已保存',
+					icon: 'success',
+					duration: 1000
+				});
+			},
+			
+			// 清理缓存
+			clearCache(): void {
+				uni.showLoading({
+					title: '清理中...'
+				});
+				
+				// 模拟清理缓存
+				setTimeout(() => {
+					uni.hideLoading();
+					this.settings.cache.size = '0KB';
+					
+					uni.showToast({
+						title: '缓存已清理',
+						icon: 'success'
+					});
+				}, 1500);
+			},
+			
+			// 跳转到关于页面
+			goToAbout(): void {
+				uni.navigateTo({
+					url: '/pages/profile/about'
+				});
+			},
+			
+			// 跳转到帮助中心
+			goToHelp(): void {
+				uni.navigateTo({
+					url: '/pages/profile/help'
+				});
+			},
+			
+			// 跳转到用户协议
+			goToUserAgreement(): void {
+				uni.navigateTo({
+					url: '/pages/agreement/user'
+				});
+			},
+			
+			// 跳转到隐私政策
+			goToPrivacyPolicy(): void {
+				uni.navigateTo({
+					url: '/pages/agreement/privacy'
+				});
+			},
+			
+			// 显示退出登录确认框
+			showLogoutConfirmation(): void {
+				this.showLogoutConfirm = true;
+			},
+			
+			// 取消退出登录
+			cancelLogout(): void {
+				this.showLogoutConfirm = false;
+			},
+			
+			// 确认退出登录
+			confirmLogout(): void {
+				this.showLogoutConfirm = false;
+				
+				uni.showLoading({
+					title: '退出中...'
+				});
+				
+				// 清除用户登录状态和缓存
+				try {
+					uni.clearStorageSync();
+					console.log('清除缓存成功');
+				} catch (e) {
+					console.error('清除缓存失败:', e);
+				}
+				
+				// 跳转到登录页
+				try {
+					uni.reLaunch({
+						url: '/pages/login/index',
+						success: () => {
+							uni.hideLoading();
+							console.log('成功跳转到登录页');
+						},
+						fail: (err) => {
+							uni.hideLoading();
+							console.error('跳转登录页失败:', err);
+						}
+					});
+				} catch (e) {
+					uni.hideLoading();
+					console.error('执行 reLaunch 异常:', e);
+				}
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="container">
+		<!-- 设置列表 -->
+		<scroll-view class="content-section" scroll-y="true">
+			<view class="setting-group">
+				<!-- 安全设置 -->
+				<view class="setting-section">
+					<view class="section-title">
+						<text class="title-text">安全设置</text>
+					</view>
+					
+					<!-- 人脸验证 -->
+					<view class="setting-item">
+						<text class="item-label">登录人脸验证</text>
+						<switch 
+							:checked="settings.security.faceVerify" 
+							color="#00C28A" 
+							class="small-switch"
+							@change="toggleSetting('security', 'faceVerify')"
+						/>
+					</view>
+					
+					<!-- 手势锁 -->
+					<view class="setting-item">
+						<text class="item-label">手势锁</text>
+						<switch 
+							:checked="settings.security.gestureLock" 
+							color="#00C28A" 
+							class="small-switch"
+							@change="toggleSetting('security', 'gestureLock')"
+						/>
+					</view>
+					
+					<!-- 生物识别 -->
+					<view class="setting-item">
+						<text class="item-label">生物识别登录</text>
+						<switch 
+							:checked="settings.security.biometrics" 
+							color="#00C28A" 
+							class="small-switch"
+							@change="toggleSetting('security', 'biometrics')"
+						/>
+					</view>
+				</view>
+				
+				<!-- 签署设置 -->
+				<view class="setting-section">
+					<view class="section-title">
+						<text class="title-text">签署设置</text>
+					</view>
+					
+					<!-- 自动保存草稿 -->
+					<view class="setting-item">
+						<text class="item-label">自动保存草稿</text>
+						<switch 
+							:checked="settings.signing.autoSave" 
+							color="#00C28A" 
+							class="small-switch"
+							@change="toggleSetting('signing', 'autoSave')"
+						/>
+					</view>
+					
+					<!-- 签署前预览 -->
+					<view class="setting-item">
+						<text class="item-label">签署前预览</text>
+						<switch 
+							:checked="settings.signing.previewBeforeSign" 
+							color="#00C28A" 
+							class="small-switch"
+							@change="toggleSetting('signing', 'previewBeforeSign')"
+						/>
+					</view>
+					
+					<!-- 签署提醒 -->
+					<view class="setting-item">
+						<text class="item-label">签署提醒</text>
+						<switch 
+							:checked="settings.signing.signatureNotify" 
+							color="#00C28A" 
+							class="small-switch"
+							@change="toggleSetting('signing', 'signatureNotify')"
+						/>
+					</view>
+				</view>
+				
+				<!-- 隐私设置 -->
+				<view class="setting-section">
+					<view class="section-title">
+						<text class="title-text">隐私设置</text>
+					</view>
+					
+					<!-- 保存历史记录 -->
+					<view class="setting-item">
+						<text class="item-label">保存历史记录</text>
+						<switch 
+							:checked="settings.privacy.historyRecord" 
+							color="#00C28A" 
+							class="small-switch"
+							@change="toggleSetting('privacy', 'historyRecord')"
+						/>
+					</view>
+					
+					<!-- 位置服务 -->
+					<view class="setting-item">
+						<text class="item-label">位置服务</text>
+						<switch 
+							:checked="settings.privacy.locationService" 
+							color="#00C28A" 
+							class="small-switch"
+							@change="toggleSetting('privacy', 'locationService')"
+						/>
+					</view>
+					
+					<!-- 数据分析 -->
+					<view class="setting-item">
+						<text class="item-label">数据分析</text>
+						<switch 
+							:checked="settings.privacy.dataAnalysis" 
+							color="#00C28A" 
+							class="small-switch"
+							@change="toggleSetting('privacy', 'dataAnalysis')"
+						/>
+					</view>
+				</view>
+				
+				<!-- 通用设置 -->
+				<view class="setting-section">
+					<view class="section-title">
+						<text class="title-text">通用</text>
+					</view>
+					
+					<!-- 清理缓存 -->
+					<view class="setting-item" @click="clearCache">
+						<text class="item-label">清理缓存</text>
+						<view class="item-right">
+							<text class="item-value">{{settings.cache.size}}</text>
+							<text class="icon icon-chevron-right"></text>
+						</view>
+					</view>
+					
+					<!-- 关于我们 -->
+					<view class="setting-item" @click="goToAbout">
+						<text class="item-label">关于我们</text>
+						<view class="item-right">
+							<text class="item-value">{{settings.about.version}}</text>
+							<text class="icon icon-chevron-right"></text>
+						</view>
+					</view>
+					
+					<!-- 帮助中心 -->
+					<view class="setting-item" @click="goToHelp">
+						<text class="item-label">帮助中心</text>
+						<text class="icon icon-chevron-right"></text>
+					</view>
+					
+					<!-- 用户协议 -->
+					<view class="setting-item" @click="goToUserAgreement">
+						<text class="item-label">用户协议</text>
+						<text class="icon icon-chevron-right"></text>
+					</view>
+					
+					<!-- 隐私政策 -->
+					<view class="setting-item" @click="goToPrivacyPolicy">
+						<text class="item-label">隐私政策</text>
+						<text class="icon icon-chevron-right"></text>
+					</view>
+				</view>
+				
+				<!-- 退出登录 -->
+				<view class="logout-button-container">
+					<button class="logout-button" @click="showLogoutConfirmation">
+						<text class="button-text">退出登录</text>
+					</button>
+				</view>
+			</view>
+		</scroll-view>
+		
+		<!-- 退出登录确认弹窗 -->
+		<view v-if="showLogoutConfirm" class="modal-overlay">
+			<view class="modal-container">
+				<view class="modal-header">
+					<text class="modal-title">确认退出</text>
+				</view>
+				<view class="modal-body">
+					<text class="modal-message">确定要退出登录吗？</text>
+				</view>
+				<view class="modal-footer">
+					<view class="modal-button cancel" @click="cancelLogout">
+						<text class="button-text">取消</text>
+					</view>
+					<view class="modal-button confirm" @click="confirmLogout">
+						<text class="button-text">确定</text>
+					</view>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<style>
+	.container {
+		flex: 1;
+		background-color: #F7F9FC;
+	}
+	
+	/* 设置列表 */
+	.content-section {
+		flex: 1;
+		padding: 32rpx;
+	}
+	
+	/* 设置区块 */
+	.setting-section {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		margin-bottom: 32rpx;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+		overflow: hidden;
+	}
+	
+	.section-title {
+		padding: 24rpx 32rpx;
+		border-bottom: 1rpx solid #F0F0F0;
+	}
+	
+	.section-title .title-text {
+		font-size: 30rpx;
+		font-weight: bold;
+		color: #333333;
+	}
+	
+	/* 设置项样式 */
+	.setting-item {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 24rpx 32rpx;
+		border-bottom: 1rpx solid #F0F0F0;
+	}
+	
+	.setting-item:last-child {
+		border-bottom: none;
+	}
+	
+	.item-label {
+		font-size: 28rpx;
+		color: #333333;
+	}
+	
+	.item-right {
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	.item-value {
+		font-size: 28rpx;
+		color: #999999;
+		margin-right: 12rpx;
+	}
+	
+	.icon-chevron-right {
+		font-size: 26rpx;
+		color: #BBBBBB;
+	}
+	
+	.icon {
+		font-family: 'Font Awesome 6 Free';
+		font-weight: 900;
+		font-style: normal;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+	
+	/* 退出登录按钮 */
+	.logout-button-container {
+		padding: 0 32rpx 24rpx 32rpx;
+	}
+	
+	.logout-button {
+		background-color: #F56C6C;
+		color: #FFFFFF;
+		font-size: 32rpx;
+		height: 90rpx;
+		line-height: 90rpx;
+		border-radius: 12rpx;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+		transition: opacity 0.3s, transform 0.3s;
+	}
+	
+	.logout-button .button-text {
+		font-size: 32rpx;
+		color: #FFFFFF;
+	}
+	
+	/* 弹窗 */
+	.modal-overlay {
+		position: fixed;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		left: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+		align-items: center;
+		justify-content: center;
+		z-index: 999;
+	}
+	
+	.modal-container {
+		width: 620rpx;
+		background-color: #FFFFFF;
+		border-radius: 20rpx;
+		overflow: hidden;
+		box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
+	}
+	
+	.modal-header {
+		padding: 40rpx 32rpx 32rpx 32rpx;
+		align-items: center;
+		justify-content: center;
+		border-bottom: none;
+	}
+	
+	.modal-title {
+		font-size: 36rpx;
+		font-weight: 600;
+		color: #333333;
+		text-align: center;
+	}
+	
+	.modal-body {
+		padding: 32rpx 32rpx 48rpx 32rpx;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.modal-message {
+		font-size: 28rpx;
+		color: #666666;
+		text-align: center;
+		line-height: 1.5;
+	}
+	
+	.modal-footer {
+		flex-direction: row;
+		padding: 0;
+		border-top: 1rpx solid #F0F0F0;
+	}
+	
+	.modal-button {
+		flex: 1;
+		height: 100rpx;
+		justify-content: center;
+		align-items: center;
+		background-color: #FFFFFF;
+		transition: background-color 0.2s;
+	}
+	
+	.modal-button.cancel {
+		border-right: 1rpx solid #F0F0F0;
+	}
+	
+	.modal-button .button-text {
+		font-size: 32rpx;
+		font-weight: 500;
+	}
+	
+	.modal-button.cancel .button-text {
+		color: #666666;
+	}
+	
+	.modal-button.confirm .button-text {
+		color: #F56C6C;
+		font-weight: 600;
+	}
+
+    .small-switch {
+        transform: scale(0.8);
+        transform-origin: 100% 50%;
+    }
+</style> 

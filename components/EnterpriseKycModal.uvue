@@ -1,0 +1,212 @@
+<template>
+	<view class="kyc-modal-overlay" v-if="visible" @click="handleOverlayClick">
+		<view class="kyc-modal-content" @click.stop>
+			<view class="kyc-modal-header">
+				<view class="kyc-icon-container">
+					<text class="fa fa-building kyc-icon"></text>
+				</view>
+				<text class="kyc-modal-title">{{ title }}</text>
+			</view>
+			
+			<view class="kyc-modal-body">
+				<text class="kyc-modal-desc">{{ description }}</text>
+				
+				<view class="kyc-tips" v-if="showTips">
+					<view class="kyc-tip-item">
+						<text class="fa fa-check-circle tip-icon"></text>
+						<text class="tip-text">认证后可使用企业印章</text>
+					</view>
+					<view class="kyc-tip-item">
+						<text class="fa fa-check-circle tip-icon"></text>
+						<text class="tip-text">支持添加企业成员协同管理</text>
+					</view>
+					<view class="kyc-tip-item">
+						<text class="fa fa-check-circle tip-icon"></text>
+						<text class="tip-text">所有企业合同具备法律效力</text>
+					</view>
+				</view>
+			</view>
+			
+			<view class="kyc-modal-footer">
+				<view class="kyc-button secondary" @click="handleCancel">
+					<text class="button-text">{{ cancelText }}</text>
+				</view>
+				<view class="kyc-button primary" @click="handleConfirm">
+					<text class="button-text">{{ confirmText }}</text>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script lang="uts">
+	export default {
+		props: {
+			visible: {
+				type: Boolean,
+				default: false
+			},
+			title: {
+				type: String,
+				default: '需要企业认证'
+			},
+			description: {
+				type: String,
+				default: '使用企业功能前需要先完成企业认证，是否现在就去认证？'
+			},
+			confirmText: {
+				type: String,
+				default: '立即认证'
+			},
+			cancelText: {
+				type: String,
+				default: '稍后再说'
+			},
+			showTips: {
+				type: Boolean,
+				default: true
+			}
+		},
+		methods: {
+			handleOverlayClick(): void {
+				this.$emit('close');
+			},
+			handleCancel(): void {
+				this.$emit('cancel');
+				this.$emit('close');
+			},
+			handleConfirm(): void {
+				this.$emit('confirm');
+				this.$emit('close');
+			}
+		}
+	}
+</script>
+
+<style>
+	/* 引入FontAwesome样式 */
+	@import url("../static/styles/fontawesome.css");
+	
+	/* ==================== 企业认证提示弹窗 ==================== */
+	.kyc-modal-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.6);
+		z-index: 999;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+	}
+	
+	.kyc-modal-content {
+		width: 85%;
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		overflow: hidden;
+	}
+	
+	.kyc-modal-header {
+		padding: 40rpx 30rpx 20rpx;
+		align-items: center;
+	}
+	
+	.kyc-icon-container {
+		width: 100rpx;
+		height: 100rpx;
+		border-radius: 50rpx;
+		background-color: rgba(0, 194, 138, 0.1);
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 20rpx;
+	}
+	
+	.kyc-icon {
+		font-size: 48rpx;
+		color: #00C28A;
+	}
+	
+	.kyc-modal-title {
+		font-size: 34rpx;
+		font-weight: bold;
+		color: #333333;
+	}
+	
+	.kyc-modal-body {
+		padding: 20rpx 30rpx 30rpx;
+	}
+	
+	.kyc-modal-desc {
+		font-size: 28rpx;
+		color: #666666;
+		line-height: 44rpx;
+		text-align: center;
+		margin-bottom: 30rpx;
+	}
+	
+	.kyc-tips {
+		background-color: #F7F9FC;
+		border-radius: 12rpx;
+		padding: 24rpx;
+	}
+	
+	.kyc-tip-item {
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 16rpx;
+	}
+	
+	.kyc-tip-item:last-child {
+		margin-bottom: 0;
+	}
+	
+	.tip-icon {
+		font-size: 24rpx;
+		color: #00C28A;
+		margin-right: 12rpx;
+	}
+	
+	.tip-text {
+		font-size: 26rpx;
+		color: #666666;
+		flex: 1;
+	}
+	
+	.kyc-modal-footer {
+		flex-direction: row;
+		padding: 20rpx 30rpx 30rpx;
+		gap: 20rpx;
+	}
+	
+	.kyc-button {
+		flex: 1;
+		height: 88rpx;
+		border-radius: 44rpx;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.kyc-button.primary {
+		background-color: #00C28A;
+	}
+	
+	.kyc-button.secondary {
+		background-color: #F5F7FA;
+		border-width: 1rpx;
+		border-color: #E4E7ED;
+	}
+	
+	.kyc-button.primary .button-text {
+		color: #FFFFFF;
+		font-size: 30rpx;
+		font-weight: 500;
+	}
+	
+	.kyc-button.secondary .button-text {
+		color: #606266;
+		font-size: 30rpx;
+	}
+</style>
+

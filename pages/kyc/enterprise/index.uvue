@@ -1,0 +1,1941 @@
+<script>
+	/**
+	 * 企业认证页面
+	 */
+	import { verifyEnterprise, getEnterpriseDetail, EnterpriseStatus } from '../../../api/enterprise/index';
+	import { uploadFileAdvanced } from '../../../api/index'; // 从API模块导入上传文件工具
+
+	// 定义认证参数类型
+	interface VerifyEnterpriseParams {
+		enterpriseId: number;
+		name: string;
+		creditCode: string;
+		businessLicenseUrl: string;
+		legalName: string;
+		legalIdCard: string;
+		legalIdCardFrontUrl: string;
+		legalIdCardBackUrl: string;
+		contactName: string;
+		contactMobile: string;
+	}
+	
+	export default {
+		data() {
+			return {
+				// 企业基本信息
+				enterpriseInfo: {
+					id: 0,
+					name: '',
+					logo: '/static/icons/blue-icon.png'
+				},
+				// 认证信息
+				certificationInfo: {
+					licenseNumber: '', // 营业执照号/统一社会信用代码
+					legalPerson: '', // 法定代表人
+					legalPersonIdCard: '', // 法定代表人身份证号
+					contactName: '', // 新增：联系人姓名
+					contactPhone: '', // 联系电话
+					businessLicense: '', // 营业执照图片
+					idCardFront: '', // 身份证正面
+					idCardBack: '', // 身份证反面
+					submitTime: '' // 提交时间
+				},
+				// 表单验证状态
+				validation: {
+					licenseNumber: { valid: true, message: '' },
+					legalPerson: { valid: true, message: '' },
+					legalPersonIdCard: { valid: true, message: '' },
+					contactPhone: { valid: true, message: '' },
+					businessLicense: { valid: true, message: '' },
+					idCardFront: { valid: true, message: '' }, // 修正：添加身份证正面验证
+					idCardBack: { valid: true, message: '' }, // 修正：添加身份证背面验证
+					contactName: { valid: true, message: '' } // 新增：联系人姓名验证状态
+				},
+				// 认证状态：unverified(未认证), reviewing(审核中), verified(已认证), rejected(被拒绝)
+				certStatus: 'unverified',
+			// 提交状态
+			isSubmitting: false,
+			// 进度条动画
+			progressValue: 0,
+			progressInterval: null as number | null,
+			// 状态检查定时器
+			statusCheckInterval: null as number | null,
+				// 屏幕信息
+				systemInfo: {
+					windowWidth: 375,
+					windowHeight: 667
+				}
+			}
+		},
+		
+		onLoad(options) {
+			// 获取企业ID和企业信息
+			if (options) {
+				console.log('企业认证页面接收到参数:', JSON.stringify(options));
+				
+				// 优先使用id参数，确保ID被正确处理
+				if (options.id) {
+					// 尝试将ID转换为数字并存储
+					try {
+						const numericId = parseInt(options.id);
+						if (!isNaN(numericId)) {
+							this.enterpriseInfo.id = numericId;
+						} else {
+							console.warn(`企业ID "${options.id}" 无法转换为有效数字`);
+							this.enterpriseInfo.id = 0; // 或者进行错误处理
+						}
+					} catch (e) {
+						console.error('处理企业ID时出错:', e);
+						this.enterpriseInfo.id = 0;
+					}
+				} else {
+					console.error('未接收到有效的企业ID参数');
+					}
+					
+				// 检查并填充其他预设数据
+					if (options.name) this.enterpriseInfo.name = options.name;
+					if (options.logo) this.enterpriseInfo.logo = options.logo || '/static/icons/blue-icon.png';
+					
+					// 确保正确处理统一社会信用代码/营业执照号参数
+					if (options.creditCode) {
+						console.log('接收到统一社会信用代码:', options.creditCode);
+						this.certificationInfo.licenseNumber = options.creditCode;
+					}
+					
+					if (options.legalPerson) this.certificationInfo.legalPerson = options.legalPerson;
+			} else {
+				console.error('未接收到任何页面参数，无法进行企业认证');
+				// 可以考虑提示用户并返回上一页
+				uni.showToast({
+					title: '缺少企业信息，无法认证',
+					icon: 'none',
+					duration: 2000
+				});
+				setTimeout(() => uni.navigateBack(), 2000);
+			}
+			
+			// 获取屏幕信息
+			this.getSystemInfo();
+					
+			// 加载企业信息
+			this.loadEnterpriseInfo();
+			
+			// 如果是审核中状态，启动进度条动画和状态检查
+			if (this.certStatus === 'reviewing') {
+				this.startProgressAnimation();
+				
+				// 每30秒检查一次认证状态
+				this.statusCheckInterval = setInterval(() => {
+					this.checkCertificationStatus();
+				}, 30000); // 30秒
+			
+				// 立即检查一次
+				this.checkCertificationStatus();
+			}
+		},
+		
+		onUnload() {
+			// 页面卸载时清除所有定时器
+			if (this.progressInterval) {
+				clearInterval(this.progressInterval);
+				this.progressInterval = null;
+			}
+			
+			if (this.statusCheckInterval) {
+				clearInterval(this.statusCheckInterval);
+				this.statusCheckInterval = null;
+			}
+		},
+		
+		methods: {
+			// 获取系统信息
+			getSystemInfo() {
+				uni.getSystemInfo({
+					success: (res) => {
+						this.systemInfo.windowWidth = res.screenWidth;
+						this.systemInfo.windowHeight = res.screenHeight;
+					}
+				});
+			},
+			
+		// 加载企业信息
+		async loadEnterpriseInfo() {
+			if (!this.enterpriseInfo.id) {
+				console.error('企业ID无效，无法加载企业信息');
+				uni.showToast({
+					title: '企业ID无效',
+					icon: 'none'
+				});
+				return;
+			}
+
+		try {
+			// request函数已经直接返回data，不需要再访问.data属性
+			const enterpriseData = await getEnterpriseDetail(this.enterpriseInfo.id);
+			console.log('API获取企业详情成功:', JSON.stringify(enterpriseData));
+			
+			if (!enterpriseData) {
+				throw new Error('企业数据不存在');
+			}
+
+			this.enterpriseInfo = {
+				...this.enterpriseInfo,
+				name: enterpriseData.name,
+				logo: enterpriseData.logo || '/static/icons/blue-icon.png',
+			};
+
+			// 使用从API获取的数据填充认证信息表单
+			this.certificationInfo.licenseNumber = enterpriseData.creditCode || '';
+			this.certificationInfo.legalPerson = enterpriseData.legalName || '';
+			this.certificationInfo.businessLicense = enterpriseData.businessLicenseUrl || '';
+			
+			if (enterpriseData.status !== undefined) {
+				this.updateCertStatus(enterpriseData.status);
+			}
+
+			} catch (error) {
+				console.error('加载企业信息失败:', JSON.stringify(error));
+				uni.showToast({
+					title: '加载企业信息失败',
+					icon: 'none'
+				});
+			}
+		},
+			
+			// 更新认证状态
+			updateCertStatus(status: EnterpriseStatus) {
+				switch (status) {
+					case EnterpriseStatus.UNVERIFIED:
+						this.certStatus = 'unverified';
+						break;
+					case EnterpriseStatus.VERIFYING:
+						this.certStatus = 'reviewing';
+						break;
+					case EnterpriseStatus.VERIFIED:
+						this.certStatus = 'verified';
+						break;
+					case EnterpriseStatus.REJECTED:
+						this.certStatus = 'rejected';
+						break;
+					default:
+						this.certStatus = 'unverified';
+					}
+			},
+			
+			// 提交认证后更新缓存
+			updateCertificationCache(status: EnterpriseStatus) {
+				// 更新认证状态缓存
+				// enterpriseCacheService.saveEnterpriseCertification({
+				// 	id: this.enterpriseInfo.id,
+				// 	status: status,
+				// 	submitTime: this.certificationInfo.submitTime
+				// });
+			},
+			
+			// 设置默认联系信息（只获取用户电话，不设置mock数据）
+			setDefaultContactInfo() {
+				console.log('设置默认联系信息，只获取用户电话');
+				
+				// 检查本地是否有用户信息，获取可能的联系电话
+				try {
+					// 尝试从用户信息中获取手机号
+					const userInfo = uni.getStorageSync('userInfo');
+					if (userInfo) {
+						const userInfoObj = JSON.parse(userInfo);
+						if (userInfoObj && userInfoObj.phone) {
+							this.certificationInfo.contactPhone = userInfoObj.phone;
+						} else if (userInfoObj && userInfoObj.mobile) {
+							this.certificationInfo.contactPhone = userInfoObj.mobile;
+						}
+					}
+				} catch (e) {
+					console.error('获取用户信息失败:', e);
+				}
+				
+				// 获取当前日期，用于生成统一社会信用代码（如果需要）
+				if (!this.certificationInfo.licenseNumber) {
+					const now = new Date();
+					const timestamp = now.getTime().toString().slice(-8);
+					this.certificationInfo.licenseNumber = `91110105MA${timestamp}3Y`;
+				}
+			},
+			
+			// 验证统一社会信用代码
+			validateLicenseNumber(): boolean {
+				const code = this.certificationInfo.licenseNumber;
+				this.validation.licenseNumber.valid = true;
+				this.validation.licenseNumber.message = '';
+
+				if (!code) {
+					this.validation.licenseNumber.valid = false;
+					this.validation.licenseNumber.message = '请输入统一社会信用代码';
+					return false;
+				}
+
+				// 统一社会信用代码（18位）
+				const creditCodeRegex = /^[0-9A-HJ-NPQRTUWXY]{2}\d{6}[0-9A-HJ-NPQRTUWXY]{10}$/;
+				if (!creditCodeRegex.test(code)) {
+					this.validation.licenseNumber.valid = false;
+					this.validation.licenseNumber.message = '统一社会信用代码格式不正确';
+					return false;
+				}
+				return true;
+			},
+
+			// 验证法人姓名
+			validateLegalPerson(): boolean {
+				this.validation.legalPerson.valid = true;
+				this.validation.legalPerson.message = '';
+
+				if (!this.certificationInfo.legalPerson) {
+					this.validation.legalPerson.valid = false;
+					this.validation.legalPerson.message = '请输入法定代表人姓名';
+					return false;
+				}
+				// 简单验证：姓名长度在2-10位之间
+				if (this.certificationInfo.legalPerson.length < 2 || this.certificationInfo.legalPerson.length > 10) {
+					this.validation.legalPerson.valid = false;
+					this.validation.legalPerson.message = '姓名长度应为2-10位';
+					return false;
+				}
+				return true;
+			},
+
+			// 验证身份证号
+			validateLegalPersonIdCard(): boolean {
+				this.validation.legalPersonIdCard.valid = true;
+				this.validation.legalPersonIdCard.message = '';
+
+				const idCard = this.certificationInfo.legalPersonIdCard;
+				if (!idCard) {
+					this.validation.legalPersonIdCard.valid = false;
+					this.validation.legalPersonIdCard.message = '请输入身份证号';
+					return false;
+				}
+				// 身份证号（18位）
+				const idCardRegex = /^[1-9]\d{5}(18|19|20)\d{2}((0[1-9])|(1[0-2]))(([0-2][1-9])|10|20|30|31)\d{3}[0-9X]$/;
+				if (!idCardRegex.test(idCard)) {
+					this.validation.legalPersonIdCard.valid = false;
+					this.validation.legalPersonIdCard.message = '身份证号格式不正确';
+					return false;
+				}
+				return true;
+			},
+
+			// 验证营业执照图片
+			validateLicenseImage(): boolean {
+				this.validation.businessLicense.valid = true;
+				this.validation.businessLicense.message = '';
+
+				if (!this.certificationInfo.businessLicense) {
+					this.validation.businessLicense.valid = false;
+					this.validation.businessLicense.message = '请上传营业执照';
+					return false;
+				}
+				return true;
+			},
+			
+			// 新增：验证身份证正面图片
+			validateIdCardFront(): boolean {
+				this.validation.idCardFront.valid = true;
+				this.validation.idCardFront.message = '';
+
+				if (!this.certificationInfo.idCardFront) {
+					this.validation.idCardFront.valid = false;
+					this.validation.idCardFront.message = '请上传法人身份证正面';
+					return false;
+				}
+				return true;
+			},
+			
+			// 新增：验证身份证背面图片
+			validateIdCardBack(): boolean {
+				this.validation.idCardBack.valid = true;
+				this.validation.idCardBack.message = '';
+
+				if (!this.certificationInfo.idCardBack) {
+					this.validation.idCardBack.valid = false;
+					this.validation.idCardBack.message = '请上传法人身份证背面';
+					return false;
+				}
+				return true;
+			},
+
+			// 验证联系人姓名
+			validateContactName(): boolean {
+				this.validation.contactName.valid = true;
+				this.validation.contactName.message = '';
+
+				if (!this.certificationInfo.contactName) {
+					this.validation.contactName.valid = false;
+					this.validation.contactName.message = '请输入联系人姓名';
+					return false;
+				}
+				// 简单验证：姓名长度在2-10位之间
+				if (this.certificationInfo.contactName.length < 2 || this.certificationInfo.contactName.length > 10) {
+					this.validation.contactName.valid = false;
+					this.validation.contactName.message = '联系人姓名长度应为2-10位';
+					return false;
+				}
+				return true;
+			},
+			
+			// 验证联系电话
+			validateContactPhone() {
+				this.validation.contactPhone.valid = true;
+				this.validation.contactPhone.message = '';
+
+				if (!this.certificationInfo.contactPhone) {
+					this.validation.contactPhone.valid = false;
+					this.validation.contactPhone.message = '请输入联系电话';
+					return false;
+				}
+				
+				// 简单的手机号验证
+				const phoneReg = /^1[3-9]\d{9}$/;
+				if (!phoneReg.test(this.certificationInfo.contactPhone)) {
+					this.validation.contactPhone.valid = false;
+					this.validation.contactPhone.message = '请输入正确的手机号码';
+					return false;
+				}
+				
+				this.validation.contactPhone.valid = true;
+				this.validation.contactPhone.message = '';
+				return true;
+			},
+			
+			// 上传认证文件
+			handleUpload(type) {
+				uni.chooseImage({
+					count: 1,
+					sizeType: ['compressed'],
+					sourceType: ['album', 'camera'],
+					success: async (res) => {
+						const tempFilePath = res.tempFilePaths[0];
+						uni.showLoading({ title: '上传中...' });
+						
+						try {
+							const url = await uploadFileAdvanced(tempFilePath, { directory: 'kyc' });
+							if (type === 'license') {
+								this.certificationInfo.businessLicense = url;
+								this.validation.businessLicense.valid = true;
+								this.validation.businessLicense.message = '';
+							} else if (type === 'idCardFront') {
+								this.certificationInfo.idCardFront = url;
+								this.validation.idCardFront.valid = true;
+								this.validation.idCardFront.message = '';
+							} else if (type === 'idCardBack') {
+								this.certificationInfo.idCardBack = url;
+								this.validation.idCardBack.valid = true;
+								this.validation.idCardBack.message = '';
+							}
+							uni.showToast({ title: '上传成功', icon: 'success' });
+						} catch (error) {
+							uni.showToast({ title: '上传失败，请重试', icon: 'none' });
+						} finally {
+							uni.hideLoading();
+						}
+					}
+				});
+			},
+			
+			// 提交认证
+			async submitCertification() {
+				// 验证表单
+				const isFormValid = 
+					this.validateLicenseNumber() &&
+					this.validateLegalPerson() &&
+					this.validateLegalPersonIdCard() &&
+					this.validateContactName() && // 验证联系人姓名
+					this.validateContactPhone() &&
+					this.validateLicenseImage() &&
+					this.validateIdCardFront() && // 新增：验证身份证正面
+					this.validateIdCardBack();   // 新增：验证身份证背面
+				
+				if (!isFormValid) {
+					uni.showToast({
+						title: '请检查输入项',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				if (this.isSubmitting) return;
+				this.isSubmitting = true;
+				
+				uni.showLoading({ title: '提交认证中...' });
+				
+				try {
+					// 检查企业ID是否有效
+					if (!this.enterpriseInfo.id || this.enterpriseInfo.id <= 0) {
+						throw new Error('企业ID无效，无法提交认证');
+					}
+					
+					// 准备提交的数据，严格按照API文档规范
+					const params: VerifyEnterpriseParams = {
+						enterpriseId: this.enterpriseInfo.id,
+						name: this.enterpriseInfo.name,
+						creditCode: this.certificationInfo.licenseNumber,
+						businessLicenseUrl: this.certificationInfo.businessLicense, // 修正字段名
+						legalName: this.certificationInfo.legalPerson,
+						legalIdCard: this.certificationInfo.legalPersonIdCard,
+						legalIdCardFrontUrl: this.certificationInfo.idCardFront, // 新增字段
+						legalIdCardBackUrl: this.certificationInfo.idCardBack,   // 新增字段
+						contactName: this.certificationInfo.contactName,         // 新增字段
+						contactMobile: this.certificationInfo.contactPhone       // 复用字段
+					};
+					
+					console.log('提交企业认证数据:', JSON.stringify(params));
+				
+					// 调用认证API
+					const result = await verifyEnterprise(params);
+					
+					uni.hideLoading();
+						
+					if (result) {
+						uni.showToast({ title: '认证提交成功，请等待审核', icon: 'success', duration: 2000 });
+						this.updateCertStatus(EnterpriseStatus.VERIFYING); // 更新状态为审核中
+						this.startProgressAnimation();
+						
+						// 记录提交时间
+						this.certificationInfo.submitTime = new Date().toISOString();
+						
+						// 更新缓存中的认证状态
+						this.updateCertificationCache(EnterpriseStatus.VERIFYING);
+						
+						// 2秒后返回上一页
+						setTimeout(() => {
+							uni.navigateBack();
+						}, 2000);
+					} else {
+						uni.showToast({ title: '认证提交失败，请重试', icon: 'none' });
+					}
+			} catch (error) {
+					uni.hideLoading();
+				console.error('认证提交失败:', error);
+				const errorMessage = (error as any)?.message || '未知错误';
+				uni.showToast({ title: '提交失败: ' + errorMessage, icon: 'none' });
+				} finally {
+						this.isSubmitting = false;
+				}
+			},
+			
+			// 启动进度条动画
+			startProgressAnimation() {
+				// 清除已有的定时器
+				if (this.progressInterval) {
+					clearInterval(this.progressInterval);
+					this.progressInterval = null;
+				}
+				
+				// 初始化进度值
+				this.progressValue = 30;
+				
+				// 设置新的定时器
+				this.progressInterval = setInterval(() => {
+					if (this.progressValue < 70) {
+						this.progressValue += 1;
+					} else {
+						this.progressValue = 30; // 回到初始值
+					}
+				}, 50);
+			},
+			
+			// 复制文本到剪贴板
+			copyText(text) {
+				uni.setClipboardData({
+					data: text,
+					success: () => {
+						uni.showToast({
+							title: '复制成功',
+							icon: 'success'
+						});
+					}
+				});
+			},
+			
+			// 联系客服
+			contactService() {
+				uni.showModal({
+					title: '联系客服',
+					content: '如果您有任何问题，请拨打客服电话：400-123-4567 或发送邮件至 info@example.com',
+					showCancel: false
+				});
+			},
+
+			// 预览图片
+			previewImage(url: string): void {
+				if (!url) {
+					uni.showToast({
+						title: '图片不存在',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				uni.previewImage({
+					urls: [url],
+					current: url
+				});
+			},
+
+		// 检查企业认证状态
+		async checkCertificationStatus() {
+			if (!this.enterpriseInfo.id) {
+				console.error('企业ID无效，无法检查认证状态');
+				return;
+			}
+			
+			try {
+				// 调用API获取最新的认证状态
+				// request函数已经直接返回data
+				const result = await getEnterpriseDetail(this.enterpriseInfo.id);
+				
+			if (result && result.status !== undefined) {
+				// 更新认证状态
+				this.updateCertStatus(result.status);
+				
+				// 更新缓存中的认证状态
+				this.updateCertificationCache(result.status);
+					
+					// 如果认证已通过或被拒绝，停止进度条动画
+					if (result.status === EnterpriseStatus.VERIFIED || 
+						result.status === EnterpriseStatus.REJECTED) {
+						if (this.progressInterval) {
+							clearInterval(this.progressInterval);
+							this.progressInterval = null;
+						}
+						
+						// 显示相应的提示
+						if (result.status === EnterpriseStatus.VERIFIED) {
+							uni.showToast({
+								title: '企业认证已通过',
+								icon: 'success'
+							});
+						} else if (result.status === EnterpriseStatus.REJECTED) {
+							uni.showModal({
+								title: '认证被拒绝',
+								content: '很遗憾，您的企业认证申请未通过审核。请检查信息后重新提交。',
+								showCancel: false
+							});
+						}
+					}
+				}
+			} catch (error) {
+				console.error('检查企业认证状态失败:', error);
+			}
+		}
+		}
+	}
+</script>
+
+<template>
+        <!-- 认证步骤指示器 -->
+        <view class="steps-container">
+          <view class="steps-wrapper">
+            <view class="step-item" :class="{ 'active': true, 'completed': certStatus !== 'unverified' }">
+              <view class="step-circle">
+                <text class="step-number" v-if="certStatus === 'unverified'">1</text>
+                <text class="fa fa-check step-icon" v-else></text>
+              </view>
+              <view class="step-content">
+                <text class="step-title">填写资料</text>
+                <text class="step-desc">完善企业信息</text>
+              </view>
+            </view>
+            
+            <view class="step-line" :class="{ 'active': certStatus !== 'unverified' }"></view>
+            
+            <view class="step-item" :class="{ 'active': certStatus === 'reviewing' || certStatus === 'verified', 'completed': certStatus === 'verified' }">
+              <view class="step-circle">
+                <text class="step-number" v-if="certStatus !== 'verified'">2</text>
+                <text class="fa fa-check step-icon" v-else></text>
+              </view>
+              <view class="step-content">
+                <text class="step-title">审核认证</text>
+                <text class="step-desc">1-3个工作日</text>
+              </view>
+            </view>
+				
+            <view class="step-line" :class="{ 'active': certStatus === 'verified' }"></view>
+            
+            <view class="step-item" :class="{ 'active': certStatus === 'verified', 'completed': certStatus === 'verified' }">
+              <view class="step-circle">
+                <text class="fa fa-check step-icon" v-if="certStatus === 'verified'"></text>
+                <text class="step-number" v-else>3</text>
+              </view>
+              <view class="step-content">
+                <text class="step-title">认证完成</text>
+                <text class="step-desc">开始使用</text>
+              </view>
+            </view>
+          </view>
+        </view>
+				
+        <!-- 认证好处展示 -->
+        <view class="benefits-section" v-if="certStatus === 'unverified'">
+          <view class="section-title">
+            <text class="title-text">认证后可享受</text>
+          </view>
+          <view class="benefits-grid">
+            <view class="benefit-item">
+              <view class="benefit-icon verified">
+                <text class="fa fa-shield-check"></text>
+              </view>
+              <text class="benefit-text">官方认证标识</text>
+            </view>
+            <view class="benefit-item">
+              <view class="benefit-icon team">
+                <text class="fa fa-users"></text>
+              </view>
+              <text class="benefit-text">团队协作管理</text>
+            </view>
+            <view class="benefit-item">
+              <view class="benefit-icon seal">
+                <text class="fa fa-stamp"></text>
+              </view>
+              <text class="benefit-text">电子印章功能</text>
+            </view>
+            <view class="benefit-item">
+              <view class="benefit-icon support">
+                <text class="fa fa-headset"></text>
+              </view>
+              <text class="benefit-text">优先技术支持</text>
+            </view>
+          </view>
+        </view>
+        
+        <!-- 审核中状态卡片 -->
+        <view class="status-card reviewing" v-if="certStatus === 'reviewing'">
+          <view class="status-header">
+            <view class="status-icon-wrapper">
+              <text class="fa fa-clock-o status-main-icon"></text>
+            </view>
+            <view class="status-info">
+              <text class="status-title">认证审核中</text>
+              <text class="status-subtitle">预计1-3个工作日完成</text>
+            </view>
+          </view>
+          
+          <view class="progress-section">
+            <view class="progress-bar">
+              <view class="progress-fill" :style="{ width: progressValue + '%' }"></view>
+            </view>
+            <text class="progress-text">{{progressValue}}%</text>
+          </view>
+          
+          <view class="status-description">
+            <text class="fa fa-info-circle desc-icon"></text>
+            <text class="desc-text">您的企业认证资料已提交成功，我们的审核团队正在仔细核实相关信息，审核结果将通过系统消息通知您</text>
+          </view>
+          
+          <view class="action-buttons">
+            <view class="btn-secondary" @click="contactService">
+              <text class="fa fa-phone btn-icon"></text>
+              <text class="btn-text">联系客服</text>
+            </view>
+          </view>
+        </view>
+        
+        <!-- 认证成功状态卡片 -->
+        <view class="status-card verified" v-if="certStatus === 'verified'">
+          <view class="status-header">
+            <view class="status-icon-wrapper success">
+              <text class="fa fa-check-circle status-main-icon"></text>
+            </view>
+            <view class="status-info">
+              <text class="status-title">认证已通过</text>
+              <text class="status-subtitle">恭喜您获得企业认证</text>
+            </view>
+          </view>
+          
+          <view class="verified-features">
+            <text class="features-title">现在您可以：</text>
+            <view class="feature-list">
+              <view class="feature-item">
+                <text class="fa fa-check feature-icon"></text>
+                <text class="feature-text">使用企业电子印章</text>
+              </view>
+              <view class="feature-item">
+                <text class="fa fa-check feature-icon"></text>
+                <text class="feature-text">管理企业成员权限</text>
+              </view>
+              <view class="feature-item">
+                <text class="fa fa-check feature-icon"></text>
+                <text class="feature-text">享受优先技术支持</text>
+              </view>
+            </view>
+          </view>
+        </view>
+        
+        <!-- 认证表单 -->
+        <view class="form-section" v-if="certStatus === 'unverified' || certStatus === 'rejected'">
+          <view class="section-title">
+            <text class="title-text">认证信息</text>
+          </view>
+          
+          <!-- 基本信息 -->
+          <view class="form-item">
+            <view class="input-wrapper">
+              <input 
+                class="form-input" 
+                v-model="enterpriseInfo.name"
+                placeholder="请输入企业全称"
+                placeholder-class="input-placeholder"
+              />
+            </view>
+            <text class="input-label">企业名称 <text class="required">*</text></text>
+          </view>
+          
+          <view class="form-item">
+            <view class="input-wrapper" :class="{ 'error': !validation.licenseNumber.valid }">
+              <input 
+                class="form-input" 
+                v-model="certificationInfo.licenseNumber"
+                placeholder="请输入统一社会信用代码"
+                placeholder-class="input-placeholder"
+                @blur="validateLicenseNumber"
+              />
+            </view>
+            <text class="input-label">统一社会信用代码 <text class="required">*</text></text>
+            <text v-if="!validation.licenseNumber.valid" class="error-message">
+              <text class="fa fa-exclamation-circle error-icon"></text>
+              {{validation.licenseNumber.message}}
+            </text>
+          </view>
+          
+          <view class="form-item">
+            <view class="input-wrapper" :class="{ 'error': !validation.legalPerson.valid }">
+              <input 
+                class="form-input" 
+                v-model="certificationInfo.legalPerson"
+                placeholder="请输入法定代表人姓名"
+                placeholder-class="input-placeholder"
+                @blur="validateLegalPerson"
+              />
+            </view>
+            <text class="input-label">法人姓名 <text class="required">*</text></text>
+            <text v-if="!validation.legalPerson.valid" class="error-message">
+              <text class="fa fa-exclamation-circle error-icon"></text>
+              {{validation.legalPerson.message}}
+            </text>
+          </view>
+          
+          <view class="form-item">
+            <view class="input-wrapper" :class="{ 'error': !validation.legalPersonIdCard.valid }">
+              <input 
+                class="form-input" 
+                v-model="certificationInfo.legalPersonIdCard"
+                placeholder="请输入法人身份证号码"
+                placeholder-class="input-placeholder"
+                @blur="validateLegalPersonIdCard"
+              />
+            </view>
+            <text class="input-label">法人身份证号 <text class="required">*</text></text>
+            <text v-if="!validation.legalPersonIdCard.valid" class="error-message">
+              <text class="fa fa-exclamation-circle error-icon"></text>
+              {{validation.legalPersonIdCard.message}}
+            </text>
+          </view>
+          
+          <view class="form-item">
+            <view class="input-wrapper" :class="{ 'error': !validation.contactName.valid }">
+              <input 
+                class="form-input" 
+                v-model="certificationInfo.contactName"
+                placeholder="请输入联系人姓名"
+                placeholder-class="input-placeholder"
+                @blur="validateContactName"
+              />
+            </view>
+            <text class="input-label">联系人姓名 <text class="required">*</text></text>
+            <text v-if="!validation.contactName.valid" class="error-message">
+              <text class="fa fa-exclamation-circle error-icon"></text>
+              {{validation.contactName.message}}
+            </text>
+          </view>
+          
+          <view class="form-item">
+            <view class="input-wrapper" :class="{ 'error': !validation.contactPhone.valid }">
+              <input 
+                class="form-input" 
+                v-model="certificationInfo.contactPhone"
+                placeholder="请输入手机号码"
+                placeholder-class="input-placeholder"
+                type="number"
+                @blur="validateContactPhone"
+              />
+            </view>
+            <text class="input-label">联系电话 <text class="required">*</text></text>
+            <text v-if="!validation.contactPhone.valid" class="error-message">
+              <text class="fa fa-exclamation-circle error-icon"></text>
+              {{validation.contactPhone.message}}
+            </text>
+          </view>
+        </view>
+        
+        <!-- 证件资料上传卡片 -->
+        <view class="upload-section" v-if="certStatus === 'unverified' || certStatus === 'rejected'">
+          <view class="section-title">
+            <text class="title-text">证件资料上传</text>
+          </view>
+          
+          <!-- 营业执照上传 -->
+          <view class="upload-item">
+            <text class="upload-label">营业执照 <text class="required">*</text></text>
+            <view class="upload-card" @click="handleUpload('license')" :class="{ 'has-image': certificationInfo.businessLicense }">
+              <image v-if="certificationInfo.businessLicense" 
+                     class="upload-preview" 
+                     :src="certificationInfo.businessLicense" 
+                     mode="aspectFill"
+                     @click.stop="previewImage(certificationInfo.businessLicense)">
+              </image>
+              <view v-else class="upload-placeholder">
+                <text class="fa fa-camera upload-icon"></text>
+                <text class="upload-text">点击上传营业执照</text>
+                <text class="upload-hint">支持JPG、PNG格式</text>
+              </view>
+              <view v-if="certificationInfo.businessLicense" class="upload-mask">
+                <text class="fa fa-search-plus mask-icon"></text>
+              </view>
+            </view>
+          </view>
+          
+          <!-- 身份证上传区域 -->
+          <view class="id-upload-section">
+            <view class="id-upload-row">
+              <!-- 身份证正面 -->
+              <view class="id-upload-item">
+                <text class="upload-label">身份证正面 <text class="required">*</text></text>
+                <view class="upload-card small" @click="handleUpload('idCardFront')" :class="{ 'has-image': certificationInfo.idCardFront }">
+                  <image v-if="certificationInfo.idCardFront" 
+                         class="upload-preview" 
+                         :src="certificationInfo.idCardFront" 
+                         mode="aspectFill"
+                         @click.stop="previewImage(certificationInfo.idCardFront)">
+                  </image>
+                  <view v-else class="upload-placeholder small">
+                    <text class="fa fa-camera upload-icon"></text>
+                    <text class="upload-text">正面</text>
+                  </view>
+                  <view v-if="certificationInfo.idCardFront" class="upload-mask">
+                    <text class="fa fa-search-plus mask-icon"></text>
+                  </view>
+                </view>
+              </view>
+              
+              <!-- 身份证反面 -->
+              <view class="id-upload-item">
+                <text class="upload-label">身份证反面 <text class="required">*</text></text>
+                <view class="upload-card small" @click="handleUpload('idCardBack')" :class="{ 'has-image': certificationInfo.idCardBack }">
+                  <image v-if="certificationInfo.idCardBack" 
+                         class="upload-preview" 
+                         :src="certificationInfo.idCardBack" 
+                         mode="aspectFill"
+                         @click.stop="previewImage(certificationInfo.idCardBack)">
+                  </image>
+                  <view v-else class="upload-placeholder small">
+                    <text class="fa fa-camera upload-icon"></text>
+                    <text class="upload-text">反面</text>
+                  </view>
+                  <view v-if="certificationInfo.idCardBack" class="upload-mask">
+                    <text class="fa fa-search-plus mask-icon"></text>
+                  </view>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+        
+        <!-- 安全提示 -->
+        <view class="security-notice">
+          <view class="notice-header">
+            <text class="fa fa-shield-alt notice-icon"></text>
+            <text class="notice-title">信息安全保障</text>
+          </view>
+          <view class="notice-content">
+            <view class="notice-item">
+              <text class="fa fa-check notice-check"></text>
+              <text class="notice-text">所有信息均采用SSL加密传输</text>
+            </view>
+            <view class="notice-item">
+              <text class="fa fa-check notice-check"></text>
+              <text class="notice-text">严格遵循《网络安全法》保护用户隐私</text>
+            </view>
+            <view class="notice-item">
+              <text class="fa fa-check notice-check"></text>
+              <text class="notice-text">仅用于企业认证，不会用于其他用途</text>
+            </view>
+          </view>
+        </view>
+        
+        <!-- 认证失败状态卡片 -->
+        <view class="status-card rejected" v-if="certStatus === 'rejected'">
+          <view class="status-header">
+            <view class="status-icon-wrapper error">
+              <text class="fa fa-times-circle status-main-icon"></text>
+            </view>
+            <view class="status-info">
+              <text class="status-title">认证被拒绝</text>
+              <text class="status-subtitle">请修正信息后重新提交</text>
+            </view>
+          </view>
+          
+          <view class="rejection-reason">
+            <text class="fa fa-exclamation-triangle reason-icon"></text>
+            <text class="reason-text">认证信息有误或不完整，请检查后重新提交</text>
+          </view>
+          
+          <view class="action-buttons">
+            <view class="btn-secondary" @click="contactService">
+              <text class="fa fa-phone btn-icon"></text>
+              <text class="btn-text">联系客服</text>
+            </view>
+          </view>
+        </view>
+        
+    <!-- 底部安全区域占位 -->
+    <view class="safe-area-bottom" v-if="certStatus === 'unverified' || certStatus === 'rejected'"></view>
+
+    <!-- 底部提交按钮 -->
+    <view class="bottom-action" v-if="certStatus === 'unverified' || certStatus === 'rejected'">
+      <view class="submit-button" @click="submitCertification" :class="{ 'disabled': isSubmitting }">
+        <text class="fa fa-shield-alt submit-icon" v-if="!isSubmitting"></text>
+        <text class="fa fa-spinner fa-spin submit-icon" v-if="isSubmitting"></text>
+        <text class="submit-text">{{ isSubmitting ? '提交中...' : (certStatus === 'rejected' ? '重新提交认证' : '提交企业认证') }}</text>
+      </view>
+    </view>
+</template>
+		
+		<style>
+/* 引入FontAwesome样式 */
+@import '/static/styles/fontawesome.css';
+
+/* ===== 基础样式 ===== */
+page {
+  background-color: #F7F9FC;
+}
+
+
+
+/* ===== 步骤指示器 ===== */
+.steps-container {
+  background: #FFFFFF;
+  margin: 30rpx 30rpx 30rpx;
+  border-radius: 24rpx;
+  padding: 60rpx 20rpx 40rpx;
+  box-shadow: 0 20rpx 60rpx rgba(102, 126, 234, 0.15);
+  border: 1rpx solid rgba(102, 126, 234, 0.1);
+  position: relative;
+}
+
+.steps-wrapper {
+        flex-direction: row;
+        justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+    }
+    
+    .step-item {
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  max-width: 33.33%;
+    }
+    
+    .step-circle {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 40rpx;
+  background: #F5F7FA;
+  border: 3rpx solid #E5E8EF;
+        justify-content: center;
+  align-items: center;
+        margin-bottom: 20rpx;
+  transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+  display: flex;
+}
+
+.step-item.active .step-circle {
+  background-color: #1890FF;
+  border-color: transparent;
+  box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.step-item.completed .step-circle {
+  background-color: #00C28A;
+  border-color: transparent;
+  box-shadow: 0 4rpx 12rpx rgba(0, 194, 138, 0.3);
+    }
+    
+    .step-number {
+  font-size: 32rpx;
+        font-weight: 600;
+  color: #9CA3AF;
+  display: block;
+    }
+    
+    .step-icon {
+  font-size: 36rpx;
+        color: #FFFFFF;
+  display: block;
+}
+
+.step-item.active .step-number {
+  color: #FFFFFF;
+}
+
+.step-item.completed .step-number {
+  display: none;
+}
+
+.step-content {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
+
+.step-title {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6rpx;
+  text-align: center;
+  line-height: 32rpx;
+}
+
+.step-item.active .step-title {
+  color: #667eea;
+}
+
+.step-item.completed .step-title {
+        color: #00C28A;
+}
+
+.step-desc {
+        font-size: 20rpx;
+  color: #9CA3AF;
+  line-height: 26rpx;
+  text-align: center;
+}
+
+.step-item.active .step-desc {
+  color: #667eea;
+}
+
+.step-item.completed .step-desc {
+        color: #00C28A;
+    }
+    
+.step-line {
+  flex: 1;
+  height: 4rpx;
+  background: #E5E8EF;
+  border-radius: 2rpx;
+  transition: all 0.3s ease;
+  align-self: center;
+  margin-top: 40rpx;
+  margin: 40rpx 10rpx 0 10rpx;
+  min-width: 60rpx;
+}
+
+.step-line.active {
+  background-color: #00C28A;
+  box-shadow: 0 2rpx 8rpx rgba(0, 194, 138, 0.3);
+}
+
+/* ===== 认证好处展示 ===== */
+.benefits-section {
+  margin: 0 30rpx 30rpx;
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  padding: 40rpx 30rpx;
+  box-shadow: 0 12rpx 40rpx rgba(0, 0, 0, 0.08);
+}
+
+.section-title {
+        flex-direction: row;
+        align-items: center;
+  margin-bottom: 30rpx;
+  justify-content: center;
+}
+
+.title-icon {
+  font-size: 32rpx;
+  color: #667eea;
+  margin-right: 12rpx;
+}
+
+.title-text {
+  font-size: 32rpx;
+        font-weight: 600;
+  color: #374151;
+}
+
+.title-subtitle {
+  font-size: 26rpx;
+  color: #9CA3AF;
+  margin-left: 8rpx;
+}
+
+.benefits-grid {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.benefit-item {
+  width: 48%;
+  background: #F8FAFC;
+  border-radius: 16rpx;
+  padding: 24rpx 16rpx;
+  margin-bottom: 20rpx;
+  align-items: center;
+  border: 2rpx solid transparent;
+  transition: all 0.3s ease;
+  flex-direction: column;
+}
+
+.benefit-item:active {
+  transform: translateY(-2rpx);
+  background: #F1F5F9;
+}
+
+.benefit-icon {
+  width: 60rpx;
+  height: 60rpx;
+        border-radius: 30rpx;
+  justify-content: center;
+        align-items: center;
+  margin-bottom: 12rpx;
+    }
+    
+.benefit-icon.verified {
+  background-color: rgba(0, 194, 138, 0.1);
+    }
+    
+.benefit-icon.team {
+  background-color: rgba(24, 144, 255, 0.1);
+    }
+    
+.benefit-icon.seal {
+  background-color: rgba(245, 108, 108, 0.1);
+    }
+    
+.benefit-icon.support {
+  background-color: rgba(250, 173, 20, 0.1);
+    }
+    
+.benefit-icon .fa {
+  font-size: 28rpx;
+        color: #00C28A;
+    }
+    
+.benefit-icon.team .fa {
+  color: #1890FF;
+    }
+    
+.benefit-icon.seal .fa {
+        color: #F56C6C;
+    }
+    
+.benefit-icon.support .fa {
+  color: #FAAD14;
+}
+
+.benefit-text {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #374151;
+  text-align: center;
+  line-height: 36rpx;
+}
+
+/* ===== 状态卡片 ===== */
+.status-card {
+  margin: 0 30rpx 30rpx;
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  padding: 40rpx 30rpx;
+  box-shadow: 0 12rpx 40rpx rgba(0, 0, 0, 0.08);
+        position: relative;
+  overflow: hidden;
+    }
+
+.status-card::before {
+  content: '';
+        position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8rpx;
+  border-top-left-radius: 24rpx;
+  border-top-right-radius: 24rpx;
+}
+
+.status-card.reviewing::before {
+  background-color: #1890FF;
+}
+
+.status-card.verified::before {
+  background-color: #00C28A;
+}
+
+.status-card.rejected::before {
+  background-color: #F56C6C;
+}
+
+.status-header {
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 30rpx;
+  padding-top: 12rpx;
+}
+
+.status-icon-wrapper {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50rpx;
+  justify-content: center;
+  align-items: center;
+  margin-right: 24rpx;
+}
+
+.status-card.reviewing .status-icon-wrapper {
+  background-color: rgba(24, 144, 255, 0.1);
+  border: 3rpx solid rgba(24, 144, 255, 0.2);
+}
+
+.status-card.verified .status-icon-wrapper.success {
+  background-color: rgba(0, 194, 138, 0.1);
+  border: 3rpx solid rgba(0, 194, 138, 0.2);
+}
+
+.status-card.rejected .status-icon-wrapper.error {
+  background-color: rgba(245, 108, 108, 0.1);
+  border: 3rpx solid rgba(245, 108, 108, 0.2);
+}
+
+.status-main-icon {
+  font-size: 50rpx;
+}
+
+.status-card.reviewing .status-main-icon {
+  color: #1890FF;
+}
+
+.status-card.verified .status-main-icon {
+  color: #00C28A;
+}
+
+.status-card.rejected .status-main-icon {
+  color: #F56C6C;
+}
+
+.status-info {
+  flex: 1;
+}
+
+.status-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 8rpx;
+}
+
+.status-subtitle {
+        font-size: 28rpx;
+  color: #9CA3AF;
+  line-height: 40rpx;
+}
+
+.progress-section {
+  flex-direction: row;
+        align-items: center;
+  margin-bottom: 30rpx;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 12rpx;
+  background: #F3F4F6;
+  border-radius: 6rpx;
+  overflow: hidden;
+  margin-right: 20rpx;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 6rpx;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #667eea;
+  min-width: 80rpx;
+  text-align: right;
+}
+
+.status-description {
+        flex-direction: row;
+  align-items: flex-start;
+  background: #F8FAFC;
+        border-radius: 16rpx;
+        padding: 24rpx;
+  margin-bottom: 30rpx;
+  border-left: 6rpx solid #667eea;
+}
+
+.desc-icon {
+        font-size: 28rpx;
+  color: #667eea;
+  margin-right: 16rpx;
+        margin-top: 4rpx;
+    }
+    
+.desc-text {
+        flex: 1;
+  font-size: 28rpx;
+  color: #6B7280;
+  line-height: 40rpx;
+    }
+    
+.verified-features {
+  background: #F0FDF4;
+        border-radius: 16rpx;
+        padding: 24rpx;
+  border-left: 6rpx solid #00C28A;
+}
+
+.features-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 20rpx;
+}
+
+.feature-list {
+  flex-direction: column;
+}
+
+.feature-item {
+        flex-direction: row;
+        align-items: center;
+  margin-bottom: 12rpx;
+}
+
+.feature-item:last-child {
+  margin-bottom: 0;
+}
+
+.feature-icon {
+  font-size: 24rpx;
+  color: #00C28A;
+        margin-right: 16rpx;
+  width: 32rpx;
+  text-align: center;
+}
+
+.feature-text {
+  font-size: 26rpx;
+  color: #374151;
+  line-height: 36rpx;
+}
+
+.rejection-reason {
+        flex-direction: row;
+  align-items: flex-start;
+  background: #FEF2F2;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 30rpx;
+  border-left: 6rpx solid #EF4444;
+}
+
+.reason-icon {
+  font-size: 28rpx;
+  color: #EF4444;
+  margin-right: 16rpx;
+  margin-top: 4rpx;
+}
+
+.reason-text {
+  flex: 1;
+  font-size: 28rpx;
+  color: #6B7280;
+  line-height: 40rpx;
+}
+
+.action-buttons {
+  flex-direction: row;
+  justify-content: center;
+}
+
+.btn-secondary {
+  flex-direction: row;
+  align-items: center;
+  background: #F8FAFC;
+  border: 2rpx solid #E5E7EB;
+  border-radius: 12rpx;
+  padding: 16rpx 24rpx;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:active {
+  background: #F3F4F6;
+  border-color: #D1D5DB;
+  transform: scale(0.98);
+}
+
+.btn-icon {
+  font-size: 28rpx;
+  color: #6B7280;
+  margin-right: 12rpx;
+}
+
+.btn-text {
+  font-size: 28rpx;
+  color: #374151;
+  font-weight: 500;
+}
+
+/* ===== 表单样式 ===== */
+.form-section {
+  margin: 0 30rpx 30rpx;
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+/* ===== 上传区域样式 ===== */
+.upload-section {
+  margin: 0 30rpx 30rpx;
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.form-group {
+  margin-bottom: 40rpx;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+.group-title {
+        flex-direction: row;
+        align-items: center;
+  margin-bottom: 30rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 2rpx solid #F3F4F6;
+}
+
+.group-icon {
+  font-size: 32rpx;
+  color: #667eea;
+  margin-right: 16rpx;
+}
+
+.group-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #374151;
+}
+
+.form-item {
+  margin-bottom: 32rpx;
+}
+
+.form-item:last-child {
+  margin-bottom: 0;
+}
+
+.input-wrapper {
+        flex-direction: row;
+  align-items: center;
+  background: #F8FAFC;
+  border: 2rpx solid #E5E7EB;
+  border-radius: 16rpx;
+  padding: 0 24rpx;
+  height: 100rpx;
+  margin-bottom: 12rpx;
+  transition: all 0.3s ease;
+}
+
+.input-wrapper:focus-within {
+  border-color: #667eea;
+  background: #FFFFFF;
+  box-shadow: 0 0 0 6rpx rgba(102, 126, 234, 0.1);
+}
+
+.input-wrapper.error {
+  border-color: #EF4444;
+  background: #FEF2F2;
+}
+
+.input-prefix {
+        width: 60rpx;
+  height: 60rpx;
+  border-radius: 12rpx;
+  background: rgba(102, 126, 234, 0.1);
+  justify-content: center;
+        align-items: center;
+  margin-right: 20rpx;
+}
+
+.input-icon {
+  font-size: 28rpx;
+  color: #667eea;
+}
+
+.input-wrapper.error .input-prefix {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.input-wrapper.error .input-icon {
+  color: #EF4444;
+}
+
+.form-input {
+  flex: 1;
+  height: 100rpx;
+  font-size: 30rpx;
+  color: #374151;
+  background: transparent;
+  border: none;
+}
+
+.input-placeholder {
+  color: #9CA3AF;
+}
+
+.input-label {
+  font-size: 26rpx;
+  color: #6B7280;
+  margin-bottom: 8rpx;
+}
+
+.required {
+  color: #F56C6C;
+  margin-left: 4rpx;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.error-message {
+        flex-direction: row;
+        align-items: center;
+  margin-top: 8rpx;
+}
+
+.error-icon {
+  font-size: 24rpx;
+  color: #EF4444;
+  margin-right: 8rpx;
+}
+
+.error-message text:last-child {
+  font-size: 24rpx;
+  color: #EF4444;
+  line-height: 32rpx;
+}
+
+/* ===== 上传区域样式 ===== */
+.upload-item {
+  margin-bottom: 32rpx;
+}
+
+.upload-item:last-child {
+  margin-bottom: 0;
+}
+
+.upload-label {
+  font-size: 26rpx;
+  color: #6B7280;
+  margin-bottom: 16rpx;
+}
+
+.upload-card {
+  width: 100%;
+  height: 240rpx;
+  border: 3rpx dashed #D1D5DB;
+  border-radius: 16rpx;
+  background: #F9FAFB;
+        position: relative;
+  overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+.upload-card:active {
+  transform: scale(0.98);
+  border-color: #667eea;
+  background: #F8FAFC;
+}
+
+.upload-card.has-image {
+  border: 3rpx solid #00C28A;
+  background: #FFFFFF;
+}
+
+.upload-card.small {
+  height: 180rpx;
+}
+
+.upload-preview {
+        width: 100%;
+        height: 100%;
+  border-radius: 16rpx;
+    }
+    
+.upload-placeholder {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        flex-direction: column;
+        justify-content: center;
+  align-items: center;
+}
+
+.upload-placeholder.small {
+  padding: 20rpx;
+}
+
+.upload-icon {
+  font-size: 48rpx;
+  color: #9CA3AF;
+  margin-bottom: 16rpx;
+}
+
+.upload-placeholder.small .upload-icon {
+        font-size: 36rpx;
+  margin-bottom: 12rpx;
+}
+
+.upload-text {
+        font-size: 28rpx;
+  color: #6B7280;
+  font-weight: 500;
+  margin-bottom: 8rpx;
+}
+
+.upload-placeholder.small .upload-text {
+  font-size: 24rpx;
+  margin-bottom: 0;
+}
+
+.upload-hint {
+        font-size: 24rpx;
+  color: #9CA3AF;
+  text-align: center;
+}
+
+.upload-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+        justify-content: center;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.upload-card:active .upload-mask {
+  opacity: 1;
+}
+
+.mask-icon {
+  font-size: 48rpx;
+  color: #FFFFFF;
+}
+
+.id-upload-section {
+  margin-top: 20rpx;
+}
+
+.id-upload-row {
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.id-upload-item {
+  width: 48%;
+}
+
+/* ===== 安全提示 ===== */
+.security-notice {
+  margin: 0 30rpx 30rpx;
+  background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%);
+  border-radius: 24rpx;
+  padding: 32rpx;
+  border: 2rpx solid rgba(0, 194, 138, 0.1);
+}
+
+.notice-header {
+        flex-direction: row;
+        align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.notice-icon {
+  font-size: 32rpx;
+  color: #00C28A;
+        margin-right: 16rpx;
+    }
+    
+.notice-title {
+  font-size: 30rpx;
+        font-weight: 600;
+  color: #374151;
+}
+
+.notice-content {
+        flex-direction: column;
+}
+
+.notice-item {
+  flex-direction: row;
+  align-items: flex-start;
+  margin-bottom: 16rpx;
+}
+
+.notice-item:last-child {
+  margin-bottom: 0;
+}
+
+.notice-check {
+  font-size: 24rpx;
+  color: #00C28A;
+  margin-right: 16rpx;
+  margin-top: 2rpx;
+  width: 32rpx;
+  text-align: center;
+}
+
+.notice-text {
+  flex: 1;
+  font-size: 26rpx;
+  color: #374151;
+  line-height: 36rpx;
+}
+
+/* ===== 底部操作区域 ===== */
+.safe-area-bottom {
+  height: 140rpx;
+}
+
+    .bottom-action {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+  background: #FFFFFF;
+  padding: 24rpx 30rpx;
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 -8rpx 32rpx rgba(0, 0, 0, 0.1);
+  z-index: 100;
+}
+
+.submit-button {
+  flex-direction: row;
+        align-items: center;
+        justify-content: center;
+  background-color: #00C28A;
+  height: 88rpx;
+  border-radius: 44rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 194, 138, 0.2);
+  transition: all 0.2s ease;
+}
+
+.submit-button:active {
+  opacity: 0.9;
+}
+
+.submit-button.disabled {
+  background: #D1D5DB;
+  box-shadow: none;
+}
+
+.submit-icon {
+  font-size: 32rpx;
+        color: #FFFFFF;
+  margin-right: 12rpx;
+}
+
+.submit-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.submit-button.disabled .submit-text {
+  color: #9CA3AF;
+}
+
+/* ===== FontAwesome图标基础样式 ===== */
+    .fa {
+        font-family: 'Font Awesome 6 Free';
+        font-style: normal;
+  font-weight: 900;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+  display: inline-block;
+  line-height: 1;
+}
+
+/* 页面中使用的图标定义 */
+.fa-shield-alt::before { content: "\f3ed"; }
+.fa-check::before { content: "\f00c"; }
+.fa-times::before { content: "\f00d"; }
+.fa-building::before { content: "\f1ad"; }
+.fa-user::before { content: "\f007"; }
+.fa-user-o::before { content: "\f2c0"; }
+.fa-id-card::before { content: "\f2c2"; }
+.fa-phone::before { content: "\f095"; }
+.fa-file-alt::before { content: "\f15c"; }
+.fa-camera::before { content: "\f030"; }
+.fa-exclamation-circle::before { content: "\f06a"; }
+.fa-exclamation-triangle::before { content: "\f071"; }
+.fa-lock::before { content: "\f023"; }
+.fa-spinner::before { content: "\f110"; }
+.fa-clock::before { content: "\f017"; }
+.fa-clock-o::before { content: "\f017"; }
+.fa-certificate::before { content: "\f0a3"; }
+.fa-times-circle::before { content: "\f057"; }
+.fa-check-circle::before { content: "\f058"; }
+.fa-eye::before { content: "\f06e"; }
+.fa-thumbs-up::before { content: "\f164"; }
+.fa-rocket::before { content: "\f135"; }
+.fa-shield-check::before { content: "\f2f7"; }
+.fa-stamp::before { content: "\f5bf"; }
+.fa-headset::before { content: "\f590"; }
+
+.fa-spin {
+  animation: fa-spin 2s infinite linear;
+}
+
+@keyframes fa-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(359deg);
+  }
+    }
+</style> 

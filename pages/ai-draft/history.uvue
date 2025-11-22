@@ -1,0 +1,308 @@
+<template>
+  <view class="page-container">
+    <!-- 内容滚动区域 -->
+    <scroll-view 
+      class="content-scroll" 
+      scroll-y="true"
+      @scrolltolower="loadMore"
+      refresher-enabled
+      :refresher-triggered="loading && pageNo === 1"
+      @refresherrefresh="handleRefresh"
+    >
+      <view class="content-wrapper">
+        <!-- 空状态 -->
+        <view class="empty-state" v-if="conversations.length === 0 && !loading">
+          <text class="fa fa-comments-o empty-icon"></text>
+          <text class="empty-text">{{ loadError ? '加载失败' : '暂无历史记录' }}</text>
+          <text class="empty-hint">{{ loadError ? '请检查网络连接' : '开始创建对话后会显示在这里' }}</text>
+          <button v-if="loadError" class="retry-button" @click="handleRefresh">
+            <text class="fa fa-refresh"></text>
+            <text class="retry-text">重试</text>
+          </button>
+        </view>
+        
+        <!-- 对话列表 -->
+        <view class="conversation-list" v-else>
+          <view 
+            class="conversation-item" 
+            v-for="conversation in conversations" 
+            :key="conversation.id"
+            @click="handleConversationClick(conversation)"
+          >
+            <view class="conversation-header">
+              <text class="conversation-title">{{ conversation.title || '未命名对话' }}</text>
+              <text class="conversation-time">{{ formatTime(conversation.createTime) }}</text>
+            </view>
+            <view class="conversation-preview">
+              <text class="preview-text">{{ conversation.lastMessage || '暂无消息' }}</text>
+            </view>
+            <view class="conversation-footer">
+              <text class="message-count">{{ conversation.messageCount || 0 }}条消息</text>
+            </view>
+          </view>
+          
+          <!-- 加载更多提示 -->
+          <view class="load-more" v-if="hasMore">
+            <text class="load-more-text">{{ loading ? '加载中...' : '下拉加载更多' }}</text>
+          </view>
+          <view class="load-more" v-else-if="conversations.length > 0">
+            <text class="load-more-text no-more">没有更多了</text>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</template>
+
+<script>
+import { getConversationPage } from '../../api/ai-draft/index.uts'
+
+export default {
+  data() {
+    return {
+      conversations: [],
+      loading: false,
+      loadError: false,
+      pageNo: 1,
+      pageSize: 20,
+      total: 0,
+      hasMore: true
+    }
+  },
+  onLoad() {
+    this.loadConversations()
+  },
+    methods: {
+      async loadConversations(refresh = false) {
+      if (this.loading) return
+      
+      if (refresh) {
+        this.pageNo = 1
+        this.conversations = []
+        this.hasMore = true
+      }
+      
+      this.loading = true
+      this.loadError = false
+      
+        try {
+          console.log('加载历史记录，页码:', this.pageNo)
+          const res = await getConversationPage({
+            pageNo: this.pageNo,
+            pageSize: this.pageSize
+          })
+          console.log('历史记录响应:', res)
+          
+          if (res.code === 0 || res.code === 200) {
+            // 直接使用 res.data，因为 API 已经封装好了返回格式
+            const data = res.data || { total: 0, list: [] }
+            this.total = data.total || 0
+            
+            const list = data.list || []
+            
+            if (refresh) {
+              this.conversations = list
+            } else {
+              this.conversations = [...this.conversations, ...list]
+            }
+            
+            this.hasMore = this.conversations.length < this.total
+            console.log('加载成功，当前记录数:', this.conversations.length, '总数:', this.total)
+          } else {
+            console.error('加载失败:', res.msg)
+            this.loadError = true
+            uni.showToast({
+              title: res.msg || '加载失败',
+              icon: 'none'
+            })
+          }
+        } catch (error) {
+          console.error('加载异常:', error)
+          this.loadError = true
+          uni.showToast({
+            title: '网络异常，请重试',
+            icon: 'none'
+          })
+        } finally {
+          this.loading = false
+        }
+    },
+    
+    loadMore() {
+      if (!this.hasMore || this.loading) return
+      this.pageNo++
+      this.loadConversations()
+    },
+    
+    formatTime(time: string): string {
+      if (!time) return ''
+      const date = new Date(time)
+      const now = new Date()
+      const diff = now.getTime() - date.getTime()
+      
+      // 小于1分钟
+      if (diff < 60000) return '刚刚'
+      // 小于1小时
+      if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前'
+      // 小于1天
+      if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前'
+      // 小于7天
+      if (diff < 604800000) return Math.floor(diff / 86400000) + '天前'
+      // 显示日期
+      return date.toLocaleDateString()
+    },
+    
+    handleConversationClick(conversation: any) {
+      console.log('点击对话:', conversation.id)
+      uni.navigateTo({
+        url: `/pages/ai-draft/chat?conversationId=${conversation.id}`
+      })
+    },
+    
+    handleRefresh() {
+      this.loadConversations(true)
+    }
+  }
+}
+</script>
+
+<style>
+.page-container {
+  flex: 1;
+  background-color: #F7F9FC;
+}
+
+.content-scroll {
+  flex: 1;
+}
+
+.content-wrapper {
+  padding: 30rpx;
+}
+
+.empty-state {
+  padding: 200rpx 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-icon {
+  font-family: FontAwesome;
+  font-size: 96rpx;
+  color: #DCDFE6;
+  margin-bottom: 24rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #909399;
+  margin-bottom: 12rpx;
+  display: block;
+}
+
+.empty-hint {
+  font-size: 24rpx;
+  color: #C0C4CC;
+  display: block;
+  margin-bottom: 30rpx;
+}
+
+.retry-button {
+  margin-top: 20rpx;
+  padding: 20rpx 40rpx;
+  background-color: #1890FF;
+  border-radius: 22rpx;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  border: none;
+}
+
+.retry-button .fa {
+  font-family: FontAwesome;
+  font-size: 28rpx;
+  color: #FFFFFF;
+  margin-right: 12rpx;
+}
+
+.retry-text {
+  font-size: 28rpx;
+  color: #FFFFFF;
+}
+
+.conversation-list {
+  flex-direction: column;
+}
+
+.conversation-item {
+  background-color: #FFFFFF;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.conversation-header {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.conversation-title {
+  font-size: 30rpx;
+  color: #303133;
+  font-weight: 600;
+  flex: 1;
+}
+
+.conversation-time {
+  font-size: 24rpx;
+  color: #909399;
+  margin-left: 20rpx;
+}
+
+.conversation-preview {
+  flex-direction: row;
+}
+
+.preview-text {
+  font-size: 26rpx;
+  color: #606266;
+  lines: 2;
+  text-overflow: ellipsis;
+}
+
+.conversation-footer {
+  flex-direction: row;
+  justify-content: flex-end;
+  margin-top: 12rpx;
+}
+
+.message-count {
+  font-size: 24rpx;
+  color: #909399;
+}
+
+.load-more {
+  padding: 30rpx 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.load-more-text {
+  font-size: 26rpx;
+  color: #909399;
+}
+
+.load-more-text.no-more {
+  color: #C0C4CC;
+}
+
+.fa {
+  font-family: FontAwesome;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+</style>

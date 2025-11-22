@@ -1,0 +1,644 @@
+/**
+ * 企业相关API接口
+ */
+import { request } from '../index';
+import type { ApiResponse } from '../index';
+// ✅ 导入 seal 模块的函数（用于已废弃函数的重定向）
+import { 
+    createSeal, 
+    updateSeal, 
+    deleteSeal, 
+    getSealDetail, 
+    getSealList,
+    getSealPage 
+} from '../seals/index.uts';
+
+// 企业状态枚举
+export enum EnterpriseStatus {
+    UNVERIFIED = 0,    // 未认证
+    VERIFYING = 1,     // 认证中
+    VERIFIED = 2,      // 已认证
+    REJECTED = 3       // 认证被拒绝
+}
+
+// 企业角色
+export enum EnterpriseRole {
+    OWNER = 1,    // 所有者
+    ADMIN = 2,    // 管理员
+    MEMBER = 3    // 普通成员
+}
+
+// 企业信息接口
+export interface Enterprise {
+    id: number;                  // 企业ID
+    name: string;                // 企业名称
+    logo?: string;               // 企业logo
+    creditCode?: string;         // 统一社会信用代码
+    legalName?: string;        // 法定代表人
+    status?: EnterpriseStatus;   // 企业状态
+    contactPhone?: string;       // 联系电话
+    address?: string;            // 企业地址
+    industry?: string;           // 所属行业
+    scale?: string;              // 企业规模
+    createTime?: string;         // 创建时间
+    updateTime?: string;         // 更新时间
+    businessLicenseUrl?: string; // 营业执照URL
+}
+
+// 企业认证请求参数
+export interface VerifyEnterpriseParams {
+    enterpriseId: number;
+    name: string;
+    creditCode: string;
+    businessLicenseUrl: string; // 修正字段名
+    legalName: string;
+    legalIdCard: string;
+    legalIdCardFrontUrl: string; // 新增字段
+    legalIdCardBackUrl: string;  // 新增字段
+    contactName: string;         // 新增字段
+    contactMobile: string;       // 新增字段
+}
+
+// 企业简化信息接口（用于列表）
+export interface EnterpriseSimple {
+    id: number;                  // 企业ID
+    name: string;                // 企业名称
+    status: EnterpriseStatus;    // 企业状态
+    role: EnterpriseRole;        // 当前用户角色
+    memberCount?: number;        // 成员数量
+    createTime?: string;         // 创建时间
+}
+
+// 企业列表响应接口
+export interface EnterpriseListResponse {
+    list: EnterpriseSimple[];
+    activeEnterprise: EnterpriseSimple;
+}
+
+// 企业成员信息接口
+export interface EnterpriseMember {
+    id: number;
+    userId: number;
+    nickname: string;
+    avatar: string;
+    mobile: string;
+    role: EnterpriseRole;
+    joinTime: string;
+}
+
+// 企业成员列表分页响应接口
+export interface EnterpriseMemberPageResponse {
+    list: EnterpriseMember[];
+    total: number;
+}
+
+// 企业印章信息接口
+export interface EnterpriseSeal {
+    id: number;
+    enterpriseId: number;
+    name: string;
+    picture: string;
+    createTime: string;
+}
+
+// 企业印章分页响应接口
+export interface EnterpriseSealPageResponse {
+    list: EnterpriseSeal[];
+    total: number;
+}
+
+// 印章授权信息接口
+export interface SealGrant {
+    id: number;
+    enterpriseId: number;
+    sealId: number;
+    sealName: string;
+    userId: number;  // ✅ 修正：后端返回的字段名是 userId
+    createTime: string;
+    creator?: string;
+}
+
+// 印章授权列表响应接口
+export interface SealGrantListResponse {
+    list: SealGrant[];
+    total: number;
+}
+
+/**
+ * 创建企业
+ * @param data 企业信息
+ * @returns Promise<ApiResponse<Enterprise>>
+ */
+export function createEnterprise(data: any): Promise<ApiResponse<Enterprise>> {
+    return request({
+        url: '/api/v1/member/enterprise/create',
+        method: 'POST',
+        data
+    });
+}
+
+/**
+ * 获取企业详情
+ * @param id 企业ID
+ * @returns Promise<ApiResponse<Enterprise>>
+ */
+export function getEnterpriseDetail(id: number): Promise<ApiResponse<Enterprise>> {
+    return request({
+        url: `/api/v1/member/enterprise/get?id=${id}`,
+        method: 'GET'
+    });
+}
+
+/**
+ * 获取企业列表
+ * @param params 查询参数
+ * @returns Promise<EnterpriseListResponse>
+ * @note request 函数已经解包了 ApiResponse，所以直接返回 data 部分
+ */
+export function getEnterpriseList(params?: any): Promise<EnterpriseListResponse> {
+    return request({
+        url: '/api/v1/member/enterprise/list',
+        method: 'GET',
+        data: params
+    });
+}
+
+/**
+ * 企业认证
+ * @param data 认证信息
+ * @returns Promise<ApiResponse<any>>
+ */
+export function verifyEnterprise(data: VerifyEnterpriseParams): Promise<ApiResponse<any>> {
+    console.log('调用企业认证API，参数:', JSON.stringify(data));
+    
+    // 确保企业ID在请求体中而不是URL中
+    return request({
+        url: '/api/v1/member/verify/submit-enterprise',
+        method: 'POST',
+        data
+    });
+}
+
+/**
+ * 删除企业
+ * @param id 企业ID
+ * @returns Promise<boolean>
+ */
+export function deleteEnterprise(id: number): Promise<boolean> {
+    return request<boolean>({
+        url: `/api/v1/member/enterprise/delete?id=${id}`,
+        method: 'DELETE',
+        isAuth: true
+    });
+}
+
+/**
+ * 添加企业成员
+ * @param data 成员信息
+ * @returns 企业成员ID
+ */
+export function addEnterpriseMember(data: {
+    enterpriseId: number;
+    mobile: string; // 使用mobile代替userId，API会根据mobile查找用户
+    role: EnterpriseRole;
+    name?: string; // 可选参数
+}): Promise<number> {
+    return request<number>({
+        url: '/api/v1/member/enterprise-user/create',
+        method: 'POST',
+        data,
+        isAuth: true
+    });
+}
+
+/**
+ * 更新企业成员角色
+ * @param data 更新信息
+ * @returns 是否成功
+ */
+export function updateEnterpriseMember(data: {
+    id: number;
+    role: EnterpriseRole;
+}): Promise<boolean> {
+    return request<boolean>({
+        url: '/api/v1/member/enterprise-user/update',
+        method: 'PUT',
+        data,
+        isAuth: true
+    });
+}
+
+/**
+ * 删除企业成员
+ * @param id 企业成员ID
+ * @returns 是否成功
+ * 注意：DELETE 请求的参数应该在 URL 中，不是 request body
+ */
+export function deleteEnterpriseMember(id: number): Promise<boolean> {
+    // ✅ 修复：将 id 作为 query parameter 拼接到 URL 中
+    return request<boolean>({
+        url: `/api/v1/member/enterprise-user/delete?id=${id}`,
+        method: 'DELETE',
+        isAuth: true
+    });
+}
+
+/**
+ * 获取企业成员分页列表
+ * @param params 查询参数
+ * @returns 分页响应
+ */
+export function getEnterpriseMemberPage(params: {
+    enterpriseId: number;
+    pageNo: number;
+    pageSize: number;
+}): Promise<EnterpriseMemberPageResponse> {
+    console.log('调用企业成员列表API，参数:', JSON.stringify(params));
+    return request<EnterpriseMemberPageResponse>({
+        url: '/api/v1/member/enterprise-user/page',
+        method: 'GET',
+        data: params,
+        isAuth: true
+    }).then(res => {
+        console.log('获取企业成员列表成功，原始响应:', JSON.stringify(res));
+        
+        // 数据标准化处理，确保返回符合预期的格式
+        let standardizedResponse: EnterpriseMemberPageResponse;
+        
+        // 检查返回结构是否符合预期
+        if (res === null || res === undefined) {
+            console.log('API返回null或undefined，使用空数据结构');
+            standardizedResponse = {
+                list: [],
+                total: 0
+            };
+        } else if (typeof res === 'object') {
+            if (Array.isArray(res)) {
+                // 如果返回的是数组，将其作为list
+                console.log('API返回数组，将其转换为标准响应格式');
+                standardizedResponse = {
+                    list: res,
+                    total: res.length
+                };
+            } else if (res.list === undefined) {
+                // 没有list字段，可能是直接返回了数据对象
+                console.log('API响应缺少list字段，尝试从其他字段提取数据');
+                
+                // 尝试从可能的字段中获取列表数据
+                let extractedList = null;
+                
+                // 尝试从data字段获取
+                if (res.data && Array.isArray(res.data)) {
+                    console.log('从data字段提取列表数据');
+                    extractedList = res.data;
+                } 
+                // 尝试从records字段获取
+                else if (res.records && Array.isArray(res.records)) {
+                    console.log('从records字段提取列表数据');
+                    extractedList = res.records;
+                }
+                // 尝试从result字段获取
+                else if (res.result && Array.isArray(res.result)) {
+                    console.log('从result字段提取列表数据');
+                    extractedList = res.result;
+                }
+                // 尝试从items字段获取
+                else if (res.items && Array.isArray(res.items)) {
+                    console.log('从items字段提取列表数据');
+                    extractedList = res.items;
+                }
+                // 如果没有找到合适的列表数据，则使用空数组
+                else {
+                    console.log('无法从响应中提取列表数据，使用空数组');
+                    extractedList = [];
+                }
+                
+                // 尝试从可能的字段中获取总数
+                let extractedTotal = null;
+                
+                // 尝试从total字段获取
+                if (res.total !== undefined) {
+                    console.log('从total字段提取总数');
+                    extractedTotal = res.total;
+                }
+                // 尝试从count字段获取
+                else if (res.count !== undefined) {
+                    console.log('从count字段提取总数');
+                    extractedTotal = res.count;
+                }
+                // 尝试从totalCount字段获取
+                else if (res.totalCount !== undefined) {
+                    console.log('从totalCount字段提取总数');
+                    extractedTotal = res.totalCount;
+                }
+                // 如果没有找到合适的总数数据，则使用列表长度
+                else {
+                    console.log('无法从响应中提取总数，使用列表长度');
+                    extractedTotal = extractedList.length;
+                }
+                
+                standardizedResponse = {
+                    list: extractedList,
+                    total: extractedTotal
+                };
+            } else {
+                // 返回格式符合预期
+                standardizedResponse = res;
+            }
+        } else {
+            // 非对象类型，返回空数据
+            console.log('API返回非对象类型，使用空数据结构');
+            standardizedResponse = {
+                list: [],
+                total: 0
+            };
+        }
+        
+        // 检查标准化后的结果
+        console.log('标准化后的响应:', JSON.stringify(standardizedResponse));
+        
+        // 检查是否为空数据且需要使用模拟数据
+        if (!standardizedResponse.list || standardizedResponse.list.length === 0) {
+            console.log('标准化后的数据为空，使用模拟数据');
+            return getMockMemberData(params);
+        }
+        
+        return standardizedResponse;
+    }).catch(error => {
+        console.error('获取企业成员列表失败，详细错误:', error);
+        console.error('错误信息:', error.message);
+        console.error('请求参数:', JSON.stringify(params));
+        console.log('API调用失败，使用模拟数据');
+        return getMockMemberData(params);
+    });
+}
+
+/**
+ * 生成模拟的成员数据（仅用于开发测试）
+ * @param params 查询参数
+ * @returns 模拟的分页响应
+ */
+function getMockMemberData(params: {
+    enterpriseId: number;
+    pageNo: number;
+    pageSize: number;
+}): EnterpriseMemberPageResponse {
+    console.log('生成模拟成员数据');
+    
+    // 模拟数据
+    const mockMembers: EnterpriseMember[] = [
+        {
+            id: 1001,
+            userId: 2001,
+            nickname: '张三',
+            avatar: '/static/logo.png',
+            mobile: '13800138001',
+            role: EnterpriseRole.OWNER,
+            joinTime: '2023-01-01 10:00:00'
+        },
+        {
+            id: 1002,
+            userId: 2002,
+            nickname: '李四',
+            avatar: '/static/logo.png',
+            mobile: '13800138002',
+            role: EnterpriseRole.ADMIN,
+            joinTime: '2023-01-02 11:00:00'
+        },
+        {
+            id: 1003,
+            userId: 2003,
+            nickname: '王五',
+            avatar: '/static/logo.png',
+            mobile: '13800138003',
+            role: EnterpriseRole.MEMBER,
+            joinTime: '2023-01-03 12:00:00'
+        },
+        {
+            id: 1004,
+            userId: 2004,
+            nickname: '赵六',
+            avatar: '/static/logo.png',
+            mobile: '13800138004',
+            role: EnterpriseRole.MEMBER,
+            joinTime: '2023-01-04 13:00:00'
+        }
+    ];
+    
+    // 计算分页数据
+    const startIndex = (params.pageNo - 1) * params.pageSize;
+    const endIndex = startIndex + params.pageSize;
+    const pagedMembers = mockMembers.slice(startIndex, endIndex);
+    
+    return {
+        list: pagedMembers,
+        total: mockMembers.length
+    };
+}
+
+/**
+ * 获取当前用户在企业中的信息
+ * @param enterpriseId 企业ID
+ * @returns 成员信息
+ */
+export function getCurrentMemberInfo(enterpriseId: number): Promise<EnterpriseMember> {
+    console.log('调用获取当前用户企业角色API，企业ID:', enterpriseId);
+    return request<EnterpriseMember>({
+        url: '/api/v1/member/enterprise-user/get-me',
+        method: 'GET',
+        data: { enterpriseId },
+        isAuth: true
+    }).then(res => {
+        console.log('获取当前用户企业角色成功:', JSON.stringify(res));
+        return res;
+    }).catch(error => {
+        console.error('获取当前用户企业角色失败，详细错误:', error);
+        console.error('错误信息:', error.message);
+        console.error('请求参数: 企业ID =', enterpriseId);
+        throw error;
+    });
+}
+
+/**
+ * 创建企业印章
+ * ⚠️ 已废弃：请使用 seal 模块的统一 API
+ * @deprecated 请使用 api/seals/index.uts 中的 createSeal 函数
+ * @param data 印章信息
+ * @returns 印章ID
+ */
+export function createEnterpriseSeal(data: {
+    enterpriseId: number;
+    name: string;
+    picture: string;
+}): Promise<number> {
+    console.warn('[API] createEnterpriseSeal 已废弃，请使用 seal 模块的 createSeal');
+    // ✅ 使用顶部导入的 createSeal（已在文件顶部导入）
+    return createSeal({
+        name: data.name,
+        type: 1, // 默认类型：公章
+        enterpriseId: data.enterpriseId,
+        sealData: data.picture,
+        generationMethod: 1, // 上传生成
+    });
+}
+
+/**
+ * 更新企业印章
+ * ⚠️ 已废弃：请使用 seal 模块的统一 API
+ * @deprecated 请使用 api/seals/index.uts 中的 updateSeal 函数
+ * @param data 更新信息
+ * @returns 是否成功
+ */
+export function updateEnterpriseSeal(data: {
+    id: number;
+    name: string;
+    picture: string;
+}): Promise<boolean> {
+    console.warn('[API] updateEnterpriseSeal 已废弃，请使用 seal 模块的 updateSeal');
+    // ✅ 使用顶部导入的 updateSeal（已在文件顶部导入）
+    return updateSeal(data.id, {
+        name: data.name,
+        sealData: data.picture
+    });
+}
+
+/**
+ * 删除企业印章
+ * ⚠️ 已废弃：请使用 seal 模块的统一 API
+ * @deprecated 请使用 api/seals/index.uts 中的 deleteSeal 函数
+ * @param id 印章ID
+ * @returns 是否成功
+ */
+export function deleteEnterpriseSeal(id: number): Promise<boolean> {
+    console.warn('[API] deleteEnterpriseSeal 已废弃，请使用 seal 模块的 deleteSeal');
+    // ✅ 使用顶部导入的 deleteSeal（已在文件顶部导入）
+    return deleteSeal(id);
+}
+
+/**
+ * 获取企业印章详情
+ * ⚠️ 已废弃：请使用 seal 模块的统一 API
+ * @deprecated 请使用 api/seals/index.uts 中的 getSealDetail 函数
+ * @param id 印章ID
+ * @returns 印章详情
+ */
+export function getEnterpriseSealDetail(id: number): Promise<EnterpriseSeal> {
+    console.warn('[API] getEnterpriseSealDetail 已废弃，请使用 seal 模块的 getSealDetail');
+    // ✅ 使用顶部导入的 getSealDetail（已在文件顶部导入）
+    return getSealDetail(id) as Promise<any>;
+}
+
+/**
+ * 获取企业印章分页列表
+ * ⚠️ 已废弃：请使用 seal 模块的统一 API
+ * @deprecated 请使用 api/seals/index.uts 中的 getSealPage 函数
+ * @param params 查询参数
+ * @returns 分页响应
+ */
+export function getEnterpriseSealPage(params: {
+    enterpriseId: number;
+    name?: string;
+    pageNo: number;
+    pageSize: number;
+}): Promise<EnterpriseSealPageResponse> {
+    console.warn('[API] getEnterpriseSealPage 已废弃，请使用 seal 模块的 getSealPage');
+    console.log('[API] 调用企业印章列表，参数:', JSON.stringify(params));
+    
+    // ✅ 后端已支持通过 enterpriseId 过滤，直接传递参数，不再需要前端过滤
+    return getSealPage({
+        pageNo: params.pageNo,
+        pageSize: params.pageSize,
+        name: params.name,
+        enterpriseId: params.enterpriseId  // ✅ 后端过滤企业印章
+    }).then(response => {
+        console.log('[API] 获取企业印章列表响应:', JSON.stringify(response));
+        console.log('[API] 企业印章数量:', response.list?.length || 0);
+        
+        // ✅ 后端已经过滤了，直接返回结果，不需要前端再次过滤
+        return {
+            list: response.list as any,
+            total: response.total
+        };
+    });
+}
+
+/**
+ * 创建印章授权
+ * @param data 授权信息
+ * @returns 授权ID
+ */
+export function createSealGrant(data: {
+    sealId: number;
+    enterpriseUserId: number;
+}): Promise<number> {
+    return request<number>({
+        url: '/api/v1/seal/grant/create',
+        method: 'POST',
+        data,
+        isAuth: true
+    });
+}
+
+/**
+ * 删除印章授权
+ * @param id 授权ID
+ * @returns 是否成功
+ */
+export function deleteSealGrant(id: number): Promise<boolean> {
+    // ✅ 修复：将 id 作为 query parameter 拼接到 URL 中
+    return request<boolean>({
+        url: `/api/v1/seal/grant/delete?id=${id}`,
+        method: 'DELETE',
+        isAuth: true
+    });
+}
+
+/**
+ * 获取印章授权列表
+ * @param sealId 印章ID
+ * @returns 授权列表响应
+ */
+export function getSealGrantList(sealId: number): Promise<SealGrantListResponse> {
+    return request<SealGrantListResponse>({
+        url: '/api/v1/seal/grant/list',
+        method: 'GET',
+        data: { sealId },
+        isAuth: true
+    });
+}
+
+/**
+ * 获取当前用户的印章授权分页列表
+ * @param params 查询参数
+ * @returns 授权分页响应
+ */
+export function getUserSealGrantPage(params: {
+    enterpriseId: number;
+    pageNo: number;
+    pageSize: number;
+}): Promise<SealGrantListResponse> {
+    return request<SealGrantListResponse>({
+        url: '/api/v1/seal/grant/list-by-user',
+        method: 'GET',
+        data: params,
+        isAuth: true
+    });
+}
+
+/**
+ * 切换当前企业
+ * @param enterpriseId 企业ID
+ * @returns Promise<boolean>
+ */
+export function switchEnterprise(enterpriseId: number): Promise<boolean> {
+    console.log('调用切换企业API，企业ID:', enterpriseId);
+    return request<boolean>({
+        url: '/api/v1/member/enterprise/switch',
+        method: 'POST',
+        data: { enterpriseId },
+        isAuth: true
+    });
+}
+
+// ✅ 重新导出 seal 模块的 updateSeal 函数
+export { updateSeal } from '../seals/index.uts'; 

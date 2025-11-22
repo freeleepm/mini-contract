@@ -1,0 +1,65 @@
+<script lang="uts">
+	export default {
+		data() {
+			return {
+				title: '天眼审查'
+			}
+		},
+		onLoad() {
+			console.log('天眼审查页面加载成功')
+		},
+		methods: {
+			goBack(): void {
+				uni.navigateBack()
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="container">
+		<view class="header">
+			<text class="title">{{title}}</text>
+		</view>
+		
+		<view class="content">
+			<text class="text">天眼审查页面</text>
+			<button class="btn" @click="goBack">返回首页</button>
+		</view>
+	</view>
+</template>
+
+<style>
+	.container {
+		flex: 1;
+		padding: 30rpx;
+		background-color: #F5FDF9;
+	}
+	
+	.header {
+		margin-bottom: 50rpx;
+	}
+	
+	.title {
+		font-size: 40rpx;
+		font-weight: bold;
+		color: #00A05B;
+	}
+	
+	.content {
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.text {
+		font-size: 32rpx;
+		margin-bottom: 50rpx;
+	}
+	
+	.btn {
+		background-color: #00A05B;
+		color: #FFFFFF;
+		padding: 20rpx 60rpx;
+		border-radius: 10rpx;
+	}
+</style> 

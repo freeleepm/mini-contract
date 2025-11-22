@@ -1,0 +1,627 @@
+<script lang="uts">
+	import { smsLogin, sendLoginCode, type LoginResponse } from '../../api/auth/login'
+	import { type ApiResponse } from '../../api/index'
+	
+	export default {
+		data() {
+			return {
+				phone: '',
+				verificationCode: '',
+				isLoading: false,
+				errorMessage: '',
+				countdown: 0,
+				timer: 0
+			}
+		},
+		onUnload() {
+			// 清除计时器
+			if (this.timer > 0) {
+				clearTimeout(this.timer)
+				this.timer = 0
+			}
+		},
+		methods: {
+			// 处理登录/注册（登录即注册）
+			async handleRegister(): Promise<void> {
+				// 清除错误信息
+				this.errorMessage = ''
+				
+				// 表单验证
+				if (!this.phone || !this.verificationCode) {
+					this.errorMessage = '请填写手机号和验证码'
+					return
+				}
+				
+				if (!/^1[3-9]\d{9}$/.test(this.phone)) {
+					this.errorMessage = '请输入正确的手机号'
+					return
+				}
+				
+				if (this.verificationCode.length < 4 || this.verificationCode.length > 6) {
+					this.errorMessage = '请输入4-6位验证码'
+					return
+				}
+				
+				// 显示加载状态
+				this.isLoading = true
+				
+				try {
+					// 调用验证码登录接口（登录即注册）
+					// 注意：request函数成功时只返回data字段，所以result实际上是LoginResponse类型
+					const result: LoginResponse = await smsLogin({
+						mobile: this.phone,
+						code: this.verificationCode
+					})
+					
+					console.log('登录/注册响应:', JSON.stringify(result))
+					
+					// request函数成功返回就表示登录成功，result直接就是LoginResponse
+						// 保存token和用户信息到本地存储
+					uni.setStorageSync('token', result.accessToken)
+					uni.setStorageSync('refreshToken', result.refreshToken)
+					uni.setStorageSync('userId', result.userId.toString())
+					uni.setStorageSync('expiresTime', result.expiresTime.toString())
+					
+					// 清除错误信息
+					this.errorMessage = ''
+						
+						// 登录/注册成功，跳转到首页
+						uni.showToast({
+							title: '登录成功',
+							icon: 'success',
+							duration: 1500
+						})
+						
+						setTimeout(() => {
+							uni.switchTab({
+								url: '/pages/index/index'
+							})
+						}, 1500)
+					
+				} catch (error : any) {
+					console.error('登录/注册失败:', error)
+					this.errorMessage = error.message || '登录失败，请稍后再试'
+				} finally {
+					this.isLoading = false
+				}
+			},
+			
+			// 发送验证码
+			async sendVerificationCode(): Promise<void> {
+				// 清除错误信息
+				this.errorMessage = ''
+				
+				// 验证手机号
+				if (!this.phone) {
+					this.errorMessage = '请先输入手机号'
+					return
+				}
+				
+				if (!/^1[3-9]\d{9}$/.test(this.phone)) {
+					this.errorMessage = '请输入正确的手机号'
+					return
+				}
+				
+				// 如果倒计时已经在进行中，不再重复发送
+				if (this.countdown > 0) {
+					console.log('倒计时进行中，跳过发送:', this.countdown)
+					return
+				}
+				
+				try {
+					// 调用发送验证码接口
+					// 注意：request函数成功时只返回data字段，所以response实际上是boolean类型
+					const result = await sendLoginCode(this.phone)
+					
+					console.log('===== 发送验证码响应 =====')
+					console.log('结果:', result)
+					console.log('=============================')
+					
+					// 只有成功时才启动倒计时
+					this.countdown = 60
+					console.log('发送成功，设置倒计时初始值:', this.countdown)
+					this.startCountdown()
+					
+					// request函数成功返回就表示发送成功
+						// 显示发送成功提示
+						uni.showToast({
+							title: '验证码已发送',
+							icon: 'success'
+						})
+						
+					// 清除错误信息
+					this.errorMessage = ''
+					
+				} catch (error : any) {
+					console.error('发送验证码失败:', error)
+					
+					// 提取错误信息
+					const errorMessage = error.message || '发送验证码失败'
+					this.errorMessage = errorMessage
+					
+					// 失败时不启动倒计时，让用户可以稍后重试
+					console.log('发送失败，不启动倒计时，错误信息:', errorMessage)
+					
+					uni.showToast({
+						title: errorMessage,
+						icon: 'none',
+						duration: 2000
+					})
+				}
+			},
+			
+			// 开始倒计时（使用递归setTimeout实现）
+			startCountdown(): void {
+				console.log('开始倒计时函数被调用, countdown=', this.countdown)
+				
+				// 清除之前的计时器（如果存在）
+				if (this.timer > 0) {
+					console.log('清除旧计时器:', this.timer)
+					clearTimeout(this.timer)
+					this.timer = 0
+				}
+				
+				// 定义递归函数
+				const tick = () => {
+					console.log('计时器tick, countdown=', this.countdown)
+					
+					if (this.countdown > 0) {
+						this.countdown--
+						console.log('倒计时递减后:', this.countdown)
+						
+						// 继续下一次倒计时
+						this.timer = setTimeout(tick, 1000)
+						console.log('下一个计时器ID:', this.timer)
+					} else {
+						// 倒计时结束
+						console.log('倒计时结束')
+						this.timer = 0
+					}
+				}
+				
+				// 启动第一次倒计时
+				console.log('启动倒计时')
+				this.timer = setTimeout(tick, 1000)
+				console.log('初始计时器ID:', this.timer)
+			},
+			
+			// 返回登录页面
+			goToLogin(): void {
+				// 获取当前页面栈
+				const pages = getCurrentPages()
+				
+				// 如果页面栈中有多个页面（说明是从其他页面跳转过来的），则返回上一页
+				// 否则直接跳转到登录页面
+				if (pages.length > 1) {
+					uni.navigateBack()
+				} else {
+					uni.redirectTo({
+						url: '/pages/login/index'
+					})
+				}
+			},
+			
+			// 跳转到用户协议页面
+			goToUserAgreement(): void {
+				uni.navigateTo({
+					url: '/pages/agreement/user'
+				})
+			},
+			
+			// 跳转到隐私政策页面
+			goToPrivacyPolicy(): void {
+				uni.navigateTo({
+					url: '/pages/agreement/privacy'
+				})
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="register-container">
+		<!-- 顶部背景与Logo区域 -->
+		<view class="register-header">
+			<view class="header-content">
+				<image class="logo" src="/static/logo.png" mode="aspectFit"></image>
+				<text class="app-slogan">安全·高效·便捷的电子合同平台</text>
+			</view>
+		</view>
+		
+		<!-- 注册表单卡片 -->
+		<view class="register-form-container">
+			<view class="register-card">
+				<view class="card-header">
+					<text class="card-title">快速登录</text>
+					<text class="card-subtitle">首次验证即可完成注册</text>
+				</view>
+				
+			<!-- 错误信息提示 -->
+			<view class="error-message" v-if="errorMessage">
+				<text class="fa fa-exclamation-circle error-icon"></text>
+				<text class="error-text">{{ errorMessage }}</text>
+			</view>
+			
+			<!-- 手机号输入框 -->
+			<view class="input-group">
+				<view class="input-prefix">
+					<text class="fa fa-mobile input-icon"></text>
+				</view>
+				<input 
+					class="input-field" 
+					type="number" 
+					placeholder="请输入手机号" 
+					placeholder-class="input-placeholder"
+					maxlength="11"
+					v-model="phone"
+				/>
+			</view>
+			
+		<!-- 验证码输入框 -->
+		<view class="input-group">
+			<view class="input-prefix">
+				<text class="fa fa-comment-dots input-icon"></text>
+			</view>
+			<input 
+				class="input-field code-field" 
+				type="number" 
+				placeholder="请输入验证码" 
+				placeholder-class="input-placeholder"
+				maxlength="6"
+				v-model="verificationCode"
+			/>
+			<button 
+				class="code-button" 
+				:class="{ 'code-button-disabled': countdown > 0 }"
+				:disabled="countdown > 0"
+				@click="sendVerificationCode"
+			>
+				{{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
+			</button>
+		</view>
+			
+			<!-- 提示信息 -->
+			<view class="info-banner">
+				<text class="fa fa-info-circle info-icon"></text>
+				<text class="info-text">首次验证即可完成注册并登录</text>
+			</view>
+				
+				<!-- 登录按钮 -->
+				<button 
+					class="primary-button" 
+					:disabled="isLoading" 
+					:loading="isLoading"
+					@click="handleRegister"
+				>
+					<text class="button-text">{{ isLoading ? '登录中...' : '登 录' }}</text>
+				</button>
+				
+				<!-- 已有账号登录 -->
+				<view class="login-link">
+					<text class="login-text">已有账号？</text>
+					<text class="login-action" @click="goToLogin">密码登录</text>
+				</view>
+				
+				<!-- 用户协议 -->
+				<view class="agreement">
+					<text class="agreement-text">登录即表示您已同意</text>
+					<view @click="goToUserAgreement" class="agreement-link-wrapper">
+						<text class="agreement-link">《用户协议》</text>
+					</view>
+					<text class="agreement-text">和</text>
+					<view @click="goToPrivacyPolicy" class="agreement-link-wrapper">
+						<text class="agreement-link">《隐私政策》</text>
+					</view>
+				</view>
+			</view>
+		</view>
+		
+		<!-- 底部版权信息 -->
+		<view class="footer">
+			<text class="copyright">© 2025 Mini Contract Pro 版权所有</text>
+		</view>
+	</view>
+</template>
+
+<style>
+	/* FontAwesome基础样式 */
+	@import url("../../static/styles/fontawesome.css");
+	
+	.fa {
+		font-family: 'Font Awesome 6 Free';
+		font-weight: 900;
+		font-style: normal;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+	
+	/* 页面容器 */
+	.register-container {
+		flex: 1;
+		background-color: #F7F9FC;
+		padding-top: 80rpx;
+	}
+	
+	/* 顶部背景区域 */
+	.register-header {
+		height: 320rpx;
+		position: relative;
+		background: linear-gradient(135deg, #00C28A 0%, #00A876 100%);
+		margin: 0 40rpx;
+		border-radius: 20rpx 20rpx 0 0;
+		box-shadow: 0 8rpx 24rpx rgba(0, 194, 138, 0.2);
+	}
+	
+	.header-content {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.logo {
+		width: 120rpx;
+		height: 120rpx;
+		margin-bottom: 20rpx;
+		border-radius: 20rpx;
+	}
+	
+	.app-slogan {
+		font-size: 24rpx;
+		color: rgba(255, 255, 255, 0.95);
+		letter-spacing: 1rpx;
+	}
+	
+	/* 注册表单卡片容器 */
+	.register-form-container {
+		padding: 0 40rpx;
+		margin-top: 0;
+		position: relative;
+	}
+	
+	.register-card {
+		background-color: #FFFFFF;
+		border-radius: 0 0 20rpx 20rpx;
+		padding: 48rpx 40rpx 40rpx;
+		box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.08);
+	}
+	
+	.card-header {
+		margin-bottom: 40rpx;
+		align-items: center;
+	}
+	
+	.card-title {
+		font-size: 36rpx;
+		font-weight: 600;
+		color: #303133;
+		margin-bottom: 12rpx;
+	}
+	
+	.card-subtitle {
+		font-size: 26rpx;
+		color: #909399;
+	}
+	
+	/* 错误信息提示 */
+	.error-message {
+		background-color: #FEF0F0;
+		padding: 20rpx 24rpx;
+		border-radius: 12rpx;
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 32rpx;
+		border-left-width: 6rpx;
+		border-left-color: #F56C6C;
+	}
+	
+	.error-message .error-icon {
+		font-size: 30rpx;
+		color: #F56C6C;
+		margin-right: 12rpx;
+	}
+	
+	.error-text {
+		flex: 1;
+		font-size: 26rpx;
+		color: #F56C6C;
+		line-height: 40rpx;
+	}
+	
+	/* 输入框组 */
+	.input-group {
+		height: 96rpx;
+		border: 2rpx solid #E4E7ED;
+		border-radius: 12rpx;
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 28rpx;
+		padding: 0 24rpx;
+		background-color: #FAFBFC;
+		transition: all 0.3s ease;
+	}
+	
+	.input-group:focus-within {
+		border-color: #00C28A;
+		background-color: #FFFFFF;
+		box-shadow: 0 0 0 4rpx rgba(0, 194, 138, 0.1);
+	}
+	
+	.input-prefix {
+		width: 60rpx;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.input-prefix .input-icon {
+		font-size: 36rpx;
+		color: #00C28A;
+	}
+	
+	.input-field {
+		flex: 1;
+		height: 96rpx;
+		font-size: 30rpx;
+		color: #303133;
+	}
+	
+	.input-placeholder {
+		color: #C0C4CC;
+		font-size: 30rpx;
+	}
+	
+	.code-field {
+		flex: 1;
+		padding-right: 16rpx;
+	}
+	
+	/* 获取验证码按钮 */
+	.code-button {
+		font-size: 24rpx;
+		font-weight: 500;
+		color: #FFFFFF;
+		background: linear-gradient(135deg, #00C28A 0%, #00A876 100%);
+		padding: 0 20rpx;
+		border-radius: 6rpx;
+		height: 60rpx;
+		line-height: 60rpx;
+		border: none;
+		min-width: 120rpx;
+		text-align: center;
+	}
+	
+	.code-button:active {
+		opacity: 0.9;
+		transform: scale(0.98);
+	}
+	
+	.code-button-disabled {
+		background: linear-gradient(135deg, #E4E7ED 0%, #D9DCE1 100%);
+		color: #909399;
+	}
+	
+	/* 提示信息 */
+	.info-banner {
+		flex-direction: row;
+		align-items: center;
+		background: linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(24, 144, 255, 0.05) 100%);
+		border-radius: 12rpx;
+		padding: 20rpx 24rpx;
+		margin: 12rpx 0 40rpx 0;
+		border-left-width: 6rpx;
+		border-left-color: #1890FF;
+	}
+	
+	.info-banner .info-icon {
+		font-size: 30rpx;
+		color: #1890FF;
+		margin-right: 12rpx;
+	}
+	
+	.info-text {
+		flex: 1;
+		color: #1890FF;
+		font-size: 26rpx;
+		line-height: 40rpx;
+	}
+	
+	/* 登录按钮 */
+	.primary-button {
+		height: 96rpx;
+		border-radius: 12rpx;
+		background: linear-gradient(135deg, #00C28A 0%, #00A876 100%);
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 32rpx;
+		box-shadow: 0 8rpx 24rpx rgba(0, 194, 138, 0.3);
+		border: none;
+	}
+	
+	.primary-button:active {
+		opacity: 0.9;
+		transform: scale(0.98);
+	}
+	
+	.primary-button[disabled] {
+		background: linear-gradient(135deg, #A0CFBE 0%, #8FB9A9 100%);
+		opacity: 0.7;
+		box-shadow: none;
+	}
+	
+	.button-text {
+		font-size: 32rpx;
+		color: #FFFFFF;
+		font-weight: 600;
+		letter-spacing: 2rpx;
+	}
+	
+	/* 已有账号登录 */
+	.login-link {
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		margin-bottom: 32rpx;
+	}
+	
+	.login-text {
+		font-size: 28rpx;
+		color: #909399;
+	}
+	
+	.login-action {
+		font-size: 28rpx;
+		color: #00C28A;
+		margin-left: 8rpx;
+		font-weight: 500;
+	}
+	
+	.login-action:active {
+		opacity: 0.7;
+	}
+	
+	/* 用户协议 */
+	.agreement {
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		flex-wrap: wrap;
+		padding: 20rpx 0;
+	}
+	
+	.agreement-text {
+		font-size: 24rpx;
+		color: #909399;
+		line-height: 36rpx;
+	}
+	
+	.agreement-link-wrapper {
+		padding: 8rpx 8rpx;
+		position: relative;
+		z-index: 10;
+	}
+	
+	.agreement-link-wrapper:active {
+		opacity: 0.7;
+	}
+	
+	.agreement-link {
+		font-size: 24rpx;
+		color: #00C28A;
+		line-height: 36rpx;
+	}
+	
+	/* 底部版权信息 */
+	.footer {
+		margin-top: 60rpx;
+		padding-bottom: 40rpx;
+		align-items: center;
+	}
+	
+	.copyright {
+		font-size: 24rpx;
+		color: #909399;
+	}
+</style> 

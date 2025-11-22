@@ -1,0 +1,495 @@
+/**
+ * Seal印章模块 API封装
+ * 
+ * 基于member模块的Token，调用Seal App-API服务
+ * 注意：Seal模块使用统一的版本化路径 /api/v1/seal
+ */
+import { get, post, put, del } from '../index';
+import { ADMIN_H5_BASE_URL } from '../config.uts';
+
+// ==================== 数据类型定义 ====================
+
+/**
+ * 印章类型枚举（与后端 SealTypeEnum 保持一致）
+ */
+export enum SealType {
+	// ========== 企业印章 (1-9) ==========
+	ENTERPRISE_OFFICIAL = 1,    // 公章
+	ENTERPRISE_FINANCIAL = 2,   // 财务专用章
+	ENTERPRISE_CONTRACT = 3,    // 合同专用章
+	ENTERPRISE_LEGAL = 4,       // 法人章
+	
+	// ========== 个人印章 (11-19) ==========
+	PERSONAL_SIGNATURE = 11,    // 个人签名
+	PERSONAL_SEAL = 12,         // 个人印章
+	
+	// 兼容旧版本（已弃用，请使用上面的新类型）
+	/** @deprecated 请使用 ENTERPRISE_OFFICIAL */
+	ENTERPRISE = 1,
+	/** @deprecated 请使用 PERSONAL_SIGNATURE 或 PERSONAL_SEAL */
+	PERSONAL = 11,
+	/** @deprecated 请使用 ENTERPRISE_LEGAL */
+	LEGAL_PERSON = 4,
+	/** @deprecated 请使用 ENTERPRISE_FINANCIAL */
+	FINANCE = 2,
+	/** @deprecated 请使用 ENTERPRISE_CONTRACT */
+	CONTRACT = 3
+}
+
+/**
+ * 印章状态枚举
+ */
+export enum SealStatus {
+	NORMAL = 1,          // 正常
+	REVOKED = 2          // 已注销
+}
+
+/**
+ * 印章信息接口
+ */
+export interface SealInfo {
+	id?: string;
+	name: string;
+	type: SealType;
+	sealData?: string;           // ✅ 印章图片URL（后端返回的字段名）
+	imageUrl?: string;           // 兼容旧字段名
+	image?: string;              // 兼容旧字段名
+	userId?: number;             // ✅ 用户ID
+	enterpriseId?: number;       // ✅ 企业ID（企业印章有值，个人印章为null）
+	enterpriseName?: string;     // ✅ 企业名称（前端填充，后端不返回）
+	ownerId?: string;            // 兼容旧字段名
+	ownerType?: string;          // 兼容旧字段名
+	status?: SealStatus;
+	createTime?: string;         // ✅ 创建时间（后端返回的字段名）
+	createdAt?: string;          // 兼容旧字段名
+	createdBy?: string;
+	updatedAt?: string;
+}
+
+/**
+ * 印章列表响应
+ */
+export interface SealListResponse {
+	total: number;
+	list: SealInfo[];
+	pageSize: number;
+	pageNo: number;
+}
+
+/**
+ * 分页参数
+ */
+export interface PageParams {
+  pageNo?: number;
+  pageSize?: number;
+  name?: string;
+	type?: SealType;
+	status?: SealStatus;
+	enterpriseId?: number;  // ✅ 企业ID（查询企业印章时传递）
+	userId?: number;         // ✅ 用户ID（后端会自动设置，前端一般不需要传）
+}
+
+// ==================== 印章管理 API ====================
+
+/**
+ * 获取印章列表（分页）
+ */
+export function getSealPage(params: PageParams): Promise<SealListResponse> {
+	return get<SealListResponse>(`/api/v1/seal/seal-info/page`, params);
+}
+
+/**
+ * 获取印章列表（全部）
+ */
+export function getSealList(): Promise<Array<SealInfo>> {
+	return get<Array<SealInfo>>(`/api/v1/seal/seal-info/list`);
+}
+
+/**
+ * 获取印章详情
+ */
+export function getSealDetail(id: string): Promise<SealInfo> {
+	return get<SealInfo>(`/api/v1/seal/seal-info/get`, { id });
+}
+
+/**
+ * 创建印章
+ * @param data.name - 印章名称
+ * @param data.type - 印章类型：1-公章 2-合同章 3-财务章 4-法人章 5-其他
+ * @param data.imageUrl - 印章图片URL（需先调用文件上传接口）
+ */
+export function createSeal(data: SealInfo): Promise<SealInfo> {
+	return post<SealInfo>(`/api/v1/seal/seal-info/create`, data);
+}
+
+/**
+ * 更新印章
+ */
+export function updateSeal(data: SealInfo): Promise<SealInfo> {
+	return put<SealInfo>(`/api/v1/seal/seal-info/update`, data);
+}
+
+/**
+ * 删除印章
+ * 注意：DELETE 请求的参数应该在 URL 中，不是 request body
+ */
+export function deleteSeal(id: string): Promise<void> {
+	// ✅ 修复：将 id 作为 query parameter 拼接到 URL 中
+	return del<void>(`/api/v1/seal/seal-info/delete?id=${id}`);
+}
+
+/**
+ * 设置默认印章
+ * 注意：PUT 请求的参数应该在 URL 中（如果后端使用 @RequestParam）
+ */
+export function setDefaultSeal(id: string): Promise<void> {
+	// ✅ 修复：将 id 作为 query parameter 拼接到 URL 中
+	return put<void>(`/api/v1/seal/seal-info/set-default?id=${id}`);
+}
+
+// ==================== 印章模板 API ====================
+
+/**
+ * 印章模板信息
+ */
+export interface SealTemplate {
+	id: string;
+    name: string;
+	description?: string;
+	thumbnail?: string;
+	type: SealType;
+	formFields?: any[];
+}
+
+/**
+ * 获取印章模板列表（分页）
+ */
+export function getSealTemplates(params: PageParams): Promise<{ list: SealTemplate[]; total: number }> {
+	return get<{ list: SealTemplate[]; total: number }>(`/api/v1/seal/seal-template/page`, params);
+}
+
+/**
+ * 获取印章模板详情
+ */
+export function getSealTemplateDetail(id: string): Promise<SealTemplate> {
+	return get<SealTemplate>(`/api/v1/seal/seal-template/get`, { id });
+}
+
+/**
+ * 使用模板创建印章
+ */
+export function createSealFromTemplate(data: {
+	templateId: string;
+    name: string;
+	formData?: Record<string, any>;
+}): Promise<SealInfo> {
+	return post<SealInfo>(`/api/v1/seal/seal-template/use`, data);
+}
+
+// ==================== 工具函数 ====================
+
+/**
+ * 获取印章类型名称
+ */
+export function getSealTypeName(type: SealType | number): string {
+	const typeMap: Record<number, string> = {
+		// 企业印章
+		[SealType.ENTERPRISE_OFFICIAL]: '公章',
+		[SealType.ENTERPRISE_FINANCIAL]: '财务专用章',
+		[SealType.ENTERPRISE_CONTRACT]: '合同专用章',
+		[SealType.ENTERPRISE_LEGAL]: '法人章',
+		
+		// 个人印章
+		[SealType.PERSONAL_SIGNATURE]: '个人签名',
+		[SealType.PERSONAL_SEAL]: '个人印章',
+		
+		// 兼容旧值
+		5: '个人印章（旧）'
+	};
+	return typeMap[type as number] || '未知';
+}
+
+/**
+ * 获取印章状态名称
+ */
+export function getSealStatusName(status: SealStatus): string {
+	const statusMap: Record<number, string> = {
+		[SealStatus.NORMAL]: '正常',
+		[SealStatus.REVOKED]: '已注销'
+	};
+	return statusMap[status] || '未知';
+}
+
+/**
+ * 获取印章类型列表
+ * @param ownerType 所有者类型：'personal' 或 'enterprise'
+ */
+export function getSealTypeList(ownerType?: 'personal' | 'enterprise'): Array<{ value: number; label: string }> {
+	// 个人印章类型
+	const personalTypes = [
+		{ value: SealType.PERSONAL_SIGNATURE, label: '个人签名' },
+		{ value: SealType.PERSONAL_SEAL, label: '个人印章' }
+	];
+	
+	// 企业印章类型
+	const enterpriseTypes = [
+		{ value: SealType.ENTERPRISE_OFFICIAL, label: '公章' },
+		{ value: SealType.ENTERPRISE_FINANCIAL, label: '财务专用章' },
+		{ value: SealType.ENTERPRISE_CONTRACT, label: '合同专用章' },
+		{ value: SealType.ENTERPRISE_LEGAL, label: '法人章' }
+	];
+	
+	// 根据所有者类型返回对应的列表
+	if (ownerType === 'personal') {
+		return personalTypes;
+	} else if (ownerType === 'enterprise') {
+		return enterpriseTypes;
+	}
+	
+	// 默认返回所有类型
+	return [...personalTypes, ...enterpriseTypes];
+}
+
+// ==================== 签署任务相关 ====================
+
+/**
+ * 签署任务状态枚举
+ */
+export enum SignTaskStatus {
+	DRAFT = 0,        // 草稿
+	PENDING = 1,      // 待签署
+	SIGNING = 2,      // 签署中
+	COMPLETED = 3,    // 已完成
+	REJECTED = 4,     // 已拒绝
+	EXPIRED = 5       // 已过期
+}
+
+/**
+ * 签署任务信息
+ */
+export interface SignTask {
+	id?: string;
+    name: string;
+	fileUrl: string;
+	status?: SignTaskStatus;
+	createTime?: string;
+	expireTime?: string;
+	signUserCount?: number;
+	signedUserCount?: number;
+}
+
+/**
+ * 签署任务列表响应
+ */
+export interface SignTaskListResponse {
+	total: number;
+	list: SignTask[];
+	pageSize: number;
+	pageNo: number;
+}
+
+/**
+ * 获取签署任务列表（分页）
+ */
+export function getSignTaskPage(params: PageParams): Promise<SignTaskListResponse> {
+	return get<SignTaskListResponse>(`/api/v1/seal/sign-task/page`, params);
+}
+
+/**
+ * 获取签署任务详情
+ */
+export function getSignTask(id: string): Promise<SignTask> {
+	return get<SignTask>(`/api/v1/seal/sign-task/get`, { id });
+}
+
+/**
+ * 获取签署任务统计
+ */
+export interface SignTaskStatistics {
+	draftCount: number;      // 草稿数
+	signingCount: number;    // 签署中
+	completedCount: number;  // 已完成
+	cancelledCount: number;  // 已撤销
+	rejectedCount: number;   // 已拒签
+	expiredCount: number;    // 已过期
+}
+
+export function getSignTaskStatistics(): Promise<SignTaskStatistics> {
+	return get<SignTaskStatistics>(`/api/v1/seal/sign-task/statistics`);
+}
+
+/**
+ * 创建签署任务
+ * @param data.name - 任务名称
+ * @param data.fileUrl - 文件URL（需先调用文件上传接口）
+ * @param data.expireTime - 过期时间（可选）
+ */
+export function createSignTask(data: {
+    name: string;
+	fileUrl: string;
+	expireTime?: string;
+}): Promise<SignTask> {
+	return post<SignTask>(`/api/v1/seal/sign-task/create`, data);
+}
+
+/**
+ * 撤销签署任务
+ * 注意：DELETE 请求的参数应该在 URL 中，不是 request body
+ */
+export function cancelSignTask(id: string): Promise<void> {
+	// ✅ 修复：将 id 作为 query parameter 拼接到 URL 中
+	return del<void>(`/api/v1/seal/sign-task/cancel?id=${id}`);
+}
+
+/**
+ * 删除签署任务
+ * 注意：DELETE 请求的参数应该在 URL 中，不是 request body
+ */
+export function deleteSignTask(id: string): Promise<void> {
+	// ✅ 修复：将 id 作为 query parameter 拼接到 URL 中
+	return del<void>(`/api/v1/seal/sign-task/delete?id=${id}`);
+}
+
+/**
+ * 获取H5印章统一应用URL
+ * 
+ * 统一的H5印章应用，根据mode参数支持不同功能。
+ * 
+ * 移动端架构（独立页面）：
+ * - pages/contract-create/h5-create.uvue → mode=create（创建合同）
+ * - pages/contract-sign/h5-sign.uvue → mode=sign（签署合同）
+ * - pages/contract-view/h5-view.uvue → mode=view（预览合同）
+ * - pages/contract-form/h5-fill.uvue → mode=form（填写表单）
+ * 
+ * 后台管理架构（统一组件）：
+ * - CreateContractH5.vue → mode=create
+ * - SignDocumentH5.vue → mode=sign
+ * - ViewDocumentH5.vue → mode=view
+ * - FormFillH5.vue → mode=form
+ * 
+ * @param mode - 功能模式
+ * @param taskId - 任务ID（创建模式不需要）
+ * @param options - 选项
+ * @returns 页面完整URL
+ */
+/**
+ * 生成 Seal-Token
+ * 移动端使用标准 Authorization Token 换取 Seal-Token
+ * @param expireMinutes Token 有效期（分钟），默认 30 天
+ * @returns Promise<Seal-Token>
+ */
+export async function generateSealToken(expireMinutes: number = 43200): Promise<string> {
+	try {
+		const response = await post<{ token: string }>('/api/v1/seal/seal-info/generate-token', {
+			expireMinutes
+		});
+		console.log('[Seal API] ✅ Seal-Token 生成成功');
+		return response.token;
+	} catch (error) {
+		console.error('[Seal API] ❌ 生成 Seal-Token 失败:', error);
+		throw error;
+	}
+}
+
+export async function getSealPageUrl(
+	mode: 'create' | 'sign' | 'view' | 'form' | 'seal-create' | 'template-preview',
+	taskId?: string,
+	options?: { token?: string, enterpriseId?: number, templateId?: number, type?: string, draftId?: string }
+): Promise<string> {
+	// 生成 Seal-Token (使用移动端的标准 Authorization token 换取)
+	const sealToken = options?.token || await generateSealToken();
+	
+	// ✅ 使用导入的 ADMIN_H5_BASE_URL（已在文件顶部导入）
+	// 构建URL，传递 Seal-Token
+	let url = `${ADMIN_H5_BASE_URL}/h5-seal.html?mode=${mode}&token=${encodeURIComponent(sealToken)}`;
+	
+	// 如果有taskId，添加到URL
+	if (taskId) {
+		url += `&taskId=${taskId}`;
+	}
+	
+	// 如果有enterpriseId，添加到URL（告诉H5这是企业印章创建）
+	if (options?.enterpriseId) {
+		url += `&enterpriseId=${options.enterpriseId}`;
+	}
+	
+	// 🆕 如果有templateId，添加到URL（用于模版预览模式）
+	if (options?.templateId) {
+		url += `&templateId=${options.templateId}`;
+	}
+	
+	// 如果有type，添加到URL（创建类型：template/file/image）
+	if (options?.type) {
+		url += `&type=${encodeURIComponent(options.type)}`;
+	}
+	
+	// 如果有draftId，添加到URL（继续编辑草稿）
+	if (options?.draftId) {
+		url += `&draftId=${options.draftId}`;
+	}
+	
+	console.log('[getSealPageUrl] 🎯 H5页面URL已生成:', url);
+	return url;
+}
+
+/**
+ * 获取H5签署/预览页面URL（兼容旧版）
+ * @deprecated 建议使用 getSealPageUrl 代替
+ */
+export async function getSignPageUrl(
+	taskId: string, 
+	options?: { mode?: string; token?: string }
+): Promise<string> {
+	const mode = options?.mode === 'view' ? 'view' : 'sign';
+	return await getSealPageUrl(mode as 'sign' | 'view', taskId, { token: options?.token });
+}
+
+/**
+ * 获取H5创建合同页面URL（兼容旧版）
+ * @deprecated 建议使用 getSealPageUrl('create') 代替
+ */
+export async function getCreatePageUrl(options?: { token?: string }): Promise<string> {
+	return await getSealPageUrl('create', undefined, { token: options?.token });
+}
+
+/**
+ * 提交签署结果
+ * @param data.taskId - 任务ID
+ * @param data.signedFileUrl - 签署后的文件URL
+ */
+export function submitSignResult(data: {
+	taskId: string;
+	signedFileUrl: string;
+}): Promise<void> {
+	return post<void>(`/api/v1/seal/seal/sign-task/submit-result`, data);
+}
+
+/**
+ * 获取签署任务状态名称
+ */
+export function getSignTaskStatusName(status: SignTaskStatus): string {
+	const statusMap: Record<number, string> = {
+		[SignTaskStatus.DRAFT]: '草稿',
+		[SignTaskStatus.PENDING]: '待签署',
+		[SignTaskStatus.SIGNING]: '签署中',
+		[SignTaskStatus.COMPLETED]: '已完成',
+		[SignTaskStatus.REJECTED]: '已拒绝',
+		[SignTaskStatus.EXPIRED]: '已过期'
+	};
+	return statusMap[status] || '未知';
+}
+
+/**
+ * 获取签署任务状态样式类名
+ */
+export function getSignTaskStatusClass(status: SignTaskStatus): string {
+	const classMap: Record<number, string> = {
+		[SignTaskStatus.DRAFT]: 'status-draft',
+		[SignTaskStatus.PENDING]: 'status-pending',
+		[SignTaskStatus.SIGNING]: 'status-signing',
+		[SignTaskStatus.COMPLETED]: 'status-completed',
+		[SignTaskStatus.REJECTED]: 'status-rejected',
+		[SignTaskStatus.EXPIRED]: 'status-expired'
+	};
+	return classMap[status] || 'status-unknown';
+}

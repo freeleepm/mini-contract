@@ -1,0 +1,1470 @@
+<script lang="uts">
+import { 
+	getContract, 
+	cancelContract, 
+	deleteContract,
+	downloadContract,
+	ContractStatus,
+	ParticipantStatus,
+	getContractStatusName,
+	getContractStatusColor,
+	getParticipantStatusName
+} from '../../api/contracts/index';
+import type { Contract } from '../../api/contracts/index';
+// 已不再需要单独调用模板接口，模板名称从签署任务中获取
+// import { getTemplateDetail } from '../../api/templates/index';
+import { downloadContractFile } from '../../api/utils/download.uts';
+import { post } from '../../api/index';
+	
+	export default {
+		data() {
+			return {
+				// 合同ID
+				contractId: '',
+			
+				// 合同详情数据
+			contract: null as Contract | null,
+			
+			// 🔧 合同状态常量（注意：后端状态从1开始，不是0！）
+			STATUS_DRAFT: 1,
+			STATUS_SIGNING: 2,
+			STATUS_COMPLETED: 3,
+			STATUS_CANCELLED: 4,
+			STATUS_REJECTED: 5,
+			STATUS_EXPIRED: 6,
+			
+		// 🔧 参与人状态常量（与后端 SealSignTaskParticipantStatusEnum 保持一致）
+		PARTICIPANT_PENDING: 0,         // 待处理
+		PARTICIPANT_FORM_FILLED: 1,     // 表单已填写
+		PARTICIPANT_SIGNED: 2,          // 已签署
+		PARTICIPANT_REJECTED: 3,        // 已拒绝
+		PARTICIPANT_CANCELLED: 4,       // 已取消
+			
+		// 当前用户ID（用于权限判断）
+		currentUserId: '' as string,
+		
+	// 🎨 头像颜色池（优雅的中性色系 + 柔和色调）
+	avatarColors: [
+		['#8B9DC3'],  // 优雅蓝灰
+		['#9BA3AF'],  // 经典灰
+		['#8BA3A3'],  // 雾霾蓝
+		['#A8B5C7'],  // 浅石板蓝
+		['#97A7B3'],  // 中性蓝灰
+		['#9CA9B3'],  // 冷灰蓝
+		['#8D9BA8'],  // 铁灰蓝
+		['#A2B1C2'],  // 柔和蓝
+	] as string[][],
+		
+		// 加载状态
+		loading: true,
+		
+		// 模板名称
+		templateName: '',
+		
+		// 🔧 首次加载标记（避免 onShow 重复调用接口）
+		isFirstLoad: true
+	}
+},
+	
+	onLoad(options: any) {
+		// 🔧 获取当前用户ID
+		try {
+			const userInfo = uni.getStorageSync('userInfo');
+			if (userInfo && userInfo.id) {
+				this.currentUserId = String(userInfo.id);
+				console.log('✅ 当前用户ID:', this.currentUserId);
+			} else {
+				console.warn('⚠️ 未找到用户信息，使用默认用户ID: 1');
+				this.currentUserId = '1';
+			}
+		} catch (error) {
+			console.error('获取用户ID失败:', error);
+			this.currentUserId = '1';
+		}
+		
+		// 从路由参数中获取合同ID
+		if (options && options.id) {
+		this.contractId = options.id;
+		console.log('加载合同详情，ID:', this.contractId);
+		this.loadContractDetail();
+		} else {
+			uni.showToast({
+				title: '合同ID不存在',
+				icon: 'none'
+		});
+			// 延迟返回
+				setTimeout(() => {
+				uni.navigateBack();
+			}, 1500);
+			}
+		},
+	
+onShow() {
+	// 🔧 页面显示时刷新数据（仅在非首次加载时，即从其他页面返回时）
+	if (this.isFirstLoad) {
+		// 首次加载，由 onLoad 处理，这里跳过
+		this.isFirstLoad = false;
+		console.log('📱 首次加载，跳过 onShow 中的接口调用');
+	} else if (this.contractId) {
+		// 从其他页面返回，刷新数据
+		console.log('📱 页面重新显示（从其他页面返回），刷新合同详情');
+		this.loadContractDetail();
+	}
+},
+	
+		methods: {
+		/**
+		 * 加载合同详情
+		 */
+		async loadContractDetail(): Promise<void> {
+			try {
+				this.loading = true;
+				
+				uni.showLoading({
+					title: '加载中'
+				});
+				
+			// 调用真实API获取合同详情
+			const detail: Contract = await getContract(this.contractId);
+			
+			console.log('合同详情:', JSON.stringify(detail));
+			console.log('参与人信息:', detail.participants);
+			console.log('参与人数量:', detail.participants ? detail.participants.length : 0);
+			
+			// 🔧 详细打印每个参与人的信息（包括状态诊断）
+			if (detail.participants && detail.participants.length > 0) {
+				console.log(`📋 发现 ${detail.participants.length} 个参与人`);
+				detail.participants.forEach((p: any, index: number) => {
+					console.log(`\n👤 参与人${index + 1}:`, JSON.stringify(p));
+					console.log(`  - userId: ${p.userId}`);
+					console.log(`  - name: ${p.name || p.nickname || '未知'}`);
+					console.log(`  - mobile: ${p.mobile || '无'}`);
+					console.log(`  - status: ${p.status} (类型: ${typeof p.status}) ← 后端字段名`);
+					console.log(`  - signTime: ${p.signTime || '无'}`);
+					console.log(`  - order: ${p.order}`);
+					console.log(`  - rejectReason: ${p.rejectReason || '无'}`);
+					
+					// 🔧 显示状态映射结果
+					const statusName = this.getParticipantStatus(p.status);
+					console.log(`  - ✅ 状态名称: ${statusName}`);
+					
+					if (statusName === '未知') {
+						console.warn(`⚠️ 警告：参与人 ${index + 1} 的状态值 "${p.status}" (类型: ${typeof p.status}) 无法识别！`);
+						console.warn(`  预期值: 0(待签署), 1(已签署), 2(已拒绝), 3(已取消)`);
+					}
+					
+					console.log(`  - 所有字段:`, Object.keys(p).join(', '));
+				});
+				console.log(`\n✅ 参与人信息加载完成\n`);
+			}
+			
+			this.contract = detail;
+				
+			// 🔧 优化：模板名称直接从签署任务中获取（后端已包含 templateName 字段）
+			if (detail.templateName) {
+				this.templateName = detail.templateName;
+				console.log('模板名称:', this.templateName);
+			} else if (detail.templateId) {
+				// 兜底方案：如果后端没有返回 templateName，显示模板ID
+				this.templateName = `模板 ${detail.templateId}`;
+				console.log('未获取到模板名称，使用兜底方案');
+			}
+				
+				uni.hideLoading();
+				
+				} catch (error) {
+				console.error('加载合同详情失败:', error);
+				
+				uni.hideLoading();
+				
+				uni.showModal({
+					title: '加载失败',
+					content: '合同详情加载失败，请重试',
+					showCancel: true,
+					confirmText: '重试',
+					cancelText: '返回',
+					success: (res) => {
+						if (res.confirm) {
+							// 重试
+							this.loadContractDetail();
+						} else {
+							// 返回
+							uni.navigateBack();
+						}
+					}
+					});
+				} finally {
+				this.loading = false;
+			}
+		},
+		
+	/**
+	 * 🆕 填写表单（跳转H5签署页面-表单模式）
+	 */
+	handleFillForm(): void {
+		if (!this.contract) return;
+		
+		console.log('填写表单:', this.contract.id);
+		
+		// 跳转到H5表单填写页面
+		uni.navigateTo({
+			url: `/pages/contract-form/h5-fill?taskId=${this.contract.id}`
+		});
+	},
+	
+	/**
+	 * 签署合同（跳转H5签署页面）
+	 */
+handleSign(): void {
+	if (!this.contract) return;
+	
+	console.log('签署合同:', this.contract.id);
+	
+	// 跳转到H5签署页面
+	uni.navigateTo({
+		url: `/pages/contract-sign/h5-sign?taskId=${this.contract.id}`
+	});
+},
+		
+		/**
+		 * 撤销合同
+		 */
+		async handleCancel(): Promise<void> {
+			if (!this.contract) return;
+			
+			uni.showModal({
+				title: '撤销合同',
+				content: '确定要撤销该合同吗？撤销后将无法恢复。',
+				success: async (res) => {
+					if (res.confirm) {
+						try {
+							uni.showLoading({
+								title: '撤销中...'
+							});
+							
+							// 调用撤销API
+							await cancelContract(this.contract!.id);
+							
+							uni.hideLoading();
+							
+							// 成功提示
+				uni.showToast({
+								title: '合同已撤销',
+								icon: 'success'
+							});
+							
+							// 延迟返回上一页
+							setTimeout(() => {
+								uni.navigateBack();
+							}, 1500);
+							
+						} catch (error) {
+							uni.hideLoading();
+							console.error('撤销失败:', error);
+						uni.showToast({
+								title: '撤销失败',
+								icon: 'none'
+							});
+						}
+					}
+				}
+			});
+		},
+		
+		/**
+		 * 删除合同
+		 */
+		async handleDelete(): Promise<void> {
+			if (!this.contract) return;
+			
+				uni.showModal({
+				title: '删除合同',
+				content: '确定要删除该合同吗？删除后将无法恢复。',
+				success: async (res) => {
+						if (res.confirm) {
+						try {
+							uni.showLoading({
+								title: '删除中...'
+							});
+							
+							// 调用删除API
+							await deleteContract(this.contract!.id);
+							
+							uni.hideLoading();
+							
+			// 成功提示
+								uni.showToast({
+								title: '合同已删除',
+									icon: 'success'
+							});
+								
+							// 延迟返回上一页
+								setTimeout(() => {
+								uni.navigateBack();
+							}, 1500);
+							
+						} catch (error) {
+							uni.hideLoading();
+							console.error('删除失败:', error);
+							uni.showToast({
+								title: '删除失败',
+								icon: 'none'
+							});
+						}
+					}
+				}
+			});
+		},
+		
+	/**
+	 * 下载合同
+	 */
+	async handleDownload(): Promise<void> {
+		if (!this.contract) return;
+		
+		try {
+			console.log('📥 下载合同:', this.contract.id);
+			
+			// 使用已签署的文件或原文件
+			const fileUrl = this.contract.signedFileUrl || this.contract.fileUrl;
+			
+			if (!fileUrl) {
+				uni.showToast({
+					title: '文件不存在',
+					icon: 'none',
+					duration: 2000
+				});
+				return;
+			}
+			
+			// 生成文件名
+			const fileName = `${this.contract.name || '合同'}_${this.contract.id}.pdf`;
+			
+			// 使用统一的下载工具
+			await downloadContractFile(fileUrl, fileName);
+			
+		} catch (error) {
+			console.error('❌ 下载合同失败:', error);
+			uni.showToast({
+				title: '下载失败',
+				icon: 'none',
+				duration: 2000
+			});
+		}
+	},
+	
+	/**
+	 * AI审查合同
+	 */
+	async handleAIAudit(): Promise<void> {
+		if (!this.contract) return;
+		
+		try {
+			uni.showLoading({
+				title: '正在启动AI审查...'
+			});
+			
+			// 调用后端接口发起AI审查
+			const taskId = await post<number>('/api/v1/seal/audit/start', {
+				contractId: this.contract.id,
+				auditType: 1 // 标准审查
+		}, {
+			timeout: 180000  // AI审查需要3分钟超时
+			});
+			
+			uni.hideLoading();
+			
+			uni.showToast({
+				title: 'AI审查已启动',
+				icon: 'success'
+			});
+			
+			// 跳转到审查进度页
+			setTimeout(() => {
+				uni.navigateTo({
+					url: `/pages/contract-audit/progress?taskId=${taskId}`
+				});
+			}, 1000);
+		} catch (error) {
+			uni.hideLoading();
+			console.error('AI审查启动失败:', error);
+			uni.showToast({
+				title: error.message || '网络错误',
+				icon: 'none',
+				duration: 2000
+			});
+		}
+	},
+	
+	/**
+	 * 预览合同
+	 */
+	handlePreview(): void {
+			if (!this.contract) return;
+			
+			console.log('预览合同:', this.contract.id);
+			console.log('合同状态:', this.contract.status);
+			console.log('fileUrl:', this.contract.fileUrl);
+			
+			// 🔧 后端已经自动处理：已完成时 fileUrl = signedFileUrl，其他状态 fileUrl = 原文件
+			// 所以前端直接使用 fileUrl 即可
+			const previewUrl = this.contract.fileUrl;
+			console.log('✅ 使用后端返回的文件URL:', previewUrl);
+			
+			// 跳转到H5预览页面，传递文件URL和状态（避免重复调用接口）
+			const encodedUrl = encodeURIComponent(previewUrl);
+			const jumpUrl = `/pages/contract-view/h5-view?taskId=${this.contract.id}&fileUrl=${encodedUrl}&status=${this.contract.status}`;
+			
+			console.log('🚀 跳转URL:', jumpUrl);
+			console.log('📄 文件URL:', previewUrl);
+			console.log('🔐 编码后的URL:', encodedUrl);
+			
+			uni.navigateTo({
+				url: jumpUrl
+			});
+		},
+		
+		/**
+		 * 获取状态名称
+		 */
+		getStatusName(status: ContractStatus): string {
+			return getContractStatusName(status);
+		},
+		
+		/**
+		 * 获取状态颜色
+		 */
+		getStatusColor(status: ContractStatus): string {
+			return getContractStatusColor(status);
+		},
+		
+	/**
+	 * 获取参与人状态名称（增强版，考虑流程模式）
+	 */
+	getParticipantStatus(status: ParticipantStatus): string {
+		// 使用API中的统一状态名称映射
+		return getParticipantStatusName(status);
+	},
+	
+	/**
+	 * 🔧 获取参与人状态文本（考虑流程模式）
+	 * 与PC端保持一致的实现
+	 */
+	getParticipantStatusText(participant: any): string {
+		const status = participant.status;
+		const flowMode = participant.flowMode || null;
+		
+		// 如果是待处理状态，需要根据流程模式区分
+		if (status === this.PARTICIPANT_PENDING) {
+			// 两阶段模式：先填表后签署
+			if (flowMode === 'TWO_STAGE') {
+				return '待填表';
+			}
+			// 直接签署模式
+			return '待签署';
+		}
+		
+		// 其他状态：使用标准状态名称
+		return getParticipantStatusName(status);
+	},
+		
+	/**
+	 * 获取参与人姓名（参考后台代码实现）
+	 */
+	getParticipantName(participant: any): string {
+		// 参考后台 seal/signTask/index.vue 第446行的实现
+		return participant.userName || participant.nickname || '未知';
+	},
+	
+	/**
+	 * 🔧 根据用户ID获取头像颜色（随机但固定）
+	 */
+	getAvatarColor(userId: any): string[] {
+		// 将用户ID转换为数字
+		const id = String(userId || '0');
+		let hash = 0;
+		for (let i = 0; i < id.length; i++) {
+			hash = id.charCodeAt(i) + ((hash << 5) - hash);
+		}
+		// 使用 hash 值选择颜色
+		const index = Math.abs(hash) % this.avatarColors.length;
+		return this.avatarColors[index];
+	},
+		
+	/**
+	 * 🔧 手机号脱敏处理
+	 * @param phone 手机号
+	 * @returns 脱敏后的手机号（例如：136****6666）
+	 */
+	maskPhone(phone: string): string {
+		if (!phone || phone.length < 11) return phone;
+		return phone.substring(0, 3) + '****' + phone.substring(7);
+	},
+	
+	/**
+	 * 格式化日期时间
+	 */
+	formatDateTime(dateStr: string | null): string {
+			if (!dateStr) return '';
+			
+			try {
+				let date: Date;
+				// 判断是时间戳还是日期字符串
+				if (/^\d+$/.test(dateStr)) {
+					// 时间戳
+					date = new Date(parseInt(dateStr));
+				} else {
+					// 日期字符串
+					date = new Date(dateStr);
+				}
+				
+				// 检查日期是否有效
+				if (isNaN(date.getTime())) {
+					return dateStr;
+				}
+				
+				const year = date.getFullYear();
+				const month = String(date.getMonth() + 1).padStart(2, '0');
+				const day = String(date.getDate()).padStart(2, '0');
+				const hours = String(date.getHours()).padStart(2, '0');
+				const minutes = String(date.getMinutes()).padStart(2, '0');
+				
+				return `${year}-${month}-${day} ${hours}:${minutes}`;
+			} catch (error) {
+				console.error('日期格式化失败:', error);
+				return dateStr || '';
+			}
+		},
+		
+	/**
+	 * 🆕 判断是否可以填写表单
+	 * 条件：任务状态=表单填写中(7) 且 当前用户的参与人模式=TWO_STAGE 且 状态=PENDING(0)
+	 */
+	canFillForm(): boolean {
+		if (!this.contract) return false;
+		if (this.contract.status !== 7) return false;  // STATUS_FORM_FILLING
+		
+		// 🔧 直接使用后端返回的isCurrentUser字段，支持userId和手机号两种匹配方式
+		const myParticipant = this.contract.participants?.find(
+			(p: any) => p.isCurrentUser === true
+		);
+		
+		if (!myParticipant) return false;
+		
+		// 必须是两阶段模式且状态为待处理
+		return myParticipant.flowMode === 'TWO_STAGE' && myParticipant.status === this.PARTICIPANT_PENDING;
+	},
+	
+	/**
+	 * 🔧 判断是否可以签署（与PC端逻辑同步）
+	 * 
+	 * 签署权限规则：
+	 * 1. FORM_FILLING(7)状态：只有DIRECT模式且状态为PENDING的参与者可以签署
+	 * 2. SIGNING(2)状态：所有状态为PENDING或FORM_FILLED的参与者都可以签署
+	 */
+	canSign(): boolean {
+		if (!this.contract) return false;
+		
+		// 状态检查：签署中或表单填写中都可能需要签署
+		if (this.contract.status !== this.STATUS_SIGNING && this.contract.status !== 7) return false;
+		
+		// 🔧 直接使用后端返回的isCurrentUser字段，支持userId和手机号两种匹配方式
+		const myParticipant = this.contract.participants?.find(
+			(p: any) => p.isCurrentUser === true
+		);
+		
+		if (!myParticipant) return false;
+		
+		// 🎯 FORM_FILLING(7)阶段：只有DIRECT模式的参与者可以签署（无需填表）
+		if (this.contract.status === 7) {
+			return myParticipant.flowMode === 'DIRECT' && myParticipant.status === this.PARTICIPANT_PENDING;
+		}
+		
+		// 🎯 SIGNING(2)阶段：状态为PENDING或FORM_FILLED的参与者都可以签署
+		// PENDING: 直接进入签署阶段的参与者（SIMPLE/DIRECT模式）
+		// FORM_FILLED: 已完成表单填写的参与者（TWO_STAGE模式）
+		return myParticipant.status === this.PARTICIPANT_PENDING || 
+		       myParticipant.status === this.PARTICIPANT_FORM_FILLED;
+	},
+		
+	/**
+	 * 🔧 判断是否可以撤销（加入权限判断）
+	 */
+	canCancel(): boolean {
+		if (!this.contract) return false;
+		
+		// 只有草稿、表单填写中或签署中的合同可以撤销
+		if (this.contract.status !== this.STATUS_DRAFT && 
+		    this.contract.status !== this.STATUS_SIGNING &&
+		    this.contract.status !== 7) {  // STATUS_FORM_FILLING
+			return false;
+		}
+		
+		// 只有创建者可以撤销
+		return String(this.contract.creator) === String(this.currentUserId);
+	},
+		
+		/**
+		 * 🔧 判断是否可以删除（加入权限判断）
+		 */
+		canDelete(): boolean {
+			if (!this.contract) return false;
+			
+			// 只有终态的合同可以删除
+			const deletableStatuses = [
+				this.STATUS_COMPLETED,
+				this.STATUS_CANCELLED,
+				this.STATUS_REJECTED,
+				this.STATUS_EXPIRED
+			];
+			
+			if (!deletableStatuses.includes(this.contract.status)) return false;
+			
+			// 只有创建者可以删除
+			return String(this.contract.creator) === String(this.currentUserId);
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="contract-detail">
+		<!-- 加载中 -->
+		<view v-if="loading" class="loading-container">
+			<view class="loading-spinner"></view>
+			<text class="loading-text">加载中...</text>
+		</view>
+		
+		<!-- 合同内容 -->
+	<scroll-view v-if="!loading && contract" class="content-scroll" scroll-y="true">
+		<view class="content-wrapper">
+			<!-- 🆕 阶段提示卡片（表单填写中时显示） -->
+			<view v-if="contract && contract.status === 7" class="stage-hint-card">
+				<view class="stage-hint-icon">
+					<text class="fa fa-info-circle"></text>
+				</view>
+				<view class="stage-hint-content">
+					<view class="stage-hint-title">📝 当前处于表单填写阶段</view>
+					<view class="stage-hint-desc">所有参与人填写完表单后，将自动进入签署阶段</view>
+				</view>
+			</view>
+			
+			<!-- 合同基本信息卡片 -->
+			<view class="info-card">
+				<!-- 状态标签 -->
+				<view class="status-badge" :style="{ backgroundColor: getStatusColor(contract.status) }">
+					<text class="status-text">{{ getStatusName(contract.status) }}</text>
+				</view>
+					
+					<!-- 合同标题 -->
+					<view class="contract-header">
+						<text class="contract-title">{{ contract.name }}</text>
+					</view>
+					
+					<!-- 基本信息 -->
+					<view class="detail-section">
+						<view class="detail-row">
+							<text class="fa fa-clock detail-icon"></text>
+							<text class="detail-label">创建时间</text>
+							<text class="detail-value">{{ formatDateTime(contract.createTime) }}</text>
+						</view>
+						
+						<view class="detail-row" v-if="contract.deadline">
+							<text class="fa fa-calendar detail-icon"></text>
+							<text class="detail-label">截止时间</text>
+							<text class="detail-value">{{ formatDateTime(contract.deadline) }}</text>
+						</view>
+						
+						<view class="detail-row" v-if="contract.templateId">
+							<text class="fa fa-file-text detail-icon"></text>
+							<text class="detail-label">合同模板</text>
+							<text class="detail-value">{{ templateName || '加载中...' }}</text>
+						</view>
+					</view>
+				</view>
+				
+			<!-- 参与人信息卡片 -->
+			<view class="info-card participants-card" v-if="contract">
+				<view class="card-header">
+					<view class="header-left">
+						<text class="card-title">参与方信息</text>
+					</view>
+					<view class="participant-count" v-if="contract.participants && contract.participants.length > 0">
+						<text class="count-text">{{ contract.participants.length }}方</text>
+					</view>
+				</view>
+				
+				<!-- 有参与人时显示列表 -->
+				<view v-if="contract.participants && contract.participants.length > 0" class="participants-list">
+		<view 
+			v-for="(participant, index) in contract.participants" 
+			:key="index"
+			class="participant-item"
+			:class="{
+				'signed': participant.status === PARTICIPANT_SIGNED,
+				'form-filled': participant.status === PARTICIPANT_FORM_FILLED,
+				'rejected': participant.status === PARTICIPANT_REJECTED,
+				'pending': participant.status === PARTICIPANT_PENDING
+			}"
+		>
+				<!-- 左侧：头像区域 -->
+				<view class="participant-avatar">
+					<view 
+						class="avatar-circle" 
+						:style="{ 
+							backgroundColor: getAvatarColor(participant.userId)[0]
+						}"
+					>
+						<!-- 🔧 使用姓名首字作为头像 -->
+						<text class="avatar-text">{{ getParticipantName(participant).substring(0, 1) }}</text>
+					</view>
+					<!-- 🔧 签署顺序徽章 -->
+					<view class="order-badge" v-if="contract.participants && contract.participants.length > 1">
+						<text class="order-num">{{ participant.order || (index + 1) }}</text>
+					</view>
+				</view>
+						
+						<!-- 中间：参与人信息 -->
+						<view class="participant-content">
+							<!-- 姓名 -->
+							<view class="name-row">
+								<text class="participant-name">{{ getParticipantName(participant) }}</text>
+				<!-- 状态标签 -->
+				<view class="status-tag" :class="{
+					'status-signed': participant.status === PARTICIPANT_SIGNED,
+					'status-form-filled': participant.status === PARTICIPANT_FORM_FILLED,
+					'status-form-filling': participant.status === PARTICIPANT_PENDING && participant.flowMode === 'TWO_STAGE',
+					'status-pending': participant.status === PARTICIPANT_PENDING && (!participant.flowMode || participant.flowMode !== 'TWO_STAGE'),
+					'status-rejected': participant.status === PARTICIPANT_REJECTED,
+					'status-cancelled': participant.status === PARTICIPANT_CANCELLED
+				}">
+					<!-- 已签署 -->
+					<text class="fa fa-check-circle status-icon" v-if="participant.status === PARTICIPANT_SIGNED"></text>
+					<!-- 表单已填写 -->
+					<text class="fa fa-file-check status-icon" v-if="participant.status === PARTICIPANT_FORM_FILLED"></text>
+					<!-- 待填表（两阶段流程的待处理状态） -->
+					<text class="fa fa-edit status-icon" v-if="participant.status === PARTICIPANT_PENDING && participant.flowMode === 'TWO_STAGE'"></text>
+					<!-- 待签署（直接签署流程的待处理状态） -->
+					<text class="fa fa-clock status-icon" v-if="participant.status === PARTICIPANT_PENDING && (!participant.flowMode || participant.flowMode !== 'TWO_STAGE')"></text>
+					<!-- 已拒绝 -->
+					<text class="fa fa-times-circle status-icon" v-if="participant.status === PARTICIPANT_REJECTED"></text>
+					<!-- 已取消 -->
+					<text class="fa fa-ban status-icon" v-if="participant.status === PARTICIPANT_CANCELLED"></text>
+					<text class="status-text">{{ getParticipantStatusText(participant) }}</text>
+				</view>
+							</view>
+							
+				<!-- 联系方式：手机号或企业信息 -->
+				<view v-if="participant.userMobile || participant.enterpriseName" class="info-row contact-info">
+					<text class="fa fa-phone info-icon" v-if="participant.userMobile"></text>
+					<text class="fa fa-building info-icon" v-if="!participant.userMobile && participant.enterpriseName"></text>
+					<text class="info-text">{{ participant.userMobile ? maskPhone(participant.userMobile) : participant.enterpriseName || '' }}</text>
+				</view>
+					
+					<!-- 🔧 签署时间（只在已签署时显示） -->
+					<view v-if="participant.status === PARTICIPANT_SIGNED && participant.signTime" class="info-row">
+						<text class="fa fa-calendar-check info-icon"></text>
+						<text class="info-text">签署于 {{ formatDateTime(participant.signTime) }}</text>
+					</view>
+					
+					<!-- 🔧 拒签时间（已拒签时显示） -->
+					<view v-if="participant.status === PARTICIPANT_REJECTED && participant.signTime" class="info-row">
+						<text class="fa fa-calendar-times info-icon"></text>
+						<text class="info-text">拒签于 {{ formatDateTime(participant.signTime) }}</text>
+					</view>
+					
+					<!-- 🔧 拒签原因（已拒签时显示） -->
+					<view v-if="participant.status === PARTICIPANT_REJECTED && participant.rejectReason" class="info-row">
+						<text class="fa fa-comment-dots info-icon"></text>
+						<text class="info-text">{{ participant.rejectReason }}</text>
+					</view>
+					
+					<!-- 使用的印章（只在已签署时显示） -->
+					<view v-if="participant.status === PARTICIPANT_SIGNED && participant.sealName" class="info-row">
+						<text class="fa fa-stamp info-icon"></text>
+						<text class="info-text">{{ participant.sealName }}</text>
+					</view>
+						</view>
+					</view>
+				</view>
+				
+				<!-- 无参与人时显示空状态 -->
+				<view v-else class="empty-participants">
+					<text class="fa fa-user-slash empty-icon"></text>
+					<text class="empty-text">暂无参与人信息</text>
+				</view>
+			</view>
+			
+			<!-- 拒绝原因（如果有） -->
+			<view class="info-card warning" v-if="contract && contract.status === STATUS_REJECTED && contract.reason">
+				<view class="card-header">
+					<text class="fa fa-exclamation-circle card-icon"></text>
+					<text class="card-title">拒绝原因</text>
+				</view>
+				<view class="reason-content">
+					<text class="reason-text">{{ contract.reason }}</text>
+				</view>
+			</view>
+			
+			<!-- 底部安全间距 -->
+			<view class="bottom-safe-area"></view>
+		</view>
+	</scroll-view>
+		
+	<!-- 底部操作栏 -->
+	<view v-if="!loading && contract" class="bottom-bar">
+		<!-- 预览按钮 -->
+		<view class="action-btn secondary" @click="handlePreview">
+			<text class="fa fa-eye"></text>
+			<text class="action-text">预览</text>
+		</view>
+		
+		<!-- 🆕 填写表单按钮 -->
+		<view v-if="canFillForm()" class="action-btn form" @click="handleFillForm">
+			<text class="fa fa-edit"></text>
+			<text class="action-text">填写表单</text>
+		</view>
+		
+		<!-- 签署按钮 -->
+		<view v-if="canSign()" class="action-btn primary" @click="handleSign">
+			<text class="fa fa-signature"></text>
+			<text class="action-text">立即签署</text>
+		</view>
+		
+		<!-- 撤销按钮 -->
+		<view v-if="canCancel()" class="action-btn danger" @click="handleCancel">
+			<text class="fa fa-undo"></text>
+			<text class="action-text">撤销</text>
+		</view>
+		
+	<!-- AI审查按钮 -->
+	<view v-if="contract && contract.status === STATUS_COMPLETED" class="action-btn audit" @click="handleAIAudit">
+		<text class="fa fa-search"></text>
+		<text class="action-text">AI审查</text>
+	</view>
+	
+	<!-- 下载按钮 -->
+	<view v-if="contract && contract.status === STATUS_COMPLETED" class="action-btn primary" @click="handleDownload">
+		<text class="fa fa-download"></text>
+		<text class="action-text">下载</text>
+	</view>
+	
+	<!-- 删除按钮 -->
+	<view v-if="canDelete()" class="action-btn danger" @click="handleDelete">
+		<text class="fa fa-trash"></text>
+		<text class="action-text">删除</text>
+	</view>
+	</view>
+	</view>
+</template>
+
+<style>
+/* 引入FontAwesome样式 */
+@import url("../../static/styles/fontawesome.css");
+
+/* 🔧 FontAwesome基础样式（确保图标正确显示） */
+.fa {
+	font-family: 'Font Awesome 6 Free';
+	font-weight: 900;
+	font-style: normal;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+	.contract-detail {
+		flex: 1;
+	background-color: #F7F9FC;
+}
+
+/* ==================== 加载状态 ==================== */
+.loading-container {
+		flex: 1;
+		align-items: center;
+	justify-content: center;
+}
+
+.loading-spinner {
+		width: 80rpx;
+		height: 80rpx;
+	border: 4rpx solid #EBEEF5;
+	border-top-color: #00C28A;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+	margin-bottom: 20rpx;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+	font-size: 28rpx;
+	color: #909399;
+}
+
+/* ==================== 内容区域 ==================== */
+.content-scroll {
+	flex: 1;
+}
+
+.content-wrapper {
+	padding: 30rpx;
+}
+
+/* ==================== 🆕 阶段提示卡片 ==================== */
+.stage-hint-card {
+	background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%);
+	border-radius: 16rpx;
+	padding: 24rpx;
+	margin-bottom: 24rpx;
+	border: 2rpx solid rgba(245, 158, 11, 0.3);
+	flex-direction: row;
+	align-items: flex-start;
+}
+
+.stage-hint-icon {
+	width: 48rpx;
+	height: 48rpx;
+	background-color: #F59E0B;
+	border-radius: 24rpx;
+	align-items: center;
+	justify-content: center;
+	margin-right: 20rpx;
+	flex-shrink: 0;
+}
+
+.stage-hint-icon .fa {
+	font-size: 26rpx;
+	color: #FFFFFF;
+}
+
+.stage-hint-content {
+	flex: 1;
+}
+
+.stage-hint-title {
+	font-size: 28rpx;
+	font-weight: 600;
+	color: #92400E;
+	margin-bottom: 8rpx;
+}
+
+.stage-hint-desc {
+	font-size: 24rpx;
+	color: #B45309;
+	line-height: 1.5;
+}
+
+/* ==================== 信息卡片 ==================== */
+.info-card {
+	background-color: #FFFFFF;
+	border-radius: 16rpx;
+	padding: 30rpx;
+	margin-bottom: 24rpx;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+	position: relative;
+}
+
+.info-card.warning {
+	border: 2rpx solid #F56C6C;
+	background-color: #FEF0F0;
+}
+
+/* 状态标签（合同卡片右上角） */
+.status-badge {
+	position: absolute;
+	top: 0;
+	right: 0;
+	padding: 10rpx 24rpx;
+	border-bottom-left-radius: 16rpx;
+}
+
+/* 🔧 合同状态角标文字（确保白色） */
+.status-badge .status-text {
+	color: #FFFFFF !important;
+	font-size: 24rpx;
+	font-weight: 600;
+}
+
+/* 合同标题 */
+.contract-header {
+	margin-bottom: 30rpx;
+	padding-right: 100rpx;
+}
+
+.contract-title {
+		font-size: 36rpx;
+	font-weight: 600;
+	color: #303133;
+	line-height: 1.4;
+}
+
+/* 详情行 */
+.detail-section {
+	margin-top: 20rpx;
+}
+
+.detail-row {
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 24rpx;
+	}
+	
+.detail-row:last-child {
+	margin-bottom: 0;
+}
+
+.detail-icon {
+		font-size: 26rpx;
+	color: #909399;
+	width: 40rpx;
+}
+
+.detail-label {
+	font-size: 28rpx;
+	color: #909399;
+	width: 140rpx;
+}
+
+.detail-value {
+		flex: 1;
+	font-size: 28rpx;
+	color: #303133;
+}
+
+/* ==================== 卡片标题 ==================== */
+.card-header {
+		flex-direction: row;
+		align-items: center;
+	margin-bottom: 24rpx;
+	padding-bottom: 16rpx;
+	border-bottom: 1rpx solid #EBEEF5;
+}
+
+.card-icon {
+	font-size: 32rpx;
+	color: #00C28A;
+	margin-right: 12rpx;
+}
+
+.card-title {
+	font-size: 32rpx;
+	font-weight: 600;
+	color: #303133;
+}
+
+/* ==================== 参与人信息卡片 ==================== */
+.participants-card .card-header {
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.header-left {
+	flex-direction: row;
+	align-items: center;
+}
+
+.participant-count {
+	background-color: rgba(0, 194, 138, 0.1);
+	padding: 6rpx 16rpx;
+	border-radius: 20rpx;
+}
+
+.count-text {
+	font-size: 24rpx;
+	color: #00C28A;
+	font-weight: 600;
+}
+
+/* ==================== 参与人列表 ==================== */
+.participants-list {
+	margin-top: 24rpx;
+}
+
+/* 🎨 参与人卡片（优雅简约） */
+.participant-item {
+	flex-direction: row;
+	align-items: flex-start;
+	padding: 24rpx;
+	margin-bottom: 20rpx;
+	background-color: #FFFFFF;
+	border-radius: 16rpx;
+	border: 1rpx solid #E5E7EB;
+	transition: all 0.3s ease;
+	position: relative;
+}
+
+.participant-item:last-child {
+	margin-bottom: 0;
+}
+
+/* 🎨 不同状态的参与人卡片样式（优雅柔和） */
+.participant-item.signed {
+	border-color: rgba(16, 185, 129, 0.15);
+	background-color: rgba(236, 253, 245, 0.5);
+}
+
+.participant-item.form-filled {
+	border-color: rgba(59, 130, 246, 0.15);
+	background-color: rgba(239, 246, 255, 0.5);
+}
+
+.participant-item.pending {
+	border-color: rgba(148, 163, 184, 0.12);
+	background-color: #FAFBFC;
+}
+
+.participant-item.rejected {
+	border-color: rgba(239, 68, 68, 0.15);
+	background-color: rgba(254, 242, 242, 0.5);
+}
+
+/* ==================== 头像区域 ==================== */
+.participant-avatar {
+	position: relative;
+	margin-right: 20rpx;
+}
+
+.avatar-circle {
+	width: 88rpx;
+	height: 88rpx;
+	border-radius: 44rpx;
+	align-items: center;
+	justify-content: center;
+	background-color: #E4E7ED;
+}
+
+/* 🔧 头像颜色现在通过动态 style 设置，不再使用固定的类 */
+/* 保留这些类仅用于兼容性，但不设置背景色 */
+.avatar-circle.avatar-signed,
+.avatar-circle.avatar-pending,
+.avatar-circle.avatar-rejected {
+	/* 背景色由 style 属性动态设置 */
+}
+
+.avatar-text {
+	font-size: 40rpx;
+	color: #FFFFFF;
+	font-weight: 600;
+	line-height: 1;
+}
+
+/* 🎨 签署顺序徽章（低调优雅） */
+.order-badge {
+	position: absolute;
+	bottom: -4rpx;
+	right: -4rpx;
+	width: 36rpx;
+	height: 36rpx;
+	border-radius: 18rpx;
+	background-color: #64748B;
+	align-items: center;
+	justify-content: center;
+	border: 3rpx solid #FFFFFF;
+}
+
+.order-num {
+	font-size: 20rpx;
+	color: #FFFFFF;
+	font-weight: 600;
+	line-height: 1;
+}
+
+/* ==================== 参与人内容区 ==================== */
+.participant-content {
+	flex: 1;
+}
+
+.name-row {
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 12rpx;
+}
+
+/* 🎨 参与人姓名（优雅适中） */
+.participant-name {
+	font-size: 28rpx;
+	font-weight: 500;
+	color: #1F2937;
+	flex: 1;
+}
+
+/* ==================== 状态标签 ==================== */
+.status-tag {
+	flex-direction: row;
+	align-items: center;
+	padding: 6rpx 16rpx;
+	border-radius: 20rpx;
+	background-color: #F5F7FA;
+}
+
+/* 🎨 状态标签背景（柔和优雅） */
+.status-tag.status-signed {
+	background-color: rgba(16, 185, 129, 0.1);
+}
+
+.status-tag.status-form-filled {
+	background-color: rgba(59, 130, 246, 0.1);
+}
+
+.status-tag.status-form-filling {
+	background-color: rgba(245, 158, 11, 0.1);
+}
+
+.status-tag.status-pending {
+	background-color: rgba(100, 116, 139, 0.08);
+}
+
+.status-tag.status-rejected {
+	background-color: rgba(239, 68, 68, 0.1);
+}
+
+.status-tag.status-cancelled {
+	background-color: rgba(100, 116, 139, 0.08);
+}
+
+.status-icon {
+	font-family: 'Font Awesome 6 Free';
+	font-weight: 900;
+	font-size: 22rpx;
+	margin-right: 6rpx;
+}
+
+/* 🎨 状态图标颜色（现代优雅） */
+.status-tag.status-signed .status-icon {
+	color: #10B981;
+}
+
+.status-tag.status-form-filled .status-icon {
+	color: #3B82F6;
+}
+
+.status-tag.status-form-filling .status-icon {
+	color: #F59E0B;
+}
+
+.status-tag.status-pending .status-icon {
+	color: #64748B;
+}
+
+.status-tag.status-rejected .status-icon {
+	color: #EF4444;
+}
+
+.status-tag.status-cancelled .status-icon {
+	color: #64748B;
+}
+
+.status-text {
+	font-size: 24rpx;
+	font-weight: 500;
+	color: #606266;
+}
+
+/* 🎨 状态文字颜色（与图标协调） */
+.status-tag.status-signed .status-text {
+	color: #10B981;
+}
+
+.status-tag.status-form-filled .status-text {
+	color: #3B82F6;
+}
+
+.status-tag.status-form-filling .status-text {
+	color: #F59E0B;
+}
+
+.status-tag.status-pending .status-text {
+	color: #64748B;
+}
+
+.status-tag.status-rejected .status-text {
+	color: #EF4444;
+}
+
+.status-tag.status-cancelled .status-text {
+	color: #64748B;
+}
+
+/* ==================== 信息行 ==================== */
+.info-row {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	margin-top: 10rpx;
+}
+
+/* 🎨 联系信息行样式（柔和蓝） */
+.info-row.contact-info {
+	margin-top: 8rpx;
+}
+
+.info-row.contact-info .info-icon {
+	color: #3B82F6;
+}
+
+.info-row.contact-info .info-text {
+	color: #3B82F6;
+	font-weight: 500;
+}
+
+.info-icon {
+	font-family: 'Font Awesome 6 Free';
+	font-weight: 900;
+	font-size: 24rpx;
+	color: #909399;
+	margin-right: 10rpx;
+	width: 28rpx;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.info-text {
+	font-size: 26rpx;
+	color: #606266;
+	flex: 1;
+}
+
+
+/* ==================== 空状态 ==================== */
+.empty-participants {
+	padding: 80rpx 0;
+	align-items: center;
+	justify-content: center;
+}
+
+.empty-icon {
+	font-family: 'Font Awesome 6 Free';
+	font-weight: 900;
+	font-size: 80rpx;
+	color: #DCDFE6;
+	margin-bottom: 24rpx;
+	opacity: 0.6;
+}
+
+.empty-text {
+	font-size: 28rpx;
+	color: #909399;
+}
+
+/* ==================== 拒绝原因 ==================== */
+.reason-content {
+	padding: 20rpx;
+	background-color: #FFFFFF;
+	border-radius: 8rpx;
+}
+
+.reason-text {
+	font-size: 28rpx;
+	color: #F56C6C;
+	line-height: 1.6;
+}
+
+/* ==================== 底部安全区 ==================== */
+.bottom-safe-area {
+	height: 160rpx;
+}
+
+/* ==================== 底部操作栏 ==================== */
+.bottom-bar {
+		position: fixed;
+	bottom: 0;
+		left: 0;
+		right: 0;
+	background-color: #FFFFFF;
+	padding: 20rpx 30rpx;
+	box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.action-btn {
+	flex: 1;
+	height: 88rpx;
+	border-radius: 44rpx;
+		flex-direction: row;
+		align-items: center;
+	justify-content: center;
+	margin: 0 8rpx;
+}
+
+.action-btn .fa {
+	font-size: 28rpx;
+	margin-right: 8rpx;
+}
+
+.action-text {
+	font-size: 30rpx;
+	font-weight: 500;
+}
+
+/* 主要按钮 */
+.action-btn.primary {
+	background-color: #10B981;
+}
+
+.action-btn.primary .fa,
+.action-btn.primary .action-text {
+	color: #FFFFFF;
+}
+
+.action-btn.primary:active {
+	opacity: 0.9;
+}
+
+/* 🆕 填写表单按钮 */
+.action-btn.form {
+	background-color: #F59E0B;
+}
+
+.action-btn.form .fa,
+.action-btn.form .action-text {
+	color: #FFFFFF;
+}
+
+.action-btn.form:active {
+	opacity: 0.9;
+}
+
+/* AI审查按钮 */
+.action-btn.audit {
+	background-color: #1890FF;
+}
+
+.action-btn.audit .fa,
+.action-btn.audit .action-text {
+	color: #FFFFFF;
+}
+
+.action-btn.audit:active {
+	opacity: 0.9;
+}
+
+/* 次要按钮 */
+.action-btn.secondary {
+	background-color: #F5F7FA;
+	border: 1rpx solid #DCDFE6;
+}
+
+.action-btn.secondary .fa,
+.action-btn.secondary .action-text {
+	color: #606266;
+}
+
+/* 危险按钮 */
+.action-btn.danger {
+	background-color: #FEF0F0;
+	border: 1rpx solid #F56C6C;
+}
+
+.action-btn.danger .fa,
+.action-btn.danger .action-text {
+	color: #F56C6C;
+	}
+</style>

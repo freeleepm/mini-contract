@@ -1,0 +1,373 @@
+<script>
+	/**
+	 * 通知设置页面
+	 */
+	export default {
+		data() {
+			return {
+				// 通知设置
+				settings: {
+					// 系统通知
+					system: {
+						all: true,
+						updates: true,
+						security: true,
+						marketing: false
+					},
+					// 合同通知
+					contract: {
+						all: true,
+						receive: true,
+						sign: true,
+						complete: true,
+						reject: true,
+						expire: true
+					},
+					// 提醒方式
+					methods: {
+						push: true,
+						sms: true,
+						email: false
+					}
+				}
+			}
+		},
+		methods: {
+			// 返回上一页
+			goBack(): void {
+				uni.navigateBack();
+			},
+			
+			// 切换全部系统通知
+			toggleAllSystem(): void {
+				const newValue = !this.settings.system.all;
+				
+				// 更新所有系统通知设置
+				this.settings.system.all = newValue;
+				this.settings.system.updates = newValue;
+				this.settings.system.security = newValue;
+				this.settings.system.marketing = newValue;
+				
+				this.saveSettings();
+			},
+			
+			// 切换单个系统通知
+			toggleSystemItem(key: string): void {
+				this.settings.system[key] = !this.settings.system[key];
+				
+				// 检查是否所有子项都已开启/关闭
+				this.updateSystemAllStatus();
+				
+				this.saveSettings();
+			},
+			
+			// 更新系统通知全部状态
+			updateSystemAllStatus(): void {
+				const keys = ['updates', 'security', 'marketing'];
+				const allEnabled = keys.every(key => this.settings.system[key]);
+				const allDisabled = keys.every(key => !this.settings.system[key]);
+				
+				if (allEnabled) {
+					this.settings.system.all = true;
+				} else if (allDisabled) {
+					this.settings.system.all = false;
+				}
+			},
+			
+			// 切换全部合同通知
+			toggleAllContract(): void {
+				const newValue = !this.settings.contract.all;
+				
+				// 更新所有合同通知设置
+				this.settings.contract.all = newValue;
+				this.settings.contract.receive = newValue;
+				this.settings.contract.sign = newValue;
+				this.settings.contract.complete = newValue;
+				this.settings.contract.reject = newValue;
+				this.settings.contract.expire = newValue;
+				
+				this.saveSettings();
+			},
+			
+			// 切换单个合同通知
+			toggleContractItem(key: string): void {
+				this.settings.contract[key] = !this.settings.contract[key];
+				
+				// 检查是否所有子项都已开启/关闭
+				this.updateContractAllStatus();
+				
+				this.saveSettings();
+			},
+			
+			// 更新合同通知全部状态
+			updateContractAllStatus(): void {
+				const keys = ['receive', 'sign', 'complete', 'reject', 'expire'];
+				const allEnabled = keys.every(key => this.settings.contract[key]);
+				const allDisabled = keys.every(key => !this.settings.contract[key]);
+				
+				if (allEnabled) {
+					this.settings.contract.all = true;
+				} else if (allDisabled) {
+					this.settings.contract.all = false;
+				}
+			},
+			
+			// 切换通知方式
+			toggleMethod(key: string): void {
+				this.settings.methods[key] = !this.settings.methods[key];
+				this.saveSettings();
+			},
+			
+			// 保存设置
+			saveSettings(): void {
+				// 模拟保存设置
+				console.log('保存通知设置:', JSON.stringify(this.settings));
+				uni.showToast({
+					title: '设置已保存',
+					icon: 'success',
+					duration: 1000
+				});
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="container">
+		<!-- 通知设置内容 -->
+		<view class="content-section">
+			<view class="setting-card">
+				<!-- 系统通知设置 -->
+				<view class="setting-section">
+					<view class="section-title">
+						<text class="title-text">系统通知</text>
+					</view>
+					
+					<!-- 所有系统通知 -->
+					<view class="setting-item">
+						<text class="item-label">所有系统通知</text>
+						<switch 
+							:checked="settings.system.all" 
+							color="#00C28A" 
+							@change="toggleAllSystem"
+						/>
+					</view>
+					
+					<!-- 系统更新通知 -->
+					<view class="setting-item sub-item">
+						<text class="item-label">系统更新通知</text>
+						<switch 
+							:checked="settings.system.updates" 
+							color="#00C28A" 
+							@change="toggleSystemItem('updates')"
+						/>
+					</view>
+					
+					<!-- 安全消息通知 -->
+					<view class="setting-item sub-item">
+						<text class="item-label">安全消息通知</text>
+						<switch 
+							:checked="settings.system.security" 
+							color="#00C28A" 
+							@change="toggleSystemItem('security')"
+						/>
+					</view>
+					
+					<!-- 营销活动通知 -->
+					<view class="setting-item sub-item">
+						<text class="item-label">营销活动通知</text>
+						<switch 
+							:checked="settings.system.marketing" 
+							color="#00C28A" 
+							@change="toggleSystemItem('marketing')"
+						/>
+					</view>
+				</view>
+				
+				<!-- 合同通知设置 -->
+				<view class="setting-section">
+					<view class="section-title">
+						<text class="title-text">合同通知</text>
+					</view>
+					
+					<!-- 所有合同通知 -->
+					<view class="setting-item">
+						<text class="item-label">所有合同通知</text>
+						<switch 
+							:checked="settings.contract.all" 
+							color="#00C28A" 
+							@change="toggleAllContract"
+						/>
+					</view>
+					
+					<!-- 收到合同通知 -->
+					<view class="setting-item sub-item">
+						<text class="item-label">收到合同通知</text>
+						<switch 
+							:checked="settings.contract.receive" 
+							color="#00C28A" 
+							@change="toggleContractItem('receive')"
+						/>
+					</view>
+					
+					<!-- 待签署通知 -->
+					<view class="setting-item sub-item">
+						<text class="item-label">待签署通知</text>
+						<switch 
+							:checked="settings.contract.sign" 
+							color="#00C28A" 
+							@change="toggleContractItem('sign')"
+						/>
+					</view>
+					
+					<!-- 合同完成通知 -->
+					<view class="setting-item sub-item">
+						<text class="item-label">合同完成通知</text>
+						<switch 
+							:checked="settings.contract.complete" 
+							color="#00C28A" 
+							@change="toggleContractItem('complete')"
+						/>
+					</view>
+					
+					<!-- 合同拒签通知 -->
+					<view class="setting-item sub-item">
+						<text class="item-label">合同拒签通知</text>
+						<switch 
+							:checked="settings.contract.reject" 
+							color="#00C28A" 
+							@change="toggleContractItem('reject')"
+						/>
+					</view>
+					
+					<!-- 合同过期通知 -->
+					<view class="setting-item sub-item">
+						<text class="item-label">合同过期通知</text>
+						<switch 
+							:checked="settings.contract.expire" 
+							color="#00C28A" 
+							@change="toggleContractItem('expire')"
+						/>
+					</view>
+				</view>
+				
+				<!-- 通知方式设置 -->
+				<view class="setting-section">
+					<view class="section-title">
+						<text class="title-text">通知方式</text>
+					</view>
+					
+					<!-- 应用内推送 -->
+					<view class="setting-item">
+						<text class="item-label">应用内推送</text>
+						<switch 
+							:checked="settings.methods.push" 
+							color="#00C28A" 
+							@change="toggleMethod('push')"
+						/>
+					</view>
+					
+					<!-- 短信通知 -->
+					<view class="setting-item">
+						<text class="item-label">短信通知</text>
+						<switch 
+							:checked="settings.methods.sms" 
+							color="#00C28A" 
+							@change="toggleMethod('sms')"
+						/>
+					</view>
+					
+					<!-- 邮件通知 -->
+					<view class="setting-item">
+						<text class="item-label">邮件通知</text>
+						<switch 
+							:checked="settings.methods.email" 
+							color="#00C28A" 
+							@change="toggleMethod('email')"
+						/>
+					</view>
+				</view>
+				
+				<!-- 提示说明 -->
+				<view class="tips-section">
+					<text class="tips-text">提示：</text>
+					<text class="tips-text">1. 应用内推送不消耗短信额度，建议保持开启；</text>
+					<text class="tips-text">2. 短信通知会消耗短信额度，请合理设置；</text>
+					<text class="tips-text">3. 邮件通知需要在个人信息中设置并验证邮箱。</text>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<style>
+	.container {
+		flex: 1;
+		background-color: #F7F9FC;
+	}
+	
+	/* 通知设置内容 */
+	.content-section {
+		flex: 1;
+		padding: 32rpx;
+		height: calc(100vh - 90rpx - var(--status-bar-height));
+		overflow-y: auto;
+	}
+	
+	/* 设置区块 */
+	.setting-section {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		margin-bottom: 32rpx;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+		overflow: hidden;
+	}
+	
+	.section-title {
+		padding: 24rpx 32rpx;
+		border-bottom: 1rpx solid #F0F0F0;
+	}
+	
+	.section-title .title-text {
+		font-size: 30rpx;
+		font-weight: bold;
+		color: #333333;
+	}
+	
+	/* 设置项样式 */
+	.setting-item {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 24rpx 32rpx;
+		border-bottom: 1rpx solid #F0F0F0;
+	}
+	
+	.setting-item:last-child {
+		border-bottom: none;
+	}
+	
+	.sub-item {
+		padding-left: 64rpx;
+		background-color: #FAFAFA;
+	}
+	
+	.item-label {
+		font-size: 28rpx;
+		color: #333333;
+	}
+	
+	/* 提示说明区域 */
+	.tips-section {
+		padding: 32rpx;
+		background-color: #F0F8FF;
+		border-radius: 16rpx;
+	}
+	
+	.tips-text {
+		font-size: 26rpx;
+		color: #666666;
+		margin-bottom: 12rpx;
+		line-height: 1.5;
+	}
+</style> 

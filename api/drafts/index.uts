@@ -1,0 +1,86 @@
+import { request } from '../index.uts'
+import { getMockDraftList, getMockDraftDetail, mockSaveDraft, mockDeleteDraft, mockResponse } from '../mock/index'
+
+// 保存草稿
+export async function saveDraft(draftData: any): Promise<any> {
+  try {
+    // 使用模拟数据
+    const mockData = await mockSaveDraft(draftData)
+    return mockResponse(mockData)
+    
+    // 实际API调用
+    /*
+    const url = draftData.draft_id ? `/api/drafts/${draftData.draft_id}` : '/api/drafts'
+    const method = draftData.draft_id ? 'PUT' : 'POST'
+    const res = await request({
+      url,
+      method,
+      data: draftData
+    })
+    return res
+    */
+  } catch (e) {
+    throw e
+  }
+}
+
+// 获取草稿列表
+export async function getDraftList(params: { page: number, size: number }): Promise<any> {
+  try {
+    // 使用模拟数据
+    const mockData = await getMockDraftList(params)
+    return mockResponse(mockData)
+    
+    // 实际API调用
+    /*
+    const res = await request({
+      url: '/api/drafts',
+      method: 'GET',
+      data: params
+    })
+    return res
+    */
+  } catch (e) {
+    throw e
+  }
+}
+
+// 获取草稿详情
+export async function getDraftDetail(draftId: string): Promise<any> {
+  try {
+    // 使用模拟数据
+    const mockData = await getMockDraftDetail(draftId)
+    return mockResponse(mockData)
+    
+    // 实际API调用
+    /*
+    const res = await request({
+      url: `/api/drafts/${draftId}`,
+      method: 'GET'
+    })
+    return res
+    */
+  } catch (e) {
+    throw e
+  }
+}
+
+// 删除草稿
+export async function deleteDraft(draftId: string): Promise<any> {
+  try {
+    // 使用模拟数据
+    const mockData = await mockDeleteDraft(draftId)
+    return mockResponse(mockData)
+    
+    // 实际API调用
+    /*
+    const res = await request({
+      url: `/api/drafts/${draftId}`,
+      method: 'DELETE'
+    })
+    return res
+    */
+  } catch (e) {
+    throw e
+  }
+} 

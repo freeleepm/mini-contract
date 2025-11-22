@@ -1,0 +1,216 @@
+/**
+ * 模板相关API
+ */
+
+import { get, post } from '../index';
+
+// 模板分类
+export type TemplateCategory = 'all' | 'loan' | 'lease' | 'labor' | 'purchase' | 'sales' | 'other';
+
+// 模板列表请求参数
+export interface TemplateListParams {
+    category?: TemplateCategory; // 模板分类
+    keyword?: string;            // 搜索关键字
+    page?: number;               // 页码
+    pageSize?: number;           // 每页数量
+}
+
+// 模板变量类型
+export type TemplateVariableType = 'text' | 'number' | 'date' | 'select' | 'money';
+
+// 模板变量选项
+export interface TemplateVariableOption {
+    label: string;
+    value: string;
+}
+
+// 模板变量
+export interface TemplateVariable {
+    key: string;                      // 变量键名
+    name: string;                     // 变量名称
+    type: TemplateVariableType;       // 变量类型
+    required: boolean;                // 是否必填
+    default?: string;                 // 默认值
+    placeholder?: string;             // 占位文本
+    options?: TemplateVariableOption[]; // 选项（用于select类型）
+    description?: string;             // 描述
+}
+
+// 签署方关联字段
+export interface TemplateSignatoryField {
+    id: number;                       // 字段ID
+    type: string;                     // 字段类型
+    name: string;                     // 字段名称
+    pageNumber: number;               // 所在页码
+    positionX: number;                // X坐标
+    positionY: number;                // Y坐标
+    width: number;                    // 宽度
+    height: number;                   // 高度
+    required: boolean;                // 是否必填
+}
+
+// 模板签署方
+export interface TemplateSignatory {
+    id: number;                       // 签署方ID
+    type: string;                     // 签署方类型: enterprise-企业, personal-个人
+    name: string;                     // 签署方名称
+    orderNum: number;                 // 签署顺序
+    needSign: boolean;                // 是否需要签署
+    specifyOnUse: boolean;            // 使用模板时指定
+    companyName?: string;             // 默认企业名称
+    realName?: string;                // 默认真实姓名
+    contact?: string;                 // 默认联系方式
+    fields: TemplateSignatoryField[]; // 关联的字段列表
+}
+
+// 模板信息
+export interface Template {
+    id: string;                  // 模板ID
+    name: string;                // 模板名称
+    description: string;         // 模板描述
+    category: TemplateCategory;  // 模板分类
+    image: string;               // 模板图片（标准模板图片）
+    previewImage?: string;       // 高质量预览图（可选）
+    thumbnail?: string;          // 小缩略图（可选）
+    isOfficial: boolean;         // 是否官方模板
+    isHot: boolean;              // 是否热门模板
+    usageCount: number;          // 使用次数
+    createTime: string;          // 创建时间
+    updateTime: string;          // 更新时间
+}
+
+// 模板详情
+export interface TemplateDetail extends Template {
+    content: string;             // 模板内容（HTML格式）
+    previewUrl: string;          // 预览URL
+    variables: TemplateVariable[]; // 模板变量
+    signatories: TemplateSignatory[]; // 签署方列表
+}
+
+// 模板列表响应数据
+export interface TemplateListResponse {
+    list: Template[];   // 模板列表
+    total: number;      // 总数
+    hasMore: boolean;   // 是否有更多
+}
+
+// 模板发起请求参数
+export interface TemplateInitiateParams {
+    templateId: string;                // 模板ID
+    variables: {[key: string]: string}; // 变量值
+}
+
+/**
+ * 获取模板列表
+ * @param params 请求参数
+ * @returns 模板列表数据
+ */
+export function getTemplateList(params: TemplateListParams): Promise<TemplateListResponse> {
+    // 构建请求参数，空值不传递
+    const requestParams: any = {
+        pageNo: params.page || 1,
+        pageSize: params.pageSize || 20
+    };
+    
+    // 只有非空的keyword才传递
+    if (params.keyword && params.keyword.trim()) {
+        requestParams.keyword = params.keyword.trim();
+    }
+    
+    // 只有非'all'的category才传递
+    if (params.category && params.category !== 'all') {
+        requestParams.category = params.category;
+    }
+    
+    // 使用移动端专用的 search 接口，返回 AppTemplateRespVO 格式
+    return get<any>('/api/v1/seal/seal-template/search', requestParams).then((response) => {
+        // 后端返回 PageResult 格式，需要转换为前端期望的格式
+        const pageSize = params.pageSize || 20;
+        const currentPage = params.page || 1;
+        const total = response.total || 0;
+        const list = response.list || [];
+        
+        // 计算是否还有更多数据
+        const hasMore = (currentPage * pageSize) < total;
+        
+        return {
+            list: list,
+            total: total,
+            hasMore: hasMore
+        };
+    });
+}
+
+/**
+ * 获取模板详情
+ * @param id 模板ID
+ * @returns 模板详情数据
+ */
+export function getTemplateDetail(id: string): Promise<TemplateDetail> {
+    return get<TemplateDetail>(`/api/v1/seal/seal-template/get`, { id });
+}
+
+/**
+ * 获取模板分类列表
+ * @returns 分类列表
+ */
+export function getTemplateCategories(): Promise<TemplateCategory[]> {
+    return get<TemplateCategory[]>('/api/v1/seal/seal-template/categories');
+}
+
+/**
+ * 获取常用模板
+ * @param limit 数量限制
+ * @returns 常用模板列表
+ */
+export function getFrequentlyUsedTemplates(limit: number = 8): Promise<Template[]> {
+    return get<Template[]>('/api/v1/seal/seal-template/frequently-used', { limit });
+}
+
+/**
+ * 获取热门模板
+ * @param limit 数量限制
+ * @returns 热门模板列表
+ */
+export function getHotTemplates(limit: number = 6): Promise<Template[]> {
+    return get<Template[]>('/api/v1/seal/seal-template/hot', { limit });
+}
+
+/**
+ * 搜索模板
+ * @param keyword 搜索关键词
+ * @param pageNum 页码
+ * @param pageSize 每页大小
+ * @returns 搜索结果
+ */
+export function searchTemplates(keyword: string, pageNum: number = 1, pageSize: number = 20): Promise<TemplateListResponse> {
+    return get<TemplateListResponse>('/api/v1/seal/seal-template/search', { keyword, pageNum, pageSize });
+}
+
+/**
+ * 记录模板使用
+ * @param templateId 模板ID
+ */
+export function recordTemplateUsage(templateId: string): Promise<void> {
+    return post<void>(`/api/v1/seal/seal-template/${templateId}/usage`, {});
+}
+
+/**
+ * 使用模板发起合同
+ * @param params 请求参数
+ * @returns 合同ID
+ */
+export function initiateContract(params: TemplateInitiateParams): Promise<{ contractId: string }> {
+    return post<{ contractId: string }>('/api/contracts/initiate-from-template', params);
+}
+
+export default {
+    getTemplateList,
+    getTemplateDetail,
+    getTemplateCategories,
+    getFrequentlyUsedTemplates,
+    getHotTemplates,
+    searchTemplates,
+    recordTemplateUsage,
+    initiateContract
+};

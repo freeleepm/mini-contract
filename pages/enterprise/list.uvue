@@ -1,0 +1,820 @@
+<script>
+	/**
+	 * 企业管理页面
+	 */
+	import { getEnterpriseList, switchEnterprise, EnterpriseStatus, EnterpriseRole } from '../../api/enterprise/index';
+	
+	export default {
+		data() {
+			return {
+				// 企业列表
+				enterprises: [],
+				
+				// 当前选中的企业ID
+				currentEnterpriseId: '',
+				
+				// 加载状态
+				loading: false
+			}
+		},
+		onLoad() {
+			// 从本地存储加载当前选中的企业ID
+			this.loadCurrentEnterpriseFromStorage();
+			
+			// 加载企业列表
+			this.loadEnterpriseList();
+		},
+		
+		onShow() {
+		// 注意：onLoad已经调用过loadEnterpriseList，这里不需要重复调用
+		// 只有从其他页面返回时才需要刷新数据
+		// 可以通过判断是否首次加载来决定是否刷新
+		},
+		methods: {
+			// 返回上一页
+			goBack(): void {
+				uni.navigateBack();
+			},
+			
+			// 从本地存储加载当前企业ID
+			loadCurrentEnterpriseFromStorage() {
+				try {
+					const savedIdentity = uni.getStorageSync('currentIdentity');
+					if (savedIdentity) {
+						const identity = JSON.parse(savedIdentity);
+						if (identity.type === 'enterprise') {
+							this.currentEnterpriseId = identity.id;
+						}
+					}
+				} catch (e) {
+					console.error('加载身份信息失败:', e);
+				}
+			},
+			
+			// 加载企业列表
+			async loadEnterpriseList() {
+				this.loading = true;
+				try {
+					// 调用API获取企业列表
+					const response = await getEnterpriseList();
+					console.log('企业列表API响应:', response);
+					
+					// 处理API返回的数据
+					if (response && response.list) {
+						// 转换API响应为前端需要的格式
+						this.enterprises = response.list.map(item => ({
+							id: item.id,
+							name: item.name,
+							verified: item.status === EnterpriseStatus.VERIFIED, // 修正为VERIFIED(2)
+							certStatus: this.mapStatusToCertStatus(item.status),
+							role: this.mapRoleToText(item.role),
+							memberCount: item.memberCount || 0,
+							createTime: this.formatCreateTime(item.createTime)
+						}));
+						
+						// 如果存在activeEnterprise且未设置currentEnterpriseId，则使用activeEnterprise的ID
+						if (response.activeEnterprise && !this.currentEnterpriseId) {
+							this.currentEnterpriseId = response.activeEnterprise.id;
+							
+							// 更新本地存储
+							this.saveCurrentIdentity(response.activeEnterprise);
+						}
+					} else {
+						console.error('企业列表格式异常:', response);
+					}
+				} catch (error) {
+					console.error('获取企业列表失败:', error);
+					uni.showToast({
+						title: '加载企业列表失败',
+						icon: 'none'
+					});
+				} finally {
+					this.loading = false;
+				}
+			},
+			
+			// 将API状态值映射为证书状态文本
+			mapStatusToCertStatus(status: EnterpriseStatus): string {
+				switch (status) {
+					case EnterpriseStatus.UNVERIFIED: // 未认证(0)
+						return 'pending';
+					case EnterpriseStatus.VERIFYING: // 认证中(1)
+						return 'reviewing';
+					case EnterpriseStatus.VERIFIED: // 已认证(2)
+						return 'approved';
+					case EnterpriseStatus.REJECTED: // 认证失败(3)
+						return 'rejected';
+					default:
+						return 'pending';
+				}
+			},
+			
+			// 将API角色值映射为角色文本
+			mapRoleToText(role: EnterpriseRole): string {
+				switch (role) {
+					case EnterpriseRole.OWNER:
+						return '所有者';
+					case EnterpriseRole.ADMIN:
+						return '管理员';
+					case EnterpriseRole.MEMBER:
+						return '成员';
+					default:
+						return '成员';
+				}
+			},
+			
+			// 切换当前企业
+			async switchEnterprise(enterpriseId) {
+				// 找到对应的企业对象
+				const enterprise = this.enterprises.find(item => item.id === enterpriseId);
+				if (!enterprise) return;
+				
+				try {
+					// ✅ 调用后端API保存到数据库
+					console.log('调用切换企业API，企业ID:', enterpriseId);
+					await switchEnterprise(enterpriseId);
+					
+					// 更新本地存储（作为缓存）
+					this.saveCurrentIdentity(enterprise);
+					
+					// 提示用户
+					uni.showToast({
+						title: '已切换到' + enterprise.name,
+						icon: 'success'
+					});
+					
+					// 返回个人中心页面
+					setTimeout(() => {
+						uni.navigateBack();
+					}, 1500);
+				} catch (error) {
+					console.error('切换企业失败:', error);
+					uni.showToast({
+						title: '切换失败，请重试',
+						icon: 'none'
+					});
+				}
+			},
+			
+							// 保存当前身份到本地存储
+			saveCurrentIdentity(enterprise) {
+				const currentIdentity = {
+					type: 'enterprise',
+					id: enterprise.id,
+					name: enterprise.name,
+					verified: enterprise.verified || enterprise.status === EnterpriseStatus.VERIFIED, // 修正为VERIFIED(2)
+					role: enterprise.role
+				};
+				
+				uni.setStorageSync('currentIdentity', JSON.stringify(currentIdentity));
+				this.currentEnterpriseId = enterprise.id;
+			},
+			
+			// 前往企业详情页
+			goToEnterpriseDetail(enterpriseId) {
+				console.log('跳转到企业详情页，企业ID:', enterpriseId);
+				uni.navigateTo({
+					url: '/pages/enterprise/detail?id=' + enterpriseId
+				});
+			},
+			
+			// 前往企业认证页
+			goToEnterpriseVerify(enterpriseId) {
+				// 找到对应的企业对象
+				const enterprise = this.enterprises.find(item => item.id === enterpriseId);
+				if (!enterprise) {
+					uni.showToast({
+						title: '企业不存在',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				console.log('跳转到企业认证页面，企业信息:', enterprise);
+				
+				// 跳转前先更新本地存储的企业列表信息
+				try {
+					let enterprises = uni.getStorageSync('enterpriseList');
+					let enterpriseList = [];
+					
+					if (enterprises) {
+						enterpriseList = JSON.parse(enterprises);
+					}
+					
+					// 检查企业是否已在列表中
+					const index = enterpriseList.findIndex(item => item.id === enterpriseId);
+					if (index === -1) {
+						// 如果不在列表中，添加到列表
+						enterpriseList.push({
+							id: enterprise.id,
+							name: enterprise.name,
+							status: enterprise.verified ? EnterpriseStatus.VERIFIED : EnterpriseStatus.UNVERIFIED,
+							certStatus: enterprise.certStatus,
+							role: enterprise.role === '所有者' ? EnterpriseRole.OWNER : (enterprise.role === '管理员' ? EnterpriseRole.ADMIN : EnterpriseRole.MEMBER),
+							createTime: enterprise.createTime
+						});
+					} else {
+						// 如果已在列表中，更新信息
+						enterpriseList[index] = {
+							...enterpriseList[index],
+							name: enterprise.name,
+							status: enterprise.verified ? EnterpriseStatus.VERIFIED : EnterpriseStatus.UNVERIFIED,
+							certStatus: enterprise.certStatus
+						};
+					}
+					
+					// 保存回本地存储
+					uni.setStorageSync('enterpriseList', JSON.stringify(enterpriseList));
+				} catch (e) {
+					console.error('更新企业列表失败:', e);
+				}
+				
+				// 跳转到企业认证页面
+				uni.navigateTo({
+					url: '/pages/kyc/enterprise/index?id=' + enterpriseId
+				});
+			},
+			
+			// 前往添加企业页
+			goToAddEnterprise() {
+				uni.navigateTo({
+					url: '/pages/enterprise/add'
+				});
+			},
+			
+			// 格式化创建时间
+			formatCreateTime(createTime: any): string {
+				if (!createTime) {
+					return '未知';
+				}
+				
+				// 如果是数字类型（时间戳）
+				if (typeof createTime === 'number') {
+					try {
+						const date = new Date(createTime);
+						const year = date.getFullYear();
+						const month = String(date.getMonth() + 1).padStart(2, '0');
+						const day = String(date.getDate()).padStart(2, '0');
+						return `${year}-${month}-${day}`;
+					} catch (e) {
+						console.error('时间戳格式化失败:', e);
+						return '未知';
+					}
+				}
+				
+				// 如果是字符串
+				if (typeof createTime === 'string') {
+					// 尝试提取日期部分 (YYYY-MM-DD)
+					const match = createTime.match(/(\d{4}-\d{2}-\d{2})/);
+					return match ? match[1] : '未知';
+				}
+				
+				// 如果是数组格式 [2024, 1, 1, 12, 0, 0]
+				if (Array.isArray(createTime) && createTime.length >= 3) {
+					const [year, month, day] = createTime;
+					return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+				}
+				
+				return '未知';
+			},
+			
+			// 滚动到底部加载更多（预留方法）
+			loadMore() {
+				// 目前企业列表一次性加载全部数据，不需要分页
+				// 此方法保留以避免模板中的 @scrolltolower 事件报错
+				console.log('滚动到底部');
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="container">
+		<!-- 页面内容区域 -->
+		<scroll-view class="scroll-content" scroll-y="true" @scrolltolower="loadMore">
+			<!-- 加载中提示 -->
+			<view v-if="loading" class="loading-container">
+				<text class="loading-text">加载中...</text>
+			</view>
+			
+			<!-- 卡片列表 -->
+			<view class="enterprise-list">
+				<!-- 企业卡片 -->
+					<view 
+						v-for="item in enterprises" 
+						:key="item.id" 
+						class="enterprise-card"
+						:class="{'card-active': currentEnterpriseId === item.id}"
+						@click="goToEnterpriseDetail(item.id)"
+					>
+					<!-- 企业卡片内容 -->
+					<view class="card-header">
+						<!-- 企业名称区域 -->
+						<view class="enterprise-main">
+							<!-- 移除企业logo图标 -->
+							<view class="name-container">
+								<text class="enterprise-name">{{item.name}}</text>
+								<view v-if="item.certStatus === 'approved'" class="status-badge verified">
+									<text class="fa fa-circle-check"></text>
+									<text class="badge-text">已认证</text>
+								</view>
+								<view v-else-if="item.certStatus === 'reviewing'" class="status-badge reviewing">
+									<text class="fa fa-clock"></text>
+									<text class="badge-text">审核中</text>
+								</view>
+								<view v-else-if="item.certStatus === 'rejected'" class="status-badge rejected">
+									<text class="fa fa-circle-exclamation"></text>
+									<text class="badge-text">认证失败</text>
+								</view>
+								<view v-else class="status-badge unverified">
+									<text class="fa fa-circle-exclamation"></text>
+									<text class="badge-text">未认证</text>
+								</view>
+							</view>
+						</view>
+						
+						<!-- 当前选中角标，改为角标样式 -->
+						<view v-if="currentEnterpriseId === item.id" class="current-badge">
+							<text class="current-badge-text">当前</text>
+						</view>
+					</view>
+					
+					<!-- 详细信息区 -->
+					<view class="card-details">
+						<view class="details-section">
+							<view class="details-content">
+								<!-- 角色和成员信息 -->
+								<view class="detail-item">
+									<view class="detail-icon-wrap">
+										<text class="detail-icon fa fa-user"></text>
+									</view>
+									<text class="detail-label">角色</text>
+									<text class="detail-value">{{item.role}}</text>
+								</view>
+								
+								<view class="detail-item">
+									<view class="detail-icon-wrap">
+										<text class="detail-icon fa fa-users"></text>
+									</view>
+									<text class="detail-label">成员</text>
+									<text class="detail-value">{{item.memberCount}}人</text>
+								</view>
+								
+								<!-- 创建时间信息 -->
+								<view class="detail-item">
+									<view class="detail-icon-wrap">
+										<text class="detail-icon fa fa-calendar-days"></text>
+									</view>
+									<text class="detail-label">创建时间</text>
+									<text class="detail-value">{{item.createTime}}</text>
+								</view>
+							</view>
+						</view>
+					</view>
+					
+					<!-- 企业卡片操作区 -->
+					<view class="card-actions">
+						<view v-if="item.certStatus === 'pending'" 
+							class="card-action verify" 
+							@click.stop="goToEnterpriseVerify(item.id)"
+						>
+							<text class="action-icon fa fa-shield-halved"></text>
+							<text class="action-text">企业认证</text>
+						</view>
+						<view v-else-if="item.certStatus === 'reviewing'" 
+							class="card-action verify reviewing" 
+							@click.stop="goToEnterpriseVerify(item.id)"
+						>
+							<text class="action-icon fa fa-eye"></text>
+							<text class="action-text">查看认证</text>
+						</view>
+						<view v-else-if="item.certStatus === 'rejected'" 
+							class="card-action verify rejected" 
+							@click.stop="goToEnterpriseVerify(item.id)"
+						>
+							<text class="action-icon fa fa-arrows-rotate"></text>
+							<text class="action-text">重新认证</text>
+						</view>
+						<view v-else-if="item.certStatus === 'approved'" 
+							class="card-action verify certified" 
+							@click.stop="switchEnterprise(item.id)"
+						>
+							<text class="action-icon fa fa-check"></text>
+							<text class="action-text">{{currentEnterpriseId === item.id ? '当前使用' : '切换使用'}}</text>
+						</view>
+					</view>
+				</view>
+				
+				<!-- 空状态提示 -->
+				<view v-if="enterprises.length === 0" class="empty-state">
+					<view class="empty-icon-container">
+						<text class="empty-icon fa fa-building"></text>
+					</view>
+					<text class="empty-title">暂无企业信息</text>
+					<text class="empty-desc">点击下方按钮添加您的企业身份</text>
+				</view>
+			</view>
+		</scroll-view>
+		
+		<!-- 底部操作栏 -->
+		<view class="bottom-bar">
+			<view class="add-enterprise-btn" @click="goToAddEnterprise">
+				<text class="btn-icon fa fa-plus"></text>
+				<text class="btn-text">添加企业</text>
+			</view>
+		</view>
+	</view>
+</template>
+
+<style>
+	/* 全局容器 */
+	.container {
+		flex: 1;
+		background-color: #F5F7FA;
+	}
+	
+	/* 滚动内容区 */
+	.scroll-content {
+		flex: 1;
+		padding: 32rpx;
+	}
+	
+	/* 加载状态 */
+	.loading-container {
+		display: flex;
+		justify-content: center;
+		padding: 40rpx 0;
+	}
+	
+	.loading-text {
+		color: #999;
+		font-size: 28rpx;
+	}
+	
+	/* 企业列表 */
+	.enterprise-list {
+		margin-bottom: 36rpx;
+		padding-bottom: 120rpx; /* 为底部操作栏留出空间 */
+	}
+	
+	/* 企业卡片 */
+	.enterprise-card {
+		margin-bottom: 24rpx;
+		border-radius: 16rpx;
+		background-color: #FFFFFF;
+		box-shadow: 0 2rpx 16rpx rgba(0, 0, 0, 0.08);
+		overflow: hidden;
+		transition-property: transform, box-shadow;
+		transition-duration: 0.2s;
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		box-sizing: border-box;
+		position: relative; /* 添加相对定位，用于角标定位 */
+	}
+	
+	.card-active {
+		box-shadow: 0 4rpx 20rpx rgba(0, 194, 138, 0.2);
+		border-left-width: 6rpx;
+		border-left-color: #00C28A;
+	}
+	
+	/* 卡片头部 */
+	.card-header {
+		padding: 24rpx;
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		border-bottom-width: 1rpx;
+		border-bottom-color: #EEEEF0;
+		flex-wrap: nowrap;
+	}
+	
+	/* 企业主要信息 */
+	.enterprise-main {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		flex: 1;
+		min-width: 0; /* 防止flex子项溢出 */
+	}
+	
+	/* 移除企业logo样式 */
+	
+	.name-container {
+		display: flex;
+		flex-direction: column;
+		min-width: 0; /* 防止flex子项溢出 */
+		flex: 1;
+	}
+	
+	.enterprise-name {
+		font-size: 32rpx;
+		font-weight: 600;
+		color: #2C3E50;
+		margin-bottom: 8rpx;
+		max-width: 100%;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	
+	/* 状态徽章 */
+	.status-badge {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		padding: 4rpx 12rpx;
+		border-radius: 20rpx;
+		align-self: flex-start;
+	}
+	
+	.status-badge.verified {
+		background-color: rgba(0, 194, 138, 0.1);
+	}
+	
+	.status-badge.reviewing {
+		background-color: rgba(24, 144, 255, 0.1);
+	}
+	
+	.status-badge.rejected {
+		background-color: rgba(245, 108, 108, 0.1);
+	}
+	
+	.status-badge.unverified {
+		background-color: rgba(255, 152, 0, 0.1);
+	}
+	
+	.status-badge .fa {
+		font-size: 20rpx;
+		margin-right: 6rpx;
+	}
+	
+	.verified .fa {
+		color: #00C28A;
+	}
+	
+	.reviewing .fa {
+		color: #1890FF;
+	}
+	
+	.rejected .fa {
+		color: #F56C6C;
+	}
+	
+	.unverified .fa {
+		color: #FF9800;
+	}
+	
+	.badge-text {
+		font-size: 22rpx;
+		font-weight: 500;
+	}
+	
+	.verified .badge-text {
+		color: #00C28A;
+	}
+	
+	.reviewing .badge-text {
+		color: #1890FF;
+	}
+	
+	.rejected .badge-text {
+		color: #F56C6C;
+	}
+	
+	.unverified .badge-text {
+		color: #FF9800;
+	}
+	
+	/* 当前选中角标样式 */
+	.current-badge {
+		position: absolute;
+		top: 0;
+		right: 0;
+		background-color: #00C28A;
+		padding: 4rpx 16rpx;
+		border-top-right-radius: 16rpx;
+		border-bottom-left-radius: 16rpx;
+	}
+	
+	.current-badge-text {
+		font-size: 22rpx;
+		color: #FFFFFF;
+		font-weight: 500;
+	}
+	
+	/* 详情区域 */
+	.card-details {
+		background-color: #FFFFFF;
+		border-top-width: 1rpx;
+		border-top-color: #EEEEF0;
+		border-bottom-width: 1rpx;
+		border-bottom-color: #EEEEF0;
+	}
+	
+	.details-section {
+		padding: 20rpx 24rpx;
+	}
+	
+	.details-content {
+		display: flex;
+		flex-direction: column;
+		background-color: #F9FAFC;
+		border-radius: 12rpx;
+		padding: 16rpx 20rpx;
+	}
+	
+	.detail-item {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 16rpx;
+	}
+	
+	.detail-item:last-child {
+		margin-bottom: 0;
+	}
+	
+	.detail-icon-wrap {
+		width: 40rpx;
+		height: 40rpx;
+		border-radius: 20rpx;
+		background-color: rgba(0, 0, 0, 0.04);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-right: 12rpx;
+		flex-shrink: 0;
+	}
+	
+	.detail-icon {
+		font-size: 20rpx;
+		color: #8492A6;
+	}
+	
+	.detail-label {
+		font-size: 26rpx;
+		color: #8492A6;
+		margin-right: 8rpx;
+		width: 120rpx;
+		flex-shrink: 0;
+	}
+	
+	.detail-value {
+		font-size: 26rpx;
+		color: #2C3E50;
+		font-weight: 500;
+		flex: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	
+	/* 卡片操作区 */
+	.card-actions {
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-end;
+		padding: 16rpx 24rpx;
+		background-color: #FFFFFF;
+		border-top-width: 1rpx;
+		border-top-color: #EEEEF0;
+		flex-wrap: wrap;
+		gap: 12rpx;
+	}
+	
+	.card-action {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		padding: 12rpx 24rpx;
+		border-radius: 8rpx;
+		margin-left: 16rpx;
+		min-width: 120rpx;
+	}
+
+	.card-action.verify {
+		background-color: #FF9800;
+	}
+	
+	.card-action.verify.reviewing {
+		background-color: #1890FF;
+	}
+
+	.card-action.verify.rejected {
+		background-color: #F56C6C;
+	}
+
+	.card-action.verify.certified {
+		background-color: #00C28A;
+	}
+	
+	.card-action.switch {
+		background-color: #00C28A;
+	}
+	
+	.action-icon {
+		font-size: 24rpx;
+		margin-right: 8rpx;
+		color: #FFFFFF;
+	}
+	
+	.action-text {
+		font-size: 26rpx;
+		font-weight: 500;
+		color: #FFFFFF;
+	}
+	
+	/* 空状态 */
+	.empty-state {
+		padding: 120rpx 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.empty-icon-container {
+		width: 120rpx;
+		height: 120rpx;
+		border-radius: 60rpx;
+		background-color: #F0F2F5;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 24rpx;
+	}
+	
+	.empty-icon {
+		font-size: 60rpx;
+		color: #BBBBBB;
+	}
+	
+	.empty-title {
+		font-size: 32rpx;
+		color: #666666;
+		font-weight: 500;
+		margin-bottom: 12rpx;
+	}
+	
+	.empty-desc {
+		font-size: 26rpx;
+		color: #999999;
+	}
+	
+	/* 底部操作栏 */
+	.bottom-bar {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		padding: 20rpx 30rpx;
+		background-color: #FFFFFF;
+		box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+		z-index: 100;
+		box-sizing: border-box;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+	
+	.add-enterprise-btn {
+		height: 92rpx;
+		border-radius: 12rpx;
+		background-color: #00C28A;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		box-shadow: 0 6rpx 16rpx rgba(0, 194, 138, 0.2);
+		width: 100%;
+		max-width: 600rpx;
+	}
+	
+	.btn-icon {
+		font-size: 28rpx;
+		color: #FFFFFF;
+		margin-right: 10rpx;
+	}
+
+	.btn-text {
+		font-size: 30rpx;
+		color: #FFFFFF;
+		font-weight: 600;
+	}
+	
+	/* FontAwesome 图标样式 */
+	.fa {
+		font-family: 'Font Awesome 6 Free';
+		font-weight: 900;
+		font-size: 26rpx;
+		font-style: normal;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+		display: inline-block;
+		line-height: 1;
+		text-rendering: auto;
+	}
+</style> 

@@ -1,0 +1,2049 @@
+<script>
+	import { get } from '@/api/index'
+	import { getEnterpriseList, EnterpriseStatus } from '../../api/enterprise/index';
+	import { checkAuthAndRedirect } from '../../api/auth';
+	import EnterpriseKycModal from '../../components/EnterpriseKycModal.uvue';
+	import KycModal from '../../components/KycModal.uvue';
+
+	/**
+	 * 个人中心页面
+	 */
+	export default {
+		components: {
+			EnterpriseKycModal,
+			KycModal
+		},
+		data() {
+			return {
+				// 用户信息
+				userInfo: {
+					id: '', // 添加用户ID
+					name: '',
+					phone: '',
+					avatar: '/static/logo.png',
+					isVerified: false, // 个人是否已实名认证
+					point: 0,
+					level: null
+				},
+				
+				// 身份切换相关
+				showIdentityDropdown: false,  // 是否显示身份切换弹窗
+			showEnterpriseKycModal: false,  // 是否显示企业认证提示弹窗
+			showKycModal: false,  // 是否显示个人实名认证提示弹窗
+				currentIdentity: {
+					type: 'personal',  // 当前身份类型：personal 或 enterprise
+					id: '',  // 身份ID
+					name: '个人',  // 身份名称，个人固定为"个人身份"
+					verified: false,  // 当前身份是否已认证
+					role: ''  // 角色（企业身份才有）
+				},
+				
+				// 企业列表
+				enterprises: [],
+				
+				// 是否为企业管理员（默认为false，在加载身份后根据角色更新）
+				isEnterpriseAdmin: false,
+				
+				// 加载状态
+				loading: false,
+			
+			// 页面是否已销毁（用于防止异步操作更新已销毁的页面）
+			isDestroyed: false,
+				
+				// 上次加载时间，用于避免重复请求
+				lastLoadTime: 0
+			}
+		},
+		
+		computed: {
+			isPersonal() {
+				return this.currentIdentity.type === 'personal';
+			},
+			isEnterprise() {
+				return this.currentIdentity.type === 'enterprise';
+			}
+		},
+		
+	onLoad() {
+		try {
+			// 重置销毁标记
+			this.isDestroyed = false;
+			
+			// 检查登录状态
+			if (!checkAuthAndRedirect(false)) {
+				return;
+			}
+			
+			// 获取用户信息
+			this.getUserInfo();
+			
+			// 从本地存储加载上次选择的身份
+			this.loadIdentityFromStorage();
+		} catch (error) {
+			console.error('onLoad 执行出错:', error);
+		}
+	},
+	
+	onShow() {
+		try {
+			// 重置销毁标记
+			this.isDestroyed = false;
+			
+			// 检查登录状态
+			if (!checkAuthAndRedirect(false)) {
+				return;
+			}
+			
+			// 避免重复请求：只有在未加载或距离上次加载超过30秒时才重新获取
+			const now = Date.now();
+			const lastLoadTime = this.lastLoadTime || 0;
+			const shouldReload = !this.lastLoadTime || (now - lastLoadTime > 30000);
+			
+			if (shouldReload && !this.loading) {
+				console.log('onShow: 重新获取用户信息');
+				this.getUserInfo();
+			} else {
+				console.log('onShow: 跳过重复请求，使用缓存数据');
+			}
+			
+			// 如果用户已认证，加载企业列表
+			if (this.userInfo.isVerified && shouldReload) {
+				this.loadEnterpriseList();
+			}
+		} catch (error) {
+			console.error('onShow 执行出错:', error);
+		}
+	},
+		
+	onUnload() {
+		// 页面卸载时清理资源
+		console.log('个人中心页面卸载，清理资源');
+		
+		// ✅ 第一步：立即标记页面已销毁
+		this.isDestroyed = true;
+		this.loading = false;
+		
+		// ✅ 第二步：关闭所有弹窗
+		this.showIdentityDropdown = false;
+		this.showEnterpriseKycModal = false;
+		this.showKycModal = false;
+		
+		// ✅ 第三步：清空数据，释放引用
+		this.enterprises = [];
+		
+		console.log('个人中心页面资源清理完成');
+	},
+	
+	onHide() {
+		try {
+			console.log('个人中心页面隐藏');
+			// ✅ 页面隐藏时关闭所有弹窗
+			this.showIdentityDropdown = false;
+			this.showEnterpriseKycModal = false;
+			this.showKycModal = false;
+		} catch (error) {
+			console.error('onHide 执行出错:', error);
+		}
+	},
+		
+		methods: {
+			// 手机号脱敏处理
+			maskPhoneNumber(phone) {
+				if (!phone) return '';
+				if (phone.length < 7) return phone;
+				// 保留前3位和后4位，中间用*替换
+				const start = phone.substring(0, 3);
+				const end = phone.substring(phone.length - 4);
+				const middle = '*'.repeat(phone.length - 7);
+				return start + middle + end;
+			},
+			
+			// 获取用户信息
+			async getUserInfo() {
+				// 防止重复请求
+				if (this.loading || this.isDestroyed) {
+					console.log('getUserInfo: 已有请求正在进行或页面已销毁，跳过');
+					return;
+				}
+				
+				try {
+					this.loading = true;
+					console.log('开始获取用户信息...');
+					const res = await get<any>('/api/v1/member/user/get');
+			
+					// ✅ 检查页面是否已销毁（防止异步操作更新已销毁的页面）
+					if (this.isDestroyed) {
+						console.log('getUserInfo: 页面已销毁，取消更新');
+						this.loading = false;
+						return;
+					}
+					
+					console.log('个人中心获取用户信息成功:', JSON.stringify(res));
+					
+					// 再次检查页面状态
+					if (this.isDestroyed) {
+						this.loading = false;
+						return;
+					}
+					
+					// 更新用户信息
+					this.userInfo = {
+						id: res.id?.toString() || '',
+						name: res.nickname || '未命名用户',
+						phone: res.mobile || '',
+						avatar: res.avatar || '/static/logo.png',
+						isVerified: res.verifyStatus === 2, // 只有状态为2（已认证）时才为true
+						verifyStatus: res.verifyStatus || 0, // 保存原始认证状态值，便于详细显示
+						point: res.point || 0,
+						level: res.level || null
+					};
+					
+					console.log('更新后的用户信息:', JSON.stringify(this.userInfo));
+					
+					// 如果是首次加载或未从缓存加载，则设置默认身份
+					if (!this.currentIdentity.id && !this.isDestroyed) {
+						this.currentIdentity = {
+							type: 'personal',
+							id: this.userInfo.id,
+							name: '个人',
+							verified: this.userInfo.isVerified,
+							role: ''
+						};
+						
+						// 保存身份选择到本地存储
+						this.saveIdentityToStorage();
+					} else if (this.currentIdentity.type === 'personal' && !this.isDestroyed) {
+						// ✅ 如果当前是个人身份，更新认证状态
+						this.currentIdentity.verified = this.userInfo.isVerified;
+						this.currentIdentity.id = this.userInfo.id;
+						this.saveIdentityToStorage();
+					}
+					
+					// 如果用户已认证且页面未销毁，加载企业列表
+					if (this.userInfo.isVerified && !this.isDestroyed) {
+						this.loadEnterpriseList();
+					}
+					
+					// 记录加载时间
+					this.lastLoadTime = Date.now();
+					this.loading = false;
+				} catch (error) {
+					console.error('获取用户信息失败:', error);
+					this.loading = false;
+					
+					// 检查页面状态，避免在页面销毁后显示toast
+					if (this.isDestroyed) {
+						return;
+					}
+					
+					// 只有在非401错误时才显示toast，401错误会自动跳转登录
+					if (!error.message || !error.message.includes('未授权')) {
+						uni.showToast({
+							title: '获取用户信息失败: ' + (error.message || '未知错误'),
+							icon: 'none'
+						});
+					}
+				}
+			},
+			
+			// 加载企业列表
+			async loadEnterpriseList() {
+				// 检查页面状态
+				if (this.isDestroyed) {
+					console.log('loadEnterpriseList: 页面已销毁，跳过加载');
+					return;
+				}
+				
+				try {
+					console.log('开始加载企业列表...');
+					const response = await getEnterpriseList();
+			
+					// ✅ 检查页面是否已销毁（防止异步操作更新已销毁的页面）
+					if (this.isDestroyed) {
+						console.log('loadEnterpriseList: 页面已销毁，取消更新');
+						return;
+					}
+			
+					console.log('企业列表API响应:', response);
+					
+					// 处理API返回的数据
+					if (response && response.list && !this.isDestroyed) {
+						// 转换API响应为前端需要的格式
+						this.enterprises = response.list.map(item => ({
+							id: item.id,
+							name: item.name,
+							verified: item.status === EnterpriseStatus.VERIFIED, // 修正为VERIFIED(2)
+							role: this.mapRoleToText(item.role)
+						}));
+						console.log('企业列表加载成功，企业数量:', this.enterprises.length);
+						
+						// 再次检查页面状态
+						if (this.isDestroyed) {
+							return;
+						}
+						
+						// ✅ 修复bug：加载企业列表后，如果当前身份是企业，需要重新验证管理员权限
+						if (this.currentIdentity.type === 'enterprise' && this.currentIdentity.id) {
+							const currentEnterprise = this.enterprises.find(e => e.id === this.currentIdentity.id);
+							if (currentEnterprise && !this.isDestroyed) {
+								// 更新当前身份的角色信息
+								this.currentIdentity.role = currentEnterprise.role;
+								this.currentIdentity.verified = currentEnterprise.verified;
+								// 更新管理员权限
+								this.isEnterpriseAdmin = ['管理员', '所有者'].includes(currentEnterprise.role);
+								console.log('更新企业管理员权限:', this.isEnterpriseAdmin, '角色:', currentEnterprise.role);
+								// 保存更新后的身份信息
+								this.saveIdentityToStorage();
+							} else if (!currentEnterprise) {
+								console.warn('当前选择的企业不在企业列表中');
+							}
+						}
+					} else if (!this.isDestroyed) {
+						console.error('企业列表格式异常:', response);
+					}
+				} catch (error) {
+					if (!this.isDestroyed) {
+						console.error('获取企业列表失败:', error);
+					}
+				}
+			},
+			
+			// 将API角色值映射为角色文本
+			mapRoleToText(role) {
+				switch (role) {
+					case 1:
+						return '所有者';
+					case 2:
+						return '管理员';
+					case 3:
+						return '成员';
+					default:
+						return '成员';
+				}
+			},
+			
+			// 切换身份下拉菜单
+			toggleIdentityDropdown() {
+				// 在用户未实名认证的情况下，不允许打开身份切换菜单
+				if (!this.userInfo.isVerified) {
+					uni.showToast({
+						title: '请先完成实名认证',
+						icon: 'none'
+					});
+					return;
+				}
+				this.showIdentityDropdown = !this.showIdentityDropdown;
+			},
+			
+			// 关闭身份下拉菜单
+			closeIdentityDropdown() {
+				this.showIdentityDropdown = false;
+			},
+			
+			// 切换身份
+			switchIdentity(type, enterprise = null) {
+				if (type === 'personal') {
+					this.currentIdentity = {
+						type: 'personal',
+						id: this.userInfo.id || '',
+						name: '个人',
+						verified: this.userInfo.isVerified,
+						role: ''
+					};
+					// ✅ 切换到个人身份时，重置管理员权限
+					this.isEnterpriseAdmin = false;
+					console.log('切换到个人身份，重置管理员权限为false');
+				} else if (type === 'enterprise' && enterprise) {
+					this.currentIdentity = {
+						type: 'enterprise',
+						id: enterprise.id,
+						name: enterprise.name,
+						verified: enterprise.verified,
+						role: enterprise.role
+					};
+					
+					// 根据当前企业角色更新管理权限
+					this.isEnterpriseAdmin = ['管理员', '所有者'].includes(enterprise.role);
+					console.log('切换到企业身份，管理员权限:', this.isEnterpriseAdmin, '角色:', enterprise.role);
+				}
+				
+				// 保存身份选择到本地存储
+				this.saveIdentityToStorage();
+				
+				// 关闭下拉菜单
+				this.closeIdentityDropdown();
+				
+				// 刷新页面数据
+				this.refreshPageData();
+			},
+			
+			// 保存身份选择到本地存储
+			saveIdentityToStorage() {
+				uni.setStorageSync('currentIdentity', JSON.stringify(this.currentIdentity));
+			},
+			
+			// 从本地存储加载身份
+			loadIdentityFromStorage() {
+				try {
+					const savedIdentity = uni.getStorageSync('currentIdentity');
+					if (savedIdentity) {
+						const parsedIdentity = JSON.parse(savedIdentity);
+
+						// 兼容旧数据，如果name是包含"（个人）"的格式，则重置为"个人身份"
+						if (parsedIdentity.type === 'personal' && parsedIdentity.name !== '个人') {
+							parsedIdentity.name = '个人';
+						}
+						
+						this.currentIdentity = parsedIdentity;
+						
+						// 如果是企业身份，更新管理权限
+						if (this.currentIdentity.type === 'enterprise') {
+							this.isEnterpriseAdmin = ['管理员', '所有者'].includes(this.currentIdentity.role);
+							console.log('从本地存储加载企业身份，管理员权限:', this.isEnterpriseAdmin, '角色:', this.currentIdentity.role);
+						} else {
+							// 个人身份不是管理员
+							this.isEnterpriseAdmin = false;
+						}
+					}
+				} catch (e) {
+					console.error('加载身份信息失败:', e);
+				}
+			},
+			
+			// 刷新页面数据
+			refreshPageData() {
+				// 如果是个人身份，重新获取用户信息
+				if (this.currentIdentity.type === 'personal') {
+					this.getUserInfo();
+				}
+				// 如果是企业身份，可以在这里获取企业相关信息
+				// TODO: 获取企业信息的API
+			},
+			
+			// 前往企业认证
+			goToVerify() {
+				console.log('前往企业认证');
+				
+				// 先检查是否有当前选中的企业
+				try {
+					const savedIdentity = uni.getStorageSync('currentIdentity');
+					if (savedIdentity) {
+						const identity = JSON.parse(savedIdentity);
+						
+						// 如果当前身份是企业且有ID，直接跳转到企业认证页面
+						if (identity.type === 'enterprise' && identity.id) {
+							console.log('使用当前选中的企业进行认证，企业ID:', identity.id);
+							
+							// 查找当前选中企业的完整信息
+							let currentEnterprise = null;
+							if (this.enterprises && this.enterprises.length > 0) {
+								currentEnterprise = this.enterprises.find(item => item.id === identity.id);
+							}
+							
+							// 确保企业信息保存到本地存储
+							this.prepareEnterpriseData(identity.id, currentEnterprise);
+							
+							// 跳转到认证页面
+							uni.navigateTo({
+								url: `/pages/kyc/enterprise/index?id=${identity.id}`
+							});
+							this.closeIdentityDropdown();
+							return;
+						}
+					}
+				} catch (e) {
+					console.error('读取当前身份失败:', e);
+				}
+				
+				// 如果没有当前选中的企业，则尝试使用企业列表中的第一个企业
+				try {
+					if (this.enterprises && this.enterprises.length > 0) {
+						const firstEnterprise = this.enterprises[0];
+						console.log('使用企业列表中的第一个企业进行认证，企业ID:', firstEnterprise.id);
+						
+						// 确保企业信息保存到本地存储
+						this.prepareEnterpriseData(firstEnterprise.id, firstEnterprise);
+						
+						uni.navigateTo({
+							url: `/pages/kyc/enterprise/index?id=${firstEnterprise.id}`
+						});
+						this.closeIdentityDropdown();
+						return;
+					}
+				} catch (e) {
+					console.error('读取企业列表失败:', e);
+				}
+				
+				// 以上方法都失败了，创建默认企业
+				let defaultEnterpriseId = "default_enterprise_" + Date.now();
+				let defaultEnterpriseName = "我的企业";
+				
+				// 创建企业列表（如果不存在）
+				try {
+					let enterprises = uni.getStorageSync('enterpriseList');
+					let enterpriseList = [];
+					
+					if (enterprises) {
+						enterpriseList = JSON.parse(enterprises);
+					}
+					
+					// 检查是否已经有默认企业
+					let defaultEnterprise = enterpriseList.find(item => item.name === defaultEnterpriseName);
+					
+					if (!defaultEnterprise) {
+						// 创建默认企业并添加到列表中
+						defaultEnterprise = {
+							id: defaultEnterpriseId,
+							name: defaultEnterpriseName,
+							logo: '/static/icons/blue-icon.png',
+							status: EnterpriseStatus.UNVERIFIED, // 未认证状态(0)
+							certStatus: 'pending',
+							role: 1 // 所有者角色
+						};
+						
+						enterpriseList.push(defaultEnterprise);
+						uni.setStorageSync('enterpriseList', JSON.stringify(enterpriseList));
+					}
+					
+					// 使用企业ID跳转到认证页面
+					uni.navigateTo({
+						url: `/pages/kyc/enterprise/index?id=${defaultEnterprise.id}`
+					});
+				} catch (e) {
+					console.error('创建默认企业失败:', e);
+					// 出错时仍尝试跳转，使用临时ID
+					uni.navigateTo({
+						url: `/pages/kyc/enterprise/index?id=${defaultEnterpriseId}`
+					});
+				}
+				
+				this.closeIdentityDropdown();
+			},
+			
+			// 准备企业数据，确保企业信息保存到本地存储
+			prepareEnterpriseData(enterpriseId, enterpriseData) {
+				try {
+					// 读取企业列表
+					let enterprises = uni.getStorageSync('enterpriseList');
+					let enterpriseList = [];
+					
+					if (enterprises) {
+						enterpriseList = JSON.parse(enterprises);
+					}
+					
+					// 检查企业是否已在列表中
+					const index = enterpriseList.findIndex(item => item.id === enterpriseId);
+					
+					if (index === -1) {
+						// 如果不在列表中且有企业数据，则添加到列表
+						if (enterpriseData) {
+							const enterprise = {
+								id: enterpriseData.id,
+								name: enterpriseData.name,
+								logo: enterpriseData.logo || '/static/icons/blue-icon.png',
+								status: enterpriseData.verified ? EnterpriseStatus.VERIFIED : EnterpriseStatus.UNVERIFIED,
+								certStatus: enterpriseData.verified ? 'approved' : 'pending',
+								role: enterpriseData.role === '所有者' ? 1 : (enterpriseData.role === '管理员' ? 2 : 3)
+							};
+							
+							enterpriseList.push(enterprise);
+							console.log('添加企业到本地存储:', enterprise);
+						}
+					} else if (enterpriseData) {
+						// 如果在列表中且有企业数据，则更新信息
+						enterpriseList[index] = {
+							...enterpriseList[index],
+							name: enterpriseData.name,
+							status: enterpriseData.verified ? EnterpriseStatus.VERIFIED : EnterpriseStatus.UNVERIFIED,
+							certStatus: enterpriseData.verified ? 'approved' : 'pending',
+							role: enterpriseData.role === '所有者' ? 1 : (enterpriseData.role === '管理员' ? 2 : 3)
+						};
+						console.log('更新本地存储的企业信息:', enterpriseList[index]);
+					}
+					
+					// 保存回本地存储
+					uni.setStorageSync('enterpriseList', JSON.stringify(enterpriseList));
+				} catch (e) {
+					console.error('准备企业数据失败:', e);
+				}
+			},
+			
+			// 添加新企业
+			addEnterprise() {
+				console.log('添加新企业');
+				uni.navigateTo({
+					url: '/pages/enterprise/add'
+				});
+				this.closeIdentityDropdown();
+			},
+			
+			// 导航到个人信息页
+			goToPersonalInfo() {
+				uni.navigateTo({
+					url: '/pages/profile/personal-info'
+				});
+			},
+			
+			// 导航到签名管理页
+			goToSignatures() {
+				// 未认证用户点击时，也应该提示去认证
+				if (!this.userInfo.isVerified) {
+					this.promptForVerification();
+					return;
+				}
+				uni.navigateTo({
+					url: '/pages/profile/signatures'
+				});
+			},
+			
+			// 导航到通知设置页
+			goToNotifications() {
+				uni.navigateTo({
+					url: '/pages/profile/notifications'
+				});
+			},
+			
+			// 导航到我的企业页
+			goToEnterprises() {
+				if (!this.userInfo.isVerified) {
+					this.promptForVerification();
+					return;
+				}
+				uni.navigateTo({
+					url: '/pages/enterprise/list'
+				});
+			},
+			
+			// 导航到成员管理页
+			goToMembers() {
+				if (!this.isEnterpriseAdmin) {
+					uni.showToast({
+						title: '需要管理员权限',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				// 确保传递当前选中的企业ID
+				if (this.currentIdentity.type === 'enterprise' && this.currentIdentity.id) {
+					console.log('导航到成员管理页面，企业ID:', this.currentIdentity.id);
+					uni.navigateTo({
+						url: `/pages/enterprise/members?id=${this.currentIdentity.id}`
+					});
+				} else {
+					uni.showToast({
+						title: '请先选择企业',
+						icon: 'none'
+					});
+				}
+			},
+			
+			// 导航到印章管理页
+			goToSeals() {
+				// 如果是个人身份，依赖个人认证
+				if (this.currentIdentity.type === 'personal' && !this.userInfo.isVerified) {
+					this.promptForVerification();
+					return;
+				}
+				
+				// 如果是企业身份，依赖企业认证和管理员权限
+				if (this.currentIdentity.type === 'enterprise') {
+					if (!this.currentIdentity.verified) {
+					// 显示企业认证提示弹窗
+					this.showEnterpriseKycModal = true;
+						return;
+					}
+					
+					if (!this.isEnterpriseAdmin) {
+						uni.showToast({
+							title: '需要管理员权限',
+							icon: 'none'
+						});
+						return;
+					}
+				}
+				
+				// 根据当前身份类型决定导航到哪个印章管理页面
+				if (this.currentIdentity.type === 'personal') {
+					uni.navigateTo({
+						url: '/pages/profile/seals'
+					});
+				} else if (this.currentIdentity.type === 'enterprise' && this.currentIdentity.id) {
+					console.log('导航到企业印章管理页面，企业ID:', this.currentIdentity.id);
+					uni.navigateTo({
+						url: `/pages/enterprise/seals?id=${this.currentIdentity.id}`
+					});
+				} else {
+					uni.showToast({
+						title: '请先选择企业',
+						icon: 'none'
+					});
+				}
+			},
+			
+			// 导航到个人印章管理页
+			goToPersonalSeals() {
+				// 个人印章需要个人认证
+				if (!this.userInfo.isVerified) {
+					this.promptForVerification();
+					return;
+				}
+				
+				uni.navigateTo({
+					url: '/pages/profile/seals'
+				});
+			},
+			
+			// 导航到企业印章管理页
+			goToEnterpriseSeals() {
+				// 如果当前不是企业身份，先提示切换
+				if (this.currentIdentity.type !== 'enterprise') {
+					uni.showToast({
+						title: '请先切换到企业身份',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				// 企业身份需要验证认证状态和权限
+				if (!this.currentIdentity.verified) {
+				// 显示企业认证提示弹窗
+				this.showEnterpriseKycModal = true;
+					return;
+				}
+				
+				if (!this.isEnterpriseAdmin) {
+					uni.showToast({
+						title: '需要管理员权限',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				// 导航到企业印章管理页
+				if (this.currentIdentity.id) {
+					console.log('导航到企业印章管理页面，企业ID:', this.currentIdentity.id);
+					uni.navigateTo({
+						url: `/pages/enterprise/seals?id=${this.currentIdentity.id}`
+					});
+				} else {
+					uni.showToast({
+						title: '企业信息异常',
+						icon: 'none'
+					});
+				}
+			},
+			
+			// 导航到我的套餐页
+			goToPackages() {
+				uni.navigateTo({
+					url: '/pages/profile/packages'
+				});
+			},
+			
+			// 导航到帮助中心页
+			goToHelp() {
+				uni.navigateTo({
+					url: '/pages/profile/help'
+				});
+			},
+			
+			// 导航到设置页
+			goToSettings() {
+				uni.navigateTo({
+					url: '/pages/profile/settings'
+				});
+			},
+			
+			// 导航到个人实名认证页面
+			goToPersonalVerification(): void {
+				console.log('前往个人实名认证');
+				uni.navigateTo({
+					url: '/pages/kyc/personal/index'
+				});
+			},
+			
+			// 统一的认证提示方法
+			promptForVerification(): void {
+				this.showKycModal = true;
+			},
+			
+			// 关闭个人实名认证提示弹窗
+			closeKycModal(): void {
+				this.showKycModal = false;
+			},
+			
+			// 确认前往个人实名认证
+			confirmKyc(): void {
+				this.showKycModal = false;
+				this.goToPersonalVerification();
+			},
+
+		// 关闭企业认证提示弹窗
+		closeEnterpriseKycModal(): void {
+			this.showEnterpriseKycModal = false;
+		},
+		
+		// 确认前往企业认证
+		confirmEnterpriseKyc(): void {
+			this.showEnterpriseKycModal = false;
+			// 调用原有的企业认证跳转逻辑
+			this.goToVerify();
+			},
+
+			// 导航到企业认证页面，并带上企业信息
+			navigateToEnterpriseCertification(enterprise) {
+				// 检查用户是否已经完成个人认证
+				if (!this.userInfo.isVerified) {
+					uni.showToast({
+						title: '请先完成个人实名认证',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				// 准备企业认证所需的数据
+				const certParams = {
+					id: enterprise.id,
+					name: enterprise.name || '',
+					logo: enterprise.logo || '',
+					creditCode: enterprise.creditCode || '',
+					legalPerson: enterprise.legalName || ''
+				};
+				
+				console.log('准备导航到企业认证页面，参数:', JSON.stringify(certParams));
+				
+				// 如果有电话号码，也传递过去
+				if (this.userInfo.phone) {
+					certParams.phone = this.userInfo.phone;
+				}
+				
+				// 尝试获取更多企业信息
+				try {
+					// 从缓存中获取完整的企业信息
+					// const cachedEnterprise = enterpriseCacheService.getEnterpriseById(enterprise.id); // This line is removed
+					// if (cachedEnterprise) { // This line is removed
+					// 	// 合并缓存中的信息和当前信息 // This line is removed
+					// 	Object.assign(certParams, { // This line is removed
+					// 		creditCode: cachedEnterprise.creditCode || certParams.creditCode, // This line is removed
+					// 		legalPerson: cachedEnterprise.legalPersonName || '' // This line is removed
+					// 	}); // This line is removed
+					// } // This line is removed
+					
+					// 将当前选择的企业保存到缓存中 // This line is removed
+					// enterpriseCacheService.setCurrentEnterprise({ // This line is removed
+					// 	...enterprise, // This line is removed
+					// 	...certParams // This line is removed
+					// }); // This line is removed
+				} catch (error) {
+					console.error('获取企业详情失败:', error);
+				}
+				
+				// 构建参数字符串
+				const queryParams = Object.keys(certParams)
+					.map(key => `${key}=${encodeURIComponent(certParams[key] || '')}`)
+					.join('&');
+					
+				// 跳转到企业认证页面
+				uni.navigateTo({
+					url: `/pages/kyc/enterprise/index?${queryParams}`
+				});
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="profile-container">
+		<!-- 状态栏占位 -->
+		<view class="status-bar-placeholder"></view>
+		
+		<!-- 使用scroll-view包裹所有内容，启用滚动功能 -->
+		<scroll-view scroll-y="true" class="profile-scroll">
+			<!-- 用户信息卡片 -->
+			<view class="user-info-card">
+				<view class="user-info-content">
+					<!-- 用户基本信息行：头像和姓名电话 -->
+					<view class="user-basic-info">
+						<view class="avatar-container">
+							<image class="avatar" :src="userInfo.avatar" mode="aspectFill"></image>
+							<view class="avatar-badge" v-if="userInfo.isVerified">
+								<text class="icon icon-check"></text>
+							</view>
+						</view>
+						<view class="user-details">
+							<view class="name-container">
+								<text class="user-name">{{userInfo.name}}</text>
+								<!-- 此处的认证角标直接反映用户的个人实名认证状态 -->
+								<view class="verified-badge" v-if="userInfo.verifyStatus === 2">
+									<text class="verified-icon icon icon-check-circle"></text>
+									<text class="verified-text">已认证</text>
+								</view>
+								<view class="pending-badge" v-else-if="userInfo.verifyStatus === 1">
+									<text class="pending-icon icon icon-clock"></text>
+									<text class="pending-text">审核中</text>
+								</view>
+								<view class="failed-badge" v-else-if="userInfo.verifyStatus === 3">
+									<text class="failed-icon icon icon-x-circle"></text>
+									<text class="failed-text">认证失败</text>
+								</view>
+								<view class="unverified-badge" v-else>
+									<text class="unverified-icon icon icon-alert-triangle"></text>
+									<text class="unverified-text">未认证</text>
+								</view>
+							</view>
+							<text class="user-phone">{{maskPhoneNumber(userInfo.phone)}}</text>
+						</view>
+					</view>
+					
+					<!-- 身份区域容器 -->
+					<view class="identity-area-container">
+						<!-- Case 1: 用户未完成个人实名认证或认证失败，显示强引导 -->
+						<view v-if="userInfo.verifyStatus === 0 || userInfo.verifyStatus === 3" class="verification-cta-card" @click="goToPersonalVerification">
+							<view class="cta-content">
+								<view class="cta-icon-wrapper">
+									<text class="icon icon-shield"></text>
+								</view>
+								<view class="cta-text-content">
+									<text class="cta-title">{{userInfo.verifyStatus === 3 ? '重新认证' : '完成实名认证'}}</text>
+									<text class="cta-subtitle">{{userInfo.verifyStatus === 3 ? '您的认证未通过，请重新提交' : '认证后即可使用全部功能'}}</text>
+								</view>
+							</view>
+							<view class="cta-arrow">
+								<text class="icon icon-chevron-right"></text>
+							</view>
+						</view>
+						
+						<!-- Case 1.5: 用户认证审核中，显示等待提示 -->
+						<view v-else-if="userInfo.verifyStatus === 1" class="verification-cta-card pending">
+							<view class="cta-content">
+								<view class="cta-icon-wrapper pending">
+									<text class="icon icon-clock"></text>
+								</view>
+								<view class="cta-text-content">
+									<text class="cta-title">认证审核中</text>
+									<text class="cta-subtitle">您的认证信息已提交，请耐心等待审核</text>
+								</view>
+							</view>
+						</view>
+						
+						<!-- Case 2: 用户已完成认证，显示正常的身份切换区域 -->
+						<view v-else class="identity-switch-container" @click="toggleIdentityDropdown">
+							<view class="identity-switch-header">
+								<text class="identity-label">当前身份</text>
+								<text class="identity-arrow icon icon-chevron-down"></text>
+							</view>
+							
+							<view class="identity-card" :class="{'verified': currentIdentity.verified, 'unverified': !currentIdentity.verified}">
+								<!-- 个人/企业身份内容 -->
+								<view class="identity-content">
+									<view class="identity-info">
+										<view class="identity-name-row">
+											<!-- 不再重复显示用户名，个人身份显示固定文案 -->
+											<text class="identity-name">{{ currentIdentity.name }}</text>
+											<view v-if="currentIdentity.type === 'enterprise'" class="identity-role">
+												<text class="role-text">{{ currentIdentity.role }}</text>
+											</view>
+										</view>
+										<view class="identity-status" :class="currentIdentity.verified ? 'verified' : 'unverified'">
+											<text class="status-icon icon" :class="currentIdentity.verified ? 'icon-check-circle' : 'icon-alert-triangle'"></text>
+											<text class="status-text">{{ currentIdentity.verified ? '已认证' : (currentIdentity.type === 'personal' ? '个人已认证' : '企业未认证') }}</text>
+										</view>
+									</view>
+								</view>
+							</view>
+						</view>
+					</view>
+				</view>
+			</view>
+			
+			<!-- 下方的功能菜单列表 -->
+			<view class="menu-container">
+				<!-- 账户管理 - 移除了group-title -->
+				<view class="menu-list">
+					<view class="menu-item" hover-class="menu-item-hover" @click="goToPersonalInfo">
+						<view class="menu-icon">
+							<text class="icon icon-user-check"></text>
+						</view>
+						<view class="menu-content">
+							<text class="menu-title">个人信息</text>
+						</view>
+						<view class="menu-right">
+							<text class="icon icon-chevron-right"></text>
+						</view>
+					</view>
+				<!-- 印章管理入口 -->
+				<view v-if="isPersonal" class="menu-item" hover-class="menu-item-hover" @click="goToPersonalSeals">
+					<view class="menu-icon">
+						<text class="icon icon-stamp"></text>
+					</view>
+					<view class="menu-content">
+						<text class="menu-title">印章管理</text>
+						<text class="menu-desc">管理个人和企业印章</text>
+					</view>
+					<view class="menu-arrow">
+						<text class="icon icon-chevron-right"></text>
+					</view>
+				</view>
+					<view class="menu-item" hover-class="menu-item-hover" @click="goToNotifications">
+						<view class="menu-icon">
+							<text class="icon icon-bell"></text>
+						</view>
+						<view class="menu-content">
+							<text class="menu-title">通知设置</text>
+						</view>
+						<view class="menu-right">
+							<text class="icon icon-chevron-right"></text>
+						</view>
+					</view>
+				</view>
+				
+				<!-- 企业管理 -->
+				<view class="menu-list">
+					<view v-if="isPersonal" class="menu-item" hover-class="menu-item-hover" @click="goToEnterprises">
+						<view class="menu-icon">
+							<text class="icon icon-building"></text>
+						</view>
+						<view class="menu-content">
+							<text class="menu-title">我的企业</text>
+							<text class="menu-desc">管理您的企业信息和认证</text>
+						</view>
+						<view class="menu-arrow">
+							<text class="icon icon-chevron-right"></text>
+						</view>
+					</view>
+					<view v-if="isEnterprise" class="menu-item" hover-class="menu-item-hover" :class="{'menu-item-disabled': !isEnterpriseAdmin}" @click="goToMembers">
+						<view class="menu-icon">
+							<text class="icon icon-users"></text>
+						</view>
+						<view class="menu-content">
+							<text class="menu-title">成员管理</text>
+							<text v-if="isEnterpriseAdmin" class="menu-desc">管理企业成员和权限</text>
+							<text v-else class="menu-desc menu-desc-disabled">需要管理员权限</text>
+						</view>
+						<view class="menu-arrow">
+							<text class="icon icon-chevron-right"></text>
+						</view>
+					</view>
+					<!-- 企业印章管理入口，只在企业身份下显示 -->
+					<view v-if="isEnterprise" class="menu-item" hover-class="menu-item-hover" :class="{'menu-item-disabled': !isEnterpriseAdmin || !currentIdentity.verified}" @click="goToEnterpriseSeals">
+						<view class="menu-icon">
+							<text class="icon icon-stamp"></text>
+						</view>
+						<view class="menu-content">
+							<text class="menu-title">企业印章</text>
+							<text v-if="currentIdentity.verified && isEnterpriseAdmin" class="menu-desc">管理企业印章和授权</text>
+							<text v-else-if="!currentIdentity.verified" class="menu-desc menu-desc-warning">企业未认证，无法使用印章</text>
+							<text v-else class="menu-desc menu-desc-disabled">需要管理员权限</text>
+						</view>
+						<view class="menu-arrow">
+							<text class="icon icon-chevron-right"></text>
+						</view>
+					</view>
+				</view>
+				
+				<!-- 服务与支持 - 移除了group-title -->
+				<view class="menu-list">
+					<view class="menu-item" hover-class="menu-item-hover" @click="goToPackages">
+						<view class="menu-icon">
+							<text class="icon icon-package"></text>
+						</view>
+						<view class="menu-content">
+							<text class="menu-title">{{ isPersonal ? '个人套餐' : '企业套餐' }}</text>
+							<text class="menu-desc">查看套餐余量和购买服务</text>
+						</view>
+						<view class="menu-arrow">
+							<text class="icon icon-chevron-right"></text>
+						</view>
+					</view>
+					<view class="menu-item" hover-class="menu-item-hover" @click="goToHelp">
+						<view class="menu-icon">
+							<text class="icon icon-help-circle"></text>
+						</view>
+						<view class="menu-content">
+							<text class="menu-title">帮助中心</text>
+							<text class="menu-desc">常见问题和使用指南</text>
+						</view>
+						<view class="menu-arrow">
+							<text class="icon icon-chevron-right"></text>
+						</view>
+					</view>
+					<view class="menu-item" hover-class="menu-item-hover" @click="goToSettings">
+						<view class="menu-icon">
+							<text class="icon icon-settings"></text>
+						</view>
+						<view class="menu-content">
+							<text class="menu-title">系统设置</text>
+						</view>
+						<view class="menu-right">
+							<text class="icon icon-chevron-right"></text>
+						</view>
+					</view>
+				</view>
+				
+				<!-- 应用版本 -->
+				<view class="app-version">
+					<text class="version-text">Mini Contract Pro v1.0.0</text>
+				</view>
+			</view>
+		</scroll-view>
+		
+		<!-- 身份切换弹窗 -->
+		<view v-if="showIdentityDropdown" class="identity-mask" @click="closeIdentityDropdown"></view>
+		<view v-if="showIdentityDropdown" class="identity-dropdown-container">
+			<view class="identity-dropdown">
+				<view class="dropdown-header">
+					<text class="dropdown-title">切换身份</text>
+				</view>
+				
+				<!-- 个人身份 -->
+				<view class="dropdown-section">
+					<text class="section-title">个人</text>
+				</view>
+				<view class="identity-option" :class="{ active: currentIdentity.type === 'personal' }" @click="switchIdentity('personal')">
+					<view class="option-left">
+						<view class="option-info">
+							<view class="option-name-row">
+								<!-- 直接显示"个人身份"，不再拼接用户名 -->
+								<text class="option-name">个人</text>
+							</view>
+							<view class="option-status-row">
+								<view class="option-verified" v-if="userInfo.isVerified">
+									<text class="verified-text-small">已认证</text>
+								</view>
+								<!-- 未认证的入口在主页已经足够强，此处简化显示 -->
+								<view class="option-unverified" v-else>
+									<text class="unverified-text">未认证</text>
+								</view>
+							</view>
+						</view>
+					</view>
+					<text v-if="currentIdentity.type === 'personal'" class="option-check icon icon-check"></text>
+				</view>
+				
+				<!-- 企业身份 -->
+				<!-- 在个人未认证时，禁用企业身份切换 -->
+				<view class="dropdown-section" v-if="userInfo.isVerified">
+					<text class="section-title">企业身份</text>
+				</view>
+				<view v-if="userInfo.isVerified">
+					<view v-for="(enterprise, index) in enterprises" :key="index" class="identity-option" :class="{ active: currentIdentity.type === 'enterprise' && currentIdentity.id === enterprise.id }" @click="switchIdentity('enterprise', enterprise)">
+						<view class="option-left">
+							<view class="option-info">
+								<view class="option-name-row">
+									<text class="option-name">{{ enterprise.name }}</text>
+									<view class="option-role">
+										<text class="role-text-small">{{ enterprise.role }}</text>
+									</view>
+								</view>
+								<view class="option-status-row">
+									<view v-if="!enterprise.verified" class="option-unverified" @click.stop="navigateToEnterpriseCertification(enterprise)">
+										<text class="unverified-text">未认证</text>
+										<text class="verify-now-text">立即认证</text>
+									</view>
+									<view v-else class="option-verified">
+										<text class="verified-text-small">已认证</text>
+									</view>
+								</view>
+							</view>
+						</view>
+						<text v-if="currentIdentity.type === 'enterprise' && currentIdentity.id === enterprise.id" class="option-check icon icon-check"></text>
+					</view>
+				</view>
+
+				<!-- 未认证时的提示 -->
+				<view class="unverified-enterprise-tip" v-else>
+					<text class="tip-text">完成个人实名认证后，可创建或加入企业</text>
+				</view>
+
+				
+				<!-- 添加新企业 -->
+				<view v-if="userInfo.isVerified" class="add-enterprise" @click="addEnterprise">
+					<text class="add-icon icon icon-plus"></text>
+					<text class="add-text">添加新企业</text>
+				</view>
+			</view>
+		</view>
+	
+	<!-- 个人实名认证提示弹窗 -->
+	<kyc-modal 
+		:visible="showKycModal"
+		@close="closeKycModal"
+		@confirm="confirmKyc"
+		@cancel="closeKycModal"
+	/>
+	
+	<!-- 企业认证提示弹窗 -->
+	<enterprise-kyc-modal 
+		:visible="showEnterpriseKycModal"
+		@close="closeEnterpriseKycModal"
+		@confirm="confirmEnterpriseKyc"
+		@cancel="closeEnterpriseKycModal"
+	/>
+	</view>
+</template>
+
+<style>
+	.profile-container {
+		flex: 1;
+		background-color: #F7F9FC;
+		position: relative;
+		/* 移除底部内边距，消除间距 */
+	}
+	
+	/* 添加scroll-view样式 */
+	.profile-scroll {
+		flex: 1;
+		/* 消除底部导航栏的间距和内容区域默认间距 */
+		padding-bottom: 0;
+		/* 确保内容紧贴导航栏，没有默认间距 */
+		margin: 0;
+	}
+	
+	/* 状态栏占位 */
+	.status-bar-placeholder {
+		height: var(--status-bar-height);
+		background-color: #00C28A;
+	}
+	
+	/* 图标字体 */
+	.icon {
+		font-family: 'Font Awesome 6 Free';
+		font-weight: 900;
+		font-style: normal;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+		display: inline-block;
+		font-variant: normal;
+		text-rendering: auto;
+		line-height: 1;
+	}
+	
+	.icon-user-check:before { content: "\f4fc"; }
+	.icon-building:before { content: "\f1ad"; }
+	.icon-edit-3:before { content: "\f303"; }
+	.icon-bell:before { content: "\f0f3"; }
+	.icon-shield:before { content: "\f3ed"; }
+	.icon-package:before { content: "\f466"; }
+	.icon-help-circle:before { content: "\f059"; }
+	.icon-settings:before { content: "\f013"; }
+	.icon-check:before { content: "\f00c"; }
+	.icon-check-circle:before { content: "\f058"; }
+	.icon-chevron-down:before { content: "\f078"; }
+	.icon-chevron-right:before { content: "\f054"; }
+	.icon-alert-triangle:before { content: "\f071"; }
+	.icon-users:before { content: "\f0c0"; }
+	.icon-key:before { content: "\f084"; }
+	.icon-stamp:before { content: "\f5bf"; }
+	.icon-plus:before { content: "\f067"; }
+	.icon-user:before { content: "\f007"; }
+	.icon-clock:before { content: "\f017"; }
+	.icon-x-circle:before { content: "\f057"; }
+	
+	/* 用户信息卡片 */
+	.user-info-card {
+		background: linear-gradient(135deg, #00C28A 0%, #08B783 100%);
+		padding: 40rpx 32rpx 40rpx 32rpx; /* 减少底部内边距，不再为身份切换卡片留空间 */
+		border-bottom-left-radius: 0; /* 移除圆角 */
+		border-bottom-right-radius: 0; /* 移除圆角 */
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+		position: relative;
+		z-index: 1;
+		margin-bottom: 20rpx; /* 减少底部外边距 */
+	}
+	
+	.user-info-content {
+		flex-direction: column;
+	}
+	
+	.user-basic-info {
+		flex-direction: row;
+		align-items: center;
+		/* 移除底部外边距，因为身份区域将成为独立部分 */
+		margin-bottom: 0;
+	}
+	
+	.avatar-container {
+		position: relative;
+		width: 120rpx;
+		height: 120rpx;
+		flex-shrink: 0;
+		margin-right: 24rpx;
+	}
+	
+	.avatar {
+		width: 120rpx;
+		height: 120rpx;
+		border-radius: 60rpx;
+		border-width: 4rpx;
+		border-color: rgba(255, 255, 255, 0.3);
+		border-style: solid;
+		background-color: #FFFFFF;
+		box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.15);
+		/* 确保头像不会变形的关键样式 */
+		display: block;
+		overflow: hidden;
+		flex-shrink: 0;
+	}
+	
+	.avatar-badge {
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		background-color: #FFFFFF;
+		width: 36rpx;
+		height: 36rpx;
+		border-radius: 18rpx;
+		align-items: center;
+		justify-content: center;
+		border-width: 2rpx;
+		border-color: #00C28A;
+	}
+	
+	.avatar-badge .icon {
+		color: #00C28A;
+		font-size: 20rpx;
+	}
+	
+	.user-details {
+		flex: 1;
+		min-width: 0; /* 防止flex子元素溢出 */
+	}
+	
+	.name-container {
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 12rpx;
+	}
+	
+	.user-name {
+		font-size: 40rpx;
+		font-weight: bold;
+		color: #FFFFFF;
+		margin-right: 16rpx;
+	}
+	
+	/* 用户名旁边的认证状态标签 */
+	.verified-badge {
+		background-color: rgba(255, 255, 255, 0.3);
+		padding: 4rpx 16rpx;
+		border-radius: 32rpx;
+		flex-direction: row;
+		align-items: center;
+		margin-left: 16rpx;
+		border: 1rpx solid rgba(255, 255, 255, 0.5);
+	}
+	
+	.verified-icon {
+		color: rgba(255, 255, 255, 0.95);
+		font-size: 24rpx;
+		margin-right: 6rpx;
+	}
+	
+	.verified-text {
+		font-size: 24rpx;
+		color: rgba(255, 255, 255, 0.95);
+		font-weight: 500;
+	}
+	
+	.pending-badge {
+		background-color: rgba(255, 193, 7, 0.2);
+		padding: 4rpx 16rpx;
+		border-radius: 32rpx;
+		flex-direction: row;
+		align-items: center;
+		margin-left: 16rpx;
+		border: 1rpx solid rgba(255, 193, 7, 0.35);
+	}
+	
+	.pending-icon {
+		color: rgba(255, 255, 255, 0.95);
+		font-size: 24rpx;
+		margin-right: 6rpx;
+	}
+	
+	.pending-text {
+		font-size: 24rpx;
+		color: rgba(255, 255, 255, 0.95);
+		font-weight: 500;
+	}
+	
+	.failed-badge {
+		background-color: rgba(255, 152, 0, 0.2);
+		padding: 4rpx 16rpx;
+		border-radius: 32rpx;
+		flex-direction: row;
+		align-items: center;
+		margin-left: 16rpx;
+		border: 1rpx solid rgba(255, 152, 0, 0.35);
+	}
+	
+	.failed-icon {
+		color: rgba(255, 255, 255, 0.95);
+		font-size: 24rpx;
+		margin-right: 6rpx;
+	}
+	
+	.failed-text {
+		font-size: 24rpx;
+		color: rgba(255, 255, 255, 0.95);
+		font-weight: 500;
+	}
+	
+	.unverified-badge {
+		background-color: rgba(255, 255, 255, 0.25);
+		padding: 4rpx 16rpx;
+		border-radius: 32rpx;
+		flex-direction: row;
+		align-items: center;
+		margin-left: 16rpx;
+		border: 1rpx solid rgba(255, 255, 255, 0.4);
+	}
+	
+	.unverified-icon {
+		color: rgba(255, 255, 255, 0.95);
+		font-size: 24rpx;
+		margin-right: 6rpx;
+	}
+	
+	.unverified-text {
+		font-size: 24rpx;
+		color: rgba(255, 255, 255, 0.95);
+		font-weight: 500;
+	}
+	
+	.verify-action {
+		color: #00C28A;
+		font-size: 22rpx;
+		font-weight: bold;
+	}
+	
+	.user-phone {
+		font-size: 28rpx;
+		color: rgba(255, 255, 255, 0.7);
+	}
+
+	/* 将身份区域从用户信息中独立出来，作为新的容器 */
+	.identity-area-container {
+		margin-top: 24rpx;
+	}
+	
+	/* 认证引导卡片 */
+	.verification-cta-card {
+		background-color: rgba(255, 255, 255, 0.2);
+		border-radius: 16rpx;
+		margin-top: 24rpx;
+		padding: 24rpx;
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+		border: 2rpx solid rgba(255, 255, 255, 0.3);
+	}
+	
+	/* 审核中状态卡片 */
+	.verification-cta-card.pending {
+		background-color: rgba(250, 173, 20, 0.15);
+		border: 2rpx solid rgba(250, 173, 20, 0.3);
+	}
+	
+	.cta-icon-wrapper.pending {
+		background-color: rgba(255, 255, 255, 0.9);
+	}
+	
+	.cta-icon-wrapper.pending .icon {
+		color: #FAAD14;
+	}
+	
+	.cta-content {
+		flex-direction: row;
+		align-items: center;
+		flex: 1;
+	}
+	
+	.cta-icon-wrapper {
+		width: 80rpx;
+		height: 80rpx;
+		border-radius: 12rpx;
+		background-color: rgba(255, 255, 255, 0.9);
+		align-items: center;
+		justify-content: center;
+		margin-right: 24rpx;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.15);
+	}
+	
+	.cta-icon-wrapper .icon {
+		font-size: 40rpx;
+		color: #00C28A;
+	}
+	
+	.cta-text-content {
+		flex-direction: column;
+		flex: 1;
+	}
+	
+	.cta-title {
+		font-size: 30rpx;
+		font-weight: bold;
+		color: #FFFFFF;
+		text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.1);
+	}
+	
+	.cta-subtitle {
+		font-size: 24rpx;
+		color: rgba(255, 255, 255, 0.95);
+		margin-top: 4rpx;
+		text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.1);
+	}
+	
+	.cta-arrow .icon {
+		font-size: 32rpx;
+		color: rgba(255, 255, 255, 0.9);
+		text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.1);
+	}
+
+	/* 已认证用户的身份切换容器 */
+	.identity-switch-container {
+		background-color: transparent; /* 背景移到card上 */
+		border-radius: 12rpx;
+		padding: 0; /* 移除内边距 */
+		flex-direction: column;
+	}
+	
+	.identity-switch-header {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 6rpx;
+	}
+	
+	.identity-label {
+		font-size: 22rpx;
+		color: rgba(255, 255, 255, 0.8);
+	}
+	
+	.identity-arrow {
+		color: rgba(255, 255, 255, 0.8);
+		font-size: 24rpx;
+		background-color: rgba(255, 255, 255, 0.1);
+		width: 36rpx;
+		height: 36rpx;
+		border-radius: 18rpx;
+		text-align: center;
+		line-height: 36rpx;
+	}
+	
+	.identity-card {
+		flex-direction: row;
+		align-items: center;
+		margin-top: 10rpx;
+		padding: 18rpx;
+		border-radius: 10rpx;
+		background-color: rgba(255, 255, 255, 0.15);
+	}
+	
+	.identity-card.verified {
+		border-left-width: 4rpx;
+		border-left-color: #00C28A;
+	}
+	
+	.identity-card.unverified {
+		border-left-width: 4rpx;
+		border-left-color: #E68A00;
+	}
+	
+	.identity-icon {
+		font-size: 32rpx;
+		color: #FFFFFF;
+	}
+	
+	/* 身份卡片中的认证状态标签 */
+	.identity-status.verified {
+		background-color: rgba(255, 255, 255, 0.25);
+		border-radius: 8rpx;
+		padding: 4rpx 10rpx;
+		box-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
+		margin-top: 6rpx;
+		align-self: flex-start;
+	}
+	
+	.identity-status.verified .status-icon {
+		color: #FFFFFF;
+		font-size: 20rpx;
+		margin-right: 6rpx;
+	}
+	
+	.identity-status.verified .status-text {
+		color: #FFFFFF;
+		font-size: 22rpx;
+		font-weight: 500;
+	}
+	
+	.identity-status.unverified {
+		background-color: rgba(255, 255, 255, 0.25);
+		border-radius: 8rpx;
+		padding: 8rpx 16rpx;
+		flex-direction: row;
+		align-items: center;
+		margin-top: 8rpx;
+	}
+	
+	.identity-status.unverified .status-icon {
+		color: #FFFFFF;
+		font-size: 24rpx;
+		margin-right: 8rpx;
+	}
+	
+	.identity-status.unverified .status-text {
+		color: #FFFFFF;
+		font-size: 24rpx;
+		font-weight: 500;
+	}
+	
+	.identity-content {
+		flex-direction: row;
+		align-items: center;
+		width: 100%;
+	}
+	
+	.identity-icon-box {
+		width: 54rpx;
+		height: 54rpx;
+		border-radius: 8rpx;
+		margin-right: 12rpx;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.identity-icon-box.personal {
+		background-color: rgba(255, 255, 255, 0.25);
+		border-width: 2rpx;
+		border-color: rgba(255, 255, 255, 0.5);
+	}
+	
+	.identity-icon-box.enterprise-verified {
+		background-color: rgba(255, 255, 255, 0.25);
+		border-width: 2rpx;
+		border-color: rgba(255, 255, 255, 0.5);
+	}
+	
+	.identity-icon-box.enterprise-unverified {
+		background-color: rgba(255, 107, 0, 0.25);
+		border-width: 2rpx;
+		border-color: rgba(255, 107, 0, 0.5);
+	}
+	
+	.identity-icon-image {
+		width: 54rpx;
+		height: 54rpx;
+		border-radius: 8rpx;
+	}
+	
+	.identity-icon-box.personal .identity-icon {
+		font-size: 32rpx;
+		color: #FFFFFF;
+	}
+	
+	.identity-icon-box.enterprise-verified .identity-icon {
+		font-size: 32rpx;
+		color: #FFFFFF;
+	}
+	
+	.identity-icon-box.enterprise-unverified .identity-icon {
+		font-size: 32rpx;
+		color: #FFFFFF;
+	}
+	
+	.identity-info {
+		flex: 1;
+		justify-content: center;
+		padding-left: 20rpx; /* 添加左侧内边距 */
+	}
+	
+	.identity-name-row {
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	.identity-name {
+		font-size: 28rpx;
+		color: #FFFFFF;
+		font-weight: 500;
+	}
+	
+	.identity-role {
+		background-color: rgba(255, 255, 255, 0.25);
+		border-radius: 30rpx;
+		padding: 2rpx 10rpx;
+		margin-left: 12rpx;
+	}
+	
+	.role-text {
+		color: #ffffff;
+		font-size: 20rpx;
+		font-weight: 500;
+	}
+	
+	.identity-status {
+		flex-direction: row;
+		align-items: center;
+		margin-top: 4rpx;
+	}
+	
+	.status-icon {
+		font-size: 20rpx;
+		color: #FFFFFF;
+		margin-right: 6rpx;
+	}
+	
+	.status-text {
+		color: #FFFFFF;
+		font-size: 22rpx;
+		font-weight: 500;
+	}
+	
+	/* 菜单区域 */
+	.menu-container {
+		padding: 16rpx 24rpx;
+	}
+	
+	.menu-list {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		overflow: hidden;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+		margin-bottom: 16rpx;
+	}
+	
+	.menu-item {
+		flex-direction: row;
+		align-items: center;
+		padding: 28rpx 24rpx;
+		border-bottom-width: 1rpx;
+		border-bottom-color: #F0F0F0;
+		transition: background-color 0.3s;
+	}
+	
+	.menu-item:last-child {
+		border-bottom-width: 0;
+	}
+	
+	.menu-item-hover {
+		background-color: rgba(0, 194, 138, 0.05);
+	}
+	
+	.menu-item-disabled {
+		opacity: 0.6;
+		background-color: #F8F8F8;
+	}
+	
+	.menu-icon {
+		width: 80rpx;
+		height: 80rpx;
+		border-radius: 16rpx;
+		background: linear-gradient(135deg, rgba(0, 194, 138, 0.1) 0%, rgba(0, 194, 138, 0.05) 100%);
+		align-items: center;
+		justify-content: center;
+		margin-right: 24rpx;
+	}
+	
+	.menu-icon .icon {
+		font-size: 38rpx;
+		color: #00C28A;
+	}
+	
+	.menu-content {
+		flex: 1;
+	}
+	
+	.menu-title {
+		font-size: 30rpx;
+		color: #333333;
+		font-weight: 500;
+		margin-bottom: 6rpx;
+	}
+	
+	.menu-desc {
+		font-size: 24rpx;
+		color: #999999;
+	}
+	
+	.menu-desc-warning {
+		color: #FF6B6B;
+	}
+	
+	.menu-desc-disabled {
+		color: #CCCCCC;
+	}
+	
+	.menu-arrow {
+		color: #CCCCCC;
+		margin-left: 10rpx;
+	}
+	
+	.menu-arrow .icon {
+		font-size: 26rpx;
+		color: #BBBBBB;
+	}
+	
+	/* 应用版本 */
+	.app-version {
+		align-items: center;
+		justify-content: center;
+		margin: 24rpx 0;
+	}
+	
+	.version-text {
+		font-size: 24rpx;
+		color: #999999;
+	}
+	
+	.identity-mask {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: transparent;
+		z-index: 5;
+	}
+	
+	.identity-dropdown-container {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+		z-index: 10;
+	}
+	
+	.identity-dropdown {
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		background-color: #FFFFFF;
+		border-radius: 24rpx 24rpx 0 0;
+		padding: 32rpx 24rpx;
+		max-height: 70%;
+		overflow-y: auto;
+		box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.1);
+	}
+	
+	.dropdown-header {
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 24rpx;
+		padding-bottom: 16rpx;
+		border-bottom-width: 1rpx;
+		border-bottom-color: #F0F0F0;
+	}
+	
+	.dropdown-title {
+		font-size: 32rpx;
+		color: #333333;
+		font-weight: 600;
+	}
+	
+	.dropdown-section {
+		padding: 16rpx 0 8rpx 0;
+	}
+	
+	.section-title {
+		font-size: 26rpx;
+		color: #999999;
+		margin-left: 8rpx;
+	}
+	
+	.identity-option {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 20rpx 16rpx;
+		border-radius: 12rpx;
+		margin-bottom: 12rpx;
+	}
+	
+	.identity-option.active {
+		background-color: rgba(0, 194, 138, 0.1);
+	}
+	
+	.option-left {
+		flex-direction: row;
+		align-items: center;
+		flex: 1;
+	}
+	
+	.option-avatar {
+		width: 80rpx;
+		height: 80rpx;
+		border-radius: 16rpx;
+		background-color: #F5F7FA;
+		align-items: center;
+		justify-content: center;
+		margin-right: 16rpx;
+		overflow: hidden;
+	}
+	
+	.option-avatar-img {
+		width: 80rpx;
+		height: 80rpx;
+	}
+	
+	.personal-avatar {
+		background: linear-gradient(135deg, rgba(0, 194, 138, 0.1) 0%, rgba(0, 194, 138, 0.05) 100%);
+	}
+	
+	.personal-avatar .icon {
+		font-size: 40rpx;
+		color: #00C28A;
+	}
+	
+	.option-avatar.enterprise-verified {
+		background-color: rgba(0, 194, 138, 0.1);
+	}
+	
+	.option-avatar.enterprise-verified .icon {
+		font-size: 40rpx;
+		color: #00C28A;
+	}
+	
+	.option-avatar.enterprise-unverified {
+		background-color: rgba(255, 107, 0, 0.1);
+	}
+	
+	.option-avatar.enterprise-unverified .icon {
+		font-size: 40rpx;
+		color: #E68A00;
+	}
+	
+	.option-info {
+		margin-left: 16rpx;
+		flex: 1;
+		padding-left: 10rpx; /* 添加左侧内边距 */
+	}
+	
+	.option-name {
+		font-size: 30rpx;
+		color: #333333;
+		font-weight: 500;
+	}
+	
+	.option-name-row {
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	.option-role {
+		background-color: #f0f2f5;
+		border-radius: 30rpx;
+		padding: 2rpx 10rpx;
+		margin-left: 12rpx;
+	}
+	
+	.role-text-small {
+		color: #5a6a7f;
+		font-size: 20rpx;
+	}
+	
+	.option-status-row {
+		flex-direction: row;
+		align-items: center;
+		margin-top: 4rpx;
+	}
+	
+	.option-unverified {
+		background-color: #FFF8E6;
+		border-radius: 20rpx;
+		padding: 4rpx 12rpx;
+	}
+	
+	/* 未认证时的提示 */
+	.unverified-enterprise-tip {
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		padding: 24rpx;
+		background-color: #F5F7FA;
+		border-radius: 12rpx;
+		margin: 12rpx 0;
+	}
+	
+	.tip-text {
+		font-size: 26rpx;
+		color: #909399;
+	}
+	
+	/* 移除重复的样式定义 */
+	.option-unverified .unverified-text {
+		color: #E68A00;
+		font-size: 20rpx;
+	}
+	
+	.option-verified .verified-text-small {
+		/* 使用.verified-text-small即可 */
+	}
+	
+	.verified-text-small {
+		color: #00C28A;
+		font-size: 20rpx;
+	}
+	
+	.option-verified {
+		background-color: #E8F7F1;
+		border-radius: 30rpx;
+		padding: 2rpx 10rpx;
+	}
+	
+	.verified-text-small {
+		color: #00C28A;
+		font-size: 20rpx;
+	}
+	
+	.option-check {
+		color: #00C28A;
+		font-size: 28rpx;
+	}
+	
+	.add-enterprise {
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		padding: 24rpx;
+		border-top-width: 1rpx;
+		border-top-color: #F0F0F0;
+		margin-top: 16rpx;
+	}
+	
+	.add-icon {
+		font-size: 24rpx;
+		color: #00C28A;
+		margin-right: 8rpx;
+	}
+	
+	.add-text {
+		font-size: 28rpx;
+		color: #00C28A;
+		font-weight: 500;
+	}
+
+	/* 未认证状态下的"去认证"按钮样式 */
+	.verify-action-small {
+		color: #00C28A;
+		font-size: 20rpx;
+		font-weight: bold;
+		margin-left: 8rpx;
+	}
+
+	.verify-now-text {
+		color: #FFFFFF;
+		font-size: 20rpx;
+		font-weight: bold;
+		margin-left: 8rpx;
+		background-color: #00C28A;
+		padding: 2rpx 8rpx;
+		border-radius: 16rpx;
+	}
+</style> 

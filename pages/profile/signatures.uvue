@@ -1,0 +1,848 @@
+<script>
+	/**
+	 * 签名管理页面
+	 */
+	export default {
+		data() {
+			return {
+				signatures: [
+					{
+						id: 'signature_1',
+						name: '默认签名',
+						type: 'handwriting',
+						image: '/static/signatures/signature1.png',
+						isDefault: true,
+						createTime: '2023-05-10 14:30:21'
+					},
+					{
+						id: 'signature_2',
+						name: '手写签名',
+						type: 'handwriting',
+						image: '/static/signatures/signature2.png',
+						isDefault: false,
+						createTime: '2023-06-15 09:45:12'
+					}
+				],
+				seals: [
+					{
+						id: 'seal_1',
+						name: '个人印章',
+						type: 'seal',
+						image: '/static/signatures/seal1.png',
+						isDefault: true,
+						createTime: '2023-05-20 16:18:33'
+					}
+				],
+				showAddSignaturePopup: false,
+				newSignatureType: 'handwriting', // 'handwriting', 'upload', 'type'
+				handwritingImage: '',
+				typedText: '',
+				typedStyle: 'style1',
+				uploadedImage: '',
+				newSignatureName: ''
+			}
+		},
+		methods: {
+			// 返回上一页
+			goBack(): void {
+				uni.navigateBack();
+			},
+			
+			// 打开添加签名弹窗
+			openAddSignaturePopup(): void {
+				this.showAddSignaturePopup = true;
+				this.resetNewSignatureForm();
+			},
+			
+			// 关闭添加签名弹窗
+			closeAddSignaturePopup(): void {
+				this.showAddSignaturePopup = false;
+			},
+			
+			// 重置新签名表单
+			resetNewSignatureForm(): void {
+				this.newSignatureType = 'handwriting';
+				this.handwritingImage = '';
+				this.typedText = '';
+				this.typedStyle = 'style1';
+				this.uploadedImage = '';
+				this.newSignatureName = '';
+			},
+			
+			// 切换签名类型
+			switchSignatureType(type: string): void {
+				this.newSignatureType = type;
+			},
+			
+			// 手写签名
+			startHandwriting(): void {
+				// 模拟手写签名过程
+				setTimeout(() => {
+					// 模拟生成的签名图片
+					this.handwritingImage = '/static/signatures/signature3.png';
+					uni.showToast({
+						title: '签名已保存',
+						icon: 'success'
+					});
+				}, 1000);
+			},
+			
+			// 清除手写签名
+			clearHandwriting(): void {
+				this.handwritingImage = '';
+			},
+			
+			// 上传签名图片
+			uploadSignatureImage(): void {
+				uni.chooseImage({
+					count: 1,
+					sizeType: ['original', 'compressed'],
+					sourceType: ['album', 'camera'],
+					success: (res) => {
+						if (res.tempFilePaths.length > 0) {
+							this.uploadedImage = res.tempFilePaths[0];
+						}
+					}
+				});
+			},
+			
+			// 保存新签名
+			saveNewSignature(): void {
+				// 验证签名数据
+				let hasSignatureContent = false;
+				let signatureImage = '';
+				
+				if (this.newSignatureType === 'handwriting' && this.handwritingImage) {
+					hasSignatureContent = true;
+					signatureImage = this.handwritingImage;
+				} else if (this.newSignatureType === 'upload' && this.uploadedImage) {
+					hasSignatureContent = true;
+					signatureImage = this.uploadedImage;
+				} else if (this.newSignatureType === 'type' && this.typedText) {
+					hasSignatureContent = true;
+					// 模拟生成的打字签名图片
+					signatureImage = '/static/signatures/signature4.png';
+				}
+				
+				if (!hasSignatureContent) {
+					uni.showToast({
+						title: '请完成签名',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				// 验证签名名称
+				if (!this.newSignatureName.trim()) {
+					this.newSignatureName = '签名' + (this.signatures.length + 1);
+				}
+				
+				// 创建新签名对象
+				const newSignature = {
+					id: 'signature_' + Date.now(),
+					name: this.newSignatureName,
+					type: this.newSignatureType,
+					image: signatureImage,
+					isDefault: false,
+					createTime: this.formatDate(new Date())
+				};
+				
+				// 添加到签名列表
+				this.signatures.push(newSignature);
+				
+				// 关闭弹窗并重置表单
+				this.closeAddSignaturePopup();
+				this.resetNewSignatureForm();
+				
+				uni.showToast({
+					title: '签名添加成功',
+					icon: 'success'
+				});
+			},
+			
+			// 格式化日期
+			formatDate(date: Date): string {
+				const year = date.getFullYear();
+				const month = String(date.getMonth() + 1).padStart(2, '0');
+				const day = String(date.getDate()).padStart(2, '0');
+				const hours = String(date.getHours()).padStart(2, '0');
+				const minutes = String(date.getMinutes()).padStart(2, '0');
+				const seconds = String(date.getSeconds()).padStart(2, '0');
+				
+				return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+			},
+			
+			// 设为默认签名
+			setAsDefault(id: string, type: string): void {
+				// 根据类型选择对应的列表
+				const list = type === 'seal' ? this.seals : this.signatures;
+				
+				// 更新默认状态
+				for (let i = 0; i < list.length; i++) {
+					list[i].isDefault = list[i].id === id;
+				}
+				
+				uni.showToast({
+					title: type === 'seal' ? '默认印章已设置' : '默认签名已设置',
+					icon: 'success'
+				});
+			},
+			
+			// 删除签名
+			deleteSignature(id: string, type: string): void {
+				uni.showModal({
+					title: '确认删除',
+					content: type === 'seal' ? '确定要删除此印章吗？' : '确定要删除此签名吗？',
+					success: (res) => {
+						if (res.confirm) {
+							// 根据类型选择对应的列表
+							if (type === 'seal') {
+								this.seals = this.seals.filter(item => item.id !== id);
+							} else {
+								this.signatures = this.signatures.filter(item => item.id !== id);
+							}
+							
+							uni.showToast({
+								title: '删除成功',
+								icon: 'success'
+							});
+						}
+					}
+				});
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="container">
+		<!-- 签名列表 -->
+		<scroll-view class="content-section" scroll-y="true" @scrolltolower="loadMore">
+			<view class="signature-list">
+					<view v-for="(item, index) in signatures" :key="item.id" class="signature-item">
+						<image class="signature-image" :src="item.image" mode="aspectFit"></image>
+						<view class="signature-info">
+							<view class="signature-name-row">
+								<text class="signature-name">{{item.name}}</text>
+								<text v-if="item.isDefault" class="default-tag">默认</text>
+							</view>
+							<text class="signature-time">创建于 {{item.createTime}}</text>
+						</view>
+						<view class="signature-actions">
+							<text v-if="!item.isDefault" class="action-button" @click="setAsDefault(item.id, 'signature')">设为默认</text>
+							<text class="action-button delete" @click="deleteSignature(item.id, 'signature')">删除</text>
+						</view>
+					</view>
+					
+					<!-- 无签名提示 -->
+					<view v-if="signatures.length === 0" class="empty-tip">
+						<text class="empty-text">暂无签名，请添加</text>
+					</view>
+				</view>
+			</scroll-view>
+			
+			<!-- 印章列表 -->
+			<view class="signature-section">
+				<view class="section-header">
+					<text class="section-title">我的印章</text>
+				</view>
+				
+				<view class="signature-list">
+					<view v-for="(item, index) in seals" :key="item.id" class="signature-item">
+						<image class="signature-image seal" :src="item.image" mode="aspectFit"></image>
+						<view class="signature-info">
+							<view class="signature-name-row">
+								<text class="signature-name">{{item.name}}</text>
+								<text v-if="item.isDefault" class="default-tag">默认</text>
+							</view>
+							<text class="signature-time">创建于 {{item.createTime}}</text>
+						</view>
+						<view class="signature-actions">
+							<text v-if="!item.isDefault" class="action-button" @click="setAsDefault(item.id, 'seal')">设为默认</text>
+							<text class="action-button delete" @click="deleteSignature(item.id, 'seal')">删除</text>
+						</view>
+					</view>
+					
+					<!-- 无印章提示 -->
+					<view v-if="seals.length === 0" class="empty-tip">
+						<text class="empty-text">暂无印章，请添加</text>
+					</view>
+				</view>
+			</view>
+		</view>
+		
+		<!-- 添加签名弹窗 -->
+		<view v-if="showAddSignaturePopup" class="popup-overlay">
+			<view class="popup-container">
+				<view class="popup-header">
+					<text class="popup-title">添加签名</text>
+					<text class="popup-close" @click="closeAddSignaturePopup">×</text>
+				</view>
+				
+				<view class="popup-content">
+					<!-- 签名类型选择 -->
+					<view class="signature-type-tabs">
+						<view 
+							class="type-tab" 
+							:class="{active: newSignatureType === 'handwriting'}" 
+							@click="switchSignatureType('handwriting')"
+						>
+							<text class="tab-text">手写签名</text>
+						</view>
+						<view 
+							class="type-tab" 
+							:class="{active: newSignatureType === 'upload'}" 
+							@click="switchSignatureType('upload')"
+						>
+							<text class="tab-text">上传图片</text>
+						</view>
+						<view 
+							class="type-tab" 
+							:class="{active: newSignatureType === 'type'}" 
+							@click="switchSignatureType('type')"
+						>
+							<text class="tab-text">键盘输入</text>
+						</view>
+					</view>
+					
+					<!-- 手写签名面板 -->
+					<view v-if="newSignatureType === 'handwriting'" class="signature-panel">
+						<view v-if="!handwritingImage" class="handwriting-area">
+							<text class="area-tip">点击此处开始手写签名</text>
+						</view>
+						<view v-else class="handwriting-preview">
+							<image class="preview-image" :src="handwritingImage" mode="aspectFit"></image>
+						</view>
+						
+						<view class="panel-actions">
+							<button class="panel-button" @click="startHandwriting">
+								<text class="button-text">{{handwritingImage ? '重新签名' : '开始签名'}}</text>
+							</button>
+							<button v-if="handwritingImage" class="panel-button" @click="clearHandwriting">
+								<text class="button-text">清除</text>
+							</button>
+						</view>
+					</view>
+					
+					<!-- 上传图片面板 -->
+					<view v-if="newSignatureType === 'upload'" class="signature-panel">
+						<view v-if="!uploadedImage" class="upload-area" @click="uploadSignatureImage">
+							<text class="icon icon-upload"></text>
+							<text class="area-tip">点击上传签名图片</text>
+						</view>
+						<view v-else class="upload-preview">
+							<image class="preview-image" :src="uploadedImage" mode="aspectFit"></image>
+						</view>
+						
+						<view class="panel-actions">
+							<button class="panel-button" @click="uploadSignatureImage">
+								<text class="button-text">{{uploadedImage ? '重新上传' : '上传图片'}}</text>
+							</button>
+						</view>
+					</view>
+					
+					<!-- 键盘输入面板 -->
+					<view v-if="newSignatureType === 'type'" class="signature-panel">
+						<view class="type-input-area">
+							<input 
+								class="type-input" 
+								v-model="typedText" 
+								placeholder="请输入您的姓名"
+								maxlength="10"
+							/>
+						</view>
+						
+						<view class="type-style-options">
+							<text class="style-label">选择字体样式：</text>
+							<view class="style-options">
+								<view 
+									class="style-option" 
+									:class="{active: typedStyle === 'style1'}" 
+									@click="typedStyle = 'style1'"
+								>
+									<text class="option-text style1">样式一</text>
+								</view>
+								<view 
+									class="style-option" 
+									:class="{active: typedStyle === 'style2'}" 
+									@click="typedStyle = 'style2'"
+								>
+									<text class="option-text style2">样式二</text>
+								</view>
+								<view 
+									class="style-option" 
+									:class="{active: typedStyle === 'style3'}" 
+									@click="typedStyle = 'style3'"
+								>
+									<text class="option-text style3">样式三</text>
+								</view>
+							</view>
+						</view>
+						
+						<view class="type-preview">
+							<text v-if="typedText" :class="['preview-text', typedStyle]">{{typedText}}</text>
+							<text v-else class="empty-preview">此处显示预览</text>
+						</view>
+					</view>
+					
+					<!-- 签名名称 -->
+					<view class="signature-name-input">
+						<text class="input-label">签名名称</text>
+						<input 
+							class="name-input" 
+							v-model="newSignatureName" 
+							placeholder="请输入签名名称，默认为'签名X'"
+							maxlength="20"
+						/>
+					</view>
+				</view>
+				
+				<view class="popup-footer">
+					<button class="footer-button cancel" @click="closeAddSignaturePopup">
+						<text class="button-text">取消</text>
+					</button>
+					<button class="footer-button confirm" @click="saveNewSignature">
+						<text class="button-text">保存</text>
+					</button>
+				</view>
+			</view>
+		</view>
+</template>
+
+<style>
+	.signatures-container {
+		flex: 1;
+		background-color: #F7F9FC;
+	}
+	
+	/* 顶部导航 */
+	.header {
+		height: 90rpx;
+		background-color: #FFFFFF;
+		flex-direction: row;
+		align-items: center;
+		padding: 0 32rpx;
+		padding-top: var(--status-bar-height);
+		border-bottom: 1rpx solid #EEEEEE;
+	}
+	
+	.header-left, .header-right {
+		width: 80rpx;
+		height: 80rpx;
+		justify-content: center;
+		align-items: center;
+	}
+	
+	.icon-back {
+		font-size: 36rpx;
+		color: #333333;
+	}
+	
+	.header-title {
+		flex: 1;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.title-text {
+		font-size: 32rpx;
+		font-weight: 600;
+		color: #333333;
+	}
+	
+	/* 内容区域 */
+	.content {
+		flex: 1;
+		padding: 32rpx;
+	}
+	
+	/* 签名区块 */
+	.signature-section {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		margin-bottom: 32rpx;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+		overflow: hidden;
+	}
+	
+	.section-header {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 24rpx 32rpx;
+		border-bottom: 1rpx solid #F0F0F0;
+	}
+	
+	.section-title {
+		font-size: 30rpx;
+		font-weight: bold;
+		color: #333333;
+	}
+	
+	.add-button {
+		font-size: 28rpx;
+		color: #4080FF;
+	}
+	
+	/* 签名列表 */
+	.signature-list {
+		padding: 0 32rpx;
+	}
+	
+	.signature-item {
+		flex-direction: row;
+		padding: 24rpx 0;
+		border-bottom: 1rpx solid #F0F0F0;
+		align-items: center;
+	}
+	
+	.signature-item:last-child {
+		border-bottom: none;
+	}
+	
+	.signature-image {
+		width: 120rpx;
+		height: 60rpx;
+		margin-right: 24rpx;
+		background-color: #F9F9F9;
+		border-radius: 8rpx;
+	}
+	
+	.signature-image.seal {
+		width: 80rpx;
+		height: 80rpx;
+	}
+	
+	.signature-info {
+		flex: 1;
+	}
+	
+	.signature-name-row {
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 8rpx;
+	}
+	
+	.signature-name {
+		font-size: 28rpx;
+		color: #333333;
+	}
+	
+	.default-tag {
+		font-size: 24rpx;
+		color: #00C28A;
+		background-color: rgba(0, 194, 138, 0.1);
+		padding: 2rpx 12rpx;
+		border-radius: 24rpx;
+		margin-left: 16rpx;
+	}
+	
+	.signature-time {
+		font-size: 24rpx;
+		color: #999999;
+	}
+	
+	.signature-actions {
+		flex-direction: row;
+	}
+	
+	.action-button {
+		font-size: 26rpx;
+		color: #4080FF;
+		margin-left: 24rpx;
+	}
+	
+	.action-button.delete {
+		color: #FF5722;
+	}
+	
+	/* 空状态提示 */
+	.empty-tip {
+		padding: 60rpx 0;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.empty-text {
+		font-size: 28rpx;
+		color: #999999;
+	}
+	
+	/* 弹窗 */
+	.popup-overlay {
+		position: fixed;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		left: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+		align-items: center;
+		justify-content: center;
+		z-index: 999;
+	}
+	
+	.popup-container {
+		width: 650rpx;
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		overflow: hidden;
+	}
+	
+	.popup-header {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 24rpx 32rpx;
+		border-bottom: 1rpx solid #F0F0F0;
+	}
+	
+	.popup-title {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #333333;
+	}
+	
+	.popup-close {
+		font-size: 40rpx;
+		color: #999999;
+	}
+	
+	.popup-content {
+		padding: 32rpx;
+	}
+	
+	.popup-footer {
+		flex-direction: row;
+		border-top: 1rpx solid #F0F0F0;
+	}
+	
+	.footer-button {
+		flex: 1;
+		height: 90rpx;
+		justify-content: center;
+		align-items: center;
+	}
+	
+	.footer-button.cancel {
+		border-right: 1rpx solid #F0F0F0;
+	}
+	
+	.footer-button .button-text {
+		font-size: 30rpx;
+	}
+	
+	.footer-button.cancel .button-text {
+		color: #666666;
+	}
+	
+	.footer-button.confirm .button-text {
+		color: #4080FF;
+		font-weight: bold;
+	}
+	
+	/* 签名类型选择 */
+	.signature-type-tabs {
+		flex-direction: row;
+		border-bottom: 1rpx solid #F0F0F0;
+		margin-bottom: 32rpx;
+	}
+	
+	.type-tab {
+		flex: 1;
+		height: 80rpx;
+		justify-content: center;
+		align-items: center;
+		position: relative;
+	}
+	
+	.type-tab.active {
+		color: #4080FF;
+	}
+	
+	.type-tab.active::after {
+		content: '';
+		position: absolute;
+		bottom: 0;
+		left: 50%;
+		transform: translateX(-50%);
+		width: 40rpx;
+		height: 4rpx;
+		background-color: #4080FF;
+	}
+	
+	.tab-text {
+		font-size: 28rpx;
+	}
+	
+	/* 签名面板 */
+	.signature-panel {
+		margin-bottom: 32rpx;
+	}
+	
+	.handwriting-area, .upload-area {
+		height: 300rpx;
+		background-color: #F9F9F9;
+		border: 1rpx dashed #CCCCCC;
+		border-radius: 8rpx;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 24rpx;
+	}
+	
+	.area-tip {
+		font-size: 28rpx;
+		color: #999999;
+	}
+	
+	.icon-upload {
+		font-size: 48rpx;
+		color: #CCCCCC;
+		margin-bottom: 16rpx;
+	}
+	
+	.handwriting-preview, .upload-preview {
+		height: 200rpx;
+		background-color: #F9F9F9;
+		border-radius: 8rpx;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 24rpx;
+	}
+	
+	.preview-image {
+		max-width: 80%;
+		max-height: 80%;
+	}
+	
+	.panel-actions {
+		flex-direction: row;
+		justify-content: center;
+	}
+	
+	.panel-button {
+		margin: 0 16rpx;
+		width: 240rpx;
+		height: 72rpx;
+		border-radius: 36rpx;
+		justify-content: center;
+		align-items: center;
+		background-color: #F5F7FA;
+		border: 1rpx solid #E0E0E0;
+	}
+	
+	.panel-button .button-text {
+		font-size: 28rpx;
+		color: #666666;
+	}
+	
+	/* 键盘输入 */
+	.type-input-area {
+		margin-bottom: 24rpx;
+	}
+	
+	.type-input {
+		height: 80rpx;
+		border: 1rpx solid #E0E0E0;
+		border-radius: 8rpx;
+		padding: 0 24rpx;
+		font-size: 28rpx;
+		color: #333333;
+	}
+	
+	.type-style-options {
+		margin-bottom: 24rpx;
+	}
+	
+	.style-label {
+		font-size: 28rpx;
+		color: #666666;
+		margin-bottom: 16rpx;
+	}
+	
+	.style-options {
+		flex-direction: row;
+		flex-wrap: wrap;
+	}
+	
+	.style-option {
+		margin-right: 24rpx;
+		margin-bottom: 16rpx;
+		padding: 12rpx 24rpx;
+		border-radius: 8rpx;
+		border: 1rpx solid #E0E0E0;
+	}
+	
+	.style-option.active {
+		border-color: #4080FF;
+		background-color: rgba(64, 128, 255, 0.1);
+	}
+	
+	.option-text {
+		font-size: 28rpx;
+	}
+	
+	.option-text.style1 {
+		font-family: Arial;
+	}
+	
+	.option-text.style2 {
+		font-family: "Times New Roman";
+		font-style: italic;
+	}
+	
+	.option-text.style3 {
+		font-family: "Comic Sans MS";
+	}
+	
+	.type-preview {
+		height: 150rpx;
+		background-color: #F9F9F9;
+		border-radius: 8rpx;
+		align-items: center;
+		justify-content: center;
+		padding: 24rpx;
+	}
+	
+	.preview-text {
+		font-size: 36rpx;
+		color: #333333;
+	}
+	
+	.preview-text.style1 {
+		font-family: Arial;
+	}
+	
+	.preview-text.style2 {
+		font-family: "Times New Roman";
+		font-style: italic;
+	}
+	
+	.preview-text.style3 {
+		font-family: "Comic Sans MS";
+	}
+	
+	.empty-preview {
+		font-size: 28rpx;
+		color: #999999;
+	}
+	
+	/* 签名名称输入 */
+	.signature-name-input {
+		margin-top: 32rpx;
+	}
+	
+	.input-label {
+		font-size: 28rpx;
+		color: #666666;
+		margin-bottom: 16rpx;
+	}
+	
+	.name-input {
+		height: 80rpx;
+		border: 1rpx solid #E0E0E0;
+		border-radius: 8rpx;
+		padding: 0 24rpx;
+		font-size: 28rpx;
+		color: #333333;
+	}
+</style> 

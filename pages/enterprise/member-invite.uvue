@@ -1,0 +1,560 @@
+<script>
+	/**
+	 * 企业成员邀请页面
+	 */
+	import { 
+		getEnterpriseDetail,
+		addEnterpriseMember,
+		EnterpriseRole
+	} from '../../api/enterprise/index';
+	
+	export default {
+		data() {
+			return {
+				// 企业ID
+				enterpriseId: 0,
+				
+				// 表单数据
+				formData: {
+					name: '',
+					phone: '',
+					role: EnterpriseRole.MEMBER // 默认角色为普通成员
+				},
+				
+				// 角色选项
+				roleOptions: [
+					{ value: EnterpriseRole.ADMIN, label: '管理员' },
+					{ value: EnterpriseRole.MEMBER, label: '成员' }
+				],
+				
+				// 角色描述
+				roleDescriptions: {
+					[EnterpriseRole.ADMIN]: '可以管理企业成员、印章等',
+					[EnterpriseRole.MEMBER]: '可以使用被授权的企业印章'
+				},
+				
+				// 当前企业信息
+				currentEnterprise: {
+					id: 0,
+					name: '',
+					logo: '/static/icons/blue-icon.png',
+					status: 0
+				},
+				
+				// 提交状态
+				isSubmitting: false
+			}
+		},
+		
+		computed: {
+			// 检查表单是否已填写完整
+			isFormValid() {
+				return this.formData.name.trim() && 
+					   this.formData.phone.trim() && 
+					   this.validatePhone(this.formData.phone);
+			},
+			
+			// 是否已认证企业
+			isVerified() {
+				return this.currentEnterprise.status === 2; // 2 表示已认证
+			}
+		},
+		
+		onLoad(options) {
+			if (options && options.id) {
+				this.enterpriseId = Number(options.id);
+				console.log('加载企业成员邀请页面，企业ID:', this.enterpriseId);
+				
+				// 加载企业信息
+				this.loadEnterpriseInfo();
+			} else {
+				console.error('缺少企业ID参数');
+				uni.showToast({
+					title: '缺少企业ID',
+					icon: 'none'
+				});
+				
+				// 延迟返回上一页
+				setTimeout(() => {
+					uni.navigateBack();
+				}, 1500);
+			}
+		},
+		
+		methods: {
+			// 加载企业信息
+			async loadEnterpriseInfo() {
+				try {
+					const data = await getEnterpriseDetail(this.enterpriseId);
+					this.currentEnterprise = {
+						...data,
+						logo: data.logo || this.getLogoByName(data.name)
+					};
+				} catch (error) {
+					console.error('获取企业信息失败:', error);
+					uni.showToast({
+						title: '获取企业信息失败',
+						icon: 'none'
+					});
+				}
+			},
+			
+			// 根据企业名生成默认logo
+			getLogoByName(name: string): string {
+				const icons = ['/static/icons/blue-icon.png', '/static/icons/green-icon.png'];
+				const hashCode = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+				return icons[hashCode % icons.length];
+			},
+			
+			// 选择角色
+			selectRole(role) {
+				this.formData.role = role;
+			},
+			
+			// 验证手机号
+			validatePhone(phone) {
+				const reg = /^1[3-9]\d{9}$/;
+				return reg.test(phone);
+			},
+			
+			// 提交表单
+			async submitForm() {
+				if (!this.isFormValid) {
+					uni.showToast({
+						title: '请完善表单信息',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				if (this.isSubmitting) {
+					return;
+				}
+				
+				this.isSubmitting = true;
+				
+				// 显示加载提示
+				uni.showLoading({
+					title: '提交中...'
+				});
+				
+				try {
+					// 调用API添加成员
+					// 使用API接口要求的字段格式
+					const memberData = {
+						enterpriseId: this.enterpriseId,
+						mobile: this.formData.phone, // 直接传手机号，API会查找对应用户
+						role: this.formData.role,
+						name: this.formData.name // 传递成员姓名
+					};
+					
+					console.log('添加成员参数:', memberData);
+					
+					// 调用添加成员API
+					await addEnterpriseMember(memberData);
+					
+					uni.hideLoading();
+					
+					// 显示成功提示
+					uni.showToast({
+						title: '邀请发送成功',
+						icon: 'success'
+					});
+					
+					// 延迟返回上一页
+					setTimeout(() => {
+						uni.navigateBack();
+					}, 1500);
+				} catch (error) {
+					uni.hideLoading();
+					console.error('邀请成员失败:', error);
+					uni.showToast({
+						title: '邀请失败: ' + (error.message || '未知错误'),
+						icon: 'none'
+					});
+				} finally {
+					this.isSubmitting = false;
+				}
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="container">
+		<!-- 企业信息卡片 -->
+		<view class="enterprise-card">
+			<view class="enterprise-logo">
+				<image :src="currentEnterprise.logo" mode="aspectFill"></image>
+			</view>
+			<view class="enterprise-info">
+				<text class="enterprise-name">{{ currentEnterprise.name }}</text>
+				<view class="enterprise-status" v-if="isVerified">
+					<text class="status-icon fa fa-circle-check"></text>
+					<text class="status-text">已认证</text>
+				</view>
+				<text class="enterprise-credit-code" v-if="currentEnterprise.creditCode">{{ currentEnterprise.creditCode }}</text>
+			</view>
+		</view>
+		
+		<!-- 表单区域 -->
+		<view class="form-container">
+			<!-- 表单内容 -->
+			<view class="form-content">
+				<!-- 姓名输入框 -->
+				<view class="form-item">
+					<text class="form-label">姓名</text>
+					<input 
+						class="form-input" 
+						placeholder="请输入成员姓名" 
+						v-model="formData.name" 
+						placeholder-class="input-placeholder"
+					/>
+				</view>
+				
+				<!-- 手机号输入框 -->
+				<view class="form-item">
+					<text class="form-label">手机号</text>
+					<input 
+						class="form-input" 
+						placeholder="请输入手机号" 
+						v-model="formData.phone" 
+						type="number" 
+						maxlength="11"
+						placeholder-class="input-placeholder"
+					/>
+				</view>
+				
+				<!-- 角色选择 -->
+				<view class="form-item">
+					<text class="form-label">角色</text>
+					
+					<view class="role-selector">
+						<view 
+							class="role-option" 
+							v-for="role in roleOptions" 
+							:key="role.value"
+							:class="{ 'active': formData.role === role.value }"
+							@click="selectRole(role.value)"
+						>
+							<view class="role-option-header">
+							<view class="radio-circle" :class="{ 'checked': formData.role === role.value }">
+								<view class="radio-inner" v-if="formData.role === role.value"></view>
+							</view>
+							<text class="role-name">{{ role.label }}</text>
+						</view>
+							
+							<!-- 内联角色说明 -->
+							<view class="role-inline-desc">
+								<text class="role-inline-text">{{ roleDescriptions[role.value] }}</text>
+					</view>
+				</view>
+					</view>
+				</view>
+			</view>
+		</view>
+		
+		<!-- 底部按钮区域 -->
+		<view class="bottom-bar">
+			<button 
+				class="submit-button" 
+				:disabled="!isFormValid || isSubmitting"
+				@click="submitForm"
+			>
+				<text class="button-text">{{ isSubmitting ? '发送中...' : '发送邀请' }}</text>
+			</button>
+		</view>
+		
+		<!-- 优化后的权限提示区域 -->
+		<view class="permission-tip-container">
+			<view class="permission-tip-card">
+				<view class="permission-tip-icon">
+					<text class="fa fa-info-circle"></text>
+				</view>
+				<view class="permission-tip-content">
+					<text class="permission-tip-title">邀请提示</text>
+					<text class="permission-tip-text">邀请发送后，被邀请人将收到短信通知。若对方已注册，将直接加入企业；未注册用户将收到注册邀请。</text>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<style>
+	.container {
+		flex: 1;
+		background-color: #F0F2F5;
+		height: 100%;
+		position: relative;
+		padding-top: 20rpx;
+		padding-bottom: 180rpx; /* 为底部提示区域留出空间 */
+	}
+	
+	/* 企业信息卡片 */
+	.enterprise-card {
+		background-color: #FFFFFF;
+		margin: 20rpx;
+		padding: 24rpx;
+		border-radius: 12rpx;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	.enterprise-logo {
+		width: 88rpx;
+		height: 88rpx;
+		border-radius: 12rpx;
+		overflow: hidden;
+		margin-right: 20rpx;
+		box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.1);
+	}
+	
+	.enterprise-logo image {
+		width: 100%;
+		height: 100%;
+	}
+	
+	.enterprise-info {
+		flex: 1;
+	}
+	
+	.enterprise-name {
+		font-size: 34rpx;
+		font-weight: bold;
+		color: #333333;
+		margin-bottom: 6rpx;
+	}
+	
+	.enterprise-status {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 6rpx;
+	}
+	
+	.status-icon {
+		font-size: 24rpx;
+		color: #00C28A;
+		margin-right: 6rpx;
+	}
+	
+	.status-text {
+		font-size: 24rpx;
+		color: #00C28A;
+	}
+	
+	.enterprise-credit-code {
+		font-size: 22rpx;
+		color: #999999;
+	}
+	
+	/* 表单区域 */
+	.form-container {
+		background-color: #FFFFFF;
+		margin: 20rpx;
+		border-radius: 12rpx;
+		padding: 28rpx 24rpx;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+	}
+	
+	.form-content {
+		padding: 6rpx;
+	}
+	
+	.form-item {
+		margin-bottom: 28rpx;
+	}
+
+	.form-item:last-child {
+		margin-bottom: 10rpx;
+	}
+	
+	.form-label {
+		font-size: 28rpx;
+		color: #333333;
+		margin-bottom: 12rpx;
+		display: block;
+		font-weight: 500;
+	}
+	
+	.form-input {
+		height: 88rpx;
+		background-color: #F5F7FA;
+		border-radius: 8rpx;
+		padding: 0 20rpx;
+		font-size: 28rpx;
+		color: #333333;
+		border: 1rpx solid #EBEEF5;
+	}
+	
+	.input-placeholder {
+		color: #CCCCCC;
+	}
+	
+	/* 角色选择器 */
+	.role-selector {
+		display: flex;
+		flex-direction: column;
+		background-color: #F8F9FA;
+		border-radius: 12rpx;
+		padding: 6rpx;
+		border: 1rpx solid #EBEEF5;
+		margin-top: 8rpx;
+	}
+	
+	.role-option {
+		display: flex;
+		flex-direction: column;
+		padding: 20rpx 16rpx;
+		border-radius: 8rpx;
+		margin-bottom: 6rpx;
+		transition: all 0.2s;
+	}
+	
+	.role-option:last-child {
+		margin-bottom: 0;
+	}
+
+	.role-option.active {
+		background-color: rgba(0, 194, 138, 0.08);
+		border-left: 4rpx solid #00C28A;
+	}
+
+	.role-option-header {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 12rpx;
+	}
+	
+	.radio-circle {
+		width: 36rpx;
+		height: 36rpx;
+		border-radius: 18rpx;
+		border: 2rpx solid #CCCCCC;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		margin-right: 16rpx;
+	}
+	
+	.radio-circle.checked {
+		border-color: #00C28A;
+		background-color: rgba(0, 194, 138, 0.1);
+	}
+	
+	.radio-inner {
+		width: 18rpx;
+		height: 18rpx;
+		border-radius: 9rpx;
+		background-color: #00C28A;
+	}
+	
+	.role-name {
+		font-size: 30rpx;
+		color: #333333;
+		font-weight: 500;
+	}
+	
+	.role-inline-desc {
+		padding-left: 52rpx;
+	}
+	
+	.role-inline-text {
+		font-size: 26rpx;
+		color: #666666;
+		line-height: 34rpx;
+	}
+	
+	/* 底部按钮区域 */
+	.bottom-bar {
+		padding: 30rpx 20rpx;
+		background-color: transparent;
+		margin-top: 20rpx;
+	}
+	
+	.submit-button {
+		height: 90rpx;
+		border-radius: 12rpx;
+		background-color: #00C28A;
+		color: #FFFFFF;
+		font-size: 30rpx;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		box-shadow: 0 6rpx 16rpx rgba(0, 194, 138, 0.3);
+	}
+	
+	.button-icon {
+		margin-right: 8rpx;
+	}
+	
+	.submit-button[disabled] {
+		background-color: #A0CFBE;
+		color: #FFFFFF;
+		box-shadow: none;
+	}
+	
+	.submit-button:active {
+		opacity: 0.9;
+		transform: scale(0.98);
+	}
+	
+	/* 优化后的权限提示样式 */
+	.permission-tip-container {
+		padding: 0 20rpx;
+		position: fixed;
+		bottom: 30rpx;
+		left: 0;
+		right: 0;
+		z-index: 10;
+	}
+
+	.permission-tip-card {
+		background-color: #F8F9FA;
+		border-radius: 16rpx;
+		padding: 16rpx 24rpx;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+		border-left: 6rpx solid #00C28A;
+	}
+	
+	.permission-tip-icon {
+		margin-right: 16rpx;
+	}
+
+	.permission-tip-icon .fa {
+		font-size: 36rpx;
+		color: #00C28A;
+	}
+
+	.permission-tip-content {
+		flex: 1;
+	}
+
+	.permission-tip-title {
+		font-size: 28rpx;
+		color: #333333;
+		font-weight: 600;
+		margin-bottom: 6rpx;
+	}
+
+	.permission-tip-text {
+		font-size: 26rpx;
+		color: #666666;
+		line-height: 36rpx;
+	}
+	
+	/* FontAwesome 图标样式 */
+	.fa {
+		font-family: 'Font Awesome 6 Free';
+		font-size: 26rpx;
+		font-style: normal;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+</style> 

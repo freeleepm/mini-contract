@@ -1,0 +1,778 @@
+<script lang="uts">
+	export default {
+		data() {
+			return {
+				// 合同ID
+				contractId: '',
+				// 合同标题
+				contractTitle: '房屋租赁合同',
+				// 签名区域数据
+				signatureData: '',
+				// 是否已绘制签名
+				hasSignature: false,
+				// 签名类型：手写签名、印章签名
+				signatureType: 'handwriting', // handwriting, seal
+				// 签名方式：立即签署、验证签署
+				signMethod: 'immediate', // immediate, verify
+				// 是否显示签名类型选择
+				showSignatureTypeSelect: false,
+				// 是否显示签名方式选择
+				showSignMethodSelect: false,
+				// 可用印章列表
+				sealList: [
+					{
+						id: '1',
+						name: '个人印章',
+						image: '/static/icons/blue-icon.png',
+						type: 'personal'
+					},
+					{
+						id: '2',
+						name: '公司印章',
+						image: '/static/icons/green-icon.png',
+						type: 'company'
+					}
+				],
+				// 当前选中的印章ID
+				selectedSealId: '',
+				// 是否显示印章列表
+				showSealList: false,
+				// 是否显示签名确认弹窗
+				showConfirmDialog: false,
+				// 是否显示签署成功弹窗
+				showSuccessDialog: false
+			}
+		},
+		onLoad(options: any) {
+			// 从路由参数中获取合同ID
+			if (options && options.id) {
+				this.contractId = options.id
+				console.log('加载合同签署页面，ID:', this.contractId)
+				// TODO: 根据合同ID获取合同详情
+				this.getContractDetail()
+			} else {
+				uni.showToast({
+					title: '合同ID不存在',
+					icon: 'none'
+				})
+				// 延迟返回
+				setTimeout(() => {
+					uni.navigateBack()
+				}, 1500)
+			}
+		},
+		methods: {
+			// 获取合同详情
+			getContractDetail(): void {
+				// TODO: 调用API获取合同详情
+				console.log('获取合同详情，ID:', this.contractId)
+				
+				// 模拟API调用延迟
+				uni.showLoading({
+					title: '加载中'
+				})
+				
+				setTimeout(() => {
+					uni.hideLoading()
+					// 这里使用模拟数据，实际开发中应该调用API
+					// this.contractDetail = res.data
+					console.log('合同详情加载完成')
+				}, 1000)
+			},
+			
+			// 返回上一页
+			goBack(): void {
+				uni.navigateBack()
+			},
+			
+			// 显示/隐藏签名类型选择
+			toggleSignatureTypeSelect(): void {
+				this.showSignatureTypeSelect = !this.showSignatureTypeSelect
+				if (this.showSignatureTypeSelect) {
+					this.showSignMethodSelect = false
+					this.showSealList = false
+				}
+			},
+			
+			// 显示/隐藏签名方式选择
+			toggleSignMethodSelect(): void {
+				this.showSignMethodSelect = !this.showSignMethodSelect
+				if (this.showSignMethodSelect) {
+					this.showSignatureTypeSelect = false
+					this.showSealList = false
+				}
+			},
+			
+			// 选择签名类型
+			selectSignatureType(type: string): void {
+				this.signatureType = type
+				this.showSignatureTypeSelect = false
+				this.hasSignature = false
+				this.signatureData = ''
+				
+				if (type === 'seal') {
+					// 显示印章列表
+					this.showSealList = true
+				} else {
+					this.showSealList = false
+				}
+				
+				console.log('选择签名类型:', type)
+			},
+			
+			// 选择签名方式
+			selectSignMethod(method: string): void {
+				this.signMethod = method
+				this.showSignMethodSelect = false
+				console.log('选择签名方式:', method)
+			},
+			
+			// 选择印章
+			selectSeal(sealId: string): void {
+				this.selectedSealId = sealId
+				this.showSealList = false
+				this.hasSignature = true
+				console.log('选择印章:', sealId)
+				
+				// 模拟签名数据
+				this.signatureData = '印章签名数据'
+			},
+			
+			// 清除签名
+			clearSignature(): void {
+				this.hasSignature = false
+				this.signatureData = ''
+				this.selectedSealId = ''
+				console.log('清除签名')
+			},
+			
+			// 开始签署
+			startSign(): void {
+				if (!this.hasSignature) {
+					uni.showToast({
+						title: '请先完成签名',
+						icon: 'none'
+					})
+					return
+				}
+				
+				// 显示确认弹窗
+				this.showConfirmDialog = true
+			},
+			
+			// 确认签署
+			confirmSign(): void {
+				this.showConfirmDialog = false
+				
+				// 根据签名方式进行不同的处理
+				if (this.signMethod === 'verify') {
+					// 验证签署需要额外的验证步骤
+					uni.showLoading({
+						title: '发送验证码'
+					})
+					
+					setTimeout(() => {
+						uni.hideLoading()
+						uni.showModal({
+							title: '验证码已发送',
+							content: '请输入短信验证码完成签署',
+							showCancel: false,
+							confirmText: '确定',
+							success: () => {
+								// 模拟验证成功
+								this.submitSignature()
+							}
+						})
+					}, 1000)
+				} else {
+					// 立即签署直接提交
+					this.submitSignature()
+				}
+			},
+			
+			// 取消确认
+			cancelConfirm(): void {
+				this.showConfirmDialog = false
+			},
+			
+			// 提交签名
+			submitSignature(): void {
+				console.log('提交签名')
+				uni.showLoading({
+					title: '签署中'
+				})
+				
+				// 模拟API调用延迟
+				setTimeout(() => {
+					uni.hideLoading()
+					// 显示签署成功弹窗
+					this.showSuccessDialog = true
+				}, 1500)
+			},
+			
+			// 完成签署
+			finishSign(): void {
+				this.showSuccessDialog = false
+				
+				// 返回合同详情页
+				uni.navigateBack()
+			},
+			
+			// 获取签名类型文本
+			getSignatureTypeText(): string {
+				return this.signatureType === 'handwriting' ? '手写签名' : '印章签名'
+			},
+			
+			// 获取签名方式文本
+			getSignMethodText(): string {
+				return this.signMethod === 'immediate' ? '立即签署' : '验证签署'
+			},
+			
+			// 开始手写签名
+			startHandwritingSign(): void {
+				console.log('开始手写签名')
+				// TODO: 调用手写签名API或组件
+				uni.showToast({
+					title: '请在签名区域完成签名',
+					icon: 'none'
+				})
+				
+				// 模拟签名完成
+				setTimeout(() => {
+					this.hasSignature = true
+					this.signatureData = '手写签名数据'
+				}, 2000)
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="contract-sign">
+		<!-- 顶部导航栏 -->
+		<view class="header">
+			<view class="header-left" @click="goBack">
+				<text class="header-back-icon">←</text>
+			</view>
+			<view class="header-title">
+				<text class="header-title-text">合同签署</text>
+			</view>
+			<view class="header-right">
+			</view>
+		</view>
+		
+		<scroll-view scroll-y="true" class="content">
+			<!-- 合同标题 -->
+			<view class="contract-title-container">
+				<text class="contract-title">{{ contractTitle }}</text>
+			</view>
+			
+			<!-- 签名设置 -->
+			<view class="sign-settings">
+				<view class="setting-item" @click="toggleSignatureTypeSelect">
+					<text class="setting-label">签名类型</text>
+					<view class="setting-value">
+						<text class="setting-value-text">{{ getSignatureTypeText() }}</text>
+						<text class="setting-arrow">▼</text>
+					</view>
+				</view>
+				
+				<view class="setting-item" @click="toggleSignMethodSelect">
+					<text class="setting-label">签名方式</text>
+					<view class="setting-value">
+						<text class="setting-value-text">{{ getSignMethodText() }}</text>
+						<text class="setting-arrow">▼</text>
+					</view>
+				</view>
+			</view>
+			
+			<!-- 签名类型选择下拉 -->
+			<view v-if="showSignatureTypeSelect" class="dropdown-menu">
+				<view class="dropdown-item" @click="selectSignatureType('handwriting')">
+					<text class="dropdown-item-text" :class="{ 'active': signatureType === 'handwriting' }">手写签名</text>
+				</view>
+				<view class="dropdown-item" @click="selectSignatureType('seal')">
+					<text class="dropdown-item-text" :class="{ 'active': signatureType === 'seal' }">印章签名</text>
+				</view>
+			</view>
+			
+			<!-- 签名方式选择下拉 -->
+			<view v-if="showSignMethodSelect" class="dropdown-menu">
+				<view class="dropdown-item" @click="selectSignMethod('immediate')">
+					<text class="dropdown-item-text" :class="{ 'active': signMethod === 'immediate' }">立即签署</text>
+				</view>
+				<view class="dropdown-item" @click="selectSignMethod('verify')">
+					<text class="dropdown-item-text" :class="{ 'active': signMethod === 'verify' }">验证签署</text>
+				</view>
+			</view>
+			
+			<!-- 印章列表 -->
+			<view v-if="showSealList" class="seal-list">
+				<text class="seal-list-title">请选择印章</text>
+				<view class="seal-grid">
+					<view 
+						v-for="(seal, index) in sealList" 
+						:key="index"
+						class="seal-item"
+						:class="{ 'selected': selectedSealId === seal.id }"
+						@click="selectSeal(seal.id)"
+					>
+						<image class="seal-image" :src="seal.image" mode="aspectFit"></image>
+						<text class="seal-name">{{ seal.name }}</text>
+						<text class="seal-type">{{ seal.type === 'personal' ? '个人' : '企业' }}</text>
+					</view>
+				</view>
+			</view>
+			
+			<!-- 签名区域 -->
+			<view class="signature-area" v-if="signatureType === 'handwriting' && !hasSignature" @click="startHandwritingSign">
+				<text class="signature-placeholder">点击此处进行手写签名</text>
+			</view>
+			
+			<!-- 已有签名展示 -->
+			<view class="signature-preview" v-if="hasSignature">
+				<view class="signature-content">
+					<text class="signature-data">{{ signatureData }}</text>
+				</view>
+				<view class="signature-actions">
+					<button class="clear-button" @click="clearSignature">重新签名</button>
+				</view>
+			</view>
+			
+			<!-- 签名说明 -->
+			<view class="sign-notice">
+				<text class="notice-title">签署须知</text>
+				<text class="notice-item">1. 电子签名与手写签名或盖章具有同等法律效力</text>
+				<text class="notice-item">2. 签署后将自动通知其他签署方</text>
+				<text class="notice-item">3. 签署完成后可在"合同管理"中查看合同状态</text>
+			</view>
+			
+			<!-- 底部占位 -->
+			<view class="bottom-placeholder"></view>
+		</scroll-view>
+		
+		<!-- 底部操作按钮 -->
+		<view class="footer">
+			<button class="sign-button" @click="startSign" :disabled="!hasSignature">确认签署</button>
+		</view>
+		
+		<!-- 签署确认弹窗 -->
+		<view v-if="showConfirmDialog" class="dialog-overlay">
+			<view class="dialog-container">
+				<view class="dialog-header">
+					<text class="dialog-title">确认签署</text>
+				</view>
+				<view class="dialog-content">
+					<text class="dialog-text">您确认签署该合同吗？签署后将具有法律效力。</text>
+				</view>
+				<view class="dialog-footer">
+					<button class="dialog-button cancel" @click="cancelConfirm">取消</button>
+					<button class="dialog-button confirm" @click="confirmSign">确认</button>
+				</view>
+			</view>
+		</view>
+		
+		<!-- 签署成功弹窗 -->
+		<view v-if="showSuccessDialog" class="dialog-overlay">
+			<view class="dialog-container">
+				<view class="dialog-header">
+					<text class="dialog-title">签署成功</text>
+				</view>
+				<view class="dialog-content">
+					<view class="success-icon">✓</view>
+					<text class="dialog-text">合同签署成功！</text>
+				</view>
+				<view class="dialog-footer single">
+					<button class="dialog-button confirm full" @click="finishSign">完成</button>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<style>
+	.contract-sign {
+		flex: 1;
+		background-color: #F7F9FC;
+	}
+	
+	/* 顶部导航栏 */
+	.header {
+		height: 90rpx;
+		background-color: #FFFFFF;
+		flex-direction: row;
+		align-items: center;
+		padding: 0 32rpx;
+		padding-top: var(--status-bar-height);
+		border-bottom-width: 1rpx;
+		border-bottom-color: #EEEEEE;
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		z-index: 100;
+	}
+	
+	.header-left {
+		width: 60rpx;
+		height: 60rpx;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.header-back-icon {
+		font-size: 40rpx;
+		color: #333333;
+	}
+	
+	.header-title {
+		flex: 1;
+		align-items: center;
+	}
+	
+	.header-title-text {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #333333;
+	}
+	
+	.header-right {
+		width: 60rpx;
+		height: 60rpx;
+	}
+	
+	/* 内容区域 */
+	.content {
+		flex: 1;
+		margin-top: calc(90rpx + var(--status-bar-height));
+		padding-bottom: 120rpx;
+	}
+	
+	/* 合同标题 */
+	.contract-title-container {
+		background-color: #FFFFFF;
+		padding: 32rpx;
+		align-items: center;
+		border-bottom-width: 1rpx;
+		border-bottom-color: #EEEEEE;
+	}
+	
+	.contract-title {
+		font-size: 36rpx;
+		font-weight: bold;
+		color: #333333;
+		text-align: center;
+	}
+	
+	/* 签名设置 */
+	.sign-settings {
+		background-color: #FFFFFF;
+		margin-top: 20rpx;
+	}
+	
+	.setting-item {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 32rpx;
+		border-bottom-width: 1rpx;
+		border-bottom-color: #EEEEEE;
+	}
+	
+	.setting-label {
+		font-size: 32rpx;
+		color: #333333;
+	}
+	
+	.setting-value {
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	.setting-value-text {
+		font-size: 32rpx;
+		color: #666666;
+		margin-right: 8rpx;
+	}
+	
+	.setting-arrow {
+		font-size: 24rpx;
+		color: #999999;
+	}
+	
+	/* 下拉菜单 */
+	.dropdown-menu {
+		background-color: #FFFFFF;
+		border-radius: 8rpx;
+		box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+		margin: 0 20rpx;
+		z-index: 10;
+	}
+	
+	.dropdown-item {
+		padding: 24rpx 32rpx;
+		border-bottom-width: 1rpx;
+		border-bottom-color: #F0F0F0;
+	}
+	
+	.dropdown-item:last-child {
+		border-bottom-width: 0;
+	}
+	
+	.dropdown-item-text {
+		font-size: 32rpx;
+		color: #333333;
+	}
+	
+	.dropdown-item-text.active {
+		color: #00C28A;
+		font-weight: bold;
+	}
+	
+	/* 印章列表 */
+	.seal-list {
+		background-color: #FFFFFF;
+		margin-top: 20rpx;
+		padding: 32rpx;
+	}
+	
+	.seal-list-title {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #333333;
+		margin-bottom: 24rpx;
+	}
+	
+	.seal-grid {
+		flex-direction: row;
+		flex-wrap: wrap;
+	}
+	
+	.seal-item {
+		width: 33.33%;
+		align-items: center;
+		padding: 16rpx;
+		box-sizing: border-box;
+	}
+	
+	.seal-item.selected {
+		background-color: #F6FFED;
+		border-radius: 8rpx;
+	}
+	
+	.seal-image {
+		width: 120rpx;
+		height: 120rpx;
+		margin-bottom: 12rpx;
+	}
+	
+	.seal-name {
+		font-size: 28rpx;
+		color: #333333;
+		margin-bottom: 4rpx;
+	}
+	
+	.seal-type {
+		font-size: 24rpx;
+		color: #999999;
+	}
+	
+	/* 签名区域 */
+	.signature-area {
+		background-color: #FFFFFF;
+		margin: 20rpx;
+		height: 300rpx;
+		border-radius: 8rpx;
+		border: 1rpx dashed #CCCCCC;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.signature-placeholder {
+		font-size: 32rpx;
+		color: #999999;
+	}
+	
+	/* 签名预览 */
+	.signature-preview {
+		background-color: #FFFFFF;
+		margin: 20rpx;
+		border-radius: 8rpx;
+		overflow: hidden;
+	}
+	
+	.signature-content {
+		height: 200rpx;
+		align-items: center;
+		justify-content: center;
+		border-bottom-width: 1rpx;
+		border-bottom-color: #F0F0F0;
+	}
+	
+	.signature-data {
+		font-size: 32rpx;
+		color: #333333;
+	}
+	
+	.signature-actions {
+		padding: 20rpx;
+		align-items: center;
+	}
+	
+	.clear-button {
+		font-size: 28rpx;
+		color: #1890FF;
+		background-color: transparent;
+		border: 1rpx solid #1890FF;
+		border-radius: 12rpx;
+		padding: 10rpx 40rpx;
+	}
+	
+	/* 签名说明 */
+	.sign-notice {
+		background-color: #FFFFFF;
+		margin: 20rpx;
+		padding: 32rpx;
+		border-radius: 8rpx;
+	}
+	
+	.notice-title {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #333333;
+		margin-bottom: 16rpx;
+	}
+	
+	.notice-item {
+		font-size: 28rpx;
+		color: #666666;
+		margin-bottom: 8rpx;
+		line-height: 1.5;
+	}
+	
+	/* 底部操作按钮 */
+	.footer {
+		height: 120rpx;
+		background-color: #FFFFFF;
+		border-top-width: 1rpx;
+		border-top-color: #EEEEEE;
+		padding: 20rpx;
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+	}
+	
+	.sign-button {
+		height: 80rpx;
+		background-color: #00C28A;
+		color: #FFFFFF;
+		font-size: 32rpx;
+		font-weight: bold;
+		border-radius: 12rpx;
+		line-height: 80rpx;
+	}
+	
+	.sign-button[disabled] {
+		background-color: #CCCCCC;
+		color: #FFFFFF;
+	}
+	
+	/* 底部占位 */
+	.bottom-placeholder {
+		height: 120rpx;
+	}
+	
+	/* 弹窗 */
+	.dialog-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+		z-index: 1000;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.dialog-container {
+		width: 600rpx;
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		overflow: hidden;
+	}
+	
+	.dialog-header {
+		padding: 32rpx;
+		align-items: center;
+		border-bottom-width: 1rpx;
+		border-bottom-color: #F0F0F0;
+	}
+	
+	.dialog-title {
+		font-size: 36rpx;
+		font-weight: bold;
+		color: #333333;
+	}
+	
+	.dialog-content {
+		padding: 48rpx 32rpx;
+		align-items: center;
+	}
+	
+	.dialog-text {
+		font-size: 32rpx;
+		color: #333333;
+		text-align: center;
+		line-height: 1.5;
+	}
+	
+	.dialog-footer {
+		flex-direction: row;
+		border-top-width: 1rpx;
+		border-top-color: #F0F0F0;
+	}
+	
+	.dialog-footer.single {
+		flex-direction: column;
+	}
+	
+	.dialog-button {
+		flex: 1;
+		height: 100rpx;
+		align-items: center;
+		justify-content: center;
+		font-size: 32rpx;
+	}
+	
+	.dialog-button.cancel {
+		color: #666666;
+		background-color: #FFFFFF;
+		border-right-width: 1rpx;
+		border-right-color: #F0F0F0;
+	}
+	
+	.dialog-button.confirm {
+		color: #00C28A;
+		background-color: #FFFFFF;
+		font-weight: bold;
+	}
+	
+	.dialog-button.full {
+		border-right-width: 0;
+	}
+	
+	.success-icon {
+		width: 120rpx;
+		height: 120rpx;
+		border-radius: 60rpx;
+		background-color: #00C28A;
+		color: #FFFFFF;
+		font-size: 80rpx;
+		font-weight: bold;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 32rpx;
+	}
+</style>

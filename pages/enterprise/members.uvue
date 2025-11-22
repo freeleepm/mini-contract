@@ -1,0 +1,1217 @@
+<script>
+	/**
+	 * 企业成员管理页面
+	 */
+	import { 
+		getEnterpriseMemberPage, 
+		getCurrentMemberInfo, 
+		getEnterpriseDetail,
+		deleteEnterpriseMember,
+		EnterpriseRole,
+		EnterpriseStatus
+	} from '../../api/enterprise/index';
+	
+	export default {
+		data() {
+			return {
+				// 成员列表
+				memberList: [],
+				
+				// 当前企业信息
+				currentEnterprise: {
+					id: 0,
+					name: '',
+					logo: '/static/icons/blue-icon.png',
+					status: 0,
+					creditCode: ''
+				},
+				
+				// 分页信息
+				pageInfo: {
+					pageNo: 1,
+					pageSize: 10,
+					total: 0,
+					hasMore: true
+				},
+				
+				// 是否正在加载
+				loading: false,
+				
+				// 当前用户角色
+				currentUserRole: 0,
+				
+				// 当前成员ID
+				currentMemberId: 0,
+				
+				// 导出常量到模板
+				EnterpriseRole: EnterpriseRole,
+				EnterpriseStatus: EnterpriseStatus
+			}
+		},
+		
+		computed: {
+			isOwner() {
+				return this.currentUserRole === EnterpriseRole.OWNER;
+			},
+			
+			isAdmin() {
+				return this.currentUserRole === EnterpriseRole.ADMIN || this.isOwner;
+			},
+			
+			isVerified() {
+				return this.currentEnterprise.status === 2; // 2 表示已认证
+			}
+		},
+		
+		onLoad(options) {
+			// 从options获取企业ID，并加载企业信息和成员列表
+			if (options && options.id) {
+				this.currentEnterprise.id = Number(options.id);
+				console.log('加载企业成员页面，企业ID:', this.currentEnterprise.id);
+				// 加载企业信息和成员列表
+				this.loadEnterpriseInfo();
+				this.loadCurrentMemberInfo();
+				this.loadMemberList(true);
+			} else {
+				console.error('缺少企业ID参数');
+				uni.showToast({
+					title: '缺少企业ID',
+					icon: 'none'
+				});
+				setTimeout(() => {
+					uni.navigateBack();
+				}, 1500);
+			}
+		},
+		
+		onPullDownRefresh() {
+			// 下拉刷新
+			this.refreshData();
+			setTimeout(() => {
+				uni.stopPullDownRefresh();
+			}, 1000);
+		},
+		
+		methods: {
+			// 刷新数据
+			refreshData() {
+				// 重置分页信息
+				this.pageInfo.pageNo = 1;
+				this.pageInfo.hasMore = true;
+				
+				// 加载企业信息和成员列表
+				this.loadEnterpriseInfo();
+				this.loadCurrentMemberInfo();
+				this.loadMemberList(true);
+			},
+			
+			// 加载企业信息
+			async loadEnterpriseInfo() {
+				try {
+					const data = await getEnterpriseDetail(this.currentEnterprise.id);
+					this.currentEnterprise = {
+						...data,
+						logo: data.logo || this.getLogoByName(data.name)
+					};
+				} catch (error) {
+					console.error('获取企业信息失败:', error);
+					uni.showToast({
+						title: '获取企业信息失败',
+						icon: 'none'
+					});
+				}
+			},
+			
+			// 根据企业名生成默认logo
+			getLogoByName(name: string): string {
+				const icons = ['/static/icons/blue-icon.png', '/static/icons/green-icon.png'];
+				const hashCode = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+				return icons[hashCode % icons.length];
+			},
+			
+			// 获取当前用户在企业中的信息
+			async loadCurrentMemberInfo() {
+				try {
+					console.log('获取当前用户在企业中的信息，企业ID:', this.currentEnterprise.id);
+					const data = await getCurrentMemberInfo(this.currentEnterprise.id);
+					this.currentUserRole = data.role;
+					this.currentMemberId = data.id;
+					console.log('获取当前用户信息成功:', data);
+				} catch (error) {
+					console.error('获取当前用户企业角色失败:', error);
+					// 默认设置为普通成员角色
+					this.currentUserRole = EnterpriseRole.MEMBER;
+					this.currentMemberId = 0;
+				}
+			},
+			
+			// 加载成员列表
+			async loadMemberList(refresh = false) {
+				if (this.loading) return;
+				
+				this.loading = true;
+				try {
+					// 如果是刷新，则重置页码
+					if (refresh) {
+						this.pageInfo.pageNo = 1;
+						this.memberList = [];
+					}
+					
+					const params = {
+						enterpriseId: this.currentEnterprise.id,
+						pageNo: this.pageInfo.pageNo,
+						pageSize: this.pageInfo.pageSize
+					};
+					
+					console.log('查询成员列表参数:', params);
+					
+					const data = await getEnterpriseMemberPage(params);
+					
+					console.log('成员列表API响应:', JSON.stringify(data));
+					
+					// 打印更多调试信息
+					console.log(`成员列表API响应数据结构检查:
+						- data类型: ${typeof data}
+						- data.list: ${data.list ? '存在' : '不存在'}
+						- data.list类型: ${data.list ? typeof data.list : 'N/A'}
+						- data.list长度: ${data.list ? data.list.length : 'N/A'}
+						- data.total: ${data.total}
+					`);
+					
+					// 如果列表为空，记录日志并返回
+					if (!data.list || data.list.length === 0) {
+						console.log('API返回的成员列表为空');
+						if (refresh) {
+							this.memberList = [];
+						}
+						this.pageInfo.total = data.total || 0;
+						this.pageInfo.hasMore = false;
+						this.loading = false;
+						return;
+					}
+					
+					// 打印第一个成员信息
+					if (data.list && data.list.length > 0) {
+						console.log('第一个成员信息:', JSON.stringify(data.list[0]));
+					}
+					
+					// 处理数据
+					const members = data.list.map(item => {
+						// 打印转换前的每个成员信息
+						console.log(`处理成员信息(ID=${item.id}):
+							- nickname: ${item.nickname}
+							- mobile: ${item.mobile}
+							- role: ${item.role}
+							- joinTime: ${item.joinTime} (类型: ${typeof item.joinTime})
+						`);
+						
+						// 创建一个标准化的成员对象，确保所有必要的字段都有默认值
+						const name = item.nickname || item.name || item.userName || '未知用户';
+						
+						return {
+							id: item.id || 0,
+							userId: item.userId || item.id || 0,
+							name: name,
+							phone: this.formatPhone(item.mobile || item.phone || item.phoneNumber || ''),
+							avatar: item.avatar || item.portrait || item.image || '',
+							hasAvatar: !!(item.avatar || item.portrait || item.image),
+							firstChar: name.substring(0, 1),
+							role: this.getRoleName(item.role || 3), // 默认为普通成员
+							roleValue: item.role || 3,
+							isVerified: item.verified !== undefined ? item.verified : true,
+							joinTime: this.formatJoinTime(item.joinTime || item.createTime || item.createDate || '')
+						};
+					});
+					
+					// 打印转换后的成员信息
+					console.log('转换后的成员列表:', JSON.stringify(members));
+					
+					// 更新数据
+					if (refresh) {
+						this.memberList = members;
+					} else {
+						this.memberList = [...this.memberList, ...members];
+					}
+					
+					// 更新分页信息
+					this.pageInfo.total = data.total;
+					this.pageInfo.hasMore = this.memberList.length < data.total;
+					
+					// 页码+1，为下次加载做准备
+					this.pageInfo.pageNo++;
+					
+					// 打印最终状态
+					console.log(`成员列表更新完成:
+						- 当前列表长度: ${this.memberList.length}
+						- 总记录数: ${this.pageInfo.total}
+						- 是否有更多: ${this.pageInfo.hasMore}
+						- 下一页页码: ${this.pageInfo.pageNo}
+					`);
+				} catch (error) {
+					console.error('获取成员列表失败:', error);
+					console.error('错误详情:', error);
+					
+					// 显示错误提示
+					uni.showToast({
+						title: '获取成员列表失败',
+						icon: 'none'
+					});
+					
+					// 如果是刷新，则清空列表
+					if (refresh) {
+						this.memberList = [];
+					}
+					
+					// 更新分页信息，不再加载更多
+					this.pageInfo.hasMore = false;
+				} finally {
+					this.loading = false;
+				}
+			},
+			
+			// 格式化手机号 (中间4位为*)
+			formatPhone(phone) {
+				if (!phone) return '';
+				return phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
+			},
+			
+			// 获取角色名称
+			getRoleName(role) {
+				switch (role) {
+					case EnterpriseRole.OWNER:
+						return '所有者';
+					case EnterpriseRole.ADMIN:
+						return '管理员';
+					case EnterpriseRole.MEMBER:
+						return '成员';
+					default:
+						return '成员';
+				}
+			},
+			
+			// 获取角色图标
+			getRoleIcon(role) {
+				switch (role) {
+					case EnterpriseRole.OWNER:
+						return 'fa-crown';
+					case EnterpriseRole.ADMIN:
+						return 'fa-shield';
+					case EnterpriseRole.MEMBER:
+						return 'fa-user';
+					default:
+						return 'fa-user';
+				}
+			},
+			
+			// 格式化加入时间
+			formatJoinTime(time) {
+				if (!time) return '未知';
+				
+				// 如果是字符串类型
+				if (typeof time === 'string') {
+					// 尝试分割日期和时间
+					const parts = time.split(' ');
+					if (parts.length > 0) {
+						return parts[0]; // 返回日期部分
+					}
+					return time;
+				}
+				
+				// 如果是数字类型（时间戳）
+				if (typeof time === 'number') {
+					const date = new Date(time);
+					return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+				}
+				
+				// 如果是日期对象
+				if (time instanceof Date) {
+					return `${time.getFullYear()}-${String(time.getMonth() + 1).padStart(2, '0')}-${String(time.getDate()).padStart(2, '0')}`;
+				}
+				
+				// 其他类型直接返回未知
+				return '未知';
+			},
+			
+			// 返回上一页
+			goBack() {
+				uni.navigateBack();
+			},
+			
+			// 添加新成员
+			addMember() {
+				if (!this.isAdmin) {
+					uni.showToast({
+						title: '只有管理员才能添加成员',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				uni.navigateTo({
+					url: `/pages/enterprise/member-invite?id=${this.currentEnterprise.id}`
+				});
+			},
+			
+			// 编辑成员
+			editMember(member) {
+				if (!this.isAdmin) {
+					uni.showToast({
+						title: '只有管理员才能编辑成员',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				// 不能编辑自己
+				if (member.id === this.currentMemberId) {
+					uni.showToast({
+						title: '不能编辑自己的角色',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				// 不能编辑所有者
+				if (member.roleValue === EnterpriseRole.OWNER) {
+					uni.showToast({
+						title: '所有者角色不可编辑',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				uni.navigateTo({
+					url: `/pages/enterprise/member-edit?memberId=${member.id}&id=${this.currentEnterprise.id}`
+				});
+			},
+			
+			// 移除成员
+			removeMember(member) {
+				if (!this.isAdmin) {
+					uni.showToast({
+						title: '只有管理员才能移除成员',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				// 不能移除自己
+				if (member.id === this.currentMemberId) {
+					uni.showToast({
+						title: '不能移除自己',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				// 所有者不能被移除
+				if (member.roleValue === EnterpriseRole.OWNER) {
+					uni.showToast({
+						title: '所有者不能被移除',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				uni.showModal({
+					title: '提示',
+					content: `确定要移除成员"${member.name}"吗？`,
+					success: async (res) => {
+						if (res.confirm) {
+							try {
+								await deleteEnterpriseMember(member.id);
+								
+								uni.showToast({
+									title: '移除成功',
+									icon: 'success'
+								});
+								
+								// 从列表中移除
+								this.memberList = this.memberList.filter(item => item.id !== member.id);
+								// 更新总数
+								this.pageInfo.total--;
+							} catch (error) {
+								console.error('移除成员失败:', error);
+								uni.showToast({
+									title: '移除失败: ' + (error.message || '未知错误'),
+									icon: 'none'
+								});
+							}
+						}
+					}
+				});
+			},
+			
+			// 加载更多
+			loadMore() {
+				if (this.pageInfo.hasMore && !this.loading) {
+					this.loadMemberList();
+				}
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="container">
+		<!-- 移除了自定义导航栏 -->
+		
+		<!-- 企业信息卡片 -->
+		<view class="enterprise-card">
+			<view class="enterprise-logo">
+				<image :src="currentEnterprise.logo" mode="aspectFill"></image>
+			</view>
+			<view class="enterprise-info">
+				<text class="enterprise-name">{{ currentEnterprise.name }}</text>
+				<view class="enterprise-status" v-if="isVerified">
+					<text class="status-icon fa fa-circle-check"></text>
+					<text class="status-text">已认证</text>
+				</view>
+				<text class="enterprise-credit-code" v-if="currentEnterprise.creditCode">{{ currentEnterprise.creditCode }}</text>
+			</view>
+		</view>
+		
+		<!-- 成员列表卡片 -->
+		<view class="member-card">
+			<!-- 列表标题 -->
+			<view class="list-header">
+				<view class="header-left">
+					<text class="list-title">成员列表</text>
+					<view class="member-count">
+						<text class="count-text">{{ pageInfo.total || memberList.length }}</text>
+						<text class="count-label">人</text>
+					</view>
+				</view>
+				<view class="header-actions">
+					<view class="action-icon-button" @click="refreshData" title="刷新">
+						<text class="action-icon fa fa-refresh"></text>
+					</view>
+					<view class="action-icon-button" @click="addMember" v-if="isAdmin" title="添加成员">
+						<text class="action-icon fa fa-user-plus"></text>
+					</view>
+				</view>
+			</view>
+			
+			<!-- 搜索栏 -->
+			<view class="search-bar">
+				<view class="search-input-wrapper">
+					<text class="search-icon fa fa-search"></text>
+					<input class="search-input" type="text" placeholder="搜索成员姓名或电话" disabled />
+				</view>
+				<!-- 移除筛选按钮 -->
+			</view>
+			
+			<!-- 列表内容容器 -->
+			<scroll-view scroll-y="true" class="member-list-container" @scrolltolower="loadMore">
+				<!-- 加载中状态 -->
+				<view class="loading-container" v-if="loading && memberList.length === 0">
+					<image class="loading-icon" src="/static/icons/folder.png" mode="aspectFit"></image>
+					<text class="loading-text">正在加载成员数据...</text>
+				</view>
+				
+				<!-- 空状态 -->
+				<view class="empty-container" v-else-if="memberList.length === 0">
+					<image class="empty-icon" src="/static/icons/folder.png" mode="aspectFit"></image>
+					<text class="empty-text">暂无成员数据</text>
+					<text class="empty-subtext" v-if="isAdmin">点击"添加成员"邀请新成员加入企业</text>
+					<view class="empty-action-button" @click="addMember" v-if="isAdmin">
+						<text class="action-button-text">立即添加</text>
+					</view>
+				</view>
+				
+				<!-- 成员列表 -->
+				<view class="member-list-content" v-else>
+					<!-- 成员项 -->
+					<view class="member-item" v-for="(member, index) in memberList" :key="member.id">
+						<view class="member-avatar-section">
+							<view class="member-avatar">
+								<image v-if="member.hasAvatar" :src="member.avatar" mode="aspectFill"></image>
+								<view v-else class="text-avatar">
+									<text class="avatar-text">{{ member.firstChar }}</text>
+								</view>
+								<view class="avatar-badge" v-if="member.isVerified">
+									<text class="badge-icon fa fa-check"></text>
+								</view>
+							</view>
+						</view>
+						<view class="member-info-section">
+							<view class="member-header">
+								<text class="member-name">{{ member.name }}</text>
+								<view class="member-role" :class="`role-${member.roleValue}`">
+									<text class="role-icon fa" :class="getRoleIcon(member.roleValue)"></text>
+									<text class="role-text">{{ member.role }}</text>
+								</view>
+							</view>
+							<view class="member-details">
+								<view class="member-detail-item">
+									<text class="detail-icon fa fa-phone"></text>
+									<text class="member-phone">{{ member.phone }}</text>
+								</view>
+								<view class="member-detail-item">
+									<text class="detail-icon fa fa-calendar"></text>
+									<text class="member-join-time">{{ member.joinTime }}</text>
+								</view>
+							</view>
+						</view>
+						<view class="member-actions" v-if="isAdmin && member.roleValue !== EnterpriseRole.OWNER">
+							<button class="action-button" @click.stop="editMember(member)">
+								<text class="action-icon fa fa-edit"></text>
+								<text class="action-text">编辑</text>
+							</button>
+							<button class="action-button danger" @click.stop="removeMember(member)">
+								<text class="action-icon fa fa-trash"></text>
+								<text class="action-text">移除</text>
+							</button>
+						</view>
+					</view>
+					
+					<!-- 加载更多 -->
+					<view class="load-more" v-if="pageInfo.hasMore">
+						<view class="load-more-indicator" v-if="loading">
+							<text class="loading-dot"></text>
+							<text class="loading-dot"></text>
+							<text class="loading-dot"></text>
+						</view>
+						<text class="load-more-text" v-if="!loading">上拉加载更多</text>
+						<text class="load-more-text" v-else>加载中...</text>
+					</view>
+					<view class="load-more end" v-else>
+						<view class="load-more-line"></view>
+						<text class="load-more-text">没有更多数据了</text>
+						<view class="load-more-line"></view>
+					</view>
+				</view>
+			</scroll-view>
+		</view>
+		
+		<!-- 优化后的权限提示区域 -->
+		<view class="permission-tip-container">
+			<view class="permission-tip-card">
+				<view class="permission-tip-icon">
+					<text class="fa fa-info-circle"></text>
+				</view>
+				<view class="permission-tip-content">
+					<text class="permission-tip-title">权限说明</text>
+					<text class="permission-tip-text">所有者和管理员拥有企业管理权限，包括成员管理、印章管理等</text>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<style>
+	.container {
+		flex: 1;
+		background-color: #F0F2F5;
+		height: 100%;
+		position: relative;
+		padding-top: 20rpx; /* 添加顶部内边距，因为移除了自定义导航栏 */
+	}
+	
+	/* 删除顶部导航栏样式 */
+	
+	/* 企业信息卡片 */
+	.enterprise-card {
+		background-color: #FFFFFF;
+		margin: 20rpx;
+		padding: 24rpx;
+		border-radius: 16rpx;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	.enterprise-logo {
+		width: 88rpx;
+		height: 88rpx;
+		border-radius: 12rpx;
+		overflow: hidden;
+		margin-right: 20rpx;
+		box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.1);
+	}
+	
+	.enterprise-logo image {
+		width: 100%;
+		height: 100%;
+	}
+	
+	.enterprise-info {
+		flex: 1;
+	}
+	
+	.enterprise-name {
+		font-size: 34rpx;
+		font-weight: bold;
+		color: #333333;
+		margin-bottom: 6rpx;
+	}
+	
+	.enterprise-status {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 6rpx;
+	}
+	
+	.status-icon {
+		font-size: 24rpx;
+		color: #00C28A;
+		margin-right: 6rpx;
+	}
+	
+	.status-text {
+		font-size: 24rpx;
+		color: #00C28A;
+	}
+	
+	.enterprise-credit-code {
+		font-size: 22rpx;
+		color: #999999;
+	}
+	
+	/* 成员列表卡片 */
+	.member-card {
+		background-color: #FFFFFF;
+		margin: 20rpx;
+		border-radius: 16rpx;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		margin-bottom: 140rpx; /* 增加底部边距，为提示区域腾出空间 */
+		overflow: hidden;
+	}
+	
+	/* 列表标题 */
+	.list-header {
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 24rpx;
+		border-bottom: 1rpx solid #F0F2F5;
+	}
+	
+	.header-left {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	.list-title {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #333333;
+		margin-right: 12rpx;
+	}
+	
+	.member-count {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		background-color: #F5F7FA;
+		padding: 4rpx 12rpx;
+		border-radius: 16rpx;
+	}
+	
+	.count-text {
+		font-size: 24rpx;
+		font-weight: bold;
+		color: #00C28A;
+	}
+	
+	.count-label {
+		font-size: 24rpx;
+		color: #666666;
+	}
+	
+	.header-actions {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	.action-icon-button {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		width: 70rpx;
+		height: 70rpx;
+		border-radius: 50%;
+		background-color: #F5F7FA;
+		margin-left: 16rpx; /* Added margin for spacing */
+		box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.05);
+		transition: all 0.2s ease;
+	}
+	
+	.action-icon-button:active {
+		opacity: 0.8;
+		transform: scale(0.95);
+	}
+	
+	.action-icon {
+		font-size: 24rpx;
+		color: #00C28A;
+	}
+	
+	/* 搜索栏 */
+	.search-bar {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		padding: 16rpx 24rpx;
+		border-bottom: 1rpx solid #F0F2F5;
+	}
+	
+	.search-input-wrapper {
+		flex: 1;
+		background-color: #F5F7FA;
+		border-radius: 30rpx;
+		padding: 12rpx 20rpx;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	.search-icon {
+		font-size: 24rpx;
+		color: #999999;
+		margin-right: 10rpx;
+	}
+	
+	.search-input {
+		flex: 1;
+		height: 60rpx;
+		font-size: 26rpx;
+		color: #333333;
+	}
+	
+	/* 列表容器 */
+	.member-list-container {
+		flex: 1;
+		padding: 0;
+	}
+	
+	/* 加载中状态 */
+	.loading-container {
+		padding: 80rpx 0;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+	}
+	
+	.loading-icon {
+		width: 100rpx;
+		height: 100rpx;
+		margin-bottom: 20rpx;
+		opacity: 0.7;
+	}
+	
+	.loading-text {
+		font-size: 28rpx;
+		color: #999999;
+	}
+	
+	/* 空状态 */
+	.empty-container {
+		padding: 100rpx 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.empty-icon {
+		width: 140rpx;
+		height: 140rpx;
+		margin-bottom: 30rpx;
+		opacity: 0.6;
+	}
+	
+	.empty-text {
+		font-size: 32rpx;
+		color: #333333;
+		margin-bottom: 10rpx;
+		font-weight: 500;
+	}
+	
+	.empty-subtext {
+		font-size: 26rpx;
+		color: #999999;
+		margin-bottom: 30rpx;
+	}
+	
+	.empty-action-button {
+		background-color: #00C28A;
+		padding: 16rpx 40rpx;
+		border-radius: 40rpx;
+	}
+	
+	.action-button-text {
+		font-size: 28rpx;
+		color: #FFFFFF;
+	}
+	
+	/* 成员列表 */
+	.member-list-content {
+		padding: 16rpx 24rpx;
+	}
+	
+	/* 成员项 */
+	.member-item {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 20rpx 20rpx;
+		margin-bottom: 20rpx;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		border-left: 6rpx solid #00C28A;
+		transition: all 0.3s ease;
+	}
+	
+	.member-item:active {
+		transform: translateY(2rpx);
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+	}
+	
+	.member-avatar-section {
+		margin-right: 20rpx;
+	}
+	
+	/* 成员头像 */
+	.member-avatar {
+		width: 88rpx;
+		height: 88rpx;
+		border-radius: 50%;
+		overflow: hidden;
+		position: relative;
+		border: 2rpx solid #E0E0E0;
+	}
+	
+	.member-avatar image {
+		width: 100%;
+		height: 100%;
+	}
+	
+	.text-avatar {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		background-color: rgba(0, 194, 138, 0.1);
+		border: 1rpx solid rgba(0, 194, 138, 0.2);
+	}
+	
+	.avatar-text {
+		font-size: 32rpx;
+		color: #00C28A;
+		font-weight: 600;
+	}
+	
+	.avatar-badge {
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		width: 30rpx;
+		height: 30rpx;
+		background-color: #07C160;
+		border-radius: 50%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+	
+	.badge-icon {
+		font-size: 20rpx;
+		color: #FFFFFF;
+	}
+	
+	.member-info-section {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		min-width: 0;
+	}
+	
+	.member-header {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 12rpx;
+		flex-wrap: wrap;
+		gap: 8rpx;
+	}
+	
+	.member-name {
+		font-size: 30rpx;
+		font-weight: bold;
+		color: #333333;
+		max-width: 200rpx;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	
+	.member-role {
+		padding: 6rpx 14rpx;
+		border-radius: 24rpx;
+		background-color: #F5F7FA;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		box-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.04);
+	}
+	
+	.role-1 {
+		background: linear-gradient(135deg, rgba(0, 194, 138, 0.15) 0%, rgba(0, 194, 138, 0.08) 100%);
+		border: 2rpx solid rgba(0, 194, 138, 0.3);
+	}
+	
+	.role-2 {
+		background: linear-gradient(135deg, rgba(255, 149, 0, 0.15) 0%, rgba(255, 149, 0, 0.08) 100%);
+		border: 2rpx solid rgba(255, 149, 0, 0.3);
+	}
+	
+	.role-3 {
+		background: linear-gradient(135deg, rgba(142, 142, 147, 0.15) 0%, rgba(142, 142, 147, 0.08) 100%);
+		border: 2rpx solid rgba(142, 142, 147, 0.3);
+	}
+	
+	.role-icon {
+		font-size: 22rpx;
+		margin-right: 6rpx;
+	}
+	
+	.role-text {
+		font-size: 24rpx;
+		font-weight: 600;
+		letter-spacing: 0.5rpx;
+	}
+	
+	.role-1 .role-icon, .role-1 .role-text {
+		color: #00C28A;
+	}
+	
+	.role-2 .role-icon, .role-2 .role-text {
+		color: #FF9500;
+	}
+	
+	.role-3 .role-icon, .role-3 .role-text {
+		color: #8E8E93;
+	}
+	
+	.member-details {
+		display: flex;
+		flex-direction: column;
+	}
+	
+	.member-detail-item {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 8rpx;
+	}
+	
+	.detail-icon {
+		font-size: 24rpx;
+		color: #999999;
+		margin-right: 8rpx;
+		width: 28rpx;
+		text-align: center;
+	}
+	
+	.member-phone {
+		font-size: 26rpx;
+		color: #666666;
+	}
+	
+	.member-join-time {
+		font-size: 24rpx;
+		color: #999999;
+	}
+	
+	/* 成员操作 */
+	.member-actions {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		gap: 16rpx;
+		margin-left: 16rpx;
+	}
+	
+	.action-button {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		background-color: #FFFFFF;
+		color: #333333;
+		font-size: 22rpx;
+		border-radius: 16rpx;
+		padding: 6rpx 16rpx;
+		border: 1.5rpx solid #E0E0E0;
+		outline: none;
+		min-width: 100rpx;
+		height: 56rpx;
+		box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.04);
+		transition: all 0.3s ease;
+	}
+	
+	.action-button:active {
+		transform: scale(0.96);
+		box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.08);
+	}
+	
+	.action-icon {
+		font-size: 22rpx;
+		margin-right: 4rpx;
+	}
+	
+	.action-text {
+		font-size: 22rpx;
+		font-weight: 500;
+	}
+	
+	/* 编辑按钮样式 */
+	.action-button:not(.danger) {
+		background: linear-gradient(135deg, #F5F7FA 0%, #FFFFFF 100%);
+		border-color: #00C28A;
+		color: #00C28A;
+	}
+	
+	.action-button:not(.danger) .action-icon {
+		color: #00C28A;
+	}
+	
+	/* 移除按钮样式 */
+	.action-button.danger {
+		background: linear-gradient(135deg, #FFF5F5 0%, #FFFFFF 100%);
+		border-color: #FF6B6B;
+		color: #FF3B30;
+	}
+	
+	.action-button.danger .action-icon {
+		color: #FF3B30;
+	}
+	
+	/* 加载更多 */
+	.load-more {
+		text-align: center;
+		padding: 30rpx 0;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.load-more.end {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.load-more-line {
+		width: 100rpx;
+		height: 1rpx;
+		background-color: #E0E0E0;
+	}
+	
+	.load-more-text {
+		font-size: 24rpx;
+		color: #999999;
+		margin: 0 20rpx;
+	}
+	
+	.load-more-indicator {
+		display: flex;
+		flex-direction: row;
+	}
+	
+	.loading-dot {
+		width: 12rpx;
+		height: 12rpx;
+		border-radius: 50%;
+		background-color: #CCCCCC;
+		margin: 0 6rpx;
+		animation: loading 1.4s infinite ease-in-out both;
+	}
+	
+	.loading-dot:nth-child(1) {
+		animation-delay: -0.32s;
+	}
+	
+	.loading-dot:nth-child(2) {
+		animation-delay: -0.16s;
+	}
+	
+	@keyframes loading {
+		0%, 80%, 100% { 
+			transform: scale(0);
+		} 40% { 
+			transform: scale(1.0);
+		}
+	}
+	
+	/* 优化后的权限提示样式 */
+	.permission-tip-container {
+		padding: 0 20rpx;
+		position: fixed;
+		bottom: 20rpx;
+		left: 0;
+		right: 0;
+		z-index: 10;
+	}
+	
+	.permission-tip-card {
+		background-color: #F8F9FA;
+		border-radius: 16rpx;
+		padding: 16rpx 24rpx;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+		border-left: 6rpx solid #00C28A;
+	}
+	
+	.permission-tip-icon {
+		margin-right: 16rpx;
+	}
+	
+	.permission-tip-icon .fa {
+		font-size: 36rpx;
+		color: #00C28A;
+	}
+	
+	.permission-tip-content {
+		flex: 1;
+	}
+	
+	.permission-tip-title {
+		font-size: 28rpx;
+		color: #333333;
+		font-weight: 600;
+		margin-bottom: 6rpx;
+	}
+	
+	.permission-tip-text {
+		font-size: 26rpx;
+		color: #666666;
+		line-height: 36rpx;
+	}
+	
+	/* FontAwesome 图标样式 */
+	.fa {
+		font-family: 'Font Awesome 6 Free';
+		font-size: 26rpx;
+		font-style: normal;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+</style> 

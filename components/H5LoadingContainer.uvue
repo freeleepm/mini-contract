@@ -1,0 +1,77 @@
+<template>
+	<view class="loading-container">
+		<!-- 加载动画 -->
+		<view class="loading-spinner"></view>
+		
+		<!-- 加载文本 -->
+		<text class="loading-text">{{ loadingText }}</text>
+		
+		<!-- 提示信息（可选） -->
+		<text v-if="hintText" class="loading-hint">{{ hintText }}</text>
+	</view>
+</template>
+
+<script>
+export default {
+	name: 'H5LoadingContainer',
+	props: {
+		// 加载文本
+		loadingText: {
+			type: String,
+			default: '正在加载...'
+		},
+		// 提示文本（可选）
+		hintText: {
+			type: String,
+			default: ''
+		}
+	}
+}
+</script>
+
+<style>
+/* 加载容器 */
+.loading-container {
+	flex: 1;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	background-color: #F7F9FC;
+}
+
+/* 加载动画 */
+.loading-spinner {
+	width: 80rpx;
+	height: 80rpx;
+	border: 6rpx solid #E4E7ED;
+	border-top-color: #00C28A;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+/* 加载文本 */
+.loading-text {
+	margin-top: 30rpx;
+	font-size: 28rpx;
+	color: #606266;
+}
+
+/* 提示文本 */
+.loading-hint {
+	margin-top: 16rpx;
+	font-size: 24rpx;
+	color: #909399;
+	text-align: center;
+	padding: 0 40rpx;
+}
+</style>
+

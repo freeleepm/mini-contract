@@ -1,0 +1,674 @@
+<script lang="uts">
+	import { post } from '@/api/index'
+
+	export default {
+		onLoad() {
+			// 检查是否已登录
+			try {
+				const token = uni.getStorageSync('token');
+				if (token) {
+					console.log('检测到用户已登录，自动跳转到首页');
+					// 已登录，直接跳转到首页
+					uni.switchTab({
+						url: '/pages/index/index'
+					});
+				}
+			} catch (e) {
+				console.error('检查登录状态失败:', e);
+			}
+		},
+		data() {
+			return {
+				phone: '',
+				password: '',
+				showPassword: false,
+				rememberPassword: false,
+				currentYear: new Date().getFullYear(),
+				errorMessage: '', // 添加错误信息字段
+				isLoading: false // 添加加载状态字段
+			}
+		},
+		computed: {
+			isLoginDisabled() {
+				return !this.phone || !this.password;
+			}
+		},
+		methods: {
+			// 处理登录
+			async handleLogin(): Promise<void> {
+				// 清除错误信息
+				this.errorMessage = ''
+				
+				// 表单验证
+				if (!this.phone || !this.password) {
+					this.errorMessage = '请输入手机号和密码'
+					return
+				}
+				
+				if (!/^1[3-9]\d{9}$/.test(this.phone)) {
+					this.errorMessage = '请输入正确的手机号'
+					return
+				}
+				
+				// 显示加载状态
+				this.isLoading = true
+				
+				try {
+					// 调用真实登录接口（明确指定不需要认证）
+					const response = await post<any>('/api/v1/member/auth/login', {
+						mobile: this.phone,
+						password: this.password
+					}, { isAuth: false })
+					
+					// 【重要】打印响应，用于调试确认token字段名
+					console.log('登录成功，后端响应:', JSON.stringify(response))
+					
+					// 保存token和用户信息到本地存储
+					uni.setStorageSync('token', response.accessToken)
+					uni.setStorageSync('refreshToken', response.refreshToken)
+					uni.setStorageSync('userId', response.userId)
+					
+					// 登录成功，跳转到首页
+					uni.showToast({
+						title: '登录成功',
+						icon: 'success',
+						duration: 1500
+					})
+					
+					setTimeout(() => {
+						uni.switchTab({
+							url: '/pages/index/index'
+						})
+					}, 1500)
+					
+			} catch (error) {
+				// 错误已在request中统一处理，此处可留空或进行特定UI处理
+				console.error('登录组件捕获到错误:', error)
+				// 显示详细的错误信息，便于调试
+				const errorMessage = (error as any)?.message || '登录失败';
+				this.errorMessage = `登录失败: ${errorMessage}`;
+				
+				// 如果是账号未登录错误，提供更友好的提示
+				if (errorMessage && errorMessage.includes('账号未登录')) {
+					this.errorMessage = '登录接口异常，请联系系统管理员或检查后端服务';
+				}
+				} finally {
+					this.isLoading = false
+				}
+			},
+			
+			// 切换密码可见性
+			togglePasswordVisibility(): void {
+				this.showPassword = !this.showPassword
+			},
+			
+			// 切换记住密码
+			toggleRememberPassword(): void {
+				this.rememberPassword = !this.rememberPassword
+			},
+			
+			// 跳转到注册页面
+			goToRegister(): void {
+				uni.navigateTo({
+					url: '/pages/register/index'
+				})
+			},
+			
+			// 跳转到忘记密码页面（实际跳转到快速登录/注册页面）
+			goToForgetPassword(): void {
+				uni.navigateTo({
+					url: '/pages/register/index'
+				})
+			},
+			
+			// 处理微信登录
+			handleWechatLogin(): void {
+				uni.showToast({
+					title: '微信登录功能开发中',
+					icon: 'none'
+				})
+			},
+			
+			// 处理支付宝登录
+			handleAlipayLogin(): void {
+				uni.showToast({
+					title: '支付宝登录功能开发中',
+					icon: 'none'
+				})
+			},
+			
+			// 跳转到用户协议页面
+			goToUserAgreement(): void {
+				uni.navigateTo({
+					url: '/pages/agreement/user'
+				})
+			},
+			
+			// 跳转到隐私政策页面
+			goToPrivacyPolicy(): void {
+				uni.navigateTo({
+					url: '/pages/agreement/privacy'
+				})
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="login-container">
+		<!-- 顶部背景与Logo区域 -->
+		<view class="login-header">
+			<view class="header-content">
+				<image class="logo" src="/static/logo.png" mode="aspectFit"></image>
+				<text class="app-slogan">安全·高效·便捷的电子合同平台</text>
+			</view>
+		</view>
+		
+		<!-- 登录表单卡片 -->
+		<view class="login-form-container">
+			<view class="login-card">
+				<view class="card-header">
+					<text class="card-title">账号登录</text>
+					<text class="card-subtitle">欢迎使用Mini Contract Pro</text>
+				</view>
+				
+		<!-- 错误信息提示 -->
+		<view class="error-message" v-if="errorMessage">
+			<text class="fa fa-exclamation-circle error-icon"></text>
+			<text class="error-text">{{ errorMessage }}</text>
+		</view>
+				
+			<!-- 手机号输入框 -->
+			<view class="input-group">
+				<view class="input-prefix">
+					<text class="fa fa-mobile input-icon"></text>
+				</view>
+				<input 
+					class="input-field" 
+					type="number" 
+					placeholder="请输入手机号" 
+					placeholder-class="input-placeholder"
+					maxlength="11"
+					v-model="phone"
+				/>
+			</view>
+			
+			<!-- 密码输入框 -->
+			<view class="input-group">
+				<view class="input-prefix">
+					<text class="fa fa-lock input-icon"></text>
+				</view>
+				<input 
+					class="input-field" 
+					:type="showPassword ? 'text' : 'password'" 
+					placeholder="请输入密码" 
+					placeholder-class="input-placeholder"
+					v-model="password"
+				/>
+				<view class="input-suffix" @click="togglePasswordVisibility">
+					<text class="fa input-icon" :class="showPassword ? 'fa-eye' : 'fa-eye-slash'"></text>
+				</view>
+			</view>
+				
+				<!-- 记住密码和忘记密码 -->
+				<view class="form-options">
+					<view class="remember-password" @click="toggleRememberPassword">
+			<view class="checkbox" :class="{ checked: rememberPassword }">
+				<text v-if="rememberPassword" class="fa fa-check check-icon"></text>
+			</view>
+						<text class="option-text">记住密码</text>
+					</view>
+					<text class="forget-password" @click="goToForgetPassword">验证码登录</text>
+				</view>
+				
+				<!-- 登录按钮 -->
+				<button 
+					class="primary-button" 
+					:disabled="isLoginDisabled" 
+					:loading="isLoading"
+					@click="handleLogin"
+				>
+					<text class="button-text">{{ isLoading ? '登录中...' : '登 录' }}</text>
+				</button>
+				
+				<!-- 其他登录方式 -->
+				<view class="other-login-methods">
+					<view class="divider">
+						<view class="divider-line"></view>
+						<text class="divider-text">其他登录方式</text>
+						<view class="divider-line"></view>
+					</view>
+					
+					<view class="social-login">
+				<view class="social-button wechat-button" @click="handleWechatLogin">
+					<text class="fa-brands fa-weixin social-icon"></text>
+					<text class="social-label">微信</text>
+				</view>
+				<view class="social-button alipay-button" @click="handleAlipayLogin">
+					<text class="fa-brands fa-alipay social-icon"></text>
+					<text class="social-label">支付宝</text>
+				</view>
+					</view>
+				</view>
+				
+				<!-- 用户协议 -->
+				<view class="agreement">
+					<text class="agreement-text">登录即表示您已同意</text>
+					<view @tap="goToUserAgreement" class="agreement-link-wrapper">
+						<text class="agreement-link">《用户协议》</text>
+					</view>
+					<text class="agreement-text">和</text>
+					<view @tap="goToPrivacyPolicy" class="agreement-link-wrapper">
+						<text class="agreement-link">《隐私政策》</text>
+					</view>
+				</view>
+			</view>
+		</view>
+		
+		<!-- 底部版权信息 -->
+		<view class="footer">
+			<text class="copyright">© {{currentYear}} Mini Contract Pro 版权所有</text>
+		</view>
+	</view>
+</template>
+
+<style>
+	/* FontAwesome基础样式 */
+	@import url("../../static/styles/fontawesome.css");
+	
+	.fa {
+		font-family: 'Font Awesome 6 Free';
+		font-weight: 900;
+		font-style: normal;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+	
+	.fa-brands {
+		font-family: 'Font Awesome 6 Brands';
+		font-weight: 400;
+	}
+	
+	/* 页面容器 */
+	.login-container {
+		flex: 1;
+		background-color: #F7F9FC;
+		padding-top: 80rpx;
+	}
+	
+	/* 顶部背景区域 */
+	.login-header {
+		height: 320rpx;
+		position: relative;
+		background: linear-gradient(135deg, #00C28A 0%, #00A876 100%);
+		margin: 0 40rpx;
+		border-radius: 20rpx 20rpx 0 0;
+		box-shadow: 0 8rpx 24rpx rgba(0, 194, 138, 0.2);
+	}
+	
+	.header-content {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.logo {
+		width: 120rpx;
+		height: 120rpx;
+		margin-bottom: 20rpx;
+		border-radius: 20rpx;
+	}
+	
+	.app-slogan {
+		font-size: 24rpx;
+		color: rgba(255, 255, 255, 0.95);
+		letter-spacing: 1rpx;
+	}
+	
+	/* 登录表单卡片容器 */
+	.login-form-container {
+		padding: 0 40rpx;
+		margin-top: 0;
+		position: relative;
+	}
+	
+	.login-card {
+		background-color: #FFFFFF;
+		border-radius: 0 0 20rpx 20rpx;
+		padding: 48rpx 40rpx 40rpx;
+		box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.08);
+	}
+	
+	.card-header {
+		margin-bottom: 40rpx;
+		align-items: center;
+	}
+	
+	.card-title {
+		font-size: 36rpx;
+		font-weight: 600;
+		color: #303133;
+		margin-bottom: 12rpx;
+	}
+	
+	.card-subtitle {
+		font-size: 26rpx;
+		color: #909399;
+	}
+	
+	/* 错误信息提示 */
+	.error-message {
+		background-color: #FEF0F0;
+		padding: 20rpx 24rpx;
+		border-radius: 12rpx;
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 32rpx;
+		border-left-width: 6rpx;
+		border-left-color: #F56C6C;
+	}
+	
+	.error-message .error-icon {
+		font-size: 30rpx;
+		color: #F56C6C;
+		margin-right: 12rpx;
+	}
+	
+	.error-text {
+		flex: 1;
+		font-size: 26rpx;
+		color: #F56C6C;
+		line-height: 40rpx;
+	}
+	
+	/* 输入框组 */
+	.input-group {
+		height: 96rpx;
+		border: 2rpx solid #E4E7ED;
+		border-radius: 12rpx;
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 28rpx;
+		padding: 0 24rpx;
+		background-color: #FAFBFC;
+		transition: all 0.3s ease;
+	}
+	
+	.input-group:focus-within {
+		border-color: #00C28A;
+		background-color: #FFFFFF;
+		box-shadow: 0 0 0 4rpx rgba(0, 194, 138, 0.1);
+	}
+	
+	.input-prefix {
+		width: 60rpx;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.input-prefix .input-icon {
+		font-size: 36rpx;
+		color: #00C28A;
+	}
+	
+	.input-field {
+		flex: 1;
+		height: 96rpx;
+		font-size: 30rpx;
+		color: #303133;
+	}
+	
+	.input-placeholder {
+		color: #C0C4CC;
+		font-size: 30rpx;
+	}
+	
+	.input-suffix {
+		width: 60rpx;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.input-suffix .input-icon {
+		font-size: 32rpx;
+		color: #909399;
+	}
+	
+	.input-suffix:active {
+		opacity: 0.6;
+	}
+	
+	/* 记住密码和忘记密码 */
+	.form-options {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		margin: 12rpx 0 40rpx 0;
+	}
+	
+	.remember-password {
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	.checkbox {
+		width: 36rpx;
+		height: 36rpx;
+		border-radius: 8rpx;
+		border: 2rpx solid #DCDFE6;
+		margin-right: 12rpx;
+		align-items: center;
+		justify-content: center;
+		background-color: #FFFFFF;
+	}
+	
+	.checkbox.checked {
+		background-color: #00C28A;
+		border-color: #00C28A;
+	}
+	
+	.checkbox .check-icon {
+		font-size: 20rpx;
+		color: #FFFFFF;
+	}
+
+	.option-text {
+		font-size: 28rpx;
+		color: #606266;
+	}
+	
+	.forget-password {
+		font-size: 28rpx;
+		color: #00C28A;
+		font-weight: 500;
+	}
+	
+	.forget-password:active {
+		opacity: 0.7;
+	}
+	
+	/* 登录按钮 */
+	.primary-button {
+		height: 96rpx;
+		border-radius: 12rpx;
+		background: linear-gradient(135deg, #00C28A 0%, #00A876 100%);
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 32rpx;
+		box-shadow: 0 8rpx 24rpx rgba(0, 194, 138, 0.3);
+		border: none;
+	}
+	
+	.primary-button:active {
+		opacity: 0.9;
+		transform: scale(0.98);
+	}
+	
+	.primary-button[disabled] {
+		background: linear-gradient(135deg, #A0CFBE 0%, #8FB9A9 100%);
+		opacity: 0.7;
+		box-shadow: none;
+	}
+	
+	.button-text {
+		font-size: 32rpx;
+		color: #FFFFFF;
+		font-weight: 600;
+		letter-spacing: 2rpx;
+	}
+	
+	/* 其他登录方式 */
+	.other-login-methods {
+		margin-bottom: 32rpx;
+	}
+	
+	.divider {
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 32rpx;
+	}
+	
+	.divider-line {
+		flex: 1;
+		height: 1rpx;
+		background-color: #E4E7ED;
+	}
+	
+	.divider-text {
+		font-size: 24rpx;
+		color: #909399;
+		margin: 0 24rpx;
+	}
+	
+	.social-login {
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+	}
+	
+	.social-button {
+		width: 160rpx;
+		height: 140rpx;
+		border-radius: 16rpx;
+		background-color: #FFFFFF;
+		align-items: center;
+		justify-content: center;
+		margin: 0 20rpx;
+		border: 2rpx solid #EBEEF5;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.06);
+	}
+	
+	.social-button:active {
+		transform: scale(0.95);
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+	}
+	
+	.social-button .social-icon {
+		font-size: 56rpx;
+		margin-bottom: 12rpx;
+	}
+	
+	.wechat-button {
+		background: linear-gradient(135deg, rgba(7, 193, 96, 0.08) 0%, rgba(7, 193, 96, 0.05) 100%);
+		border-color: rgba(7, 193, 96, 0.2);
+	}
+	
+	.wechat-button .social-icon {
+		color: #07C160;
+	}
+	
+	.alipay-button {
+		background: linear-gradient(135deg, rgba(22, 119, 255, 0.08) 0%, rgba(22, 119, 255, 0.05) 100%);
+		border-color: rgba(22, 119, 255, 0.2);
+	}
+	
+	.alipay-button .social-icon {
+		color: #1677FF;
+	}
+	
+	.social-label {
+		font-size: 24rpx;
+		color: #606266;
+		font-weight: 500;
+	}
+	
+	.wechat-button .social-label {
+		color: #07C160;
+	}
+	
+	.alipay-button .social-label {
+		color: #1677FF;
+	}
+	
+	/* 注册链接 */
+	.register-link {
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		margin-bottom: 20rpx;
+	}
+	
+	.register-text {
+		font-size: 28rpx;
+		color: #909399;
+	}
+	
+	.register-action {
+		font-size: 28rpx;
+		color: #00C28A;
+		margin-left: 8rpx;
+		font-weight: 500;
+	}
+	
+	.register-action:active {
+		opacity: 0.7;
+	}
+	
+	/* 用户协议 */
+	.agreement {
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		flex-wrap: wrap;
+		padding: 20rpx 0;
+	}
+	
+	.agreement-text {
+		font-size: 24rpx;
+		color: #909399;
+		line-height: 36rpx;
+	}
+	
+	.agreement-link-wrapper {
+		padding: 8rpx 8rpx;
+		position: relative;
+		z-index: 10;
+	}
+	
+	.agreement-link-wrapper:active {
+		opacity: 0.7;
+	}
+	
+	.agreement-link {
+		font-size: 24rpx;
+		color: #00C28A;
+		line-height: 36rpx;
+	}
+	
+	/* 底部版权信息 */
+	.footer {
+		margin-top: 60rpx;
+		padding-bottom: 40rpx;
+		align-items: center;
+	}
+	
+	.copyright {
+		font-size: 24rpx;
+		color: #909399;
+	}
+</style> 

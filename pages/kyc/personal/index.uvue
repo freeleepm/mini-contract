@@ -1,0 +1,1413 @@
+<script lang="uts">
+// 实名认证接口响应类型
+interface VerifyResponse {
+    verifyStatus: number; // 0: 未认证, 1: 审核中, 2: 认证成功, 3: 认证失败
+    failReason: string | null;
+}
+
+// 用户信息接口
+interface UserInfo {
+    id: number;
+    nickname: string;
+    avatar: string;
+    mobile: string;
+    verifyStatus: number; // 0: 未认证, 1: 审核中, 2: 认证成功, 3: 认证失败
+    verifyFailReason?: string;
+    // 其他字段...
+}
+
+// 导入API工具
+import { post, get, uploadFileAdvanced, simpleUpload } from '../../../api/index';
+import { API_BASE_URL, TENANT_ID, UPLOAD_CONFIG } from '../../../api/config';
+
+export default {
+	data() {
+		return {
+			// 当前步骤
+			currentStep: 1,
+			totalSteps: 2,
+			
+			// 用户信息
+			userInfo: {
+				realName: '',
+				idCardNumber: '',
+				faceVerified: false,
+                faceImage: '' // 存储照片URL
+			},
+			
+			// 表单验证状态
+			validation: {
+				realName: {
+					valid: true,
+					message: ''
+				},
+				idCardNumber: {
+					valid: true,
+					message: ''
+				}
+			},
+			
+			// 认证状态 (pending: 审核中, success: 认证成功, failed: 认证失败, none: 未认证)
+			verificationStatus: 'none',
+			
+			// 认证失败原因
+			failedReason: '',
+			
+			// 是否正在提交
+			isSubmitting: false,
+            
+            // 上传进度
+            uploadProgress: 0,
+            
+            // 人脸识别指导弹窗
+            faceGuidanceVisible: false,
+            guidanceTips: [
+                '请确保光线充足，面部清晰可见',
+                '请直视摄像头，表情自然',
+                '不要佩戴墨镜、帽子等遮挡面部的物品',
+                '照片将用于实名认证，请确保真实有效'
+            ],
+            
+            // 上传状态
+            uploadStatus: {
+                inProgress: false,
+                progress: 0,
+                error: false,
+                errorMessage: ''
+            },
+            
+            // 重试计数器，避免无限重试
+            retryCount: 0,
+            maxRetries: 3
+		}
+	},
+	onLoad() {
+		// 检查是否已经提交过认证
+		this.checkVerificationStatus()
+	},
+	computed: {
+		// 当前步骤是否可以继续
+		canProceed(): boolean {
+			if (this.currentStep === 1) {
+				return this.validation.realName.valid && 
+					   this.userInfo.realName.length > 0 && 
+					   this.validation.idCardNumber.valid && 
+					   this.userInfo.idCardNumber.length === 18
+			} else if (this.currentStep === 2) {
+				return this.userInfo.faceVerified && 
+                       this.userInfo.faceImage.length > 0
+			}
+			return false
+		},
+		
+		// 步骤指示器数组
+		stepIndicators(): string[] {
+			return ['填写信息', '人脸识别']
+		}
+	},
+	methods: {
+		// 返回上一页
+		goBack(): void {
+			uni.navigateBack()
+		},
+		
+		// 检查认证状态
+		checkVerificationStatus(): void {
+            // 显示加载中
+            uni.showLoading({
+                title: '加载中...'
+            })
+            
+            // 使用封装的API调用获取用户信息
+            get('/api/v1/member/user/get')
+                .then((userData: any) => {
+                    uni.hideLoading()
+                    
+                    console.log('获取用户信息成功:', JSON.stringify(userData))
+                    
+                    // 根据API返回的认证状态设置页面状态
+                    if (userData && userData.verifyStatus !== undefined) {
+                        if (userData.verifyStatus === 2) {
+                            // 认证成功
+                            this.verificationStatus = 'success'
+                            // 保存认证状态到本地存储（兼容旧版本）
+                            uni.setStorageSync('kycStatus', 'true')
+                        } else if (userData.verifyStatus === 3) {
+                            // 认证失败
+                            this.verificationStatus = 'failed'
+                            this.failedReason = userData.verifyFailReason || '认证未通过，请重新提交'
+                        } else if (userData.verifyStatus === 0) {
+                            // 未认证，保持默认状态
+                            this.verificationStatus = 'none'
+                        } else if (userData.verifyStatus === 1) {
+                            // 审核中状态
+                            this.verificationStatus = 'pending'
+                        }
+                    }
+                })
+                .catch((err: Error) => {
+                    uni.hideLoading()
+                    console.error('获取用户信息失败:', err)
+                    
+                    // 如果API调用失败，尝试从本地存储获取状态（兼容旧版本）
+                    const isVerified = uni.getStorageSync('kycStatus')
+                    if (isVerified === 'true') {
+                        this.verificationStatus = 'success'
+                    }
+                })
+		},
+		
+		// 验证姓名
+		validateName(): void {
+			if (!this.userInfo.realName) {
+				this.validation.realName.valid = false
+				this.validation.realName.message = '请输入真实姓名'
+				return
+			}
+			
+			// 简单验证：姓名长度至少为2个字符
+			if (this.userInfo.realName.length < 2) {
+				this.validation.realName.valid = false
+				this.validation.realName.message = '姓名长度不正确'
+				return
+			}
+			
+			this.validation.realName.valid = true
+			this.validation.realName.message = ''
+		},
+		
+		// 验证身份证号
+		validateIdCard(): void {
+			if (!this.userInfo.idCardNumber) {
+				this.validation.idCardNumber.valid = false
+				this.validation.idCardNumber.message = '请输入身份证号'
+				return
+			}
+			
+			// 简单验证：身份证号必须为18位
+			if (this.userInfo.idCardNumber.length !== 18) {
+				this.validation.idCardNumber.valid = false
+				this.validation.idCardNumber.message = '身份证号必须为18位'
+				return
+			}
+			
+			// TODO: 实现更复杂的身份证号验证逻辑
+			
+			this.validation.idCardNumber.valid = true
+			this.validation.idCardNumber.message = ''
+		},
+		
+		// 下一步
+		nextStep(): void {
+			if (this.currentStep < this.totalSteps) {
+				this.currentStep++
+			}
+		},
+		
+		// 上一步
+		prevStep(): void {
+			if (this.currentStep > 1) {
+				this.currentStep--
+			}
+		},
+		
+		// 开始人脸识别
+		startFaceVerification(): void {
+            // 显示拍照指导弹窗
+            this.showFaceGuidance()
+		},
+
+        // 显示人脸拍照指导弹窗
+        showFaceGuidance(): void {
+            this.faceGuidanceVisible = true
+        },
+
+        // 确认已阅读指导并开始拍照
+        confirmGuidanceAndStartCamera(): void {
+            this.faceGuidanceVisible = false
+            
+            // 显示加载中
+            uni.showLoading({
+                title: '准备人脸识别...'
+            })
+            
+            try {
+                // 配置拍照参数，确保高质量照片
+                const cameraOptions = {
+                    count: 1, // 只拍一张照片
+                    sizeType: ['original'], // 使用原图确保清晰度
+                    sourceType: ['camera'], // 只使用相机
+                    quality: 100, // 最高质量
+                    success: (res) => {
+                        this.handleCameraSuccess(res)
+                    },
+                    fail: (error) => {
+                        uni.hideLoading()
+                        console.error('拍照失败:', error)
+                        uni.showToast({
+                            title: '拍照失败，请重试',
+                            icon: 'none'
+                        })
+                    }
+                }
+                
+                // 启动相机
+                uni.chooseImage(cameraOptions)
+            } catch (error) {
+                uni.hideLoading()
+                console.error('启动相机失败:', error)
+                uni.showToast({
+                    title: '无法启动相机，请检查权限',
+                    icon: 'none',
+                    duration: 3000
+                })
+            }
+        },
+
+        // 处理相机拍照成功的回调
+        handleCameraSuccess(res: any): void {
+                        try {
+                            // 获取临时文件路径
+                            const tempFilePath = res.tempFilePaths[0]
+                            console.log('拍照成功，临时文件路径:', tempFilePath)
+                
+                // 获取文件信息，验证文件大小
+                uni.getFileInfo({
+                    filePath: tempFilePath,
+                    success: (fileInfo) => {
+                        // 验证文件大小（限制5MB）
+                        if (fileInfo.size > UPLOAD_CONFIG.MAX_SIZE.IMAGE * 1024 * 1024) {
+                            uni.hideLoading()
+                            this.showUploadError(`照片大小超过${UPLOAD_CONFIG.MAX_SIZE.IMAGE}MB限制，请重试`)
+                            return
+                        }
+                            
+                            // 提取文件扩展名
+                            let fileExtension = 'jpg' // 默认扩展名
+                            if (tempFilePath.includes('.')) {
+                                const parts = tempFilePath.split('.')
+                                fileExtension = parts[parts.length - 1].toLowerCase()
+                                console.log('从路径提取的文件扩展名:', fileExtension)
+                            }
+                            
+                        // 验证文件类型
+                        if (!UPLOAD_CONFIG.ALLOWED_TYPES.IMAGE.includes(fileExtension)) {
+                            uni.hideLoading()
+                            this.showUploadError(`不支持的图片格式，请使用${UPLOAD_CONFIG.ALLOWED_TYPES.IMAGE.join('/')}格式`)
+                            return
+                        }
+                        
+                        // 开始上传流程
+                        this.uploadFaceImage(tempFilePath, fileExtension)
+                    },
+                    fail: (error) => {
+                        uni.hideLoading()
+                        console.error('获取文件信息失败:', error)
+                        this.showUploadError('无法获取照片信息，请重试')
+                    }
+                })
+            } catch (processError) {
+                console.error('处理照片时发生错误:', processError)
+                uni.hideLoading()
+                this.showUploadError('处理照片失败，请重试')
+            }
+        },
+
+        // 上传人脸照片
+        uploadFaceImage(filePath: string, fileExtension: string): void {
+            // 重置上传状态
+            this.uploadStatus.inProgress = true
+            this.uploadStatus.progress = 0
+            this.uploadStatus.error = false
+            this.uploadStatus.errorMessage = ''
+            
+            // 确保文件名带有扩展名和随机性
+                            const timestamp = new Date().getTime()
+            const randomPart = Math.floor(Math.random() * 10000)
+            const customFileName = `face_verify_${timestamp}_${randomPart}.${fileExtension}`
+                            console.log('生成的自定义文件名:', customFileName)
+                            
+                            // 显示进度提示
+                            uni.hideLoading()
+                            uni.showLoading({
+                title: '准备上传...'
+                            })
+                            
+            // 使用前端直传模式上传照片
+                            const uploadOptions = {
+                                fileName: customFileName,
+                                directory: UPLOAD_CONFIG.DIRECTORIES.VERIFY,
+                // 设置过期时间为24小时，确保未使用的照片会自动删除
+                expirationHours: UPLOAD_CONFIG.EXPIRATION.VERIFY, 
+                                onProgress: (percent: number) => {
+                                    console.log('上传进度:', percent)
+                    this.uploadStatus.progress = percent
+                                    
+                                    // 更新加载提示
+                                    if (percent > 0 && percent < 100) {
+                                        uni.hideLoading()
+                                        uni.showLoading({
+                                            title: `上传中 ${percent}%`
+                                        })
+                                    }
+                                }
+                            }
+                            
+            // 优先使用uploadFileAdvanced直传模式，自动处理各种上传异常
+            uploadFileAdvanced(filePath, uploadOptions)
+                            .then((fileUrl: string) => {
+                                // 保存服务器返回的图片URL
+                                console.log('照片上传成功，URL:', fileUrl)
+                
+                // 验证返回的URL是否有效
+                if (!fileUrl || fileUrl.trim().length === 0) {
+                    throw new Error('返回的文件URL无效')
+                }
+                                
+                                // 验证返回的URL是否包含扩展名
+                                if (!fileUrl.includes('.')) {
+                                    console.warn('返回的URL不包含扩展名，尝试添加扩展名')
+                                    fileUrl = `${fileUrl}.${fileExtension}`
+                                }
+                                
+                // 更新上传状态
+                this.uploadStatus.inProgress = false
+                this.uploadStatus.progress = 100
+                this.retryCount = 0 // 重置重试计数器
+                
+                // 更新用户信息
+                                this.userInfo.faceImage = fileUrl
+                                this.userInfo.faceVerified = true
+                                
+                                uni.hideLoading()
+                                uni.showToast({
+                                    title: '人脸采集成功',
+                                    icon: 'success'
+                                })
+                            })
+                            .catch((error: Error) => {
+                                console.error('照片上传失败:', error)
+                                uni.hideLoading()
+                
+                // 更新上传状态
+                this.uploadStatus.inProgress = false
+                this.uploadStatus.error = true
+                this.uploadStatus.errorMessage = error.message || '未知错误'
+                
+                this.showUploadError('照片上传失败: ' + error.message)
+            })
+        },
+
+        // 显示上传错误
+        showUploadError(message: string): void {
+                                uni.showToast({
+                title: message,
+                                    icon: 'none',
+                                    duration: 3000
+                                })
+        },
+
+        // 重试上传
+        retryUpload(): void {
+            // 检查是否已达到最大重试次数
+            if (this.retryCount >= this.maxRetries) {
+                        uni.showToast({
+                    title: '已达到最大重试次数，请重新拍照',
+                    icon: 'none',
+                    duration: 3000
+                })
+                return
+            }
+            
+            // 增加重试计数
+            this.retryCount++
+            
+            // 开始重新拍照流程
+            this.confirmGuidanceAndStartCamera()
+		},
+		
+		// 提交认证
+		submitVerification(): void {
+			if (this.isSubmitting) return
+			
+			this.isSubmitting = true
+			
+			// 显示提交中
+			uni.showLoading({
+				title: '提交认证信息...'
+			})
+			
+            // 验证表单数据
+            if (!this.validateSubmitData()) {
+                uni.hideLoading()
+                this.isSubmitting = false
+                return
+            }
+            
+            // 准备请求参数（根据API文档）
+            const requestData = {
+                name: this.userInfo.realName,
+                idCard: this.userInfo.idCardNumber,
+                faceImage: this.userInfo.faceImage // 这里应该是服务器返回的URL
+            }
+            
+            console.log('提交认证信息:', JSON.stringify(requestData))
+            
+            // 使用封装的API调用提交认证
+            post('/api/v1/member/verify/submit', requestData)
+                .then((verifyResult: any) => {
+                    uni.hideLoading()
+                    this.isSubmitting = false
+                    
+                    console.log('认证结果:', JSON.stringify(verifyResult))
+                    
+                    // 根据认证结果更新页面状态
+                    if (verifyResult && verifyResult.verifyStatus !== undefined) {
+                        if (verifyResult.verifyStatus === 2) {
+                            // 认证成功
+                            this.verificationStatus = 'success'
+                            
+                            uni.showToast({
+                                title: '认证成功',
+                                icon: 'success'
+                            })
+                            
+                            // 保存认证状态到本地存储（兼容旧版本）
+                            uni.setStorageSync('kycStatus', 'true')
+                            
+                            // 延迟返回上一页
+                            setTimeout(() => {
+                                uni.navigateBack()
+                            }, 1500)
+                        } else if (verifyResult.verifyStatus === 3) {
+                            // 认证失败
+                            this.verificationStatus = 'failed'
+                            this.failedReason = verifyResult.failReason || '认证未通过，请重新提交'
+                            
+                            uni.showToast({
+                                title: '认证失败',
+                                icon: 'none'
+                            })
+                        } else if (verifyResult.verifyStatus === 1) {
+                            // 审核中状态
+                            this.verificationStatus = 'pending'
+                            
+                            uni.showToast({
+                                title: '提交成功，等待审核',
+                                icon: 'success'
+                            })
+                            
+                            // 延迟返回上一页
+                            setTimeout(() => {
+                                uni.navigateBack()
+                            }, 1500)
+                        } else if (verifyResult.verifyStatus === 0) {
+                            // 未认证（理论上不会出现此状态，但为了完整性添加）
+                            this.verificationStatus = 'none'
+                            
+                            uni.showToast({
+                                title: '认证未开始',
+                                icon: 'none'
+                            })
+                        }
+                    } else {
+                        // 请求成功但数据异常
+                        uni.showToast({
+                            title: '提交失败: 返回数据格式错误',
+                            icon: 'none'
+                        })
+                    }
+                })
+                .catch((err: Error) => {
+                    uni.hideLoading()
+                    this.isSubmitting = false
+                    console.error('认证提交失败:', err)
+                    
+                    uni.showToast({
+                        title: '提交失败: ' + err.message,
+                        icon: 'none'
+                    })
+                })
+		},
+		
+		// 验证提交数据
+		validateSubmitData(): boolean {
+            // 验证姓名
+            if (!this.userInfo.realName || this.userInfo.realName.trim().length < 2) {
+                uni.showToast({
+                    title: '请输入正确的姓名',
+                    icon: 'none'
+                })
+                return false
+            }
+            
+            // 验证身份证号
+            if (!this.userInfo.idCardNumber || !/^[1-9]\d{5}(18|19|20)\d{2}((0[1-9])|(1[0-2]))(([0-2][1-9])|10|20|30|31)\d{3}[0-9Xx]$/.test(this.userInfo.idCardNumber)) {
+                uni.showToast({
+                    title: '请输入正确的身份证号',
+                    icon: 'none'
+                })
+                return false
+            }
+            
+            // 验证是否有照片URL
+            if (!this.userInfo.faceImage) {
+                uni.showToast({
+                    title: '请先完成人脸采集',
+                    icon: 'none'
+                })
+                return false
+            }
+            
+            // 验证图片URL格式是否正确
+            if (!this.isValidImageUrl(this.userInfo.faceImage)) {
+                uni.showToast({
+                    title: '照片格式不正确，请重新拍摄',
+                    icon: 'none'
+                })
+                return false
+            }
+            
+            return true
+        },
+
+        // 验证图片URL是否合法
+        isValidImageUrl(url: string): boolean {
+            if (!url || typeof url !== 'string') {
+                return false
+            }
+            
+            // 检查是否是URL格式
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                return false
+            }
+            
+            // 检查是否包含文件扩展名
+            const hasImageExtension = /\.(jpg|jpeg|png|gif|webp)$/i.test(url)
+            
+            // 检查URL长度
+            const validLength = url.length > 10 && url.length < 1024
+            
+            return hasImageExtension && validLength
+		},
+		
+		// 重新提交认证
+		resubmit(): void {
+			// 重置认证状态
+			this.verificationStatus = 'none'
+			this.failedReason = ''
+			this.currentStep = 1
+            this.userInfo.faceVerified = false
+            this.userInfo.faceImage = ''
+		}
+	}
+}
+</script>
+
+<template>
+	<view class="kyc-container">
+		<!-- 认证状态显示 -->
+		<block v-if="verificationStatus !== 'none'">
+			<view class="status-container">
+				<view class="status-icon-container" :class="[
+					verificationStatus === 'pending' ? 'pending' : '',
+					verificationStatus === 'success' ? 'success' : '',
+					verificationStatus === 'failed' ? 'failed' : ''
+				]">
+					<text class="icon" :class="[
+						verificationStatus === 'pending' ? 'icon-spinner' : '',
+						verificationStatus === 'success' ? 'icon-check' : '',
+						verificationStatus === 'failed' ? 'icon-close' : ''
+					]"></text>
+				</view>
+				
+				<text class="status-title" :class="[
+					verificationStatus === 'pending' ? 'pending' : '',
+					verificationStatus === 'success' ? 'success' : '',
+					verificationStatus === 'failed' ? 'failed' : ''
+				]">
+					{{ verificationStatus === 'pending' ? '认证审核中' : 
+					   verificationStatus === 'success' ? '认证已通过' : '认证未通过' }}
+				</text>
+				
+				<text class="status-desc" v-if="verificationStatus === 'pending'">
+					您的认证信息已提交，正在审核中，请耐心等待
+				</text>
+				<text class="status-desc" v-else-if="verificationStatus === 'success'">
+					您的实名认证已通过，可以使用所有功能
+				</text>
+				<text class="status-desc" v-else-if="verificationStatus === 'failed'">
+					{{ failedReason || '认证未通过，请重新提交' }}
+				</text>
+				
+				<view class="status-button-container" v-if="verificationStatus === 'failed'">
+					<view class="resubmit-button" @click="resubmit">
+						<text class="button-text">重新提交</text>
+					</view>
+				</view>
+			</view>
+		</block>
+		
+		<!-- 认证表单 -->
+		<block v-else>
+			<!-- 步骤指示器 -->
+			<view class="step-indicator">
+				<view v-for="(step, index) in stepIndicators" :key="index" 
+					  class="step-item" :class="{ 'active': index + 1 === currentStep, 'completed': index + 1 < currentStep }">
+					<view class="step-circle">
+						<text class="step-number" v-if="index + 1 >= currentStep">{{ index + 1 }}</text>
+						<text class="icon icon-check step-check" v-else></text>
+					</view>
+					<text class="step-label">{{ step }}</text>
+				</view>
+				
+				<view class="step-line"></view>
+			</view>
+			
+			<!-- 步骤1：填写个人信息 -->
+			<view class="step-content" v-if="currentStep === 1">
+				<view class="form-group">
+					<text class="form-label">真实姓名</text>
+					<input class="form-input" v-model="userInfo.realName" placeholder="请输入您的真实姓名" 
+						   @blur="validateName" />
+					<text class="error-message" v-if="!validation.realName.valid">
+						{{ validation.realName.message }}
+					</text>
+				</view>
+				
+				<view class="form-group">
+					<text class="form-label">身份证号码</text>
+					<input class="form-input" v-model="userInfo.idCardNumber" placeholder="请输入您的身份证号码" 
+						   @blur="validateIdCard" />
+					<text class="error-message" v-if="!validation.idCardNumber.valid">
+						{{ validation.idCardNumber.message }}
+					</text>
+				</view>
+				
+				<view class="form-tips">
+					<text class="icon icon-info tips-icon"></text>
+					<text class="tips-text">请确保填写的信息真实有效，认证通过后将无法修改</text>
+				</view>
+				
+				<view class="step-actions">
+					<view class="action-button primary" 
+						  :class="{ 'disabled': !canProceed }" 
+						  @click="nextStep">
+						<text>下一步</text>
+					</view>
+				</view>
+			</view>
+			
+			<!-- 步骤2：人脸识别 -->
+			<view class="step-content" v-else-if="currentStep === 2">
+				<view class="face-verify-container">
+					<view class="face-icon-container">
+						<text class="icon icon-user face-icon"></text>
+					</view>
+					<text class="face-title">人脸识别验证</text>
+					<text class="face-desc">请确保光线充足，面部无遮挡，完成人脸识别验证</text>
+					
+					<!-- 上传状态显示 -->
+					<view class="upload-status-container" v-if="uploadStatus.inProgress">
+						<text class="upload-status-text">上传中 {{ uploadStatus.progress }}%</text>
+						<view class="progress-bar-bg">
+							<view class="progress-bar-fill" :style="{ width: uploadStatus.progress + '%' }"></view>
+						</view>
+					</view>
+					
+					<!-- 错误状态显示 -->
+					<view class="upload-error-container" v-else-if="uploadStatus.error">
+						<view class="upload-error-icon">
+							<text class="icon icon-exclamation-circle"></text>
+						</view>
+						<text class="upload-error-text">{{ uploadStatus.errorMessage }}</text>
+						<view class="upload-error-action">
+							<view class="retry-button" @click="retryUpload">
+								<text class="icon icon-redo retry-icon"></text>
+								<text class="retry-text">重新尝试</text>
+							</view>
+						</view>
+					</view>
+					
+					<!-- 人脸验证按钮 -->
+					<view class="face-button-container" v-if="!userInfo.faceVerified && !uploadStatus.inProgress && !uploadStatus.error">
+						<view class="face-button" @click="startFaceVerification">
+							<text class="icon icon-camera button-icon"></text>
+							<text>开始人脸识别</text>
+						</view>
+					</view>
+					
+					<!-- 验证成功状态 -->
+					<view class="face-verified" v-if="userInfo.faceVerified">
+						<text class="icon icon-check verified-icon"></text>
+						<text class="verified-text">人脸识别验证通过</text>
+					</view>
+					
+					<!-- 拍照提示列表 -->
+					<view class="face-tips">
+						<text class="tips-title">拍照要求:</text>
+						<view class="tips-item" v-for="(tip, index) in guidanceTips" :key="index">
+							<text class="tips-dot">•</text>
+							<text class="tips-content">{{ tip }}</text>
+						</view>
+					</view>
+				</view>
+				
+				<view class="step-actions">
+					<view class="action-button secondary" @click="prevStep">
+						<text>上一步</text>
+					</view>
+					<view class="action-button primary" 
+						  :class="{ 'disabled': !canProceed }" 
+						  @click="submitVerification">
+						<text>提交认证</text>
+					</view>
+				</view>
+			</view>
+			
+			<!-- 人脸识别指导弹窗 -->
+			<view class="modal-overlay" v-if="faceGuidanceVisible" @click="faceGuidanceVisible = false">
+				<view class="modal-content" @click.stop>
+					<view class="modal-header">
+						<text class="modal-title">人脸拍摄指南</text>
+					</view>
+					<view class="modal-body">
+						<view class="guidance-item" v-for="(tip, index) in guidanceTips" :key="index">
+							<text class="guidance-number">{{ index + 1 }}.</text>
+							<text class="guidance-text">{{ tip }}</text>
+						</view>
+						<view class="guidance-image-container">
+							<view class="guidance-image-wrapper good">
+								<view class="guidance-image-placeholder">
+									<text class="icon icon-user"></text>
+								</view>
+								<text class="guidance-image-label">正确示例</text>
+							</view>
+							<view class="guidance-image-wrapper bad">
+								<view class="guidance-image-placeholder">
+									<text class="icon icon-user-slash"></text>
+								</view>
+								<text class="guidance-image-label">错误示例</text>
+							</view>
+						</view>
+					</view>
+					<view class="modal-footer">
+						<view class="modal-button" @click="confirmGuidanceAndStartCamera">
+							<text>知道了，开始拍摄</text>
+						</view>
+					</view>
+				</view>
+			</view>
+		</block>
+	</view>
+</template>
+
+<style>
+.kyc-container {
+	flex: 1;
+	background-color: #F8F8F8;
+	padding-bottom: 40rpx;
+}
+
+/* 认证状态 */
+.status-container {
+	margin: 60rpx 40rpx;
+	background-color: #FFFFFF;
+	border-radius: 16rpx;
+	padding: 40rpx;
+	align-items: center;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.status-icon-container {
+	width: 120rpx;
+	height: 120rpx;
+	border-radius: 60rpx;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 30rpx;
+}
+
+.status-icon-container.pending {
+	background-color: rgba(250, 173, 20, 0.1);
+}
+
+.status-icon-container.success {
+	background-color: rgba(0, 194, 138, 0.1);
+}
+
+.status-icon-container.failed {
+	background-color: rgba(255, 77, 79, 0.1);
+}
+
+.status-icon-container .icon {
+	font-size: 60rpx;
+}
+
+.status-icon-container.pending .icon {
+	color: #FAAD14;
+}
+
+.status-icon-container.success .icon {
+	color: #00C28A;
+}
+
+.status-icon-container.failed .icon {
+	color: #FF4D4F;
+}
+
+.status-title {
+	font-size: 36rpx;
+	font-weight: bold;
+	margin-bottom: 20rpx;
+}
+
+.status-title.pending {
+	color: #FAAD14;
+}
+
+.status-title.success {
+	color: #00C28A;
+}
+
+.status-title.failed {
+	color: #FF4D4F;
+}
+
+.status-desc {
+	font-size: 28rpx;
+	color: #666666;
+	text-align: center;
+	margin-bottom: 40rpx;
+}
+
+.status-button-container {
+	margin-top: 20rpx;
+}
+
+.resubmit-button {
+	background-color: #00C28A;
+	height: 80rpx;
+	width: 300rpx;
+	border-radius: 40rpx;
+	align-items: center;
+	justify-content: center;
+}
+
+.button-text {
+	color: #FFFFFF;
+	font-size: 28rpx;
+}
+
+/* 步骤指示器 */
+.step-indicator {
+	flex-direction: row;
+	justify-content: space-between;
+	padding: 40rpx 60rpx;
+	background-color: #FFFFFF;
+	position: relative;
+	margin-top: 20rpx;
+	margin-bottom: 20rpx;
+}
+
+.step-item {
+	align-items: center;
+	z-index: 1;
+}
+
+.step-circle {
+	width: 50rpx;
+	height: 50rpx;
+	border-radius: 25rpx;
+	background-color: #EEEEEE;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 10rpx;
+}
+
+.step-item.active .step-circle {
+	background-color: #00C28A;
+}
+
+.step-item.completed .step-circle {
+	background-color: #00C28A;
+}
+
+.step-number {
+	color: #999999;
+	font-size: 24rpx;
+}
+
+.step-item.active .step-number {
+	color: #FFFFFF;
+}
+
+.step-check {
+	color: #FFFFFF;
+	font-size: 24rpx;
+}
+
+.step-label {
+	font-size: 24rpx;
+	color: #999999;
+}
+
+.step-item.active .step-label {
+	color: #00C28A;
+	font-weight: bold;
+}
+
+.step-item.completed .step-label {
+	color: #00C28A;
+}
+
+.step-line {
+	position: absolute;
+	height: 2rpx;
+	background-color: #EEEEEE;
+	top: 65rpx;
+	left: 85rpx;
+	right: 85rpx;
+}
+
+/* 表单样式 */
+.step-content {
+	margin: 20rpx 40rpx;
+	background-color: #FFFFFF;
+	border-radius: 16rpx;
+	padding: 30rpx;
+}
+
+.form-group {
+	margin-bottom: 30rpx;
+}
+
+.form-label {
+	font-size: 28rpx;
+	color: #333333;
+	margin-bottom: 12rpx;
+	font-weight: 500;
+}
+
+.form-input {
+	height: 90rpx;
+	border-width: 1rpx;
+	border-color: #E6E6E6;
+	border-radius: 8rpx;
+	padding: 0 20rpx;
+	font-size: 28rpx;
+	color: #333333;
+	background-color: #FAFAFA;
+}
+
+.error-message {
+	font-size: 24rpx;
+	color: #FF4D4F;
+	margin-top: 8rpx;
+}
+
+.form-tips {
+	flex-direction: row;
+	align-items: center;
+	background-color: rgba(250, 173, 20, 0.1);
+	padding: 16rpx 20rpx;
+	border-radius: 8rpx;
+}
+
+.tips-icon {
+	font-size: 24rpx;
+	color: #FAAD14;
+	margin-right: 10rpx;
+}
+
+.tips-text {
+	font-size: 24rpx;
+	color: #666666;
+	flex: 1;
+}
+
+/* 人脸识别 */
+.face-verify-container {
+	align-items: center;
+	padding: 30rpx 0;
+}
+
+.face-icon-container {
+	width: 120rpx;
+	height: 120rpx;
+	border-radius: 60rpx;
+	background-color: rgba(0, 194, 138, 0.1);
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 20rpx;
+}
+
+.face-icon {
+	font-size: 60rpx;
+	color: #00C28A;
+}
+
+.face-title {
+	font-size: 32rpx;
+	font-weight: bold;
+	color: #333333;
+	margin-bottom: 12rpx;
+}
+
+.face-desc {
+	font-size: 26rpx;
+	color: #666666;
+	margin-bottom: 40rpx;
+	text-align: center;
+}
+
+/* 上传进度条 */
+.upload-progress-container {
+	width: 100%;
+	margin-bottom: 30rpx;
+}
+
+.progress-text {
+	font-size: 24rpx;
+	color: #666666;
+	margin-bottom: 10rpx;
+	text-align: center;
+}
+
+.progress-bar-bg {
+	width: 100%;
+	height: 10rpx;
+	background-color: #EEEEEE;
+	border-radius: 5rpx;
+	overflow: hidden;
+}
+
+.progress-bar-fill {
+	height: 100%;
+	background-color: #00C28A;
+	border-radius: 5rpx;
+	transition: width 0.3s;
+}
+
+.face-button-container {
+	margin-bottom: 20rpx;
+}
+
+.face-button {
+	background-color: #00C28A;
+	color: #FFFFFF;
+	font-size: 32rpx;
+	height: 90rpx;
+	width: 400rpx;
+	border-radius: 45rpx;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+}
+
+.button-icon {
+	font-size: 32rpx;
+	margin-right: 10rpx;
+}
+
+.face-verified {
+	flex-direction: row;
+	align-items: center;
+	background-color: rgba(0, 194, 138, 0.1);
+	padding: 20rpx 40rpx;
+	border-radius: 45rpx;
+}
+
+.verified-icon {
+	font-size: 32rpx;
+	color: #00C28A;
+	margin-right: 10rpx;
+}
+
+.verified-text {
+	font-size: 28rpx;
+	color: #00C28A;
+}
+
+/* 步骤导航按钮 */
+.step-actions {
+	flex-direction: column;
+	justify-content: center;
+	margin-top: 40rpx;
+	gap: 20rpx;
+}
+
+.action-button {
+	height: 90rpx;
+	border-radius: 45rpx;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+}
+
+.action-button text {
+	font-size: 32rpx;
+}
+
+.action-button.primary {
+	background-color: #00C28A;
+}
+
+.action-button.primary text {
+	color: #FFFFFF;
+}
+
+.action-button.secondary {
+	background-color: #FFFFFF;
+	border-width: 1rpx;
+	border-color: #E6E6E6;
+}
+
+.action-button.secondary text {
+	color: #666666;
+}
+
+.action-button.disabled {
+	background-color: #CCCCCC;
+	opacity: 0.7;
+}
+
+/* 人脸拍照提示 */
+.face-tips {
+	margin-top: 30rpx;
+	padding: 20rpx;
+	background-color: rgba(0, 194, 138, 0.05);
+	border-radius: 10rpx;
+	width: 100%;
+}
+
+.tips-title {
+	font-size: 28rpx;
+	color: #333333;
+	font-weight: bold;
+	margin-bottom: 10rpx;
+}
+
+.tips-item {
+	flex-direction: row;
+	margin-top: 8rpx;
+}
+
+.tips-dot {
+	color: #00C28A;
+	font-size: 26rpx;
+	margin-right: 10rpx;
+}
+
+.tips-content {
+	font-size: 26rpx;
+	color: #666666;
+	flex: 1;
+}
+
+/* 模态弹窗 */
+.modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0.6);
+	z-index: 999;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+}
+
+.modal-content {
+	width: 80%;
+	background-color: #FFFFFF;
+	border-radius: 16rpx;
+	overflow: hidden;
+	max-height: 80%;
+}
+
+.modal-header {
+	padding: 30rpx;
+	border-bottom-width: 1rpx;
+	border-bottom-color: #EEEEEE;
+	align-items: center;
+}
+
+.modal-title {
+	font-size: 32rpx;
+	font-weight: bold;
+	color: #333333;
+}
+
+.modal-body {
+	padding: 30rpx;
+}
+
+.guidance-item {
+	flex-direction: row;
+	margin-bottom: 16rpx;
+}
+
+.guidance-number {
+	font-size: 28rpx;
+	color: #00C28A;
+	font-weight: bold;
+	margin-right: 10rpx;
+	min-width: 40rpx;
+}
+
+.guidance-text {
+	font-size: 28rpx;
+	color: #333333;
+	flex: 1;
+}
+
+.guidance-image-container {
+	flex-direction: row;
+	justify-content: space-around;
+	margin-top: 30rpx;
+}
+
+.guidance-image-wrapper {
+	align-items: center;
+	width: 200rpx;
+}
+
+.guidance-image-placeholder {
+	width: 160rpx;
+	height: 160rpx;
+	border-radius: 80rpx;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 10rpx;
+}
+
+.guidance-image-wrapper.good .guidance-image-placeholder {
+	background-color: rgba(0, 194, 138, 0.1);
+}
+
+.guidance-image-wrapper.bad .guidance-image-placeholder {
+	background-color: rgba(255, 77, 79, 0.1);
+}
+
+.guidance-image-placeholder .icon {
+	font-size: 80rpx;
+}
+
+.guidance-image-wrapper.good .icon {
+	color: #00C28A;
+}
+
+.guidance-image-wrapper.bad .icon {
+	color: #FF4D4F;
+}
+
+.guidance-image-label {
+	font-size: 26rpx;
+	color: #666666;
+}
+
+.modal-footer {
+	padding: 20rpx 30rpx 40rpx 30rpx;
+	align-items: center;
+}
+
+.modal-button {
+	background-color: #00C28A;
+	color: #FFFFFF;
+	font-size: 32rpx;
+	height: 90rpx;
+	border-radius: 45rpx;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+}
+
+/* 上传状态显示 */
+.upload-status-container {
+	width: 100%;
+	margin: 30rpx 0;
+	padding: 20rpx;
+	background-color: rgba(0, 194, 138, 0.05);
+	border-radius: 10rpx;
+}
+
+.upload-status-text {
+	font-size: 26rpx;
+	color: #666666;
+	text-align: center;
+	margin-bottom: 10rpx;
+}
+
+.progress-bar-bg {
+	width: 100%;
+	height: 10rpx;
+	background-color: #EEEEEE;
+	border-radius: 5rpx;
+	overflow: hidden;
+}
+
+.progress-bar-fill {
+	height: 100%;
+	background-color: #00C28A;
+	border-radius: 5rpx;
+}
+
+/* 错误状态显示 */
+.upload-error-container {
+	width: 100%;
+	margin: 30rpx 0;
+	padding: 20rpx;
+	background-color: rgba(255, 77, 79, 0.05);
+	border-radius: 10rpx;
+	align-items: center;
+}
+
+.upload-error-icon {
+	width: 80rpx;
+	height: 80rpx;
+	border-radius: 40rpx;
+	background-color: rgba(255, 77, 79, 0.1);
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 10rpx;
+}
+
+.upload-error-icon .icon {
+	color: #FF4D4F;
+	font-size: 40rpx;
+}
+
+.upload-error-text {
+	font-size: 26rpx;
+	color: #FF4D4F;
+	text-align: center;
+	margin-bottom: 20rpx;
+}
+
+.upload-error-action {
+	margin-top: 10rpx;
+}
+
+.retry-button {
+	flex-direction: row;
+	align-items: center;
+	padding: 10rpx 30rpx;
+	background-color: #FFFFFF;
+	border-width: 1rpx;
+	border-color: #FF4D4F;
+	border-radius: 30rpx;
+}
+
+.retry-icon {
+	color: #FF4D4F;
+	font-size: 24rpx;
+	margin-right: 10rpx;
+}
+
+.retry-text {
+	color: #FF4D4F;
+	font-size: 26rpx;
+}
+</style>

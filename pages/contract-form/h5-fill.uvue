@@ -1,0 +1,287 @@
+<script>
+/**
+ * H5表单填写页面（WebView方式）
+ * 
+ * 专门用于处理表单填写任务，不包含签署功能
+ */
+import { getSealPageUrl } from '../../api/seals/index';
+
+export default {
+	data() {
+		return {
+			// H5表单页面URL
+			fillUrl: '',
+			
+			// 任务ID
+			taskId: '',
+			
+			// 页面加载状态
+			loading: true,
+			
+			// 错误信息
+			errorMessage: ''
+		}
+	},
+	
+	onLoad(options) {
+		console.log('[H5表单] 页面加载，参数:', options);
+		
+		// 获取任务ID
+		if (options && options.taskId) {
+			this.taskId = options.taskId;
+		} else {
+			uni.showToast({
+				title: '缺少任务ID',
+				icon: 'none'
+			});
+			setTimeout(() => {
+				uni.navigateBack();
+			}, 1500);
+			return;
+		}
+		
+		// 构建H5表单页面URL
+		this.buildFillUrl();
+	},
+	
+	methods: {
+		/**
+		 * 构建H5表单页面URL
+		 */
+	async buildFillUrl() {
+		try {
+			// 使用统一印章应用，mode=form
+			// ✅ getSealPageUrl 现在是异步函数，需要 await
+			this.fillUrl = await getSealPageUrl('form', this.taskId);
+			console.log('[H5表单] ✅ 统一应用表单URL (含 Seal-Token):', this.fillUrl);
+				
+				uni.showLoading({
+					title: '加载表单...'
+				});
+			} catch (error) {
+				console.error('[H5表单] 构建URL失败:', error);
+				this.errorMessage = '表单页面加载失败';
+				uni.showToast({
+					title: this.errorMessage,
+					icon: 'none'
+				});
+			}
+		},
+		
+		/**
+		 * H5页面加载完成
+		 */
+		handleLoad(e) {
+			console.log('[H5表单] 页面加载完成:', e);
+			
+			this.loading = false;
+			
+			uni.hideLoading();
+			
+			uni.showToast({
+				title: '页面加载完成',
+				icon: 'success',
+				duration: 1500
+			});
+		},
+		
+		/**
+		 * H5页面加载失败
+		 */
+		handleError(e) {
+			console.error('[H5表单] 页面加载失败:', e);
+			
+			this.loading = false;
+			this.errorMessage = 'H5页面加载失败，请检查网络连接';
+			
+			uni.hideLoading();
+			
+			uni.showModal({
+				title: '错误',
+				content: 'H5页面加载失败，请检查网络连接或联系技术支持',
+				showCancel: true,
+				confirmText: '重试',
+				cancelText: '返回',
+				success: (res) => {
+					if (res.confirm) {
+						this.buildFillUrl();
+					} else {
+						uni.navigateBack();
+					}
+				}
+			});
+		},
+		
+		/**
+		 * 接收H5页面消息
+		 */
+		handleMessage(e) {
+			console.log('[H5表单] 收到H5消息:', e);
+			
+			const messages = e.detail.data;
+			if (!messages || messages.length === 0) {
+				return;
+			}
+			
+			const data = messages[messages.length - 1];
+			console.log('[H5表单] 处理消息:', data);
+			
+			switch(data.type) {
+				case 'formFilled':
+					this.handleFormFilled(data.taskId);
+					break;
+					
+				case 'close':
+					console.log('[H5表单] H5页面请求关闭');
+					uni.navigateBack();
+					break;
+				
+				case 'ready':
+					console.log('[H5表单] H5页面已准备就绪');
+					break;
+					
+				case 'ERROR':
+					this.handleH5Error(data.message);
+					break;
+					
+				default:
+					console.log('[H5表单] 未知消息类型:', data.type);
+			}
+		},
+		
+		/**
+		 * 表单填写完成
+		 */
+		handleFormFilled(taskId) {
+			console.log('[H5表单] 表单填写完成，任务ID:', taskId);
+			
+			uni.showToast({
+				title: '表单提交成功',
+				icon: 'success',
+				duration: 1500,
+				success: () => {
+					// 通知列表页刷新
+					uni.$emit('contract-updated', { taskId });
+					
+					setTimeout(() => {
+						uni.navigateBack();
+					}, 1500);
+				}
+			});
+		},
+		
+		/**
+		 * H5错误处理
+		 */
+		handleH5Error(message) {
+			console.error('[H5表单] H5错误:', message);
+			
+			uni.showModal({
+				title: '错误',
+				content: message || '表单填写过程中出现错误',
+				showCancel: false
+			});
+		}
+	}
+}
+</script>
+
+<template>
+	<view class="h5-fill-container">
+		<!-- 加载中提示 -->
+		<view v-if="loading" class="loading-container">
+			<view class="loading-spinner"></view>
+			<text class="loading-text">加载表单中...</text>
+		</view>
+		
+		<!-- 错误提示 -->
+		<view v-if="errorMessage" class="error-container">
+			<text class="fa fa-exclamation-circle error-icon"></text>
+			<text class="error-text">{{ errorMessage }}</text>
+		</view>
+		
+		<!-- WebView -->
+		<web-view 
+			v-if="fillUrl && !errorMessage"
+			:src="fillUrl"
+			@load="handleLoad"
+			@error="handleError"
+			@message="handleMessage"
+		></web-view>
+	</view>
+</template>
+
+<style>
+/* FontAwesome基础样式 */
+.fa {
+	font-family: FontAwesome;
+	font-size: 26rpx;
+	font-style: normal;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* 页面容器 */
+.h5-fill-container {
+	width: 100%;
+	height: 100%;
+	background-color: #F7F9FC;
+}
+
+/* 加载中容器 */
+.loading-container {
+	width: 100%;
+	height: 100%;
+	align-items: center;
+	justify-content: center;
+}
+
+.loading-spinner {
+	width: 80rpx;
+	height: 80rpx;
+	border-width: 4rpx;
+	border-style: solid;
+	border-color: #E4E7ED;
+	border-top-color: #00C28A;
+	border-radius: 40rpx;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+.loading-text {
+	font-size: 28rpx;
+	color: #909399;
+	margin-top: 30rpx;
+}
+
+/* 错误容器 */
+.error-container {
+	width: 100%;
+	height: 100%;
+	align-items: center;
+	justify-content: center;
+	padding: 60rpx;
+}
+
+.error-icon {
+	font-size: 100rpx;
+	color: #F56C6C;
+	margin-bottom: 30rpx;
+}
+
+.error-text {
+	font-size: 30rpx;
+	color: #606266;
+	text-align: center;
+	line-height: 50rpx;
+}
+</style>
+

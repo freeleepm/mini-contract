@@ -1,0 +1,557 @@
+<template>
+  <view class="page-container">
+    <!-- 消息列表区域 -->
+    <scroll-view 
+      class="messages-scroll" 
+      scroll-y="true"
+      :scroll-into-view="scrollIntoView"
+      :scroll-with-animation="true"
+    >
+      <view class="messages-container">
+        <!-- 消息列表 -->
+        <view 
+          v-for="(message, index) in messageList" 
+          :key="message.id"
+          :id="'msg-' + index"
+          class="message-item"
+          :class="message.role === 'user' ? 'message-user' : 'message-ai'"
+        >
+          <!-- AI消息 -->
+          <view v-if="message.role === 'assistant'" class="message-wrapper">
+            <view class="message-avatar message-avatar-ai">
+              <text class="avatar-text">AI</text>
+            </view>
+            <view class="message-content">
+              <view class="message-bubble message-bubble-ai">
+                <rich-text class="message-text" :nodes="parseMarkdown(message.content)"></rich-text>
+              </view>
+              <text class="message-time">{{ formatTime(message.createTime) }}</text>
+            </view>
+          </view>
+
+          <!-- 用户消息 -->
+          <view v-else class="message-wrapper">
+            <view class="message-content">
+              <view class="message-bubble message-bubble-user">
+                <text class="message-text">{{ message.content }}</text>
+              </view>
+              <text class="message-time">{{ formatTime(message.createTime) }}</text>
+            </view>
+            <view class="message-avatar message-avatar-user">
+              <text class="avatar-text">{{ getUserInitial() }}</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 加载中提示 -->
+        <view v-if="sending" class="message-item message-ai">
+          <view class="message-wrapper">
+            <view class="message-avatar message-avatar-ai">
+              <text class="avatar-text">AI</text>
+            </view>
+            <view class="message-content">
+              <view class="message-bubble message-bubble-ai">
+                <text class="message-text loading-text">
+                  <text class="dot">·</text>
+                  <text class="dot">·</text>
+                  <text class="dot">·</text>
+                </text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+
+    <!-- 输入区域 -->
+    <view class="input-area">
+      <view class="input-container">
+        <textarea 
+          v-model="inputText"
+          class="input-field"
+          placeholder="输入您的问题或需求..."
+          :auto-height="true"
+          :maxlength="500"
+          @input="handleInput"
+        />
+        <view 
+          class="send-button"
+          :class="{ 'send-button-disabled': !canSend }"
+          @click="handleSend"
+        >
+          <text class="fa fa-send send-icon"></text>
+        </view>
+      </view>
+      
+      <!-- 快捷操作 -->
+      <view class="quick-actions">
+        <view class="action-button" @click="handleGenerateContract">
+          <text class="fa fa-file-text action-icon"></text>
+          <text class="action-text">生成合同</text>
+        </view>
+        <view class="action-button" @click="handleViewHistory">
+          <text class="fa fa-history action-icon"></text>
+          <text class="action-text">查看历史</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script>
+import { getMessageList, sendMessage, generateContract } from '../../api/ai-draft/index.uts'
+
+export default {
+  data() {
+    return {
+      conversationId: 0,
+      messageList: [],
+      inputText: '',
+      sending: false,
+      scrollIntoView: '',
+      initialPrompt: ''
+    }
+  },
+  computed: {
+    canSend() {
+      return this.inputText.trim().length > 0 && !this.sending
+    }
+  },
+  onLoad(options) {
+    this.conversationId = parseInt(options.conversationId || '0')
+    this.initialPrompt = decodeURIComponent(options.prompt || '')
+    
+    if (this.conversationId) {
+      this.loadMessages()
+    }
+    
+    // 如果有初始提示词，自动发送
+    if (this.initialPrompt) {
+      this.inputText = this.initialPrompt
+      this.handleSend()
+    }
+  },
+  methods: {
+    async loadMessages() {
+      try {
+        const res = await getMessageList(this.conversationId)
+        if (res.code === 0) {
+          this.messageList = res.data
+          // 延迟滚动确保DOM更新完成
+          setTimeout(() => {
+            this.scrollToBottom()
+          }, 300)
+        }
+      } catch (error) {
+        console.error('加载消息失败:', error)
+        uni.showToast({
+          title: '加载失败',
+          icon: 'none'
+        })
+      }
+    },
+    
+    async handleSend() {
+      if (!this.canSend) return
+      
+      const content = this.inputText.trim()
+      this.inputText = ''
+      this.sending = true
+      
+      // 显示"AI正在思考"后立即滚动
+      setTimeout(() => {
+        this.scrollToBottom()
+      }, 100)
+      
+      try {
+        const res = await sendMessage({
+          conversationId: this.conversationId,
+          content: content
+        })
+        
+        if (res.code === 0) {
+          // 重新加载消息列表
+          await this.loadMessages()
+          // 确保滚动到最新消息（加载完成后再次滚动）
+          setTimeout(() => {
+            this.scrollToBottom()
+          }, 400)
+        } else {
+          uni.showToast({
+            title: res.msg || '发送失败',
+            icon: 'none'
+          })
+        }
+      } catch (error) {
+        console.error('发送消息失败:', error)
+        uni.showToast({
+          title: '发送失败，请重试',
+          icon: 'none'
+        })
+      } finally {
+        this.sending = false
+      }
+    },
+    
+    handleInput(e) {
+      this.inputText = e.detail.value
+    },
+    
+    async handleGenerateContract() {
+      // 检查conversationId
+      if (!this.conversationId) {
+        uni.showToast({
+          title: '会话ID无效',
+          icon: 'none'
+        })
+        return
+      }
+      
+      uni.showModal({
+        title: '生成合同',
+        content: '确定根据当前对话生成合同内容吗？',
+        success: async (res) => {
+          if (res.confirm) {
+            console.log('开始生成合同，conversationId:', this.conversationId)
+            uni.showLoading({ title: '生成中...' })
+            try {
+              const result = await generateContract({
+                conversationId: this.conversationId
+              })
+              console.log('生成合同结果:', result)
+              uni.hideLoading()
+              
+              if (result.code === 0 && result.data) {
+                uni.showToast({
+                  title: '生成成功',
+                  icon: 'success'
+                })
+                // 跳转到合同编辑页
+                setTimeout(() => {
+                  uni.navigateTo({
+                    url: `/pages/ai-draft/editor?contractId=${result.data}`
+                  })
+                }, 1500)
+              } else {
+                console.error('生成失败，result:', result)
+                uni.showToast({
+                  title: result.msg || '生成失败',
+                  icon: 'none'
+                })
+              }
+            } catch (error) {
+              console.error('生成合同异常:', error)
+              uni.hideLoading()
+              console.error('生成合同失败:', error)
+              uni.showToast({
+                title: '生成失败，请重试',
+                icon: 'none'
+              })
+            }
+          }
+        }
+      })
+    },
+    
+    handleViewHistory() {
+      uni.navigateTo({
+        url: '/pages/ai-draft/history'
+      })
+    },
+    
+    scrollToBottom() {
+      if (this.messageList.length > 0) {
+        this.scrollIntoView = 'msg-' + (this.messageList.length - 1)
+      }
+    },
+    
+    formatTime(time) {
+      if (!time) return ''
+      const date = new Date(time)
+      const hours = date.getHours().toString().padStart(2, '0')
+      const minutes = date.getMinutes().toString().padStart(2, '0')
+      return `${hours}:${minutes}`
+    },
+    
+    getUserInitial() {
+      // 获取用户名首字母，这里暂时返回固定值
+      // 实际应该从用户信息中获取
+      const userName = uni.getStorageSync('userName') || '用户'
+      return userName.substring(0, 1)
+    },
+    
+    parseMarkdown(content) {
+      if (!content) return ''
+      
+      let html = content
+      
+      // 转义HTML特殊字符
+      html = html.replace(/&/g, '&amp;')
+                 .replace(/</g, '&lt;')
+                 .replace(/>/g, '&gt;')
+      
+      // 解析标题 (##)
+      html = html.replace(/^### (.*?)$/gm, '<div style="font-size: 32rpx; font-weight: 600; margin: 16rpx 0; color: #303133;">$1</div>')
+      html = html.replace(/^## (.*?)$/gm, '<div style="font-size: 36rpx; font-weight: 600; margin: 20rpx 0; color: #303133;">$1</div>')
+      html = html.replace(/^# (.*?)$/gm, '<div style="font-size: 40rpx; font-weight: 600; margin: 24rpx 0; color: #303133;">$1</div>')
+      
+      // 解析加粗 **text**
+      html = html.replace(/\*\*([^*]+?)\*\*/g, '<span style="font-weight: 600; color: #303133;">$1</span>')
+      
+      // 解析斜体 *text*
+      html = html.replace(/\*([^*]+?)\*/g, '<span style="font-style: italic;">$1</span>')
+      
+      // 解析无序列表
+      html = html.replace(/^[-*] (.+)$/gm, '<div style="margin: 8rpx 0 8rpx 24rpx;">• $1</div>')
+      
+      // 解析有序列表
+      html = html.replace(/^(\d+)\. (.+)$/gm, '<div style="margin: 8rpx 0 8rpx 24rpx;">$1. $2</div>')
+      
+      // 解析换行
+      html = html.replace(/\n/g, '<br/>')
+      
+      // 包装在div中
+      return `<div style="font-size: 28rpx; line-height: 1.6; color: #303133; word-wrap: break-word;">${html}</div>`
+    }
+  }
+}
+</script>
+
+<style>
+.page-container {
+  flex: 1;
+  background-color: #F7F9FC;
+}
+
+.messages-scroll {
+  flex: 1;
+}
+
+.messages-container {
+  padding: 30rpx;
+}
+
+.message-item {
+  margin-bottom: 30rpx;
+}
+
+.message-wrapper {
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.message-ai .message-wrapper {
+  justify-content: flex-start;
+}
+
+.message-user .message-wrapper {
+  justify-content: flex-end;
+}
+
+.message-avatar {
+  width: 70rpx;
+  height: 70rpx;
+  border-radius: 35rpx;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* AI头像 - 渐变背景 */
+.message-avatar-ai {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 2rpx solid rgba(102, 126, 234, 0.3);
+}
+
+/* 用户头像 - 标准文字头像 */
+.message-avatar-user {
+  background-color: #F0F7FF;
+  border: 1rpx solid rgba(24, 144, 255, 0.2);
+}
+
+/* 头像文字 */
+.avatar-text {
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.message-avatar-ai .avatar-text {
+  color: #FFFFFF;
+}
+
+.message-avatar-user .avatar-text {
+  color: #1890FF;
+}
+
+.message-content {
+  flex: 1;
+  max-width: 70%;
+}
+
+.message-ai .message-content {
+  margin-left: 20rpx;
+  align-items: flex-start;
+}
+
+.message-user .message-content {
+  margin-right: 20rpx;
+  align-items: flex-end;
+}
+
+.message-bubble {
+  padding: 24rpx 30rpx;
+  border-radius: 16rpx;
+  margin-bottom: 8rpx;
+}
+
+.message-bubble-ai {
+  background-color: #FFFFFF;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+}
+
+.message-bubble-user {
+  background-color: #1890FF;
+}
+
+.message-text {
+  font-size: 28rpx;
+  line-height: 1.6;
+}
+
+.message-bubble-ai .message-text {
+  color: #303133;
+}
+
+.message-bubble-user .message-text {
+  color: #FFFFFF;
+}
+
+.loading-text {
+  color: #909399;
+  font-size: 32rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.loading-text .dot {
+  animation: loading 1.4s infinite;
+  margin: 0 4rpx;
+}
+
+.loading-text .dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.loading-text .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading-text .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes loading {
+  0%, 60%, 100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-10rpx);
+  }
+}
+
+.message-time {
+  font-size: 22rpx;
+  color: #909399;
+}
+
+/* 输入区域 */
+.input-area {
+  background-color: #FFFFFF;
+  border-top: 1rpx solid #EBEEF5;
+  padding: 20rpx 30rpx;
+}
+
+.input-container {
+  flex-direction: row;
+  align-items: flex-end;
+  margin-bottom: 20rpx;
+}
+
+.input-field {
+  flex: 1;
+  min-height: 70rpx;
+  max-height: 200rpx;
+  padding: 16rpx 20rpx;
+  background-color: #F5F7FA;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+  color: #303133;
+  margin-right: 16rpx;
+}
+
+.send-button {
+  width: 70rpx;
+  height: 70rpx;
+  border-radius: 35rpx;
+  background-color: #00C28A;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  padding: 0;
+  transition: all 0.3s ease;
+}
+
+.send-button:active {
+  background-color: #00A070;
+  transform: scale(0.95);
+}
+
+.send-button-disabled {
+  background-color: #A0CFBE;
+  opacity: 0.6;
+}
+
+.send-icon {
+  font-size: 32rpx;
+  color: #FFFFFF;
+}
+
+.quick-actions {
+  flex-direction: row;
+  gap: 20rpx;
+}
+
+.action-button {
+  flex: 1;
+  height: 80rpx;
+  background-color: #FFFFFF;
+  border-radius: 12rpx;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid #EBEEF5;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+}
+
+.action-button:active {
+  background-color: #F5F7FA;
+  transform: scale(0.98);
+}
+
+.action-icon {
+  font-size: 32rpx;
+  color: #00C28A;
+  margin-right: 8rpx;
+}
+
+.action-text {
+  font-size: 28rpx;
+  color: #303133;
+  font-weight: 500;
+}
+</style>
+

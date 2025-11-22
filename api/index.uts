@@ -1,0 +1,1323 @@
+/**
+ * API 请求工具类
+ * 封装uni.request，统一处理请求和响应
+ */
+
+// 导入配置
+import { API_BASE_URL, TENANT_ID, TIMEOUT, UPLOAD_CONFIG } from './config';
+
+// 响应数据接口
+export interface ApiResponse<T> {
+    code: number;
+    msg: string;
+    data: T;
+}
+
+// 请求配置接口
+export interface RequestOptions {
+    url: string;
+    method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+    data?: any;
+    params?: any; // GET请求的查询参数
+    header?: any;
+    timeout?: number;
+    isAuth?: boolean; // 是否需要授权
+    retryCount?: number; // 重试次数
+}
+
+// 全局变量：防止重复跳转登录页
+let isRedirectingToLogin = false;
+let redirectTimer: number | null = null;
+
+// 全局变量：防止并发刷新token
+let isRefreshingToken = false;
+let refreshTokenPromise: Promise<string> | null = null;
+
+// 上传进度回调接口
+export interface UploadProgressCallback {
+    (percent: number): void;
+}
+
+/**
+ * 刷新token
+ */
+async function refreshToken(): Promise<string> {
+    // 如果已经在刷新中，返回现有的Promise
+    if (isRefreshingToken && refreshTokenPromise) {
+        console.log('========== Token刷新：并发请求，等待现有刷新完成 ==========');
+        return refreshTokenPromise;
+    }
+    
+    console.log('========== 开始刷新Token流程 ==========');
+    isRefreshingToken = true;
+    refreshTokenPromise = new Promise<string>(async (resolve, reject) => {
+        try {
+            const refreshToken = uni.getStorageSync('refreshToken');
+            if (!refreshToken) {
+                console.error('❌ 刷新失败：没有refreshToken');
+                reject(new Error('没有refreshToken'));
+                return;
+            }
+            
+            console.log('✅ 找到refreshToken:', refreshToken.substring(0, 30) + '...');
+            console.log('📤 发送刷新Token请求到:', buildFullUrl('/app-api/member/auth/refresh-token'));
+            
+            const response = await new Promise<any>((resolveRefresh, rejectRefresh) => {
+                uni.request({
+                    url: buildFullUrl('/app-api/member/auth/refresh-token'),
+                    method: 'POST',
+                    header: {
+                        'Content-Type': 'application/json',
+                        'tenant-id': TENANT_ID
+                    },
+                    data: {
+                        refreshToken: refreshToken
+                    },
+                    success: (res: any) => {
+                        console.log('📥 刷新Token响应状态:', res.statusCode);
+                        if (res.statusCode === 200 && res.data) {
+                            const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+                            console.log('📥 刷新Token响应数据:', JSON.stringify(data));
+                            
+                            if (data.code === 0 || data.code === 200) {
+                                console.log('✅ 刷新Token成功，返回数据:', data.data);
+                                resolveRefresh(data.data);
+                            } else {
+                                console.error('❌ 刷新Token业务错误 - Code:', data.code, 'Message:', data.msg);
+                                rejectRefresh(new Error(data.msg || '刷新token失败'));
+                            }
+                        } else {
+                            console.error('❌ 刷新Token HTTP错误 - Status:', res.statusCode);
+                            rejectRefresh(new Error(`HTTP ${res.statusCode}: 刷新token失败`));
+                        }
+                    },
+                    fail: (err: any) => {
+                        console.error('❌ 刷新Token网络错误:', err);
+                        rejectRefresh(err);
+                    }
+                });
+            });
+            
+            // 保存新token
+            const newToken = response.accessToken || response.token;
+            const newRefreshToken = response.refreshToken;
+            
+            console.log('收到新Token:', newToken ? (newToken.substring(0, 30) + '...') : '无');
+            console.log('收到新RefreshToken:', newRefreshToken ? (newRefreshToken.substring(0, 30) + '...') : '无');
+            
+            if (newToken) {
+                uni.setStorageSync('token', newToken);
+                console.log('✅ 新Token已保存到本地存储');
+                
+                if (newRefreshToken) {
+                    uni.setStorageSync('refreshToken', newRefreshToken);
+                    console.log('✅ 新RefreshToken已保存到本地存储');
+                }
+                
+                console.log('========== Token刷新成功 ==========');
+                resolve(newToken);
+            } else {
+                console.error('❌ 响应数据中没有accessToken字段');
+                reject(new Error('刷新token返回数据格式错误：缺少accessToken'));
+            }
+        } catch (error) {
+            console.error('❌ Token刷新异常:', error);
+            console.error('异常详情:', error.message || error);
+            reject(error);
+        } finally {
+            isRefreshingToken = false;
+            refreshTokenPromise = null;
+            console.log('========== Token刷新流程结束 ==========');
+        }
+    });
+    
+    return refreshTokenPromise;
+}
+
+/**
+ * HTTP请求
+ * @param options 请求配置
+ */
+export function request<T>(options: RequestOptions): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const token = uni.getStorageSync('token');
+        console.log(`请求URL: ${options.url}, 方法: ${options.method || 'GET'}, Token: ${token ? '已设置' : '未设置'}`);
+        
+        // 构建完整URL - 处理GET请求的params参数
+        let fullUrl = buildFullUrl(options.url);
+        
+        // 如果是GET请求且有params参数，将params转换为查询字符串
+        if ((options.method === 'GET' || !options.method) && options.params) {
+            const queryString = Object.keys(options.params)
+                .filter(key => options.params[key] !== undefined && options.params[key] !== null)
+                .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(options.params[key])}`)
+                .join('&');
+            
+            if (queryString) {
+                fullUrl = fullUrl + (fullUrl.includes('?') ? '&' : '?') + queryString;
+            }
+        }
+        
+        const header: any = {
+            'Content-Type': 'application/json',
+            'tenant-id': TENANT_ID, // 使用配置中的租户ID
+            ...options.header
+        };
+        
+        // 详细打印请求信息，便于调试
+        console.log(`==== API请求详情 ====`);
+        console.log(`URL: ${fullUrl}`);
+        console.log(`方法: ${options.method || 'GET'}`);
+        console.log(`数据: ${JSON.stringify(options.data)}`);
+        console.log(`查询参数: ${JSON.stringify(options.params)}`);
+        console.log(`请求头: ${JSON.stringify(header)}`);
+        
+        if (options.isAuth !== false) {
+            console.log(`认证状态: ${token ? '已设置token' : '未设置token'}`);
+            if (!token) {
+                console.warn('警告: 接口需要认证但未设置token，可能导致401错误');
+            }
+        } else {
+            console.log('认证状态: 不需要认证');
+        }
+        console.log(`==== API请求详情结束 ====`);
+        
+        // 如果需要授权且有token，添加到请求头
+        if (options.isAuth !== false && token) {
+            header.Authorization = `Bearer ${token}`;
+            console.log('已添加Authorization头:', `Bearer ${token.substring(0, 10)}...`);
+        }
+        
+        uni.request({
+            url: fullUrl,
+            method: options.method || 'GET',
+            data: options.data,
+            header,
+            timeout: options.timeout || TIMEOUT,
+            success: (res: any) => {
+                try {
+                    // 请求成功
+                    console.log(`API响应状态码(${options.url}):`, res.statusCode);
+                    
+                    // 打印原始响应数据
+                    if (typeof res.data === 'string') {
+                        // 如果是字符串，打印前100个字符以便调试
+                        console.log(`API原始响应(${options.url}, 字符串):`, res.data.length > 100 ? res.data.substring(0, 100) + '...' : res.data);
+                    } else if (typeof res.data === 'object') {
+                        console.log(`API原始响应(${options.url}, 对象):`, JSON.stringify(res.data).substring(0, 100) + '...');
+                    } else {
+                        console.log(`API原始响应(${options.url}, ${typeof res.data}):`, res.data);
+                    }
+                    
+                    let responseData: ApiResponse<T>;
+                    
+                    // 如果返回的数据是字符串，尝试解析为JSON
+                    if (typeof res.data === 'string') {
+                        try {
+                            // 检查是否为空字符串或只有空白字符
+                            if (!res.data.trim()) {
+                                console.log('响应为空字符串，创建默认成功响应');
+                                responseData = {
+                                    code: 200,
+                                    msg: '请求成功（响应为空）',
+                                    data: null as any
+                                };
+                            } else {
+                                responseData = JSON.parse(res.data);
+                                console.log(`API解析后响应(${options.url}):`, JSON.stringify(responseData).substring(0, 100) + '...');
+                            }
+                        } catch (parseError) {
+                            console.error('JSON解析失败:', parseError);
+                            console.error('JSON解析失败的原始数据:', res.data);
+                            
+                            // 尝试修复常见的JSON格式问题
+                            try {
+                                // 尝试修复不完整的JSON
+                                const fixedJson = res.data + '}';
+                                responseData = JSON.parse(fixedJson);
+                                console.log('修复JSON成功:', JSON.stringify(responseData).substring(0, 100) + '...');
+                            } catch (fixError) {
+                                console.log('尝试修复JSON失败:', fixError);
+                                
+                                // 检查HTTP状态码
+                                if (res.statusCode >= 200 && res.statusCode < 300) {
+                                    // HTTP成功但JSON解析失败，创建一个默认的成功响应
+                                    console.log('HTTP成功但JSON解析失败，创建默认成功响应');
+                                    responseData = {
+                                        code: 200,
+                                        msg: '请求成功（响应格式异常）',
+                                        data: res.data as any
+                                    };
+                                } else {
+                                    // HTTP失败且JSON解析失败
+                                    console.log('HTTP失败且JSON解析失败，创建默认失败响应');
+                                    responseData = {
+                                        code: res.statusCode,
+                                        msg: '请求失败（响应格式异常）',
+                                        data: res.data as any
+                                    };
+                                }
+                            }
+                        }
+                    } else {
+                        // 已经是对象，直接使用
+                        responseData = res.data as ApiResponse<T>;
+                    }
+                    
+                    // 根据业务状态码处理
+                    if (responseData.code === 0 || responseData.code === 200) {
+                        // 成功状态码
+                        resolve(responseData.data);
+					} else if (responseData.code === 401) {
+						// 未授权，但需要区分是否为登录接口或刷新token接口
+						console.error('========== 401 Token过期错误 ==========');
+						console.error('错误码:', responseData.code);
+						console.error('错误信息:', responseData.msg);
+						console.error('请求URL:', options.url);
+						console.error('当前token:', uni.getStorageSync('token') ? '存在' : '不存在');
+						console.error('当前refreshToken:', uni.getStorageSync('refreshToken') ? '存在' : '不存在');
+						console.error('========================================');
+						
+						// 如果不是登录/刷新token接口且需要认证，尝试刷新token
+						if (options.isAuth !== false && 
+						    !options.url.includes('/auth/login') && 
+						    !options.url.includes('/auth/refresh-token')) {
+							
+							// 检查是否有refreshToken
+							const refreshTokenStr = uni.getStorageSync('refreshToken');
+							const retryCount = options.retryCount || 0;
+							
+							console.log('尝试token刷新流程 - refreshToken存在:', !!refreshTokenStr, '重试次数:', retryCount);
+							
+							// 如果有refreshToken且未重试过，尝试刷新token后重试
+							if (refreshTokenStr && retryCount === 0) {
+								console.log('【Token刷新】开始刷新token流程...');
+								console.log('【Token刷新】当前refreshToken:', refreshTokenStr.substring(0, 20) + '...');
+								
+								refreshToken()
+									.then((newToken) => {
+										console.log('【Token刷新】✅ Token刷新成功');
+										console.log('【Token刷新】新Token:', newToken.substring(0, 20) + '...');
+										console.log('【Token刷新】准备重试原请求:', options.url);
+										// 重试原请求，标记已重试
+										request<T>({
+											...options,
+											retryCount: 1
+										})
+											.then(resolve)
+											.catch(reject);
+									})
+									.catch((error) => {
+										console.error('【Token刷新】❌ Token刷新失败:', error);
+										console.error('【Token刷新】错误详情:', error.message);
+										// 刷新失败，清除登录信息并跳转
+										handleLoginExpired('Token刷新失败: ' + error.message);
+										reject(new Error(responseData.msg || '未授权'));
+									});
+							} else {
+								// 没有refreshToken或已经重试过，直接处理登录过期
+								const reason = !refreshTokenStr ? '没有refreshToken' : '已重试过但失败';
+								console.error('【Token刷新】跳过刷新流程，原因:', reason);
+								handleLoginExpired(reason);
+								reject(new Error(responseData.msg || '未授权'));
+							}
+						} else {
+							// 登录/刷新token接口的401错误，显示具体错误信息
+							const errorType = options.url.includes('/auth/login') ? '登录失败' : '刷新Token失败';
+							console.error(`【${errorType}】直接返回401错误:`, responseData.msg);
+							if (!isRedirectingToLogin) {
+								uni.showToast({
+									title: responseData.msg || errorType,
+									icon: 'none'
+								});
+							}
+							reject(new Error(responseData.msg || '未授权'));
+						}
+						
+						// 处理登录过期的函数
+						function handleLoginExpired(reason?: string) {
+							if (!isRedirectingToLogin) {
+								isRedirectingToLogin = true;
+								
+								console.error('【登录过期处理】原因:', reason || '未知');
+								console.error('【登录过期处理】清除登录信息并跳转登录页');
+								
+								// 清除所有登录信息
+								uni.removeStorageSync('token');
+								uni.removeStorageSync('refreshToken');
+								uni.removeStorageSync('userId');
+								uni.removeStorageSync('userInfo');
+								
+								const message = reason ? `登录已过期(${reason})` : '登录已过期，请重新登录';
+								uni.showToast({
+									title: message,
+									icon: 'none',
+									duration: 2000
+								});
+								
+								// 延迟跳转到登录页
+								if (redirectTimer) {
+									clearTimeout(redirectTimer);
+								}
+								redirectTimer = setTimeout(() => {
+									uni.reLaunch({
+										url: '/pages/login/index',
+										success: () => {
+											setTimeout(() => {
+												isRedirectingToLogin = false;
+												redirectTimer = null;
+											}, 2000);
+										},
+										fail: () => {
+											isRedirectingToLogin = false;
+											redirectTimer = null;
+										}
+									});
+								}, 1500);
+							} else {
+								console.log('已在跳转登录页，跳过重复操作');
+							}
+						}
+                    } else {
+                        // 其他业务错误
+                        console.error('API业务错误:', responseData.code, responseData.msg);
+                        reject(new Error(responseData.msg || '请求失败'));
+                    }
+                } catch (error) {
+                    console.error('处理响应数据失败:', error);
+                    
+                    // 尝试基于HTTP状态码返回一个基本响应
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        // HTTP成功，返回一个空对象
+                        console.log('处理响应失败但HTTP成功，返回空对象');
+                        resolve({} as T);
+                    } else {
+                        reject(new Error('解析响应数据失败'));
+                    }
+                }
+            },
+            fail: (err: any) => {
+                // 请求失败
+                console.error('请求失败:', err);
+                const errMsg = err.errMsg || '网络异常，请稍后重试';
+                
+                uni.showToast({
+                    title: errMsg,
+                    icon: 'none'
+                });
+                
+                reject(new Error(errMsg));
+            }
+        });
+    });
+}
+
+/**
+ * 构建完整URL
+ * @param url 相对或绝对URL
+ * @returns 完整URL
+ */
+function buildFullUrl(url: string): string {
+    // 如果已经是完整URL，直接返回
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+    }
+    
+    // 确保URL以/开头
+    const normalizedUrl = url.startsWith('/') ? url : `/${url}`;
+    
+    // 确保API_BASE_URL不以/结尾
+    const baseUrl = API_BASE_URL.endsWith('/') 
+        ? API_BASE_URL.substring(0, API_BASE_URL.length - 1) 
+        : API_BASE_URL;
+    
+    return `${baseUrl}${normalizedUrl}`;
+}
+
+/**
+ * GET请求
+ * @param url 请求地址
+ * @param data 请求参数
+ * @param options 其他选项
+ */
+export function get<T>(url: string, data?: any, options?: Partial<RequestOptions>): Promise<T> {
+    return request<T>({
+        url,
+        method: 'GET',
+        data,
+        ...options
+    });
+}
+
+/**
+ * POST请求
+ * @param url 请求地址
+ * @param data 请求参数
+ * @param options 其他选项
+ */
+export function post<T>(url: string, data?: any, options?: Partial<RequestOptions>): Promise<T> {
+    return request<T>({
+        url,
+        method: 'POST',
+        data,
+        ...options
+    });
+}
+
+/**
+ * PUT请求
+ * @param url 请求地址
+ * @param data 请求参数
+ * @param options 其他选项
+ */
+export function put<T>(url: string, data?: any, options?: Partial<RequestOptions>): Promise<T> {
+    return request<T>({
+        url,
+        method: 'PUT',
+        data,
+        ...options
+    });
+}
+
+/**
+ * DELETE请求
+ * @param url 请求地址
+ * @param data 请求参数
+ * @param options 其他选项
+ */
+export function del<T>(url: string, data?: any, options?: Partial<RequestOptions>): Promise<T> {
+    return request<T>({
+        url,
+        method: 'DELETE',
+        data,
+        ...options
+    });
+}
+
+/**
+ * 文件上传（后端上传模式）
+ * @param url 上传地址
+ * @param filePath 文件路径
+ * @param options 其他选项
+ */
+export function uploadFile(url: string, filePath: string, options?: {
+    name?: string;
+    formData?: Record<string, any>;
+    header?: Record<string, any>;
+    onProgress?: UploadProgressCallback;
+}): Promise<any> {
+    return new Promise((resolve, reject) => {
+        const token = uni.getStorageSync('token');
+        
+        const header = {
+            'tenant-id': TENANT_ID,
+            ...options?.header
+        };
+        
+        // 如果有token，添加到请求头
+        if (token) {
+            header.Authorization = `Bearer ${token}`;
+        }
+        
+        // 构建完整URL
+        const fullUrl = buildFullUrl(url);
+        console.log('上传文件到:', fullUrl);
+        
+        try {
+            const uploadTask = uni.uploadFile({
+                url: fullUrl,
+                filePath,
+                name: options?.name || 'file',
+                formData: options?.formData,
+                header,
+                success: (res) => {
+                    try {
+                        if (typeof res.data === 'string' && res.data) {
+                            // 确保返回的数据不为空字符串
+                            let data;
+                            try {
+                                data = JSON.parse(res.data);
+                            } catch (jsonError) {
+                                console.error('JSON解析失败:', jsonError);
+                                console.log('原始响应:', res.data);
+                                // 返回简单对象作为替代
+                                data = {
+                                    code: 200,
+                                    msg: '请求成功（响应格式异常）',
+                                    data: res.data
+                                };
+                            }
+                            console.log(`文件上传响应(${url}):`, JSON.stringify(data));
+                            
+                            if (data.code === 0 || data.code === 200) {
+                                // 上传成功，如果有进度回调，调用一次100%完成
+                                if (options?.onProgress) {
+                                    options.onProgress(100);
+                                }
+                                resolve(data.data);
+                            } else if (data.code === 401) {
+                                // 未授权，通常是token过期
+                                console.error('Token已过期或无效，错误码:', data.code, '错误信息:', data.msg);
+                                
+                                // 使用防抖机制，避免重复跳转
+                                if (!isRedirectingToLogin) {
+                                    isRedirectingToLogin = true;
+                                    
+                                    // 清除所有登录信息
+                                    uni.removeStorageSync('token');
+                                    uni.removeStorageSync('refreshToken');
+                                    uni.removeStorageSync('userId');
+                                    uni.removeStorageSync('userInfo');
+                                    
+                                    uni.showToast({
+                                        title: '登录已过期，请重新登录',
+                                        icon: 'none'
+                                    });
+                                    
+                                    // 延迟跳转到登录页
+                                    if (redirectTimer) {
+                                        clearTimeout(redirectTimer);
+                                    }
+                                    redirectTimer = setTimeout(() => {
+                                        uni.reLaunch({
+                                            url: '/pages/login/index',
+                                            success: () => {
+                                                setTimeout(() => {
+                                                    isRedirectingToLogin = false;
+                                                    redirectTimer = null;
+                                                }, 2000);
+                                            },
+                                            fail: () => {
+                                                isRedirectingToLogin = false;
+                                                redirectTimer = null;
+                                            }
+                                        });
+                                    }, 1500);
+                                } else {
+                                    console.log('已在跳转登录页，跳过重复操作');
+                                }
+                                
+                                reject(new Error(data.msg || '未授权'));
+                            } else {
+                                // 其他业务错误
+                                console.error('API业务错误:', data.code, data.msg);
+                                reject(new Error(data.msg || '请求失败'));
+                            }
+                        } else {
+                            // 处理非字符串或空字符串响应
+                            console.log('非标准JSON响应格式:', res.data);
+                            // 如果响应成功但数据格式不是字符串，也认为上传成功
+                            if (res.statusCode >= 200 && res.statusCode < 300) {
+                                if (options?.onProgress) {
+                                    options.onProgress(100);
+                                }
+                                resolve(res.data);
+                            } else {
+                                reject(new Error('响应格式错误'));
+                            }
+                        }
+                    } catch (error) {
+                        console.error('处理上传结果失败:', error);
+                        // 如果状态码表明成功，尽管解析出错也返回成功
+                        if (res.statusCode >= 200 && res.statusCode < 300) {
+                            if (options?.onProgress) {
+                                options.onProgress(100);
+                            }
+                            resolve({});
+                        } else {
+                            reject(new Error('解析响应失败'));
+                        }
+                    }
+                },
+                fail: (err) => {
+                    console.error('文件上传失败:', err);
+                    reject(new Error(err.errMsg || '网络异常，请稍后重试'));
+                }
+            });
+            
+            // 监听上传进度
+            if (options?.onProgress && uploadTask) {
+                try {
+                    console.log('尝试添加上传进度监听');
+                    
+                    // 防御性编程: 检查onProgressUpdate方法是否存在
+                    if (typeof uploadTask.onProgressUpdate === 'function') {
+                        uploadTask.onProgressUpdate((res) => {
+                            try {
+                                console.log('上传进度更新:', res.progress);
+                                options.onProgress!(res.progress);
+                            } catch (progressCallbackError) {
+                                console.error('执行进度回调时出错:', progressCallbackError);
+                                // 错误不影响上传
+                            }
+                        });
+                    } else {
+                        console.warn('当前环境不支持上传进度监听 (onProgressUpdate 方法不可用)');
+                        // 提供初始进度
+                        setTimeout(() => {
+                            try {
+                                options.onProgress!(0);
+                            } catch (error) {
+                                console.error('执行初始进度回调时出错:', error);
+                            }
+                        }, 0);
+                    }
+                } catch (progressSetupError) {
+                    console.error('设置进度监听时出错:', progressSetupError);
+                    // 提供初始进度作为回退
+                    setTimeout(() => {
+                        try {
+                            options.onProgress!(0);
+                        } catch (error) {
+                            console.error('执行初始进度回调时出错:', error);
+                        }
+                    }, 0);
+                }
+            }
+        } catch (error) {
+            console.error('创建上传任务失败:', error);
+            reject(new Error('创建上传任务失败'));
+        }
+    });
+}
+
+/**
+ * 获取预签名上传URL
+ * @param fileName 文件名
+ * @param directory 目录
+ * @param expirationHours 过期时间（小时）
+ */
+export function getPresignedUrl(fileName: string, directory?: string, expirationHours?: number): Promise<any> {
+    let url = '/infra/file/presigned-url?name=' + encodeURIComponent(fileName);
+    if (directory) {
+        url += '&directory=' + encodeURIComponent(directory);
+    }
+    
+    // 如果指定了过期时间，添加到请求参数
+    if (expirationHours !== undefined && expirationHours > 0) {
+        url += '&expiration=' + expirationHours;
+    }
+    
+    return request<any>({
+        url,
+        method: 'GET',
+        isAuth: true
+    });
+}
+
+/**
+ * 直接上传文件到预签名URL
+ * @param uploadUrl 预签名URL
+ * @param filePath 文件路径
+ * @param fileType 文件类型
+ * @param onProgress 进度回调
+ */
+export function uploadToPresignedUrl(
+    uploadUrl: string,
+    filePath: string,
+    fileType: string,
+    onProgress?: UploadProgressCallback
+): Promise<any> {
+    return new Promise((resolve, reject) => {
+        console.log('开始上传文件到预签名URL:', uploadUrl);
+        console.log('文件路径:', filePath);
+        console.log('文件类型:', fileType);
+
+        try {
+            // 步骤1: 获取文件内容
+            // 对于 uni-app-x, chooseImage 返回 blob: URL, 我们需要先 fetch 这个 URL 获取其 ArrayBuffer 内容
+            console.log('正在获取文件内容...');
+            uni.request({
+                url: filePath, // 直接请求 blob: 或 file: URL
+                method: 'GET',
+                responseType: 'arraybuffer',
+                dataType: 'text', // 防止自动JSON解析
+                success: (res) => {
+                    console.log('文件内容获取成功，数据大小:', res.data ? (res.data as ArrayBuffer).byteLength : 0);
+                    const fileContent = res.data as ArrayBuffer;
+
+                    if (!fileContent || fileContent.byteLength === 0) {
+                        reject(new Error('读取到的文件内容为空'));
+                        return;
+                    }
+
+                    // 步骤2: 将文件内容 PUT 到预签名 URL
+                    const fileName = getFileNameFromPath(filePath);
+                    let contentType = fileType;
+                    if (!contentType || contentType === 'application/octet-stream') {
+                        const inferredType = getFileTypeFromName(fileName);
+                        if (inferredType && inferredType !== 'application/octet-stream') {
+                            contentType = inferredType;
+                        }
+                    }
+
+                    console.log('正在PUT上传到OSS...');
+                    const requestTask = uni.request({
+                        url: uploadUrl,
+                        method: 'PUT',
+                        data: fileContent,
+                        dataType: 'text', // OSS返回的不是JSON，设置为text避免自动JSON解析
+                        header: {
+                            'Content-Type': contentType
+                        },
+                        success: (uploadRes) => {
+                            console.log('文件上传成功，状态码:', uploadRes.statusCode);
+                            console.log('OSS响应数据类型:', typeof uploadRes.data);
+                            console.log('OSS响应数据:', uploadRes.data);
+                            
+                            if (uploadRes.statusCode >= 200 && uploadRes.statusCode < 300) {
+                                const fileUrl = extractFileUrlFromPresignedUrl(uploadUrl);
+                                console.log('提取的文件URL:', fileUrl);
+                                resolve({
+                                    url: fileUrl,
+                                    fileName: fileName,
+                                    fileType: contentType,
+                                    statusCode: uploadRes.statusCode
+                                });
+                            } else {
+                                console.error('上传失败，状态码:', uploadRes.statusCode, '响应:', uploadRes.data);
+                                reject(new Error(`上传失败，状态码: ${uploadRes.statusCode}`));
+                            }
+                        },
+                        fail: (uploadErr) => {
+                            console.error('文件上传请求失败:', uploadErr);
+                            reject(uploadErr);
+                        }
+                    });
+                    // uni.request for PUT 不支持上传进度更新，进度模拟在 uploadFileAdvanced 中处理
+                },
+                fail: (err) => {
+                    console.error('获取文件内容失败:', err);
+                    reject(new Error(`读取文件内容失败: ${err.errMsg || ''}`));
+                }
+            });
+        } catch (error) {
+            console.error('创建上传请求失败:', error);
+            reject(error);
+        }
+    });
+}
+
+/**
+ * 从预签名URL中提取文件URL
+ */
+function extractFileUrlFromPresignedUrl(presignedUrl: string): string {
+    try {
+        // 移除查询参数部分
+        const urlWithoutQuery = presignedUrl.split('?')[0];
+        console.log('移除查询参数后的URL:', urlWithoutQuery);
+        return urlWithoutQuery;
+    } catch (error) {
+        console.error('提取文件URL失败:', error);
+        return presignedUrl; // 失败时返回原始URL
+    }
+}
+
+/**
+ * 通知服务器记录文件
+ * @param fileInfo 文件信息
+ */
+export function createFileRecord(fileInfo: {
+    configId: number;
+    path: string;
+    name: string;
+    url: string;
+    type?: string;
+    size?: number;
+}): Promise<any> {
+    console.log('开始记录文件信息:', JSON.stringify(fileInfo));
+    
+    return new Promise((resolve, reject) => {
+        // 直接使用底层uni.request以便更好地控制和记录过程
+        const fullUrl = buildFullUrl('/infra/file/create');
+        const token = uni.getStorageSync('token');
+        
+        console.log('记录文件请求URL:', fullUrl);
+        console.log('记录文件请求数据:', JSON.stringify(fileInfo));
+        
+        const header: any = {
+            'Content-Type': 'application/json',
+            'tenant-id': TENANT_ID
+        };
+        
+        // 如果有token，添加到请求头
+        if (token) {
+            header.Authorization = `Bearer ${token}`;
+        }
+        
+        uni.request({
+            url: fullUrl,
+            method: 'POST',
+            data: fileInfo,
+            header: header,
+            success: (res) => {
+                console.log('记录文件响应状态码:', res.statusCode);
+                console.log('记录文件响应头:', JSON.stringify(res.header));
+                
+                // 打印完整的响应内容
+                if (typeof res.data === 'string') {
+                    console.log('记录文件响应内容(字符串):', res.data);
+                    
+                    // 检查是否为空字符串
+                    if (!res.data.trim()) {
+                        console.log('记录文件响应为空字符串，但HTTP状态码成功，视为成功');
+                        if (res.statusCode >= 200 && res.statusCode < 300) {
+                            resolve({ success: true, message: '记录文件成功（响应为空）' });
+                            return;
+                        }
+                    }
+                    
+                    try {
+                        // 尝试解析JSON
+                        const jsonData = JSON.parse(res.data);
+                        console.log('记录文件响应内容(解析后):', JSON.stringify(jsonData));
+                        
+                        if (jsonData.code === 0 || jsonData.code === 200) {
+                            resolve(jsonData.data);
+                        } else {
+                            reject(new Error(jsonData.msg || '记录文件失败'));
+                        }
+                    } catch (parseError) {
+                        console.error('解析响应JSON失败:', parseError);
+                        console.error('原始响应数据:', res.data);
+                        
+                        // 尝试修复常见的JSON格式问题
+                        try {
+                            // 尝试修复不完整的JSON
+                            const fixedJson = res.data + '}';
+                            const jsonData = JSON.parse(fixedJson);
+                            console.log('修复JSON成功:', JSON.stringify(jsonData));
+                            
+                            if (jsonData.code === 0 || jsonData.code === 200) {
+                                resolve(jsonData.data);
+                                return;
+                            }
+                        } catch (fixError) {
+                            console.log('尝试修复JSON失败:', fixError);
+                        }
+                        
+                        // 如果HTTP状态码表明成功，尽管JSON解析失败也返回成功
+                        if (res.statusCode >= 200 && res.statusCode < 300) {
+                            console.log('HTTP成功但JSON解析失败，视为成功');
+                            resolve({ success: true, message: '记录文件成功（响应格式异常）' });
+                        } else {
+                            reject(new Error('解析响应数据失败'));
+                        }
+                    }
+                } else if (typeof res.data === 'object') {
+                    console.log('记录文件响应内容(对象):', JSON.stringify(res.data));
+                    
+                    const responseData = res.data;
+                    if (responseData.code === 0 || responseData.code === 200) {
+                        resolve(responseData.data);
+                    } else {
+                        reject(new Error(responseData.msg || '记录文件失败'));
+                    }
+                } else {
+                    console.log('记录文件响应内容(其他类型):', res.data);
+                    
+                    // 如果HTTP状态码表明成功，尽管响应格式异常也返回成功
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        resolve({ success: true, message: '记录文件成功（响应格式异常）' });
+                    } else {
+                        reject(new Error('响应格式错误'));
+                    }
+                }
+            },
+            fail: (err) => {
+                console.error('记录文件请求失败:', err);
+                console.error('错误详情:', JSON.stringify(err));
+                reject(new Error(err.errMsg || '网络异常，请稍后重试'));
+            }
+        });
+    });
+}
+
+/**
+ * 高级文件上传（前端直传）
+ * 处理整个直传流程：获取预签名URL -> 上传到OSS -> 通知服务器记录文件
+ * @param filePath 文件路径
+ * @param options 选项
+ */
+export function uploadFileAdvanced(filePath: string, options?: {
+    fileName?: string;
+    directory?: string;
+    fileType?: string;
+    onProgress?: (percent: number) => void;
+    expirationHours?: number; // 新增过期时间选项
+}): Promise<string> {
+    return new Promise((resolve, reject) => {
+        try {
+            // 获取文件信息
+            const originalFileName = options?.fileName || getFileNameFromPath(filePath);
+            const fileType = options?.fileType || getFileTypeFromName(originalFileName);
+            const directory = options?.directory || 'default';
+            
+            // 设置过期时间，优先使用传入的值，否则按目录使用默认值
+            let expirationHours = options?.expirationHours;
+            if (expirationHours === undefined) {
+                // 根据目录选择默认过期时间
+                if (directory === UPLOAD_CONFIG.DIRECTORIES.VERIFY) {
+                    expirationHours = UPLOAD_CONFIG.EXPIRATION.VERIFY;
+                } else {
+                    expirationHours = UPLOAD_CONFIG.EXPIRATION.DEFAULT;
+                }
+            }
+            
+            // 确保文件名包含扩展名
+            let fileName = originalFileName;
+            if (!fileName.includes('.')) {
+                // 如果文件名没有扩展名，尝试从MIME类型推断
+                const extension = getMimeTypeExtension(fileType);
+                if (extension) {
+                    fileName = `${fileName}.${extension}`;
+                    console.log(`添加扩展名: ${fileName}`);
+                }
+            }
+            
+            // 进度回调
+            const onProgress = options?.onProgress || (() => {});
+            
+            console.log(`开始上传文件: ${fileName}, 类型: ${fileType}, 目录: ${directory}, 过期时间: ${expirationHours}小时, 原始路径: ${filePath}`);
+            
+            // 步骤1：获取预签名URL
+            onProgress(10); // 开始获取预签名URL
+            
+            // 使用async/await包装的方式处理Promise链
+            (async () => {
+                try {
+                    // 步骤1: 获取预签名URL
+                    console.log('正在获取预签名URL...');
+                    const presignedResponse = await getPresignedUrl(fileName, directory, expirationHours);
+                    console.log('获取预签名URL原始响应:', JSON.stringify(presignedResponse));
+
+                    // 确保预签名信息格式正确
+                    if (!presignedResponse || !presignedResponse.uploadUrl) {
+                        console.error('预签名URL响应格式错误:', presignedResponse);
+                        throw new Error('获取上传URL失败，服务器返回格式错误');
+                    }
+
+                    const presignedInfo = presignedResponse;
+                    console.log('解析后的预签名信息:', JSON.stringify({
+                        uploadUrl: presignedInfo.uploadUrl,
+                        url: presignedInfo.url,
+                        configId: presignedInfo.configId,
+                        path: presignedInfo.path
+                    }));
+                    onProgress(30); // 获取预签名URL成功
+                    
+                    // 步骤2: 上传到OSS
+                    console.log('正在上传到OSS...');
+                    await uploadToPresignedUrl(
+                        presignedInfo.uploadUrl, 
+                        filePath, 
+                        fileType,
+                        (progress) => {
+                            // 映射进度到30%-90%范围
+                            const mappedProgress = 30 + Math.floor(progress * 0.6);
+                            onProgress(mappedProgress);
+                        }
+                    );
+                    
+                    onProgress(90); // 上传到OSS成功
+                    console.log('OSS上传成功');
+                    
+                    // 步骤3: 获取文件大小（非关键步骤，失败不影响流程）
+                    let fileSize = 1024 * 1024; // 默认1MB
+                    try {
+                        fileSize = await getFileSize(filePath);
+                        console.log('获取文件大小成功:', fileSize);
+                    } catch (sizeError) {
+                        console.warn('获取文件大小失败，使用默认值:', sizeError);
+                    }
+                    
+                    // 步骤4: 通知服务器记录文件
+                    console.log('正在记录文件...');
+                    console.log('记录的文件名:', fileName);
+                    console.log('记录的文件类型:', fileType);
+                    
+                    try {
+                        await createFileRecord({
+                            configId: presignedInfo.configId,
+                            path: presignedInfo.path,
+                            name: fileName,  // 使用包含扩展名的文件名
+                            url: presignedInfo.url,
+                            type: fileType,
+                            size: fileSize
+                        });
+                        
+                        onProgress(100); // 全部完成
+                        console.log('文件上传和记录全部完成');
+                        resolve(presignedInfo.url);
+                    } catch (recordError) {
+                        console.error('记录文件失败，但OSS上传已成功:', recordError);
+                        
+                        // 即使记录失败，也返回文件URL，因为文件已经上传到OSS
+                        onProgress(100);
+                        console.log('文件已上传到OSS，但记录失败，仍返回URL');
+                        resolve(presignedInfo.url);
+                    }
+                } catch (error) {
+                    console.error('上传过程中发生错误:', error);
+                    reject(error);
+                }
+            })();
+        } catch (error) {
+            console.error('文件上传初始化异常:', error);
+            reject(new Error('文件上传初始化异常: ' + (error.message || String(error))));
+        }
+    });
+}
+
+/**
+ * 从文件路径中提取文件名
+ */
+function getFileNameFromPath(filePath: string): string {
+    console.log('正在从路径提取文件名:', filePath);
+    
+    // 处理空路径
+    if (!filePath) {
+        console.error('文件路径为空');
+        return generateRandomFileName();
+    }
+    
+    // 处理不同平台的路径分隔符
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    
+    // 提取文件名 - 支持多种格式
+    let fileName = '';
+    
+    // 处理类似 file:///storage/emulated/0/Download/image.jpg 的路径
+    if (normalizedPath.includes('file://')) {
+        const parts = normalizedPath.split('/');
+        fileName = parts[parts.length - 1];
+    } 
+    // 处理类似 content://com.android.providers.media.documents/document/image:123 的内容URI
+    else if (normalizedPath.includes('content://')) {
+        // 尝试从路径中提取文件名
+        const match = normalizedPath.match(/([^\/]+)$/);
+        if (match && match[1]) {
+            fileName = match[1];
+            // 如果文件名包含冒号（如content URI中常见），尝试提取真实文件名
+            if (fileName.includes(':')) {
+                const parts = fileName.split(':');
+                if (parts.length > 1 && parts[0].match(/^(image|video|audio|document)$/)) {
+                    // 生成一个带有正确扩展名的文件名
+                    const mediaType = parts[0];
+                    const extension = getDefaultExtensionForMediaType(mediaType);
+                    fileName = `${mediaType}_${parts[1]}${extension ? '.' + extension : ''}`;
+                }
+            }
+        } else {
+            fileName = generateRandomFileName();
+        }
+    }
+    // 标准文件路径处理
+    else {
+        const parts = normalizedPath.split('/');
+        fileName = parts[parts.length - 1];
+    }
+    
+    // 确保文件名有效
+    if (!fileName || fileName.trim() === '') {
+        fileName = generateRandomFileName();
+    }
+    
+    console.log('提取的文件名:', fileName);
+    return fileName;
+}
+
+/**
+ * 生成随机文件名
+ */
+function generateRandomFileName(): string {
+    const timestamp = new Date().getTime();
+    const randomPart = Math.floor(Math.random() * 10000);
+    const fileName = `file_${timestamp}_${randomPart}`;
+    console.log('生成随机文件名:', fileName);
+    return fileName;
+}
+
+/**
+ * 根据媒体类型获取默认扩展名
+ */
+function getDefaultExtensionForMediaType(mediaType: string): string {
+    switch (mediaType.toLowerCase()) {
+        case 'image': return 'jpg';
+        case 'video': return 'mp4';
+        case 'audio': return 'mp3';
+        case 'document': return 'pdf';
+        default: return '';
+    }
+}
+
+/**
+ * 从文件名获取文件类型
+ */
+function getFileTypeFromName(fileName: string): string {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    
+    // 简单的MIME类型映射
+    const mimeTypes: Record<string, string> = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'pdf': 'application/pdf',
+        'doc': 'application/msword',
+        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xls': 'application/vnd.ms-excel',
+        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'txt': 'text/plain'
+    };
+    
+    return extension && mimeTypes[extension] ? mimeTypes[extension] : 'application/octet-stream';
+}
+
+/**
+ * 获取文件大小（异步方式）
+ */
+function getFileSize(filePath: string): Promise<number> {
+    return new Promise((resolve) => {
+        try {
+            // 使用uni.getFileInfo代替getFileSystemManager
+            uni.getFileInfo({
+                filePath: filePath,
+                success: (res) => {
+                    console.log('获取文件信息成功:', JSON.stringify(res));
+                    resolve(res.size || 1024); // 默认至少是1KB
+                },
+                fail: (err) => {
+                    console.error('获取文件信息失败:', err);
+                    // 如果失败，返回一个默认大小 (1MB)
+                    resolve(1024 * 1024);
+                }
+            });
+        } catch (error) {
+            console.error('获取文件大小异常:', error);
+            // 异常情况下返回默认大小 (1MB)
+            resolve(1024 * 1024);
+        }
+    });
+}
+
+/**
+ * 同步版本，实际内部使用异步，但为了兼容API返回一个默认值
+ */
+function getFileSizeSync(filePath: string): number {
+    // 由于无法同步获取，先返回一个合理的默认值(1MB)
+    // 实际大小会在异步方法中更新
+    return 1024 * 1024;
+}
+
+/**
+ * 从MIME类型推断文件扩展名
+ */
+function getMimeTypeExtension(mimeType: string): string | null {
+    // MIME类型到扩展名的映射
+    const mimeToExt: Record<string, string> = {
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+        'image/gif': 'gif',
+        'image/webp': 'webp',
+        'application/pdf': 'pdf',
+        'application/msword': 'doc',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+        'application/vnd.ms-excel': 'xls',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+        'text/plain': 'txt',
+        'application/json': 'json',
+        'application/xml': 'xml',
+        'text/html': 'html',
+        'text/css': 'css',
+        'application/javascript': 'js',
+        'application/zip': 'zip'
+    };
+    
+    // 去除可能的参数部分
+    const baseMimeType = mimeType.split(';')[0].trim();
+    
+    return mimeToExt[baseMimeType] || null;
+}
+
+/**
+ * 简单文件上传 - 根据配置自动选择上传模式
+ * @param filePath 文件路径
+ * @param directory 目录
+ * @param onProgress 进度回调
+ * @param expirationHours 过期时间（小时）
+ */
+export function simpleUpload(
+    filePath: string, 
+    directory: string = 'default',
+    onProgress?: UploadProgressCallback,
+    expirationHours?: number
+): Promise<string> {
+    return new Promise((resolve, reject) => {
+        try {
+            console.log(`开始上传文件，使用模式: ${UPLOAD_CONFIG.MODE}, 目录: ${directory}, 文件路径: ${filePath}`);
+            
+            // 检查文件路径是否有效
+            if (!filePath) {
+                const error = new Error('文件路径无效');
+                console.error(error);
+                reject(error);
+                return;
+            }
+            
+            // 获取文件信息
+            const originalFileName = getFileNameFromPath(filePath);
+            console.log('原始文件名:', originalFileName);
+            
+            // 获取文件类型
+            const fileType = getFileTypeFromName(originalFileName);
+            console.log('文件类型:', fileType);
+            
+            // 确保文件名包含扩展名
+            let fileName = originalFileName;
+            if (!fileName.includes('.')) {
+                // 如果文件名没有扩展名，尝试从MIME类型推断
+                const extension = getMimeTypeExtension(fileType);
+                if (extension) {
+                    fileName = `${fileName}.${extension}`;
+                    console.log('添加扩展名后的文件名:', fileName);
+                }
+            }
+            
+            // 根据配置选择上传模式
+            if (UPLOAD_CONFIG.MODE === 'client') {
+                console.log('使用前端直传模式');
+                // 前端直传模式
+                uploadFileAdvanced(filePath, {
+                    fileName: fileName,
+                    directory: directory,
+                    fileType: fileType,
+                    onProgress: onProgress,
+                    expirationHours: expirationHours // 传递过期时间
+                }).then(resolve).catch(reject);
+            } else {
+                console.log('使用后端上传模式');
+                // 后端上传模式
+                uploadFile(filePath, directory, onProgress).then(resolve).catch(reject);
+            }
+        } catch (error) {
+            console.error('文件上传失败:', error);
+            reject(error);
+        }
+    });
+}
+
+// 导出默认对象
+export default {
+    get,
+    post,
+    put,
+    del,
+    request,
+    uploadFile,
+    getPresignedUrl,
+    uploadToPresignedUrl,
+    createFileRecord,
+    uploadFileAdvanced,
+    simpleUpload
+}; 

@@ -1,0 +1,684 @@
+<script>
+	/**
+	 * 添加企业页面
+	 */
+	import { createEnterprise } from '../../api/enterprise/index';
+	import { uploadFileAdvanced } from '../../api/index';
+
+	export default {
+		data() {
+			return {
+				// 企业信息
+				enterpriseInfo: {
+					name: '',
+					logoUrl: '',
+					creditCode: '',
+					licenseUrl: '',
+					legalName: '',
+					legalPersonIdCard: '',
+                    // 新增：企业联系人姓名
+                    contactName: ''
+				},
+				
+				// 表单验证状态
+				validation: {
+					name: {
+						valid: true,
+						message: ''
+					},
+					creditCode: {
+						valid: true,
+						message: ''
+					},
+					licenseUrl: {
+						valid: true,
+						message: ''
+					},
+					legalName: {
+						valid: true,
+						message: ''
+					},
+					legalPersonIdCard: {
+						valid: true,
+						message: ''
+					},
+                    // 新增验证字段
+                    contactName: {
+                        valid: true,
+                        message: ''
+                    }
+				},
+				
+				// 是否正在提交
+				isSubmitting: false,
+				
+				// 默认企业图标
+			}
+		},
+		onLoad() {
+		},
+		methods: {
+			// 验证企业名称
+			validateName(): void {
+				if (!this.enterpriseInfo.name) {
+					this.validation.name.valid = false;
+					this.validation.name.message = '请输入企业名称';
+					return;
+				}
+				
+				// 简单验证：企业名称长度至少为2个字符
+				if (this.enterpriseInfo.name.length < 2) {
+					this.validation.name.valid = false;
+					this.validation.name.message = '企业名称太短';
+					return;
+				}
+				
+				this.validation.name.valid = true;
+				this.validation.name.message = '';
+			},
+			
+			// 验证统一社会信用代码
+			validateCreditCode(): void {
+				if (!this.enterpriseInfo.creditCode) {
+					this.validation.creditCode.valid = false;
+					this.validation.creditCode.message = '请输入统一社会信用代码';
+					return;
+				}
+				
+				// 简单验证：社会信用代码格式（18位）
+				if (this.enterpriseInfo.creditCode.length !== 18) {
+					this.validation.creditCode.valid = false;
+					this.validation.creditCode.message = '社会信用代码应为18位';
+					return;
+				}
+				
+				this.validation.creditCode.valid = true;
+				this.validation.creditCode.message = '';
+			},
+			
+			// 验证法人姓名
+			validateLegalName(): void {
+				if (!this.enterpriseInfo.legalName) {
+					this.validation.legalName.valid = false;
+					this.validation.legalName.message = '请输入法定代表人姓名';
+					return;
+				}
+				
+				this.validation.legalName.valid = true;
+				this.validation.legalName.message = '';
+			},
+			
+			// 验证法人身份证
+			validateLegalPersonIdCard(): void {
+				if (!this.enterpriseInfo.legalPersonIdCard) {
+					this.validation.legalPersonIdCard.valid = false;
+					this.validation.legalPersonIdCard.message = '请输入法定代表人身份证号';
+					return;
+				}
+				
+				// 简单验证：身份证号格式（18位）
+				const idCardReg = /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/;
+				if (!idCardReg.test(this.enterpriseInfo.legalPersonIdCard)) {
+					this.validation.legalPersonIdCard.valid = false;
+					this.validation.legalPersonIdCard.message = '身份证号格式不正确';
+					return;
+				}
+				
+				this.validation.legalPersonIdCard.valid = true;
+				this.validation.legalPersonIdCard.message = '';
+			},
+
+            // 新增：验证联系人姓名
+            validateContactName(): void {
+                if (!this.enterpriseInfo.contactName) {
+                    this.validation.contactName.valid = false;
+                    this.validation.contactName.message = '请输入联系人姓名';
+                    return;
+                }
+
+                // 长度至少2字符
+                if (this.enterpriseInfo.contactName.length < 2) {
+                    this.validation.contactName.valid = false;
+                    this.validation.contactName.message = '联系人姓名太短';
+                    return;
+                }
+
+                this.validation.contactName.valid = true;
+                this.validation.contactName.message = '';
+            },
+			
+			// 上传营业执照（使用真实上传流程）
+			uploadLicense(): void {
+				uni.chooseImage({
+					count: 1,
+					sizeType: ['original', 'compressed'],
+					sourceType: ['album', 'camera'],
+					success: async (res) => {
+						const tempFilePath = res.tempFilePaths[0];
+						
+						try {
+							uni.showLoading({ title: '上传中...' });
+							// 使用前端直传到 OSS，并记录文件
+							const url = await uploadFileAdvanced(tempFilePath, {
+								directory: 'license'
+							});
+							this.enterpriseInfo.licenseUrl = url;
+
+							uni.showToast({ title: '营业执照上传成功', icon: 'success' });
+						} catch (error) {
+							console.error('营业执照上传失败', error);
+							uni.showToast({ title: '上传失败，请重试', icon: 'none' });
+						} finally {
+							uni.hideLoading();
+						}
+					}
+				});
+			},
+			
+			// 验证所有表单字段
+			validateForm(): boolean {
+				this.validateName();
+                this.validateContactName();
+				this.validateCreditCode();
+				this.validateLegalName();
+				this.validateLegalPersonIdCard();
+				
+				// 检查营业执照是否已上传
+				if (!this.enterpriseInfo.licenseUrl) {
+					this.validation.licenseUrl.valid = false;
+					this.validation.licenseUrl.message = '请上传营业执照';
+				} else {
+					this.validation.licenseUrl.valid = true;
+					this.validation.licenseUrl.message = '';
+				}
+				
+				// 检查是否所有字段都验证通过
+				return this.validation.name.valid && 
+                       this.validation.contactName.valid && 
+					   this.validation.creditCode.valid && 
+					   this.validation.licenseUrl.valid && 
+					   this.validation.legalName.valid && 
+					   this.validation.legalPersonIdCard.valid;
+			},
+			
+			// 提交表单
+			async submitForm(): Promise<void> {
+				// 先验证表单
+				if (!this.validateForm()) {
+					// 找到第一个验证失败的字段并提示
+					let errorMessage = '';
+					if (!this.validation.name.valid) {
+						errorMessage = this.validation.name.message;
+					} else if (!this.validation.contactName.valid) {
+                        errorMessage = this.validation.contactName.message;
+                    } else if (!this.validation.creditCode.valid) {
+						errorMessage = this.validation.creditCode.message;
+					} else if (!this.validation.licenseUrl.valid) {
+						errorMessage = this.validation.licenseUrl.message;
+					} else if (!this.validation.legalName.valid) {
+						errorMessage = this.validation.legalName.message;
+					} else if (!this.validation.legalPersonIdCard.valid) {
+						errorMessage = this.validation.legalPersonIdCard.message;
+					}
+					
+					uni.showToast({
+						title: errorMessage,
+						icon: 'none'
+					});
+					return;
+				}
+				
+				if (this.isSubmitting) return;
+				
+				this.isSubmitting = true;
+				
+				// 显示提交中
+				uni.showLoading({
+					title: '创建企业中...'
+				});
+				
+				try {
+					// 调用创建企业API
+					const enterpriseId = await createEnterprise({
+						name: this.enterpriseInfo.name,
+                        contactName: this.enterpriseInfo.contactName,
+						creditCode: this.enterpriseInfo.creditCode,
+						licenseUrl: this.enterpriseInfo.licenseUrl,
+						legalName: this.enterpriseInfo.legalName,
+						legalPersonIdCard: this.enterpriseInfo.legalPersonIdCard
+					});
+					
+					uni.hideLoading();
+					
+					console.log('企业创建成功，ID:', enterpriseId);
+					
+					uni.showToast({
+						title: '企业创建成功，即将进入认证流程',
+						icon: 'success',
+						duration: 1500
+					});
+					
+					// 延迟跳转到企业认证页面，并传递企业ID和名称
+					setTimeout(() => {
+						uni.navigateTo({
+							url: `/pages/kyc/enterprise/index?id=${enterpriseId}&name=${this.enterpriseInfo.name}&creditCode=${this.enterpriseInfo.creditCode}&legalPerson=${this.enterpriseInfo.legalName}`
+						});
+					}, 1500);
+				} catch (error) {
+					uni.hideLoading();
+					console.error('创建企业失败:', error);
+					
+					uni.showToast({
+						title: '创建失败: ' + (error.message || '未知错误'),
+						icon: 'none'
+					});
+				} finally {
+					this.isSubmitting = false;
+				}
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="container">
+		<!-- 页面内容区域 -->
+		<scroll-view class="scroll-content" scroll-y="true">
+			<!-- 表单区域 -->
+			<view class="form-container">
+				<!-- 表单标题 -->
+				<view class="form-header">
+					<text class="form-title">基本信息</text>
+					<text class="form-subtitle">填写企业基本信息，创建后可进行企业认证</text>
+				</view>
+				
+				<!-- 企业名称输入框 -->
+				<view class="form-item">
+					<text class="form-label">企业名称 <text class="required">*</text></text>
+					<input 
+						class="form-input" 
+						:class="{ 'input-error': !validation.name.valid }"
+						v-model="enterpriseInfo.name"
+						placeholder="请输入企业全称"
+						placeholder-class="input-placeholder"
+						@blur="validateName"
+					/>
+					<text v-if="!validation.name.valid" class="error-message">{{validation.name.message}}</text>
+				</view>
+
+                <!-- 联系人姓名输入框 -->
+                <view class="form-item">
+                    <text class="form-label">联系人姓名 <text class="required">*</text></text>
+                    <input 
+                        class="form-input" 
+                        :class="{ 'input-error': !validation.contactName.valid }"
+                        v-model="enterpriseInfo.contactName"
+                        placeholder="请输入联系人姓名"
+                        placeholder-class="input-placeholder"
+                        @blur="validateContactName"
+                    />
+                    <text v-if="!validation.contactName.valid" class="error-message">{{validation.contactName.message}}</text>
+                </view>
+				
+				<!-- 统一社会信用代码 -->
+				<view class="form-item">
+					<text class="form-label">统一社会信用代码 <text class="required">*</text></text>
+					<input 
+						class="form-input" 
+						:class="{ 'input-error': !validation.creditCode.valid }"
+						v-model="enterpriseInfo.creditCode"
+						placeholder="请输入18位统一社会信用代码"
+						placeholder-class="input-placeholder"
+						@blur="validateCreditCode"
+					/>
+					<text v-if="!validation.creditCode.valid" class="error-message">{{validation.creditCode.message}}</text>
+				</view>
+				
+				<!-- 法定代表人姓名 -->
+				<view class="form-item">
+					<text class="form-label">法定代表人姓名 <text class="required">*</text></text>
+					<input 
+						class="form-input" 
+						:class="{ 'input-error': !validation.legalName.valid }"
+						v-model="enterpriseInfo.legalName"
+						placeholder="请输入法定代表人姓名"
+						placeholder-class="input-placeholder"
+						@blur="validateLegalName"
+					/>
+					<text v-if="!validation.legalName.valid" class="error-message">{{validation.legalName.message}}</text>
+				</view>
+				
+				<!-- 法定代表人身份证号 -->
+				<view class="form-item">
+					<text class="form-label">法定代表人身份证号 <text class="required">*</text></text>
+					<input 
+						class="form-input" 
+						:class="{ 'input-error': !validation.legalPersonIdCard.valid }"
+						v-model="enterpriseInfo.legalPersonIdCard"
+						placeholder="请输入法定代表人身份证号"
+						placeholder-class="input-placeholder"
+						@blur="validateLegalPersonIdCard"
+					/>
+					<text v-if="!validation.legalPersonIdCard.valid" class="error-message">{{validation.legalPersonIdCard.message}}</text>
+				</view>
+				
+<!-- 修改为整合版的营业执照上传区域 -->
+				<view class="form-item license-section">
+					<text class="form-label">营业执照 <text class="required">*</text></text>
+					
+					<view class="license-container">
+						<!-- 已上传预览 -->
+						<view v-if="enterpriseInfo.licenseUrl" class="license-preview">
+							<image class="license-image" :src="enterpriseInfo.licenseUrl" mode="aspectFit"></image>
+							<view class="license-overlay" @click="uploadLicense">
+								<text class="icon fa fa-refresh"></text>
+								<text class="overlay-text">重新上传</text>
+							</view>
+						</view>
+						
+						<!-- 未上传状态 -->
+						<view v-else class="license-upload-box" @click="uploadLicense">
+							<view class="upload-icon-container">
+								<text class="upload-icon fa fa-plus"></text>
+							</view>
+							<text class="upload-main-text">上传营业执照</text>
+							<text class="upload-sub-text">请上传清晰的营业执照正本照片</text>
+							
+							<!-- 整合上传指引到上传区域内 -->
+							<view class="integrated-guide">
+								<text class="guide-item">• 营业执照需在有效期内</text>
+								<text class="guide-item">• 照片清晰完整，无遮挡</text>
+								<text class="guide-item">• 支持JPG、PNG格式，≤5MB</text>
+							</view>
+						</view>
+					</view>
+					
+					<text v-if="!validation.licenseUrl.valid" class="error-message">{{validation.licenseUrl.message}}</text>
+				</view>
+				
+				<!-- 优化后的提示信息 -->
+				<view class="form-tips">
+					<view class="tips-icon-container">
+						<text class="icon fa fa-lightbulb-o"></text>
+					</view>
+					<view class="tips-content">
+						<text class="tips-title">创建提示</text>
+						<text class="tips-text">创建企业后，您将成为企业所有者，可以邀请成员加入并进行企业认证</text>
+					</view>
+				</view>
+			</view>
+		</scroll-view>
+		
+		<!-- 底部提交按钮 -->
+		<view class="bottom-bar">
+			<button 
+				class="submit-button" 
+				:disabled="isSubmitting"
+				@click="submitForm"
+			>
+				<text v-if="isSubmitting">创建中...</text>
+				<text v-else>创建企业</text>
+			</button>
+		</view>
+	</view>
+</template>
+
+<style>
+	/* 页面样式 */
+	.container {
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+		background-color: #F7F9FC;
+	}
+	
+	.scroll-content {
+		flex: 1;
+		padding: 0 0 120rpx 0;
+	}
+	
+	/* 表单样式 */
+	.form-container {
+		background-color: #FFFFFF;
+		padding: 30rpx;
+		margin: 20rpx;
+		border-radius: 12rpx;
+	}
+	
+	.form-header {
+		margin-bottom: 30rpx;
+	}
+	
+	.form-title {
+		font-size: 36rpx;
+		font-weight: bold;
+		color: #333333;
+		margin-bottom: 10rpx;
+	}
+	
+	.form-subtitle {
+		font-size: 26rpx;
+		color: #999999;
+	}
+	
+	.form-item {
+		margin-bottom: 30rpx;
+	}
+	
+	.form-label {
+		display: block;
+		font-size: 28rpx;
+		color: #333333;
+		margin-bottom: 12rpx;
+	}
+	
+	.required {
+		color: #FF5722;
+	}
+	
+	.form-input {
+		width: 100%;
+		height: 88rpx;
+		background-color: #F5F7FA;
+		border-radius: 8rpx;
+		padding: 0 24rpx;
+		font-size: 28rpx;
+		color: #333333;
+	}
+	
+	.input-placeholder {
+		color: #CCCCCC;
+	}
+	
+	.input-error {
+		border: 1px solid #FF5722;
+	}
+	
+	.error-message {
+		font-size: 24rpx;
+		color: #FF5722;
+		margin-top: 8rpx;
+	}
+	
+	/* 营业执照上传样式 - 整合优化版 */
+	.license-section {
+		margin-bottom: 40rpx;
+	}
+	
+	.license-container {
+		margin-bottom: 20rpx;
+	}
+	
+	.license-preview {
+		position: relative;
+		width: 100%;
+		height: 400rpx;
+		border-radius: 12rpx;
+		background-color: #F5F7FA;
+		overflow: hidden;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+	}
+	
+	.license-image {
+		width: 100%;
+		height: 100%;
+		border-radius: 12rpx;
+	}
+	
+	.license-overlay {
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		height: 80rpx;
+		background-color: rgba(0, 0, 0, 0.6);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.license-overlay .icon {
+		color: #FFFFFF;
+		font-size: 28rpx;
+		margin-right: 10rpx;
+	}
+	
+	.overlay-text {
+		color: #FFFFFF;
+		font-size: 28rpx;
+	}
+	
+	.license-upload-box {
+		width: 100%;
+		height: 500rpx;
+		background-color: #F5F7FA;
+		border: 2rpx dashed #DCDFE6;
+		border-radius: 12rpx;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 40rpx 30rpx;
+		box-sizing: border-box;
+	}
+	
+	.upload-icon-container {
+		width: 100rpx;
+		height: 100rpx;
+		border-radius: 12rpx;
+		background-color: rgba(24, 144, 255, 0.1);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 30rpx;
+	}
+	
+	.upload-icon {
+		font-size: 50rpx;
+		color: #1890FF;
+	}
+	
+	.upload-main-text {
+		font-size: 32rpx;
+		font-weight: 500;
+		color: #333333;
+		margin-bottom: 16rpx;
+	}
+	
+	.upload-sub-text {
+		font-size: 24rpx;
+		color: #909399;
+		margin-bottom: 50rpx;
+	}
+	
+	.integrated-guide {
+		background-color: rgba(24, 144, 255, 0.05);
+		border-radius: 12rpx;
+		padding: 24rpx;
+		width: 100%;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+	}
+	
+	.guide-item {
+		font-size: 24rpx;
+		color: #606266;
+		line-height: 2.2;
+	}
+	
+	/* 提示信息 */
+	.form-tips {
+		padding: 30rpx;
+		background-color: #FFFBE6;
+		border-radius: 12rpx;
+		display: flex;
+		align-items: center; /* 改为居中对齐 */
+		margin-bottom: 40rpx;
+	}
+	
+	.tips-icon-container {
+		width: 70rpx; /* 增加容器尺寸 */
+		height: 70rpx; /* 增加容器尺寸 */
+		border-radius: 12rpx; /* 保持圆形 */
+		background-color: rgba(250, 173, 20, 0.1);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-right: 20rpx;
+		flex-shrink: 0; /* 防止容器被压缩 */
+		padding: 6rpx; /* 添加内边距，确保图标有足够空间 */
+	}
+	
+	.form-tips .icon {
+		color: #FAAD14;
+		font-size: 32rpx;
+		line-height: 1; /* 确保图标垂直居中 */
+	}
+	
+	.tips-content {
+		flex: 1;
+	}
+	
+	.tips-title {
+		font-size: 28rpx;
+		font-weight: 500;
+		color: #333333;
+		margin-bottom: 8rpx;
+		display: block;
+	}
+	
+	.tips-text {
+		font-size: 24rpx;
+		color: #606266;
+		line-height: 1.6;
+	}
+	
+	/* 底部按钮 */
+	.bottom-bar {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		background-color: #FFFFFF;
+		padding: 20rpx 30rpx;
+		box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+	}
+	
+	.submit-button {
+		height: 88rpx;
+		background-color: #00C28A;
+		border-radius: 12rpx;
+		color: #FFFFFF;
+		font-size: 30rpx;
+		font-weight: 500;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+	
+	.submit-button[disabled] {
+		background-color: #A0CFBE;
+		color: #FFFFFF;
+	}
+</style> 

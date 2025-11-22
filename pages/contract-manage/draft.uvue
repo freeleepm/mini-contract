@@ -1,0 +1,505 @@
+<template>
+  <view class="draft-page">
+    <!-- 自定义导航栏 -->
+    <view class="custom-navbar">
+      <view class="navbar-left" @click="back">
+        <text class="icon icon-back"></text>
+      </view>
+      <view class="navbar-title">
+        <text class="title-text">草稿箱</text>
+      </view>
+      <view class="navbar-right"></view>
+    </view>
+    
+    <!-- 空状态 -->
+    <view v-if="draftList.length === 0" class="empty-state">
+      <image class="empty-icon" src="/static/icons/draft.png" />
+      <text class="empty-text">暂无草稿</text>
+      <text class="empty-desc">您可以在合同创建过程中随时保存草稿</text>
+    </view>
+    
+    <!-- 草稿列表 -->
+    <scroll-view v-else class="draft-list" scroll-y="true" @scrolltolower="loadMore">
+      <view 
+        class="draft-item" 
+        v-for="item in draftList" 
+        :key="item.draft_id"
+        @click="openDraft(item)"
+        @longpress="showDeleteConfirm(item)"
+      >
+        <!-- 草稿类型图标 -->
+        <view class="draft-icon">
+          <text v-if="item.type === 'file'" class="icon icon-file"></text>
+          <text v-else-if="item.type === 'image'" class="icon icon-image"></text>
+          <text v-else class="icon icon-template"></text>
+        </view>
+        
+        <!-- 草稿内容 -->
+        <view class="draft-content">
+          <view class="draft-header">
+            <text class="draft-title">{{ item.title || '无标题草稿' }}</text>
+            <text class="draft-type">{{ getDraftTypeText(item.type) }}</text>
+          </view>
+          
+          <view class="draft-progress-container">
+            <view class="progress-label">
+              <text class="progress-status">完成进度</text>
+              <text class="progress-text">{{item.progress}}%</text>
+            </view>
+            <progress :percent="item.progress" active-color="#00C28A" background-color="#E5F7F2" stroke-width="4" />
+          </view>
+          
+          <view class="draft-footer">
+            <text class="draft-time">上次修改: {{ formatTime(item.update_time) }}</text>
+            <view class="draft-action">
+              <text class="action-text">继续编辑</text>
+              <text class="icon icon-right"></text>
+            </view>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 加载更多 -->
+      <view v-if="hasMore" class="loading-more">
+        <text>加载中...</text>
+      </view>
+      <view v-else-if="draftList.length > 0" class="loading-more">
+        <text>没有更多了</text>
+      </view>
+    </scroll-view>
+  </view>
+</template>
+
+<script>
+import { getDraftList, getDraftDetail, deleteDraft } from '../../api/drafts/index.uts'
+
+export default {
+  data() {
+    return {
+      draftList: [],
+      page: 1,
+      size: 10,
+      total: 0,
+      loading: false,
+      hasMore: true
+    }
+  },
+  computed: {
+  },
+  onLoad() {
+    this.loadDraftList()
+  },
+  methods: {
+    back() {
+      uni.navigateBack()
+    },
+    // 获取草稿列表
+    async loadDraftList(isLoadMore = false) {
+      if (this.loading) return
+      this.loading = true
+      
+      try {
+        if (!isLoadMore) {
+          this.page = 1
+          this.draftList = []
+        }
+        
+        // 调用API获取草稿列表
+        const res = await getDraftList({
+          page: this.page,
+          size: this.size
+        })
+        
+        if (res.code === 0) {
+          const { total, list } = res.data
+          this.total = total
+          
+          if (isLoadMore) {
+            this.draftList = [...this.draftList, ...list]
+          } else {
+            this.draftList = list
+          }
+          
+          this.hasMore = this.draftList.length < total
+        } else {
+          uni.showToast({
+            title: res.message || '获取草稿列表失败',
+            icon: 'none'
+          })
+        }
+      } catch (e) {
+        uni.showToast({
+          title: '网络错误',
+          icon: 'none'
+        })
+        console.error('获取草稿列表失败', e)
+      } finally {
+        this.loading = false
+      }
+    },
+    
+    // 加载更多
+    loadMore() {
+      if (!this.hasMore || this.loading) return
+      this.page++
+      this.loadDraftList(true)
+    },
+    
+    // 打开草稿
+    openDraft(draft) {
+      console.log('[草稿] 继续编辑草稿:', draft)
+      
+      // 根据草稿类型跳转到对应的H5创建页面
+      const type = draft.type || 'template' // file/image/template
+      const draftId = draft.draft_id || draft.id
+      
+      if (!draftId) {
+        uni.showToast({
+          title: '草稿ID不存在',
+          icon: 'none'
+        })
+        return
+      }
+      
+      // 统一跳转到H5创建页面，传递type和draftId
+      const url = `/pages/contract-create/h5-create?type=${type}&draftId=${draftId}`
+      console.log('[草稿] 跳转到H5创建页面:', url)
+      
+      uni.navigateTo({ url })
+    },
+    
+    // 显示删除确认框
+    showDeleteConfirm(draft) {
+      uni.showModal({
+        title: '删除草稿',
+        content: '确定要删除这个草稿吗？删除后将无法恢复。',
+        confirmText: '删除',
+        confirmColor: '#FF3B30',
+        success: async (res) => {
+          if (res.confirm) {
+            await this.deleteDraft(draft.draft_id)
+          }
+        }
+      })
+    },
+    
+    // 删除草稿
+    async deleteDraft(draftId) {
+      try {
+        const res = await deleteDraft(draftId)
+        
+        if (res.code === 0) {
+          uni.showToast({
+            title: '删除成功',
+            icon: 'success'
+          })
+          // 重新加载草稿列表
+          this.loadDraftList()
+        } else {
+          uni.showToast({
+            title: res.message || '删除失败',
+            icon: 'none'
+          })
+        }
+      } catch (e) {
+        uni.showToast({
+          title: '网络错误',
+          icon: 'none'
+        })
+        console.error('删除草稿失败', e)
+      }
+    },
+    
+    // 格式化时间
+    formatTime(timestamp) {
+      if (!timestamp) return ''
+      const date = new Date(timestamp)
+      return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+    },
+    
+    // 获取草稿类型文字
+    getDraftTypeText(type) {
+      const typeMap = {
+        'file': '文件发起',
+        'image': '图片发起',
+        'template': '模板发起'
+      }
+      return typeMap[type] || '未知类型'
+    }
+  }
+}
+</script>
+
+<style>
+.draft-page {
+  flex: 1;
+  background: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
+}
+
+/* 自定义导航栏样式 */
+.custom-navbar {
+  height: 100rpx;
+  background: linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 100%);
+  flex-direction: row;
+  align-items: center;
+  padding: 0 32rpx;
+  position: relative;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
+  border-bottom: 1rpx solid #F0F2F5;
+}
+
+.navbar-left {
+  width: 80rpx;
+  height: 80rpx;
+  justify-content: center;
+  align-items: center;
+}
+
+.navbar-title {
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+}
+
+.title-text {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #1A1A1A;
+  letter-spacing: 0.5rpx;
+}
+
+.navbar-right {
+  width: 80rpx;
+  height: 80rpx;
+}
+
+.icon {
+  font-family: 'Font Awesome 6 Free';
+  font-size: 36rpx;
+  color: #475569;
+  font-weight: 400;
+}
+
+/* FontAwesome图标定义 */
+.icon-back:before {
+  content: "\f060"; /* fa-arrow-left */
+}
+
+.icon-file:before {
+  content: "\f15b"; /* fa-file-o */
+}
+
+.icon-image:before {
+  content: "\f03e"; /* fa-picture-o */
+}
+
+.icon-template:before {
+  content: "\f0f6"; /* fa-file-text-o */
+}
+
+.icon-right:before {
+  content: "\f061"; /* fa-arrow-right */
+}
+
+.draft-list {
+  flex: 1;
+  padding: 32rpx 24rpx;
+}
+
+.draft-item {
+  margin-bottom: 28rpx;
+  background: linear-gradient(135deg, #FFFFFF 0%, #FEFFFE 100%);
+  border-radius: 20rpx;
+  padding: 32rpx;
+  flex-direction: row;
+  align-items: flex-start;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.08);
+  border: 1rpx solid rgba(226, 232, 240, 0.6);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.draft-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4rpx;
+  background: linear-gradient(90deg, #00C28A 0%, #00D09C 50%, #0099D6 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.draft-item:active {
+  transform: translateY(-4rpx);
+  box-shadow: 0 16rpx 32rpx rgba(0, 0, 0, 0.12);
+}
+
+.draft-item:active::before {
+  opacity: 1;
+}
+
+.draft-icon {
+  width: 72rpx;
+  height: 72rpx;
+  margin-right: 24rpx;
+  background: linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 100%);
+  border-radius: 16rpx;
+  justify-content: center;
+  align-items: center;
+  border: 1rpx solid rgba(14, 165, 233, 0.2);
+  box-shadow: 0 4rpx 12rpx rgba(14, 165, 233, 0.1);
+}
+
+.draft-icon .icon {
+  font-size: 36rpx;
+  color: #0EA5E9;
+  text-shadow: 0 1rpx 2rpx rgba(14, 165, 233, 0.2);
+}
+
+.draft-content {
+  flex: 1;
+}
+
+.draft-header {
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.draft-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #1E293B;
+  flex: 1;
+  line-height: 1.5;
+  letter-spacing: 0.25rpx;
+}
+
+.draft-type {
+  font-size: 24rpx;
+  color: #0EA5E9;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(14, 165, 233, 0.08) 100%);
+  padding: 6rpx 18rpx;
+  border-radius: 16rpx;
+  margin-left: 12rpx;
+  border: 1rpx solid rgba(14, 165, 233, 0.2);
+  font-weight: 600;
+}
+
+.draft-progress-container {
+  margin: 16rpx 0;
+}
+
+.progress-label {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8rpx;
+}
+
+.progress-status {
+  font-size: 26rpx;
+  color: #64748B;
+  font-weight: 500;
+}
+
+.progress-text {
+  font-size: 26rpx;
+  color: #00C28A;
+  font-weight: 700;
+  text-shadow: 0 1rpx 2rpx rgba(0, 194, 138, 0.2);
+}
+
+progress {
+  height: 12rpx;
+  border-radius: 6rpx;
+  overflow: hidden;
+  box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
+}
+
+.draft-footer {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1px solid #F0F0F0;
+}
+
+.draft-time {
+  font-size: 26rpx;
+  color: #64748B;
+  font-weight: 500;
+}
+
+.draft-action {
+  flex-direction: row;
+  align-items: center;
+  background: linear-gradient(135deg, rgba(0, 194, 138, 0.15) 0%, rgba(0, 194, 138, 0.08) 100%);
+  padding: 10rpx 20rpx;
+  border-radius: 24rpx;
+  border: 1rpx solid rgba(0, 194, 138, 0.3);
+  box-shadow: 0 4rpx 12rpx rgba(0, 194, 138, 0.15);
+  transition: all 0.3s ease;
+}
+
+.draft-action:active {
+  transform: scale(0.95);
+  box-shadow: 0 2rpx 6rpx rgba(0, 194, 138, 0.1);
+}
+
+.action-text {
+  font-size: 26rpx;
+  color: #00C28A;
+  margin-right: 8rpx;
+  font-weight: 600;
+}
+
+.draft-action .icon {
+  font-size: 26rpx;
+  color: #00C28A;
+  font-weight: 600;
+}
+
+.empty-state {
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  padding-bottom: 100rpx;
+}
+
+.empty-icon {
+  width: 180rpx;
+  height: 180rpx;
+  margin-bottom: 30rpx;
+}
+
+.empty-text {
+  font-size: 38rpx;
+  color: #1E293B;
+  font-weight: 700;
+  margin-bottom: 18rpx;
+  letter-spacing: 0.5rpx;
+}
+
+.empty-desc {
+  font-size: 30rpx;
+  color: #64748B;
+  font-weight: 500;
+  letter-spacing: 0.25rpx;
+}
+
+.loading-more {
+  height: 80rpx;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-more text {
+  font-size: 24rpx;
+  color: #999999;
+}
+</style> 

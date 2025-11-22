@@ -1,0 +1,540 @@
+<template>
+  <view class="page-container">
+    <!-- 状态栏 -->
+    <view class="status-bar" v-if="!isSaved">
+      <text class="status-text">{{ saveStatusText }}</text>
+    </view>
+
+		<!-- 编辑区域 -->
+		<scroll-view class="content-scroll" scroll-y="true">
+			<!-- 内容卡片 -->
+			<view class="content-card">
+				<!-- 合同标题 -->
+				<view class="title-section">
+					<input 
+						class="title-input"
+						v-model="contractTitle"
+						placeholder="请输入合同标题"
+						placeholder-class="title-placeholder"
+						@input="handleTitleChange"
+					/>
+				</view>
+
+				<!-- 合同内容 -->
+				<view class="content-section">
+					<textarea 
+						class="content-input"
+						v-model="contractContent"
+						placeholder="请输入合同内容"
+						placeholder-class="content-placeholder"
+						:auto-height="true"
+						@input="handleContentChange"
+					/>
+				</view>
+			</view>
+
+			<!-- 提示信息 -->
+			<view class="editor-tip">
+				<text class="fa fa-info-circle tip-icon"></text>
+				<text class="tip-text">内容会自动保存，请放心编辑</text>
+			</view>
+		</scroll-view>
+
+    <!-- 底部悬浮工具栏 -->
+    <view class="floating-toolbar">
+      <view class="toolbar-button" @click="handleSave">
+        <text class="fa fa-save toolbar-icon"></text>
+        <text class="toolbar-text">保存</text>
+      </view>
+      <view class="toolbar-button" @click="handlePreview">
+        <text class="fa fa-eye toolbar-icon"></text>
+        <text class="toolbar-text">预览</text>
+      </view>
+      <view class="toolbar-button" @click="handleExport">
+        <text class="fa fa-file-pdf toolbar-icon"></text>
+        <text class="toolbar-text">导出</text>
+      </view>
+      <view class="toolbar-button primary" @click="handleComplete">
+        <text class="fa fa-check toolbar-icon"></text>
+        <text class="toolbar-text">完成</text>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script>
+import { getContract, updateContract } from '../../api/ai-draft/index.uts'
+
+export default {
+  data() {
+    return {
+      contractId: 0,
+      contractTitle: '',
+      contractContent: '',
+      originalContent: '',
+      isSaved: true,
+      saveTimer: null,
+      loading: false
+    }
+  },
+  computed: {
+    saveStatusText() {
+      if (this.loading) return '保存中...'
+      if (this.isSaved) return '已保存'
+      return '未保存'
+    }
+  },
+  onLoad(options) {
+    this.contractId = parseInt(options.contractId || '0')
+    if (this.contractId) {
+      this.loadContract()
+    }
+  },
+  onUnload() {
+    // 页面卸载时保存
+    if (!this.isSaved) {
+      this.saveContract(true)
+    }
+  },
+  methods: {
+    async loadContract() {
+      try {
+        uni.showLoading({ title: '加载中...' })
+        const res = await getContract(this.contractId)
+        uni.hideLoading()
+        
+        // 检查响应结构
+        if (!res || typeof res !== 'object') {
+          console.error('无效的响应:', res)
+          throw new Error('响应格式错误')
+        }
+        
+        // 如果响应有code字段，检查code
+        if ('code' in res && res.code !== 0) {
+          throw new Error(res.msg || '加载失败')
+        }
+        
+        // 获取合同数据
+        const contractData = res.data || res
+        
+        if (contractData && contractData.title) {
+          this.contractTitle = contractData.title
+          // 从HTML中提取文本内容（简化处理）
+          this.contractContent = this.extractTextFromHtml(contractData.content)
+          this.originalContent = this.contractContent
+          this.isSaved = true
+          
+          console.log('合同加载成功，标题:', this.contractTitle)
+        } else {
+          throw new Error('合同数据为空')
+        }
+      } catch (error) {
+        uni.hideLoading()
+        console.error('加载合同失败:', error)
+        uni.showToast({
+          title: error.message || '加载失败',
+          icon: 'none',
+          duration: 2000
+        })
+        
+        // 加载失败后返回上一页
+        setTimeout(() => {
+          uni.navigateBack()
+        }, 2000)
+      }
+    },
+    
+    handleTitleChange(e) {
+      this.contractTitle = e.detail.value
+      this.isSaved = false
+      this.scheduleAutoSave()
+    },
+    
+    handleContentChange(e) {
+      this.contractContent = e.detail.value
+      this.isSaved = false
+      this.scheduleAutoSave()
+    },
+    
+    scheduleAutoSave() {
+      // 防抖：3秒后自动保存
+      if (this.saveTimer) {
+        clearTimeout(this.saveTimer)
+      }
+      this.saveTimer = setTimeout(() => {
+        this.saveContract(false)
+      }, 3000)
+    },
+    
+    async saveContract(sync = false) {
+      if (this.isSaved) return
+      
+      this.loading = true
+      
+      try {
+        // 将文本内容包装为简单HTML
+        const htmlContent = this.wrapTextAsHtml(this.contractContent)
+        
+        // updateContract返回的是data字段(true/false)，不是完整响应对象
+        const result = await updateContract({
+          id: this.contractId,
+          content: htmlContent
+        })
+        
+        // API成功时返回true
+        if (result === true) {
+          this.isSaved = true
+          this.originalContent = this.contractContent
+          if (!sync) {
+            // 异步保存时显示提示
+            uni.showToast({
+              title: '保存成功',
+              icon: 'success',
+              duration: 1000
+            })
+          }
+        } else {
+          uni.showToast({
+            title: '保存失败',
+            icon: 'none'
+          })
+        }
+      } catch (error) {
+        console.error('保存失败:', error)
+        if (!sync) {
+          uni.showToast({
+            title: '保存失败',
+            icon: 'none'
+          })
+        }
+      } finally {
+        this.loading = false
+      }
+    },
+    
+    async handleSave() {
+      await this.saveContract(false)
+    },
+    
+    async handlePreview() {
+      // 先保存当前内容
+      if (!this.isSaved) {
+        await this.saveContract(true)
+      }
+      
+      // 跳转到PDF预览页
+      uni.navigateTo({
+        url: `/pages/ai-draft/preview?contractId=${this.contractId}`
+      })
+    },
+    
+    async handleExport() {
+      // 先保存当前内容
+      if (!this.isSaved) {
+        uni.showLoading({ title: '保存中...', mask: true })
+        await this.saveContract(true)
+        uni.hideLoading()
+      }
+      
+      // 跳转到PDF预览页，并自动导出
+      uni.navigateTo({
+        url: `/pages/ai-draft/preview?contractId=${this.contractId}`
+      })
+      
+      uni.showToast({
+        title: '正在准备PDF预览',
+        icon: 'none',
+        duration: 1500
+      })
+    },
+    
+    handleBack() {
+      if (!this.isSaved) {
+        uni.showModal({
+          title: '提示',
+          content: '有未保存的内容，确定要离开吗？',
+          success: (res) => {
+            if (res.confirm) {
+              uni.navigateBack()
+            }
+          }
+        })
+      } else {
+        uni.navigateBack()
+      }
+    },
+    
+    async handleComplete() {
+      if (!this.isSaved) {
+        await this.saveContract(false)
+      }
+      
+      uni.showModal({
+        title: '编辑完成',
+        content: '合同编辑已完成，是否返回？',
+        success: (res) => {
+          if (res.confirm) {
+            uni.navigateBack()
+          }
+        }
+      })
+    },
+    
+    extractTextFromHtml(html) {
+      if (!html) return ''
+      
+      try {
+        let text = html
+        
+        // 1. 移除<!DOCTYPE>声明
+        text = text.replace(/<!DOCTYPE[^>]*>/gi, '')
+        
+        // 2. 移除HTML注释
+        text = text.replace(/<!--[\s\S]*?-->/g, '')
+        
+        // 3. 移除<script>标签及其内容
+        text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        
+        // 4. 移除<style>标签及其内容（关键！）
+        text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        
+        // 5. 移除<head>标签及其内容
+        text = text.replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
+        
+        // 6. 移除所有HTML标签，但保留内容
+        text = text.replace(/<[^>]+>/g, ' ')
+        
+        // 7. 处理HTML实体
+        text = text
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/&ldquo;/g, '"')
+          .replace(/&rdquo;/g, '"')
+        
+        // 8. 移除多余的空白字符
+        text = text
+          .replace(/\s+/g, ' ')  // 将多个空白字符替换为单个空格
+        .trim()
+        
+        // 9. 按句子分段，每个句子一行
+        text = text
+          .replace(/([。！？])\s*/g, '$1\n')  // 中文标点后换行
+          .replace(/([.!?])\s+/g, '$1\n')    // 英文标点后换行
+        
+        // 10. 移除空行
+        text = text
+          .split('\n')
+          .map(line => line.trim())
+          .filter(line => line.length > 0)
+          .join('\n\n')  // 段落间空一行
+        
+        return text.trim()
+      } catch (error) {
+        console.error('提取文本失败:', error)
+        return ''
+      }
+    },
+    
+    wrapTextAsHtml(text) {
+      // 如果文本为空，返回一个包含标题的基本HTML结构
+      if (!text || !text.trim()) {
+        return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${this.contractTitle || '未命名合同'}</title>
+  <style>
+    body { font-family: SimSun, serif; line-height: 1.8; padding: 40px; }
+    h1 { text-align: center; font-size: 24px; margin-bottom: 30px; }
+    p { text-indent: 2em; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>${this.contractTitle || '未命名合同'}</h1>
+  <p>（合同内容暂无）</p>
+</body>
+</html>`
+      }
+      
+      // 简单包装为HTML
+      const paragraphs = text.split('\n').filter(p => p.trim())
+      return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${this.contractTitle || '未命名合同'}</title>
+  <style>
+    body { font-family: SimSun, serif; line-height: 1.8; padding: 40px; }
+    h1 { text-align: center; font-size: 24px; margin-bottom: 30px; }
+    p { text-indent: 2em; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>${this.contractTitle || '未命名合同'}</h1>
+  ${paragraphs.map(p => `<p>${p}</p>`).join('\n  ')}
+</body>
+</html>`
+    }
+  }
+}
+</script>
+
+<style>
+/* ==================== 基础布局 ==================== */
+.page-container {
+  flex: 1;
+  background-color: #F7F9FC;
+}
+
+/* ==================== 状态栏 ==================== */
+.status-bar {
+  padding: 16rpx 30rpx;
+  background-color: #FFF7E6;
+  border-bottom: 1rpx solid #FFE7BA;
+}
+
+.status-text {
+  font-size: 24rpx;
+  color: #FA8C16;
+}
+
+/* ==================== 内容区域 ==================== */
+.content-scroll {
+  flex: 1;
+  padding: 10rpx;  /* 减小外边距，让卡片更贴近边缘 */
+  padding-bottom: 160rpx; /* 为底部工具栏留出空间 */
+}
+
+/* 内容卡片容器 */
+.content-card {
+  background-color: #FFFFFF;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+  border: 1rpx solid #EBEEF5;
+}
+
+.title-section {
+  padding-bottom: 24rpx;
+  margin-bottom: 24rpx;
+  border-bottom: 2rpx solid #E8E8E8;
+}
+
+.title-input {
+  width: 100%;
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #303133;
+  padding: 0;
+  border: none;
+  background-color: transparent;
+}
+
+.title-placeholder {
+  color: #C0C4CC;
+}
+
+.content-section {
+  /* 内容区域无需额外padding */
+}
+
+.content-input {
+  width: 100%;
+  min-height: 600rpx;
+  font-size: 28rpx;
+  line-height: 1.8;
+  color: #303133;
+  padding: 0;
+  border: none;
+  background-color: transparent;
+}
+
+.content-placeholder {
+  color: #C0C4CC;
+}
+
+/* ==================== 提示信息 ==================== */
+.editor-tip {
+  flex-direction: row;
+  align-items: center;
+  margin: 10rpx 0;  /* 减小间距，左右不需要margin因为scroll已有padding */
+  padding: 20rpx;
+  background-color: rgba(24, 144, 255, 0.05);
+  border-radius: 8rpx;
+}
+
+.tip-icon {
+  font-size: 24rpx;
+  color: #1890FF;
+  margin-right: 12rpx;
+}
+
+.tip-text {
+  font-size: 24rpx;
+  color: #1890FF;
+}
+
+/* ==================== 底部悬浮工具栏 ==================== */
+.floating-toolbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  flex-direction: row;
+  align-items: center;
+  background-color: #FFFFFF;
+  padding: 20rpx 0;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid #EBEEF5;
+  box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+
+.toolbar-button {
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10rpx 0;
+  transition: all 0.3s ease;
+}
+
+.toolbar-button:active {
+  background-color: #F5F7FA;
+  transform: scale(0.95);
+}
+
+.toolbar-button.primary {
+  background-color: #00C28A;
+  border-radius: 8rpx;
+  margin: 0 16rpx;
+}
+
+.toolbar-button.primary:active {
+  background-color: #00A070;
+}
+
+.toolbar-icon {
+  font-size: 36rpx;
+  color: #606266;
+  margin-bottom: 6rpx;
+}
+
+.toolbar-button.primary .toolbar-icon {
+  color: #FFFFFF;
+}
+
+.toolbar-text {
+  font-size: 22rpx;
+  color: #606266;
+}
+
+.toolbar-button.primary .toolbar-text {
+  color: #FFFFFF;
+  font-weight: 500;
+}
+</style>
+

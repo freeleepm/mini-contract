@@ -1,0 +1,300 @@
+<template>
+	<view class="h5-sign-container">
+		<!-- 加载状态 -->
+		<H5LoadingContainer 
+			v-if="loading && !errorMessage"
+			loadingText="正在加载签署页面..."
+		/>
+
+		<!-- 错误提示 -->
+		<H5ErrorContainer
+			v-if="errorMessage && !loading"
+			:errorMessage="errorMessage"
+			@back="goBack"
+			@retry="manualRetry"
+			@contact-support="contactSupport"
+		/>
+
+		<!-- H5 WebView -->
+		<web-view
+			v-if="signUrl && !errorMessage && !loading"
+			:src="signUrl"
+			@load="handleLoad"
+			@error="handleError"
+			@message="handleMessage"
+			class="h5-webview"
+		></web-view>
+	</view>
+</template>
+
+<script>
+/**
+ * H5签署页面（WebView方式）
+ * 
+ * 专门用于签署合同，不包含预览功能
+ * - 预览功能已独立到 pages/contract-view/h5-view.uvue
+ * 
+ * ⚠️ 重要说明：
+ * H5 服务检测已在合同列表页完成！
+ * 本页面职责已简化为：
+ * 1. 获取 H5 URL（已预先验证可用）
+ * 2. 加载 WebView
+ * 3. 处理签署回调和运行时错误
+ */
+import { getSealPageUrl, submitSignResult } from '../../api/seals/index';
+import { 
+	analyzeWebViewError,
+	getErrorMessage,
+	ErrorType
+} from '../../utils/network';
+import H5LoadingContainer from '../../components/H5LoadingContainer.uvue';
+import H5ErrorContainer from '../../components/H5ErrorContainer.uvue';
+
+export default {
+	components: {
+		H5LoadingContainer,
+		H5ErrorContainer
+	},
+	
+	data() {
+		return {
+			// H5签署页面URL
+			signUrl: '',
+			
+			// 任务ID
+			taskId: '',
+			
+			// 文件ID（可选）
+			fileId: '',
+			
+			// 页面加载状态
+			loading: true,
+			
+			// 错误信息（仅用于运行时错误）
+			errorMessage: '',
+			
+			// 错误类型（仅用于运行时错误）
+			errorType: ''
+		}
+	},
+	
+	onLoad(options) {
+		console.log('[H5签署] 页面加载，参数:', options);
+		
+		// 获取任务ID
+		if (options && options.taskId) {
+			this.taskId = options.taskId;
+		} else {
+			uni.showToast({
+				title: '缺少任务ID',
+				icon: 'none'
+			});
+			setTimeout(() => {
+				uni.navigateBack();
+			}, 1500);
+			return;
+		}
+		
+		// 可选：获取文件ID
+		if (options && options.fileId) {
+			this.fileId = options.fileId;
+		}
+		
+		// 直接加载签署URL（H5 服务检测已在列表页完成）
+		this.buildSignUrl();
+	},
+	
+	methods: {
+	/**
+	 * 构建签署URL
+	 * 注意：H5 服务检测已在列表页完成，此处只做基本的错误兜底
+	 */
+	async buildSignUrl() {
+		try {
+			uni.showLoading({ title: '正在加载签署页面...' });
+			
+			this.signUrl = await getSealPageUrl('sign', this.taskId);
+			console.log('[H5签署] 签署URL已获取:', this.signUrl);
+			
+			// 🔧 关键修复：更新loading状态，让WebView显示出来
+			this.loading = false;
+			uni.hideLoading();
+		} catch (error) {
+			console.error('[H5签署] 获取URL失败（不应发生，因为列表页已检测）:', error);
+			
+			this.loading = false;
+			uni.hideLoading();
+			
+			// 兜底错误提示
+			this.errorType = ErrorType.SERVER;
+			this.errorMessage = '无法加载签署页面\n请返回重试或联系客服';
+		}
+	},
+		
+		/**
+		 * WebView加载完成
+		 */
+		handleLoad(e) {
+			console.log('[H5签署] WebView加载成功');
+			this.loading = false;
+			uni.hideLoading();
+		},
+		
+		/**
+		 * WebView加载失败
+		 */
+		handleError(e) {
+			console.error('[H5签署] WebView加载失败:', e);
+			
+			this.loading = false;
+			uni.hideLoading();
+			
+			// 使用网络工具分析错误类型
+			this.errorType = analyzeWebViewError(e);
+			this.errorMessage = getErrorMessage(this.errorType);
+			
+			console.log('[H5签署] WebView加载失败，等待用户操作');
+		},
+		
+		/**
+		 * 处理H5页面消息
+		 */
+		handleMessage(e) {
+			console.log('[H5签署] 收到H5消息:', e);
+			
+			const data = e.detail.data[0];
+			
+			if (!data) {
+				console.warn('[H5签署] 消息数据为空');
+				return;
+			}
+			
+			// 处理签署完成消息
+			if (data.type === 'signComplete') {
+				this.handleSignComplete(data);
+			}
+			// 处理签署取消消息
+			else if (data.type === 'signCancel') {
+				this.handleSignCancel();
+			}
+			// 处理签署错误消息
+			else if (data.type === 'signError') {
+				this.handleSignError(data);
+			}
+		},
+		
+		/**
+		 * 处理签署完成
+		 */
+		async handleSignComplete(data) {
+			console.log('[H5签署] 签署完成:', data);
+			
+			try {
+				// 提交签署结果到后端
+				if (data.signData) {
+					await submitSignResult(this.taskId, data.signData);
+				}
+				
+				// 显示成功提示
+				uni.showToast({
+					title: '签署成功',
+					icon: 'success',
+					duration: 2000
+				});
+				
+				// 延迟返回
+				setTimeout(() => {
+					uni.navigateBack();
+				}, 2000);
+			} catch (error) {
+				console.error('[H5签署] 提交签署结果失败:', error);
+				uni.showToast({
+					title: '提交失败，请重试',
+					icon: 'none'
+				});
+			}
+		},
+		
+		/**
+		 * 处理签署取消
+		 */
+		handleSignCancel() {
+			console.log('[H5签署] 用户取消签署');
+			
+			uni.showModal({
+				title: '确认取消',
+				content: '确定要取消签署吗？',
+				success: (res) => {
+					if (res.confirm) {
+						uni.navigateBack();
+					}
+				}
+			});
+		},
+		
+		/**
+		 * 处理签署错误
+		 */
+		handleSignError(data) {
+			console.error('[H5签署] 签署错误:', data);
+			
+			uni.showToast({
+				title: data.message || '签署失败',
+				icon: 'none',
+				duration: 3000
+			});
+		},
+		
+		/**
+		 * 手动重试
+		 */
+		manualRetry() {
+			console.log('[H5签署] 用户手动重试');
+			this.resetErrorState();
+			this.buildSignUrl();
+		},
+		
+		/**
+		 * 重置错误状态
+		 */
+		resetErrorState() {
+			this.errorMessage = '';
+			this.errorType = '';
+			this.loading = true;
+			this.signUrl = '';
+		},
+		
+		/**
+		 * 返回上一页
+		 */
+		goBack() {
+			uni.navigateBack();
+		},
+		
+		/**
+		 * 联系客服
+		 */
+		contactSupport() {
+			uni.showModal({
+				title: '联系客服',
+				content: '客服电话：400-xxx-xxxx\n或发送邮件至：support@example.com',
+				showCancel: false
+			});
+		}
+	}
+}
+</script>
+
+<style>
+.h5-sign-container {
+	flex: 1;
+	width: 100%;
+	height: 100%;
+	background-color: #F7F9FC;
+}
+
+.h5-webview {
+	width: 100%;
+	height: 100%;
+}
+</style>

@@ -1,0 +1,85 @@
+/**
+ * 登录相关API
+ */
+
+import { request, type ApiResponse } from '../index'
+
+/**
+ * 手机号+验证码登录请求参数
+ */
+export interface SmsLoginRequest {
+	mobile: string      // 手机号
+	code: string        // 验证码
+}
+
+/**
+ * 手机号+密码登录请求参数
+ */
+export interface PasswordLoginRequest {
+	mobile: string      // 手机号
+	password: string    // 密码
+}
+
+/**
+ * 登录响应数据
+ */
+export interface LoginResponse {
+	accessToken: string      // 访问令牌
+	refreshToken: string     // 刷新令牌
+	userId: number           // 用户ID
+	expiresTime: number      // 过期时间（时间戳）
+}
+
+/**
+ * 发送验证码请求参数
+ */
+export interface SendCodeRequest {
+	mobile: string      // 手机号
+	scene: number       // 场景：1-登录 2-注册 3-修改密码等
+}
+
+/**
+ * 手机号+验证码登录（登录即注册）
+ * @param data 登录参数
+ * @returns 登录结果
+ */
+export function smsLogin(data: SmsLoginRequest): Promise<ApiResponse<LoginResponse>> {
+	return request<LoginResponse>({
+		url: '/api/v1/member/auth/sms-login',
+		method: 'POST',
+		data: data,
+		isAuth: false
+	})
+}
+
+/**
+ * 手机号+密码登录
+ * @param data 登录参数
+ * @returns 登录结果
+ */
+export function passwordLogin(data: PasswordLoginRequest): Promise<ApiResponse<LoginResponse>> {
+	return request<LoginResponse>({
+		url: '/api/v1/member/auth/login',
+		method: 'POST',
+		data: data,
+		isAuth: false
+	})
+}
+
+/**
+ * 发送登录验证码
+ * @param mobile 手机号
+ * @returns 发送结果
+ */
+export function sendLoginCode(mobile: string): Promise<ApiResponse<boolean>> {
+	return request<boolean>({
+		url: '/api/v1/member/auth/send-sms-code',
+		method: 'POST',
+		data: {
+			mobile: mobile,
+			scene: 1  // 场景：1表示登录
+		},
+		isAuth: false
+	})
+}
+

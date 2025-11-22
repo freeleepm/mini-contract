@@ -1,0 +1,94 @@
+/**
+ * API 配置文件
+ * 存储API基础URL和其他全局配置
+ */
+
+// 环境配置
+export const ENV = {
+    DEV: 'development',
+    PROD: 'production',
+    TEST: 'testing'
+};
+
+// 当前环境 - 可以根据需要修改
+export const CURRENT_ENV = ENV.DEV;
+
+// 不同环境的API基础URL
+export const API_BASE_URLS = {
+    [ENV.DEV]: 'http://localhost:48080/app-api',  // 应用端接口
+    [ENV.TEST]: 'https://test-api.example.com/app-api',
+    [ENV.PROD]: 'https://api.example.com/app-api'
+};
+
+// 不同环境的后台H5页面基础URL
+export const ADMIN_H5_BASE_URLS = {
+    [ENV.DEV]: 'http://localhost:80',  // 后台H5页面地址
+    [ENV.TEST]: 'https://test-admin.example.com',
+    [ENV.PROD]: 'https://admin.example.com'
+};
+
+// 导出当前环境的API基础URL
+export const API_BASE_URL = API_BASE_URLS[CURRENT_ENV];
+
+// 导出当前环境的后台H5基础URL
+export const ADMIN_H5_BASE_URL = ADMIN_H5_BASE_URLS[CURRENT_ENV];
+
+/**
+ * 获取当前环境的API基础URL
+ */
+export function getBaseURL(): string {
+    return API_BASE_URL;
+}
+
+// 租户ID - 根据API文档，认证相关接口不需要租户ID，但其他业务接口需要
+// 正式环境中应该从用户登录信息或系统配置中获取
+export const TENANT_ID = '1';
+
+// 超时时间（毫秒）- 默认30秒
+export const TIMEOUT = 30000;
+
+// AI审查专用超时时间（毫秒）- 3分钟，因为AI分析需要较长时间
+export const AI_AUDIT_TIMEOUT = 180000;
+
+// AI生成合同专用超时时间（毫秒）- 3分钟，因为AI生成合同需要较长时间
+export const AI_GENERATION_TIMEOUT = 180000;
+
+// 文件上传配置
+export const UPLOAD_CONFIG = {
+    // 文件上传模式: 'server'(后端上传) 或 'client'(前端直传)
+    MODE: 'client', // 使用前端直传模式
+    // 文件大小限制（单位：MB）
+    MAX_SIZE: {
+        IMAGE: 5,
+        DOCUMENT: 20
+    },
+    // 允许的文件类型
+    ALLOWED_TYPES: {
+        IMAGE: ['jpg', 'jpeg', 'png', 'gif'],
+        DOCUMENT: ['pdf', 'doc', 'docx', 'xls', 'xlsx']
+    },
+    // 上传目录
+    DIRECTORIES: {
+        AVATAR: 'avatar',
+        VERIFY: 'verify',
+        DOCUMENT: 'document'
+    },
+    // 文件过期策略（单位：小时）
+    EXPIRATION: {
+        // 实名认证临时文件过期时间（24小时）
+        VERIFY: 24,
+        // 通用文件过期时间（7天）
+        DEFAULT: 7 * 24
+    }
+};
+
+// 导出默认配置
+export default {
+    API_BASE_URL,
+    TENANT_ID,
+    TIMEOUT,
+    AI_AUDIT_TIMEOUT,
+    AI_GENERATION_TIMEOUT,
+    CURRENT_ENV,
+    UPLOAD_CONFIG
+}; 

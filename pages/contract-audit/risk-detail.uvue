@@ -1,0 +1,520 @@
+<template>
+  <view class="page-container">
+    <!-- 内容区域 -->
+    <scroll-view class="content-scroll" scroll-y="true">
+        <!-- 风险等级卡片 -->
+        <view class="level-card">
+          <view class="level-tag" :class="getRiskLevelClass()">
+            <text class="level-text">{{ getRiskLevelText() }}</text>
+          </view>
+          <text class="risk-type">{{ risk.riskType }}</text>
+          <view class="risk-score-wrapper">
+            <text class="risk-score">{{ risk.riskScore || 0 }}</text>
+            <text class="score-unit">分</text>
+          </view>
+        </view>
+
+        <!-- 原文引用卡片 -->
+        <view class="card">
+          <view class="card-header">
+            <text class="fa fa-quote-left header-icon"></text>
+            <text class="card-title">原文引用</text>
+          </view>
+          <view class="original-text-wrapper">
+            <text class="original-text" :class="{ 'text-expanded': isTextExpanded }">{{ risk.originalText || '无' }}</text>
+            <view class="expand-btn" @click="toggleTextExpand" v-if="risk.originalText && risk.originalText.length > 50">
+              <text class="expand-text">{{ isTextExpanded ? '收起' : '查看完整原文' }}</text>
+              <text class="fa" :class="isTextExpanded ? 'fa-angle-up' : 'fa-angle-down'"></text>
+            </view>
+          </view>
+          <view class="location-info">
+            <text class="fa fa-map-marker location-icon"></text>
+            <text class="location-text">{{ getLocationText() }}</text>
+          </view>
+        </view>
+
+        <!-- 风险说明卡片 -->
+        <view class="card">
+          <view class="card-header">
+            <text class="fa fa-exclamation-circle header-icon danger"></text>
+            <text class="card-title">风险说明</text>
+          </view>
+          <view class="rich-text-wrapper">
+            <rich-text :nodes="formatMarkdown(risk.riskDescription)" class="description-text"></rich-text>
+          </view>
+        </view>
+
+        <!-- 修改建议卡片 -->
+        <view class="card">
+          <view class="card-header">
+            <text class="fa fa-lightbulb header-icon suggest"></text>
+            <text class="card-title">修改建议</text>
+          </view>
+          <view class="rich-text-wrapper" v-if="risk.suggestion">
+            <rich-text :nodes="formatMarkdown(risk.suggestion)" class="description-text"></rich-text>
+          </view>
+          
+          <!-- 建议文本 -->
+          <view class="suggested-box" v-if="risk.suggestedText">
+            <text class="suggested-label">建议修改为：</text>
+            <text class="suggested-text">{{ risk.suggestedText }}</text>
+          </view>
+        </view>
+
+        <!-- 法律依据卡片 -->
+        <view class="card" v-if="risk.legalBasis">
+          <view class="card-header">
+            <text class="fa fa-balance-scale header-icon legal"></text>
+            <text class="card-title">法律依据</text>
+          </view>
+          <text class="description-text">{{ risk.legalBasis }}</text>
+      </view>
+    </scroll-view>
+
+    <!-- 底部操作栏 -->
+    <view class="bottom-bar">
+      <view class="bottom-btn" @click="locateInContract">
+        <text class="fa fa-crosshairs btn-icon"></text>
+        <text class="btn-text">在合同中定位</text>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script lang="uts">
+import { get } from '../../api/index';
+
+export default {
+  data() {
+    return {
+      riskId: 0,
+      contractId: 0,
+      isTextExpanded: false,
+      risk: {
+        id: 0,
+        riskLevel: 3,
+        riskType: '',
+        riskScore: 0,
+        locationType: 1,
+        locationValue: '',
+        startPos: 0,
+        endPos: 0,
+        originalText: '',
+        riskDescription: '',
+        suggestion: '',
+        suggestedText: '',
+        legalBasis: ''
+      }
+    }
+  },
+  onLoad(options) {
+    if (options.riskId) {
+      this.riskId = parseInt(options.riskId)
+    }
+    if (options.contractId) {
+      this.contractId = parseInt(options.contractId)
+    }
+    this.loadRiskDetail()
+  },
+  methods: {
+    // 加载风险详情
+    async loadRiskDetail() {
+      try {
+        const data = await get<any>(`/api/v1/seal/audit/risk/${this.riskId}`);
+        this.risk = data;
+      } catch (error) {
+        console.error('加载风险详情失败', error);
+          uni.showToast({
+          title: error.message || '加载失败',
+            icon: 'none'
+        });
+        }
+    },
+
+    // 切换原文展开/收起
+    toggleTextExpand() {
+      this.isTextExpanded = !this.isTextExpanded;
+    },
+
+    // 获取风险等级样式类
+    getRiskLevelClass() {
+      const classMap = {
+        1: 'high',
+        2: 'medium',
+        3: 'low'
+      }
+      return classMap[this.risk.riskLevel] || 'low'
+    },
+
+    // 获取风险等级文字
+    getRiskLevelText() {
+      const textMap = {
+        1: '高危风险',
+        2: '中危风险',
+        3: '低危风险'
+      }
+      return textMap[this.risk.riskLevel] || '未知风险'
+    },
+
+    // 获取位置文字
+    getLocationText() {
+      if (this.risk.locationType === 1 && this.risk.startPos != null) {
+        return `位于合同第 ${this.risk.startPos}-${this.risk.endPos} 字符`
+      } else if (this.risk.locationType === 2) {
+        return `位于${this.risk.locationValue}`
+      } else if (this.risk.locationType === 3) {
+        return `位于第${this.risk.locationValue}段`
+      }
+      return '位置未知'
+    },
+
+    // 在合同中定位
+    locateInContract() {
+      if (!this.contractId) {
+        uni.showToast({
+          title: '合同ID缺失',
+          icon: 'none'
+        })
+        return
+      }
+
+      // 跳转到合同详情页，并传递定位信息
+      uni.navigateTo({
+        url: `/pages/contract-detail/index?id=${this.contractId}&highlightStart=${this.risk.startPos}&highlightEnd=${this.risk.endPos}`
+      })
+    },
+
+    // 将 Markdown 格式转换为 rich-text 可识别的 HTML
+    formatMarkdown(text: string): string {
+      if (!text) return '暂无内容'
+      
+      // 转义 HTML 特殊字符
+      let html = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+      
+      // 处理换行符：将 \n\n 转换为段落，\n 转换为换行
+      html = html.replace(/\n\n/g, '</p><p style="margin: 10px 0;">')
+      html = html.replace(/\n/g, '<br/>')
+      
+      // 加粗：**文字** -> <strong>文字</strong>
+      html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      
+      // 斜体：*文字* -> <em>文字</em>
+      html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+      
+      // 列表项：- 文字 或 数字. 文字
+      html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<div style="margin: 5px 0;">$1. $2</div>')
+      html = html.replace(/^[-•]\s+(.+)$/gm, '<div style="margin: 5px 0;">• $1</div>')
+      
+      // 包裹在段落标签中
+      html = '<p style="margin: 0; line-height: 1.6;">' + html + '</p>'
+      
+      // 添加样式
+      return `<div style="font-size: 14px; color: #606266; line-height: 1.8;">${html}</div>`
+    }
+  }
+}
+</script>
+
+<style>
+.page-container {
+  flex: 1;
+  background-color: #F7F9FC;
+}
+
+/* 内容滚动区 */
+.content-scroll {
+  flex: 1;
+  padding: 0;
+  padding-bottom: 100rpx;
+}
+
+/* 风险等级卡片 */
+.level-card {
+  background-color: #FFFFFF;
+  border-radius: 16rpx;
+  padding: 40rpx 24rpx;
+  align-items: center;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.06);
+  margin: 16rpx;
+  margin-bottom: 16rpx;
+}
+
+.level-tag {
+  padding: 8rpx 24rpx;
+  border-radius: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.level-tag.high {
+  background-color: rgba(245, 108, 108, 0.1);
+}
+
+.level-tag.medium {
+  background-color: rgba(250, 173, 20, 0.1);
+}
+
+.level-tag.low {
+  background-color: rgba(24, 144, 255, 0.1);
+}
+
+.level-text {
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.level-tag.high .level-text {
+  color: #F56C6C;
+}
+
+.level-tag.medium .level-text {
+  color: #FAAD14;
+}
+
+.level-tag.low .level-text {
+  color: #1890FF;
+}
+
+.risk-type {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 20rpx;
+}
+
+.risk-score-wrapper {
+  flex-direction: row;
+  align-items: baseline;
+}
+
+.risk-score {
+  font-size: 64rpx;
+  font-weight: 700;
+}
+
+.level-tag.high ~ .risk-score-wrapper .risk-score,
+.level-tag.high ~ .risk-score-wrapper .score-unit {
+  color: #F56C6C;
+}
+
+.level-tag.medium ~ .risk-score-wrapper .risk-score,
+.level-tag.medium ~ .risk-score-wrapper .score-unit {
+  color: #FAAD14;
+}
+
+.level-tag.low ~ .risk-score-wrapper .risk-score,
+.level-tag.low ~ .risk-score-wrapper .score-unit {
+  color: #1890FF;
+}
+
+.score-unit {
+  font-size: 28rpx;
+  font-weight: 500;
+  margin-left: 8rpx;
+}
+
+/* 通用卡片 */
+.card {
+  background-color: #FFFFFF;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.06);
+  margin: 16rpx;
+  margin-bottom: 16rpx;
+}
+
+.card-header {
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 20rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid #F0F2F5;
+}
+
+.header-icon {
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  font-size: 32rpx;
+  margin-right: 12rpx;
+  color: #606266;
+}
+
+.header-icon.danger {
+  color: #F56C6C;
+}
+
+.header-icon.suggest {
+  color: #FAAD14;
+}
+
+.header-icon.legal {
+  color: #1890FF;
+}
+
+.card-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #303133;
+}
+
+/* 原文引用 */
+.original-text-wrapper {
+  background-color: #F7F9FC;
+  border-left: 4rpx solid #1890FF;
+  padding: 20rpx;
+  border-radius: 8rpx;
+  margin-bottom: 16rpx;
+}
+
+.original-text {
+  font-size: 28rpx;
+  color: #303133;
+  line-height: 40rpx;
+  /* 默认显示3行，超出显示省略号 */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.original-text.text-expanded {
+  /* 展开后显示全部 */
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+.expand-btn {
+  margin-top: 12rpx;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 8rpx 0;
+}
+
+.expand-text {
+  font-size: 24rpx;
+  color: #1890FF;
+  margin-right: 8rpx;
+}
+
+.expand-btn .fa {
+  font-size: 20rpx;
+  color: #1890FF;
+}
+
+.location-info {
+  flex-direction: row;
+  align-items: center;
+}
+
+.location-icon {
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  font-size: 24rpx;
+  color: #909399;
+  margin-right: 8rpx;
+}
+
+.location-text {
+  font-size: 24rpx;
+  color: #909399;
+}
+
+/* 描述文本 */
+.description-text {
+  font-size: 28rpx;
+  color: #606266;
+  line-height: 40rpx;
+}
+
+/* Rich Text 包装器 */
+.rich-text-wrapper {
+  width: 100%;
+  background-color: #F7F9FC;
+  padding: 20rpx;
+  border-radius: 8rpx;
+  margin-bottom: 16rpx;
+}
+
+.rich-text-wrapper rich-text {
+  width: 100%;
+}
+
+/* 建议文本框 */
+.suggested-box {
+  background-color: rgba(0, 194, 138, 0.05);
+  border-left: 4rpx solid #00C28A;
+  padding: 20rpx;
+  border-radius: 8rpx;
+  margin-top: 20rpx;
+}
+
+.suggested-label {
+  font-size: 24rpx;
+  color: #00C28A;
+  font-weight: 600;
+  margin-bottom: 12rpx;
+}
+
+.suggested-text {
+  font-size: 28rpx;
+  color: #303133;
+  line-height: 40rpx;
+}
+
+/* 底部操作栏 */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #FFFFFF;
+  padding: 12rpx 16rpx;
+  box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.05);
+}
+
+.bottom-btn {
+  width: 100%;
+  height: 88rpx;
+  background-color: #00C28A;
+  border-radius: 44rpx;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.bottom-btn:active {
+  opacity: 0.9;
+}
+
+.btn-icon {
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  font-size: 28rpx;
+  color: #FFFFFF;
+  margin-right: 8rpx;
+}
+
+.btn-text {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #FFFFFF;
+}
+
+.fa {
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  font-size: 26rpx;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  display: inline-block;
+  line-height: 1;
+  text-rendering: auto;
+}
+</style>
+

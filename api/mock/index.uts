@@ -1,0 +1,367 @@
+/**
+ * Mock API 实现
+ * 用于开发阶段模拟后端API响应
+ */
+
+import type { ContractSummary, ContractListResponse, ContractDetail, ContractListParams, ContractStatus } from '../contracts/index';
+import type { Draft, DraftListResponse, DraftType } from './templates';
+
+// 模拟网络延迟
+export function delay(ms: number = 500): Promise<void> {
+    return new Promise<void>((resolve) => {
+        setTimeout(() => {
+            resolve();
+        }, ms);
+    });
+}
+
+// 模拟API响应格式
+export function mockResponse<T>(data: T, code: number = 0, message: string = 'success'): any {
+    return {
+        code,
+        message,
+        data
+    };
+}
+
+// 模拟合同状态摘要数据
+export async function getMockContractSummary(): Promise<ContractSummary> {
+    await delay();
+    
+    return {
+        waitingMe: 20,
+        waitingOthers: 9,
+        completed: 9,
+        draft: 5,
+        total: 43
+    };
+}
+
+// 模拟合同列表数据
+export async function getMockContractList(params: ContractListParams): Promise<ContractListResponse> {
+    await delay();
+    
+    const { status, keyword, page = 1, pageSize = 10 } = params;
+    
+    // 合同类型
+    const contractTypes = ['借款合同', '房屋租赁合同', '劳动合同', '采购合同', '销售合同'];
+    
+    // 签署人
+    const signers = ['张三', '李四', '王五', '赵六', '钱七', '孙八'];
+    
+    // 模拟不同状态的数据
+    const statusMap: {[key: string]: string} = {
+        'waiting_me': '待我签',
+        'waiting_others': '待他人签',
+        'completed': '已完成',
+        'rejected': '已拒签',
+        'revoked': '已撤回',
+        'expired': '已过期',
+        'draft': '草稿'
+    };
+    
+    // 模拟不同状态的颜色
+    const colorMap: {[key: string]: string} = {
+        '待我签': '#FF5722', // 更亮的橙红色
+        '待他人签': '#FFA000', // 更亮的琥珀色
+        '已完成': '#4CAF50', // 更亮的绿色
+        '已拒签': '#F44336', // 更亮的红色
+        '已撤回': '#607D8B', // 更亮的蓝灰色
+        '已过期': '#9E9E9E', // 更亮的灰色
+        '草稿': '#2196F3'  // 更亮的蓝色
+    };
+    
+    // 生成模拟数据
+    const mockList: Contract[] = [];
+    const count = page === 1 ? 10 : (page > 3 ? 0 : 10);
+    
+    for (let i = 0; i < count; i++) {
+        const id = `${page}-${i}`;
+        const contractType = contractTypes[Math.floor(Math.random() * contractTypes.length)];
+        const currentStatus = status || ['waiting_me', 'waiting_others', 'completed', 'rejected', 'revoked', 'expired'][Math.floor(Math.random() * 6)];
+        const createTime = `2023-${Math.floor(Math.random() * 12) + 1}-${Math.floor(Math.random() * 28) + 1} ${Math.floor(Math.random() * 24)}:${Math.floor(Math.random() * 60)}`;
+        const signer = signers[Math.floor(Math.random() * signers.length)];
+        
+        // 如果有关键字搜索且不匹配，则跳过
+        if (keyword && !contractType.includes(keyword) && !signer.includes(keyword)) {
+            continue;
+        }
+        
+        // 获取状态文本
+        const statusText = statusMap[currentStatus as string] || '未知';
+        
+        mockList.push({
+            id,
+            title: `${contractType}（${id}）`,
+            status: statusText,
+            statusColor: colorMap[statusText] || '#333333',
+            createTime,
+            initiator: {
+                id: 'user_1',
+                name: '张三',
+                company: '北京科技有限公司',
+                avatar: '/static/icons/blue-icon.png'
+            },
+            participants: [
+                {
+                    id: 'user_2',
+                    name: signer,
+                    company: '上海贸易有限公司',
+                    status: Math.random() > 0.5 ? 'signed' : 'waiting',
+                    signTime: Math.random() > 0.5 ? createTime : undefined,
+                    avatar: '/static/icons/green-icon.png'
+                }
+            ],
+            isUrgent: Math.random() > 0.7
+        });
+    }
+    
+    return {
+        list: mockList,
+        total: 43,
+        hasMore: page < 3 && count > 0
+    };
+}
+
+// 模拟合同详情数据
+export async function getMockContractDetail(id: string): Promise<ContractDetail> {
+    await delay();
+    
+    return {
+        id,
+        title: '房屋租赁合同',
+        status: 'waiting_me',
+        createTime: '2023-06-28 14:30',
+        expireTime: '2023-07-05 14:30',
+        initiator: {
+            id: 'user_1',
+            name: '张三',
+            company: '北京科技有限公司',
+            avatar: '/static/icons/blue-icon.png'
+        },
+        participants: [
+            {
+                id: 'user_2',
+                name: '李四',
+                company: '上海贸易有限公司',
+                status: 'signed',
+                signTime: '2023-06-28 15:20',
+                avatar: '/static/icons/green-icon.png'
+            },
+            {
+                id: 'user_3',
+                name: '王五',
+                company: '广州服务有限公司',
+                status: 'waiting',
+                avatar: '/static/icons/blue-icon.png'
+            }
+        ],
+        attachments: [
+            {
+                name: '附件1.pdf',
+                size: '2.5MB',
+                url: '#'
+            }
+        ],
+        previewUrl: '#',
+        downloadUrl: '#',
+        canSign: true,
+        canRevoke: false,
+        canUrge: true,
+        canDownload: true,
+        canCopy: true,
+        canDelete: false
+    };
+}
+
+// 模拟草稿列表数据
+export async function getMockDraftList(params: { page: number, size: number }): Promise<DraftListResponse> {
+    await delay();
+    
+    const { page = 1, size = 10 } = params;
+    
+    // 草稿类型
+    const draftTypes: DraftType[] = ['file', 'image', 'template'];
+    
+    // 文件名称
+    const fileNames = ['借款合同草稿', '房屋租赁合同草稿', '劳动合同草稿', '采购合同草稿', '销售合同草稿'];
+    
+    // 生成模拟数据
+    const mockList: Draft[] = [];
+    const count = page === 1 ? 5 : (page > 2 ? 0 : 3);
+    const now = Date.now();
+    
+    for (let i = 0; i < count; i++) {
+        const draftId = `draft-${page}-${i}`;
+        const type = draftTypes[Math.floor(Math.random() * draftTypes.length)];
+        const title = fileNames[Math.floor(Math.random() * fileNames.length)];
+        const progress = Math.floor(Math.random() * 70) + 30; // 30% - 100%
+        const step = Math.floor(Math.random() * 3) + 1; // 1-3
+        const updateTime = now - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000); // 过去7天内
+        const createTime = updateTime - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000); // 更新时间之前
+        
+        mockList.push({
+            draft_id: draftId,
+            title,
+            type,
+            status: 'draft',
+            progress,
+            step,
+            create_time: createTime,
+            update_time: updateTime,
+            content: {
+                file_info: type === 'file' || type === 'image' ? {
+                    file_id: `file-${i}`,
+                    file_name: `${title}.${type === 'file' ? 'pdf' : 'jpg'}`,
+                    file_size: Math.floor(Math.random() * 10 * 1024 * 1024), // 0-10MB
+                    file_type: type === 'file' ? 'application/pdf' : 'image/jpeg',
+                    file_url: type === 'file' ? '/static/templates/loan.png' : '/static/templates/receipt.png'
+                } : undefined,
+                template_info: type === 'template' ? {
+                    template_id: `template-${i}`,
+                    template_name: title,
+                    variables: {
+                        '甲方名称': '张三',
+                        '乙方名称': '李四',
+                        '合同金额': `${Math.floor(Math.random() * 1000) * 100}元`
+                    }
+                } : undefined,
+                signature_fields: step >= 2 ? [
+                    {
+                        id: `sig-${i}-1`,
+                        page: 1,
+                        x: 100,
+                        y: 200,
+                        width: 150,
+                        height: 50,
+                        type: 'signature',
+                        signer_id: 'me'
+                    },
+                    {
+                        id: `sig-${i}-2`,
+                        page: 1,
+                        x: 100,
+                        y: 300,
+                        width: 150,
+                        height: 50,
+                        type: 'signature',
+                        signer_id: 'other'
+                    }
+                ] : [],
+                signers: step >= 3 ? [
+                    {
+                        id: 'me',
+                        name: '我',
+                        phone: '13800138000',
+                        is_me: true
+                    },
+                    {
+                        id: 'other',
+                        name: '李四',
+                        phone: '13900139000'
+                    }
+                ] : []
+            }
+        });
+    }
+    
+    return {
+        total: 8, // 总共8个草稿
+        list: mockList
+    };
+}
+
+// 模拟草稿详情数据
+export async function getMockDraftDetail(draftId: string): Promise<Draft> {
+    await delay();
+    
+    const now = Date.now();
+    const updateTime = now - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000); // 过去7天内
+    const createTime = updateTime - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000); // 更新时间之前
+    
+    return {
+        draft_id: draftId,
+        title: '房屋租赁合同草稿',
+        type: 'file',
+        status: 'draft',
+        progress: 70,
+        step: 2,
+        create_time: createTime,
+        update_time: updateTime,
+        content: {
+            file_info: {
+                file_id: 'file-1',
+                file_name: '房屋租赁合同.pdf',
+                file_size: 2 * 1024 * 1024, // 2MB
+                file_type: 'application/pdf',
+                file_url: '/static/templates/loan.png'
+            },
+            signature_fields: [
+                {
+                    id: 'sig-1',
+                    page: 1,
+                    x: 100,
+                    y: 200,
+                    width: 150,
+                    height: 50,
+                    type: 'signature',
+                    signer_id: 'me'
+                },
+                {
+                    id: 'sig-2',
+                    page: 1,
+                    x: 100,
+                    y: 300,
+                    width: 150,
+                    height: 50,
+                    type: 'signature',
+                    signer_id: 'other'
+                }
+            ],
+            signers: [
+                {
+                    id: 'me',
+                    name: '我',
+                    phone: '13800138000',
+                    is_me: true
+                },
+                {
+                    id: 'other',
+                    name: '李四',
+                    phone: '13900139000'
+                }
+            ]
+        }
+    };
+}
+
+// 模拟保存草稿
+export async function mockSaveDraft(draftData: any): Promise<{ draft_id: string }> {
+    await delay();
+    
+    // 如果有draft_id，表示更新草稿，否则是创建新草稿
+    const draftId = draftData.draft_id || `draft-${Date.now()}`;
+    
+    return {
+        draft_id: draftId
+    };
+}
+
+// 模拟删除草稿
+export async function mockDeleteDraft(draftId: string): Promise<boolean> {
+    await delay();
+    
+    return true;
+}
+
+export default {
+    getMockContractSummary,
+    getMockContractList,
+    getMockContractDetail,
+    getMockDraftList,
+    getMockDraftDetail,
+    mockSaveDraft,
+    mockDeleteDraft,
+    delay,
+    mockResponse
+}; 

@@ -1,0 +1,619 @@
+<template>
+	<view class="page-container">
+		<!-- 内容滚动区域 -->
+		<scroll-view class="content-scroll" scroll-y="true">
+				<!-- 搜索和筛选栏 -->
+				<view class="filter-bar">
+					<view class="filter-item">
+						<text class="filter-label">状态筛选</text>
+						<picker :value="filterStatusIndex" :range="statusOptions" @change="onStatusFilterChange">
+							<view class="picker-text">
+								<text>{{ statusOptions[filterStatusIndex] }}</text>
+								<text class="fa fa-angle-down"></text>
+							</view>
+						</picker>
+					</view>
+				</view>
+
+				<!-- 历史记录列表 -->
+				<view class="history-list" v-if="historyList.length > 0">
+					<view class="history-item" v-for="item in filteredList" :key="item.id" @click="goToReport(item)">
+						<!-- 头部：合同标题和时间 -->
+						<view class="item-header">
+							<view class="header-left">
+								<text class="contract-title">{{ item.contractTitle || '未知合同' }}</text>
+								<view class="audit-type-tag" :class="item.auditType === 2 ? 'deep' : 'standard'">
+									<text class="tag-text">{{ item.auditType === 2 ? '深度审查' : '标准审查' }}</text>
+								</view>
+							</view>
+							<view class="status-badge" :class="getStatusClass(item.status)">
+								<text class="status-text">{{ getStatusText(item.status) }}</text>
+							</view>
+						</view>
+
+						<!-- 时间信息 -->
+						<view class="item-time">
+							<text class="fa fa-clock time-icon"></text>
+							<text class="time-text">{{ formatTime(item.createTime) }}</text>
+						</view>
+
+						<!-- 审查结果摘要（仅完成状态显示） -->
+						<view class="item-summary" v-if="item.status === 1">
+							<view class="summary-item">
+								<text class="summary-label">综合评分</text>
+								<text class="summary-value score" :class="getScoreClass(item.overallScore)">
+									{{ item.overallScore || 0 }}分
+								</text>
+							</view>
+							<view class="summary-divider"></view>
+							<view class="summary-item">
+								<text class="summary-label">风险点</text>
+								<text class="summary-value">
+									<text class="risk-high" v-if="item.highRiskCount > 0">高{{ item.highRiskCount }}</text>
+									<text class="risk-medium" v-if="item.mediumRiskCount > 0"> 中{{ item.mediumRiskCount }}</text>
+									<text class="risk-low" v-if="item.lowRiskCount > 0"> 低{{ item.lowRiskCount }}</text>
+								</text>
+							</view>
+						</view>
+
+						<!-- 失败原因（仅失败状态显示） -->
+						<view class="item-error" v-if="item.status === 2">
+							<text class="fa fa-exclamation-circle error-icon"></text>
+							<text class="error-text">{{ item.errorMessage || '审查失败，请重试' }}</text>
+						</view>
+
+						<!-- 操作按钮 -->
+						<view class="item-actions" @click.stop>
+							<view class="action-btn view-btn" @click="goToReport(item)" v-if="item.status === 1">
+								<text class="fa fa-file-text"></text>
+								<text class="btn-text">查看报告</text>
+							</view>
+							<view class="action-btn retry-btn" @click="retryAudit(item)" v-if="item.status === 2">
+								<text class="fa fa-redo"></text>
+								<text class="btn-text">重新审查</text>
+							</view>
+							<view class="action-btn progress-btn" @click="goToProgress(item)" v-if="item.status === 0">
+								<text class="fa fa-spinner"></text>
+								<text class="btn-text">查看进度</text>
+							</view>
+						</view>
+					</view>
+				</view>
+
+				<!-- 空状态 -->
+				<view class="empty-state" v-if="!loading && historyList.length === 0">
+					<text class="fa fa-folder-open empty-icon"></text>
+					<text class="empty-text">暂无审查历史</text>
+					<text class="empty-hint">点击"选择合同"开始您的第一次AI审查</text>
+					<view class="empty-btn" @click="goToContractList">
+						<text class="fa fa-plus"></text>
+						<text class="btn-text">选择合同</text>
+					</view>
+				</view>
+
+				<!-- 加载状态 -->
+				<view class="loading-state" v-if="loading">
+					<text class="fa fa-spinner fa-spin loading-icon"></text>
+					<text class="loading-text">加载中...</text>
+			</view>
+		</scroll-view>
+	</view>
+</template>
+
+<script lang="uts">
+import { get, post } from '../../api/index';
+
+export default {
+	data() {
+		return {
+			loading: false,
+			historyList: [] as any[],
+			filterStatusIndex: 0,
+			statusOptions: ['全部', '审查中', '已完成', '审查失败']
+		}
+	},
+	computed: {
+		// 根据筛选条件过滤列表
+		filteredList(): any[] {
+			if (this.filterStatusIndex === 0) {
+				return this.historyList;
+			}
+			// 1-审查中, 2-已完成, 3-审查失败
+			const statusMap = { 1: 0, 2: 1, 3: 2 };
+			const targetStatus = statusMap[this.filterStatusIndex];
+			return this.historyList.filter(item => item.status === targetStatus);
+		}
+	},
+	onLoad() {
+		this.loadHistory();
+	},
+	methods: {
+		// 加载审查历史
+		async loadHistory() {
+			try {
+				this.loading = true;
+				const data = await get<any[]>('/api/v1/seal/audit/my-history');
+				this.historyList = data || [];
+			} catch (error) {
+				console.error('加载审查历史失败', error);
+				uni.showToast({
+					title: error.message || '加载失败',
+					icon: 'none'
+				});
+			} finally {
+				this.loading = false;
+			}
+		},
+
+		// 状态筛选变化
+		onStatusFilterChange(e: any) {
+			this.filterStatusIndex = e.detail.value;
+		},
+
+		// 获取状态样式类
+		getStatusClass(status: number): string {
+			const classMap = {
+				0: 'processing',
+				1: 'success',
+				2: 'error'
+			};
+			return classMap[status] || 'processing';
+		},
+
+		// 获取状态文字
+		getStatusText(status: number): string {
+			const textMap = {
+				0: '审查中',
+				1: '已完成',
+				2: '审查失败'
+			};
+			return textMap[status] || '未知';
+		},
+
+		// 获取分数样式类
+		getScoreClass(score: number): string {
+			if (score >= 80) return 'high';
+			if (score >= 60) return 'medium';
+			return 'low';
+		},
+
+		// 格式化时间
+		formatTime(timestamp: number): string {
+			if (!timestamp) return '';
+			const date = new Date(timestamp);
+			const year = date.getFullYear();
+			const month = String(date.getMonth() + 1).padStart(2, '0');
+			const day = String(date.getDate()).padStart(2, '0');
+			const hours = String(date.getHours()).padStart(2, '0');
+			const minutes = String(date.getMinutes()).padStart(2, '0');
+			return `${year}-${month}-${day} ${hours}:${minutes}`;
+		},
+
+		// 跳转到报告页面
+		goToReport(item: any) {
+			if (item.status === 1) {
+				uni.navigateTo({
+					url: `/pages/contract-audit/report?taskId=${item.id}&contractId=${item.contractId}`
+				});
+			}
+		},
+
+		// 跳转到进度页面
+		goToProgress(item: any) {
+			uni.navigateTo({
+				url: `/pages/contract-audit/progress?taskId=${item.id}&contractId=${item.contractId}`
+			});
+		},
+
+		// 重新审查
+		async retryAudit(item: any) {
+			try {
+				const result = await uni.showModal({
+					title: '确认重新审查',
+					content: '是否重新审查该合同？',
+					confirmText: '确认',
+					cancelText: '取消'
+				});
+				
+				if (!result.confirm) {
+					return;
+				}
+
+				uni.showLoading({ title: '提交中...' });
+				const data = await post<number>('/api/v1/seal/audit/retry', {
+					taskId: item.id
+			}, {
+				timeout: 180000  // AI审查需要3分钟超时
+				});
+				
+				uni.hideLoading();
+				uni.showToast({
+					title: '已重新提交审查',
+					icon: 'success'
+				});
+
+				// 跳转到进度页面
+				setTimeout(() => {
+					uni.navigateTo({
+						url: `/pages/contract-audit/progress?taskId=${data}&contractId=${item.contractId}`
+					});
+				}, 1000);
+			} catch (error) {
+				uni.hideLoading();
+				console.error('重新审查失败', error);
+				uni.showToast({
+					title: error.message || '操作失败',
+					icon: 'none'
+				});
+			}
+		},
+
+		// 跳转到合同列表
+		goToContractList() {
+			uni.switchTab({
+				url: '/pages/contract-manage/index'
+			});
+		}
+	}
+}
+</script>
+
+<style lang="scss">
+.page-container {
+	flex: 1;
+	background-color: #F7F9FC;
+}
+
+.content-scroll {
+	flex: 1;
+	padding: 0;
+}
+
+/* 筛选栏 */
+.filter-bar {
+	background-color: #FFFFFF;
+	border-radius: 0;
+	padding: 20rpx 16rpx;
+	margin-bottom: 0;
+	box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.04);
+}
+
+.filter-item {
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.filter-label {
+	font-size: 28rpx;
+	color: #303133;
+	font-weight: 500;
+}
+
+.picker-text {
+	flex-direction: row;
+	align-items: center;
+	color: #1890FF;
+	font-size: 28rpx;
+}
+
+.picker-text .fa {
+	margin-left: 8rpx;
+	font-size: 24rpx;
+}
+
+/* 历史记录列表 */
+.history-list {
+	flex-direction: column;
+	padding: 0;
+	background-color: transparent;
+}
+
+.history-item {
+	background-color: #FFFFFF;
+	border-radius: 8rpx;
+	padding: 24rpx;
+	margin: 16rpx;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+/* 头部 */
+.item-header {
+	flex-direction: row;
+	align-items: flex-start;
+	justify-content: space-between;
+	margin-bottom: 16rpx;
+}
+
+.header-left {
+	flex: 1;
+	flex-direction: row;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.contract-title {
+	font-size: 32rpx;
+	color: #303133;
+	font-weight: 600;
+	margin-right: 16rpx;
+}
+
+.audit-type-tag {
+	padding: 4rpx 12rpx;
+	border-radius: 20rpx;
+	background-color: rgba(24, 144, 255, 0.08);
+}
+
+.audit-type-tag.deep {
+	background-color: rgba(128, 0, 128, 0.08);
+}
+
+.audit-type-tag .tag-text {
+	font-size: 22rpx;
+	color: #1890FF;
+}
+
+.audit-type-tag.deep .tag-text {
+	color: #800080;
+}
+
+.status-badge {
+	padding: 6rpx 16rpx;
+	border-radius: 20rpx;
+}
+
+.status-badge.processing {
+	background-color: rgba(24, 144, 255, 0.1);
+}
+
+.status-badge.success {
+	background-color: rgba(0, 194, 138, 0.1);
+}
+
+.status-badge.error {
+	background-color: rgba(245, 108, 108, 0.1);
+}
+
+.status-text {
+	font-size: 24rpx;
+}
+
+.status-badge.processing .status-text {
+	color: #1890FF;
+}
+
+.status-badge.success .status-text {
+	color: #00C28A;
+}
+
+.status-badge.error .status-text {
+	color: #F56C6C;
+}
+
+/* 时间 */
+.item-time {
+	flex-direction: row;
+	align-items: center;
+	margin-bottom: 20rpx;
+}
+
+.time-icon {
+	font-size: 24rpx;
+	color: #909399;
+	margin-right: 8rpx;
+}
+
+.time-text {
+	font-size: 24rpx;
+	color: #909399;
+}
+
+/* 摘要信息 */
+.item-summary {
+	flex-direction: row;
+	align-items: center;
+	padding: 20rpx;
+	background-color: #F7F9FC;
+	border-radius: 12rpx;
+	margin-bottom: 20rpx;
+}
+
+.summary-item {
+	flex: 1;
+	flex-direction: column;
+	align-items: center;
+}
+
+.summary-label {
+	font-size: 24rpx;
+	color: #909399;
+	margin-bottom: 8rpx;
+}
+
+.summary-value {
+	font-size: 28rpx;
+	color: #303133;
+	font-weight: 600;
+}
+
+.summary-value.score.high {
+	color: #00C28A;
+}
+
+.summary-value.score.medium {
+	color: #FAAD14;
+}
+
+.summary-value.score.low {
+	color: #F56C6C;
+}
+
+.risk-high {
+	color: #F56C6C;
+	margin-right: 8rpx;
+}
+
+.risk-medium {
+	color: #FAAD14;
+	margin-right: 8rpx;
+}
+
+.risk-low {
+	color: #1890FF;
+}
+
+.summary-divider {
+	width: 2rpx;
+	height: 60rpx;
+	background-color: #DCDFE6;
+}
+
+/* 错误信息 */
+.item-error {
+	flex-direction: row;
+	align-items: center;
+	padding: 16rpx 20rpx;
+	background-color: rgba(245, 108, 108, 0.1);
+	border-radius: 8rpx;
+	margin-bottom: 20rpx;
+}
+
+.error-icon {
+	font-size: 28rpx;
+	color: #F56C6C;
+	margin-right: 12rpx;
+}
+
+.error-text {
+	flex: 1;
+	font-size: 24rpx;
+	color: #F56C6C;
+	line-height: 36rpx;
+}
+
+/* 操作按钮 */
+.item-actions {
+	flex-direction: row;
+	justify-content: flex-end;
+}
+
+.action-btn {
+	flex-direction: row;
+	align-items: center;
+	padding: 12rpx 24rpx;
+	border-radius: 20rpx;
+	margin-left: 16rpx;
+}
+
+.view-btn {
+	background-color: #1890FF;
+}
+
+.retry-btn {
+	background-color: #FAAD14;
+}
+
+.progress-btn {
+	background-color: #00C28A;
+}
+
+.action-btn .fa {
+	font-size: 24rpx;
+	color: #FFFFFF;
+	margin-right: 8rpx;
+}
+
+.action-btn .btn-text {
+	font-size: 24rpx;
+	color: #FFFFFF;
+}
+
+/* 空状态 */
+.empty-state {
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 100rpx 40rpx;
+	background-color: #F7F9FC;
+}
+
+.empty-icon {
+	font-size: 120rpx;
+	color: #C0C4CC;
+	margin-bottom: 30rpx;
+}
+
+.empty-text {
+	font-size: 32rpx;
+	color: #909399;
+	margin-bottom: 16rpx;
+}
+
+.empty-hint {
+	font-size: 26rpx;
+	color: #C0C4CC;
+	margin-bottom: 40rpx;
+	text-align: center;
+}
+
+.empty-btn {
+	flex-direction: row;
+	align-items: center;
+	padding: 16rpx 40rpx;
+	background-color: #1890FF;
+	border-radius: 40rpx;
+}
+
+.empty-btn .fa {
+	font-size: 28rpx;
+	color: #FFFFFF;
+	margin-right: 12rpx;
+}
+
+.empty-btn .btn-text {
+	font-size: 28rpx;
+	color: #FFFFFF;
+}
+
+/* 加载状态 */
+.loading-state {
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 120rpx 60rpx;
+}
+
+.loading-icon {
+	font-size: 80rpx;
+	color: #1890FF;
+	margin-bottom: 30rpx;
+}
+
+.loading-text {
+	font-size: 28rpx;
+	color: #909399;
+}
+
+/* FontAwesome 基础样式 */
+.fa {
+	font-family: 'Font Awesome 6 Free';
+	font-weight: 900;
+	font-style: normal;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+.fa-spin {
+	animation: fa-spin 1s linear infinite;
+}
+
+@keyframes fa-spin {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+</style>

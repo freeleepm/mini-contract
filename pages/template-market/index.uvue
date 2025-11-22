@@ -1,0 +1,919 @@
+<script>
+import { 
+  getTemplateList, 
+  getFrequentlyUsedTemplates,
+  getHotTemplates,
+  recordTemplateUsage,
+  getTemplateCategories
+} from '../../api/templates/index';
+import type { Template, TemplateCategory, TemplateListParams } from '../../api/templates/index';
+
+export default {
+  data() {
+    return {
+      // 模板列表
+      templateList: [] as Template[],
+      // 常用模板
+      frequentTemplates: [] as Template[],
+      // 热门模板
+      hotTemplates: [] as Template[],
+      // 分类列表（从数据库动态加载）
+      categories: [] as Array<{ id: string; name: string; icon: string; code: string; templateCount?: number }>,
+      // 当前选中的分类
+      currentCategory: 'all' as TemplateCategory,
+      // 搜索关键字
+      searchText: '',
+      // 加载状态
+      isLoading: false,
+      // 分页
+      page: 1,
+      pageSize: 10,
+      hasMore: true,
+      // 提示文本
+      loadingText: '加载中...'
+    }
+  },
+  onLoad() {
+    // 并行加载分类列表、常用、热门、分类模板
+    this.loadCategories();
+    this.loadFrequentTemplates();
+    this.loadHotTemplates();
+    this.loadTemplates(true);
+  },
+  onPullDownRefresh() {
+    // 下拉刷新
+    this.refreshList();
+  },
+  onReachBottom() {
+    // 上拉加载更多
+    if (this.hasMore && !this.isLoading) {
+      this.loadMoreTemplates();
+    }
+  },
+  methods: {
+    // 新增：加载常用模板
+    async loadFrequentTemplates(): Promise<void> {
+      try {
+        const result = await getFrequentlyUsedTemplates(8);
+        this.frequentTemplates = result || [];
+        console.log('常用模板加载成功:', this.frequentTemplates.length);
+      } catch (error) {
+        console.error('加载常用模板失败:', error);
+        // 失败时不影响其他功能
+      }
+    },
+    
+    // 新增：加载热门模板
+    async loadHotTemplates(): Promise<void> {
+      try {
+        const result = await getHotTemplates(6);
+        this.hotTemplates = result || [];
+        console.log('热门模板加载成功:', this.hotTemplates.length);
+      } catch (error) {
+        console.error('加载热门模板失败:', error);
+        // 失败时不影响其他功能
+      }
+    },
+    
+    // 新增：加载模板分类列表
+    async loadCategories(): Promise<void> {
+      try {
+        const result = await getTemplateCategories();
+        
+        // 图标映射：根据分类code映射到对应的icon class
+        const iconMap: Record<string, string> = {
+          'employment': 'icon-user',        // 劳动合同
+          'lease': 'icon-building',         // 租赁合同
+          'purchase': 'icon-package',       // 采购合同
+          'sales': 'icon-chart-line',       // 销售合同
+          'service': 'icon-settings',       // 服务合同
+          'agency': 'icon-user-check',      // 代理合同
+          'cooperation': 'icon-users',      // 合作合同
+          'confidentiality': 'icon-shield', // 保密协议
+          'authorization': 'icon-key',      // 授权书
+          'other': 'icon-file'              // 其他
+        };
+        
+        // 转换分类数据，添加图标
+        const categories = (result || []).map((item: any) => ({
+          id: item.code,  // 使用code作为id
+          name: item.name,
+          icon: iconMap[item.code] || 'icon-file',  // 使用映射的图标，默认为file图标
+          code: item.code,
+          templateCount: item.templateCount || 0
+        }));
+        
+        // 在最前面添加"全部"分类
+        this.categories = [
+          { id: 'all', name: '全部', icon: 'icon-file', code: 'all' },
+          ...categories
+        ];
+        
+        console.log('分类列表加载成功:', this.categories.length);
+      } catch (error) {
+        console.error('加载分类列表失败:', error);
+        // 失败时使用默认的分类列表
+        this.categories = [
+          { id: 'all', name: '全部', icon: 'icon-file', code: 'all' }
+        ];
+      }
+    },
+    
+    // 选择分类
+    selectCategory(category: string): void {
+      if (this.currentCategory === category) {
+        return;
+      }
+      
+      this.currentCategory = category as TemplateCategory;
+      this.refreshList();
+    },
+    
+    
+    // 搜索模板
+    searchTemplates(): void {
+      if (!this.searchText.trim()) {
+        uni.showToast({
+          title: '请输入搜索关键词',
+          icon: 'none'
+        });
+        return;
+      }
+      
+      this.refreshList();
+    },
+    
+    // 刷新列表
+    refreshList(): void {
+      this.page = 1;
+      this.templateList = [];
+      this.hasMore = true;
+      this.loadTemplates(true);
+      
+      // 停止下拉刷新
+      uni.stopPullDownRefresh();
+    },
+    
+    // 加载更多
+    loadMoreTemplates(): void {
+      if (this.isLoading) return;
+      
+      this.page++;
+      this.loadTemplates(false);
+    },
+    
+    // 加载模板列表
+    async loadTemplates(showLoading: boolean): Promise<void> {
+      if (this.isLoading) return;
+      
+      this.isLoading = true;
+      
+      if (showLoading) {
+        uni.showLoading({
+          title: '加载中'
+        });
+      }
+      
+      try {
+        // 构建请求参数
+        const params = {
+          category: this.currentCategory,
+          keyword: this.searchText,
+          page: this.page,
+          pageSize: this.pageSize
+        };
+        
+        console.log('加载模板列表参数:', params);
+        
+        // 使用真实API
+        const result = await getTemplateList(params);
+        
+        // 追加数据
+        if (result.list && result.list.length > 0) {
+          this.templateList = [...this.templateList, ...result.list];
+        }
+        
+        // 更新是否有更多数据
+        this.hasMore = result.hasMore;
+        
+        // 如果没有更多数据且列表为空，显示空状态
+        if (!this.hasMore && this.templateList.length === 0) {
+          this.loadingText = '暂无模板';
+        }
+        
+      } catch (error) {
+        console.error('加载模板列表失败:', error);
+        uni.showToast({
+          title: '加载失败，请重试',
+          icon: 'none'
+        });
+      } finally {
+        this.isLoading = false;
+        if (showLoading) {
+          uni.hideLoading();
+        }
+      }
+    },
+    
+    // 查看模板详情
+    viewTemplateDetail(template: Template): void {
+      // 记录模板使用
+      recordTemplateUsage(template.id).catch(err => {
+        console.error('记录模板使用失败:', err);
+      });
+      
+      // 跳转到模板详情页
+      uni.navigateTo({
+        url: `/pages/template-detail/index?id=${template.id}`
+      });
+    },
+    
+    
+    // 获取分类名称
+    getCategoryName(categoryId: string): string {
+      const category = this.categories.find(c => c.id === categoryId);
+      return category ? category.name : categoryId;
+    },
+    
+    // 获取分类颜色
+    getTypeColor(categoryId: string): string {
+      const colorMap: Record<string, string> = {
+        'loan': '#4A6FE3',
+        'purchase': '#F56C6C',
+        'employment': '#E6A23C',
+        'lease': '#67C23A',
+        'service': '#909399',
+        'other': '#9254DE',
+        'all': '#00C28A'
+      };
+      return colorMap[categoryId] || '#909399';
+    },
+    
+    // 获取分类颜色（别名方法）
+    getCategoryColor(categoryId: string): string {
+      return this.getTypeColor(categoryId);
+    },
+    
+    // 格式化数字
+    formatNumber(num: number): string {
+      if (num >= 10000) {
+        return (num / 10000).toFixed(1) + 'w';
+      }
+      return num.toString();
+    },
+    
+    // 格式化日期
+    formatDate(dateStr: string): string {
+      if (!dateStr) return '';
+      
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diff = now.getTime() - date.getTime();
+      
+      // 小于1天
+      if (diff < 86400000) {
+        const hours = Math.floor(diff / 3600000);
+        if (hours < 1) {
+          const minutes = Math.floor(diff / 60000);
+          return `${minutes}分钟前`;
+        }
+        return `${hours}小时前`;
+      }
+      
+      // 小于7天
+      if (diff < 604800000) {
+        const days = Math.floor(diff / 86400000);
+        return `${days}天前`;
+      }
+      
+      // 显示日期
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      return `${month}月${day}日`;
+    }
+  }
+}
+</script>
+  
+<template>
+  <view class="page">
+    <!-- 搜索栏 -->
+    <view class="search-bar">
+      <view class="search-input-box">
+        <text class="icon icon-search search-icon"></text>
+        <input
+          class="search-input"
+          type="text"
+          v-model="searchText"
+          placeholder="搜索合同模板"
+          placeholder-class="search-placeholder"
+          confirm-type="search"
+          @confirm="searchTemplates"
+        />
+        <text v-if="searchText" class="icon icon-clear clear-icon" @click="searchText = ''"></text>
+        </view>
+      <text class="search-btn" @click="searchTemplates">搜索</text>
+    </view>
+    
+    <!-- 内容区域 -->
+    <scroll-view 
+      scroll-y="true" 
+      class="content"
+      enable-back-to-top="true"
+      @scrolltolower="loadMoreTemplates"
+    >
+      <!-- 常用模板 -->
+      <view v-if="frequentTemplates.length > 0" class="section">
+        <view class="section-header">
+          <text class="section-title">常用模板</text>
+          <text class="section-desc">为您推荐常用的合同模板</text>
+        </view>
+        <scroll-view scroll-x="true" class="frequent-scroll" show-scrollbar="false">
+          <view class="frequent-list">
+        <view
+              v-for="(template, index) in frequentTemplates"
+          :key="index"
+              class="frequent-item"
+          @click="viewTemplateDetail(template)"
+        >
+              <view class="frequent-icon" :style="{ backgroundColor: getTypeColor(template.category) + '20' }">
+                <text class="icon icon-file" :style="{ color: getTypeColor(template.category) }"></text>
+            </view>
+              <text class="frequent-name">{{ template.name }}</text>
+              <text class="frequent-count">{{ formatNumber(template.useCount || 0) }}次</text>
+        </view>
+      </view>
+    </scroll-view>
+          </view>
+          
+      <!-- 热门模板 -->
+      <view v-if="hotTemplates.length > 0" class="section">
+        <view class="section-header">
+          <text class="section-title">热门推荐</text>
+          <text class="section-desc">大家都在用的合同模板</text>
+                </view>
+        <view class="hot-grid">
+        <view
+            v-for="(template, index) in hotTemplates"
+          :key="index"
+            class="hot-item"
+          @click="viewTemplateDetail(template)"
+        >
+            <view class="hot-header">
+              <view class="hot-tag" :style="{ color: getTypeColor(template.category) }">
+                {{ getCategoryName(template.category) }}
+            </view>
+              <text v-if="template.isHot" class="icon icon-fire hot-badge"></text>
+              </view>
+            <text class="hot-name">{{ template.name }}</text>
+            <text class="hot-desc">{{ template.description }}</text>
+            <view class="hot-footer">
+              <text class="icon icon-chart hot-icon"></text>
+              <text class="hot-count">{{ formatNumber(template.useCount || 0) }}次使用</text>
+            </view>
+              </view>
+            </view>
+          </view>
+          
+      <!-- 分类选择 -->
+      <view class="section category-section">
+        <view class="section-header">
+          <text class="section-title">选择分类</text>
+          <text class="section-desc">快速查找您需要的合同模板</text>
+                </view>
+        <view class="category-grid">
+          <view
+            v-for="(category, index) in categories"
+            :key="index"
+            class="category-card"
+            :class="{ active: currentCategory === category.id }"
+            @click="selectCategory(category.id)"
+          >
+            <view class="category-card-icon" :style="{ backgroundColor: getCategoryColor(category.id) }">
+              <text :class="'icon ' + category.icon"></text>
+                </view>
+            <text class="category-card-name">{{ category.name }}</text>
+              </view>
+            </view>
+          </view>
+          
+      <!-- 全部模板 -->
+      <view class="section">
+        <view v-if="currentCategory !== 'all'" class="section-header">
+          <text class="section-title">{{ getCategoryName(currentCategory) }}</text>
+            </view>
+          
+        <view class="template-list">
+          <view
+            v-for="(template, index) in templateList"
+            :key="index"
+            class="template-item"
+            @click="viewTemplateDetail(template)"
+          >
+            <view class="template-header">
+              <view class="template-tag" :style="{ color: getTypeColor(template.category) }">
+                {{ getCategoryName(template.category) }}
+              </view>
+              <view class="template-badges">
+                <text v-if="template.isOfficial" class="badge official">官方</text>
+                <text v-if="template.isHot" class="badge hot">热门</text>
+              </view>
+            </view>
+            
+            <text class="template-name">{{ template.name }}</text>
+            <text class="template-desc">{{ template.description }}</text>
+            
+            <view class="template-footer">
+              <view class="template-meta">
+                <text class="icon icon-eye meta-icon"></text>
+                <text class="meta-text">{{ formatNumber(template.useCount || 0) }}</text>
+              </view>
+              <text class="template-time">{{ formatDate(template.updateTime) }}</text>
+            </view>
+          </view>
+        </view>
+        
+        <!-- 空状态 -->
+        <view v-if="!isLoading && templateList.length === 0" class="empty">
+          <text class="icon icon-empty empty-icon"></text>
+          <text class="empty-text">暂无模板</text>
+          <text class="empty-desc">该分类下暂无合同模板</text>
+        </view>
+        
+        <!-- 加载中 -->
+        <view v-if="isLoading" class="loading">
+          <view class="loading-spinner"></view>
+          <text class="loading-text">加载中...</text>
+        </view>
+        
+        <!-- 到底了 -->
+        <view v-if="!isLoading && !hasMore && templateList.length > 0" class="bottom">
+          <text class="bottom-text">已显示全部</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</template>
+  
+<style>
+/* ========== 页面容器 ========== */
+.page {
+  flex: 1;
+  background-color: #F7F8FA;
+}
+
+/* ========== 图标字体 ========== */
+/* 图标样式已在全局 App.uvue 中通过 fontawesome.css 引入 */
+/* 无需在页面内重复定义，直接使用全局图标类即可 */
+
+.empty-icon {
+  font-size: 120rpx;
+  color: #DDDDDD;
+}
+
+.hot-badge {
+  color: #FF6B6B;
+  font-size: 28rpx;
+}
+
+.hot-icon {
+  font-size: 24rpx;
+  color: #999999;
+}
+
+.meta-icon {
+  font-size: 24rpx;
+  color: #999999;
+}
+
+/* ========== 搜索栏 ========== */
+.search-bar {
+  background-color: #FFFFFF;
+  padding: 20rpx 32rpx;
+  flex-direction: row;
+  align-items: center;
+  border-bottom: 1rpx solid #F0F0F0;
+}
+
+.search-input-box {
+  flex: 1;
+  height: 72rpx;
+  background-color: #F7F8FA;
+  border-radius: 36rpx;
+  flex-direction: row;
+  align-items: center;
+  padding: 0 24rpx;
+  margin-right: 20rpx;
+}
+
+.search-input {
+  flex: 1;
+  height: 72rpx;
+  font-size: 28rpx;
+  color: #1A1A1A;
+  margin-left: 16rpx;
+}
+
+.search-icon {
+  font-size: 28rpx;
+  color: #999999;
+}
+
+.clear-icon {
+  font-size: 32rpx;
+  color: #CCCCCC;
+}
+
+.search-placeholder {
+  color: #999999;
+}
+
+.search-btn {
+  font-size: 28rpx;
+  color: #00C28A;
+  font-weight: 500;
+}
+
+/* ========== 分类选择区域 ========== */
+.category-section {
+  margin-top: 24rpx;
+  padding-top: 4rpx; /* 增加顶部内边距，避免第一行选中时上边框被遮挡 */
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20rpx;
+}
+
+.category-card {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24rpx 16rpx;
+  background-color: #FFFFFF;
+  border-radius: 12rpx;
+  border: 2rpx solid #F0F0F0;
+  transition-property: border-color, background-color, box-shadow;
+  transition-duration: 0.2s;
+  transition-timing-function: ease;
+}
+
+.category-card.active {
+  background-color: #E6F7FF;
+  border-color: #00C28A;
+  box-shadow: 0 2rpx 12rpx rgba(0, 194, 138, 0.15); /* 用阴影代替transform，避免上边框被遮挡 */
+}
+
+.category-card-icon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12rpx;
+}
+
+.category-card-icon .icon {
+  font-size: 32rpx;
+  color: #FFFFFF;
+}
+
+.category-card-name {
+  font-size: 24rpx;
+  color: #666666;
+  text-align: center;
+  font-weight: 500;
+}
+
+.category-card.active .category-card-name {
+  color: #00C28A;
+  font-weight: 600;
+}
+
+/* ========== 内容区域 ========== */
+.content {
+  flex: 1;
+}
+
+/* ========== 区块容器 ========== */
+.section {
+  margin-top: 24rpx;
+  padding: 0 32rpx;
+}
+
+.section-header {
+  margin-bottom: 24rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1A1A1A;
+  margin-bottom: 8rpx;
+}
+
+.section-desc {
+  font-size: 24rpx;
+  color: #999999;
+}
+
+/* ========== 常用模板 ========== */
+.frequent-scroll {
+  height: 220rpx; /* 增加高度以容纳完整内容 */
+  width: 100%;
+}
+
+.frequent-list {
+  display: flex; /* 添加 flex 布局 */
+  flex-direction: row;
+  padding-bottom: 16rpx; /* 只保留底部内边距，左右边距由父容器 .section 提供 */
+  white-space: nowrap; /* 防止换行 */
+}
+
+.frequent-item {
+  display: flex; /* 添加 flex 布局 */
+  flex-direction: column; /* 垂直排列 */
+  width: 240rpx;
+  min-height: 180rpx; /* 使用 min-height 替代固定 height */
+  background-color: #FFFFFF;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-right: 16rpx;
+  box-shadow: 0 2rpx 16rpx rgba(0, 0, 0, 0.04);
+  flex-shrink: 0; /* 防止在横向滚动时被压缩 */
+}
+
+.frequent-item:last-child {
+  margin-right: 0; /* 最后一个不需要右边距 */
+}
+
+.frequent-icon {
+  display: flex; /* 添加 flex 布局 */
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 12rpx;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16rpx;
+}
+
+.frequent-name {
+  font-size: 26rpx;
+  color: #1A1A1A;
+  font-weight: 500;
+  margin-bottom: 8rpx;
+  lines: 2; /* 改为2行显示 */
+  text-overflow: ellipsis;
+  overflow: hidden;
+  word-break: break-all; /* 允许单词内换行 */
+  line-height: 1.4; /* 添加行高以改善可读性 */
+  max-height: 72rpx; /* 限制最大高度为2行 */
+}
+
+.frequent-count {
+  font-size: 22rpx;
+  color: #999999;
+  margin-top: auto; /* 自动将次数推到底部 */
+}
+
+/* ========== 热门模板 ========== */
+.hot-grid {
+  display: flex; /* 添加 flex 布局 */
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 20rpx; /* 使用 gap 属性统一设置间距 */
+  /* 左右边距由父容器 .section 提供，不需要重复设置 */
+}
+
+.hot-item {
+  display: flex; /* 添加 flex 布局 */
+  flex-direction: column; /* 垂直排列 */
+  width: 333rpx; /* 宽度计算：(750 - 32*2 - 20) / 2 = 333rpx，一行显示2个，中间间距20rpx */
+  flex-shrink: 0; /* 防止被压缩 */
+  background-color: #FFFFFF;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 0; /* 移除 margin-bottom，改用 gap */
+  box-shadow: 0 2rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+
+.hot-header {
+  display: flex; /* 添加 flex 布局 */
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.hot-tag {
+  font-size: 22rpx;
+  font-weight: 500;
+}
+
+.hot-badge {
+  font-size: 28rpx;
+}
+
+.hot-name {
+  font-size: 28rpx;
+  color: #1A1A1A;
+  font-weight: 500;
+  margin-bottom: 12rpx;
+  lines: 2; /* 改为2行显示，与常用模板保持一致 */
+  text-overflow: ellipsis;
+  overflow: hidden;
+  word-break: break-all; /* 允许单词内换行 */
+  line-height: 1.4; /* 添加行高 */
+  max-height: 78rpx; /* 限制最大高度为2行 */
+}
+
+.hot-desc {
+  font-size: 24rpx;
+  color: #666666;
+  margin-bottom: 16rpx;
+  lines: 2;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  line-height: 1.5;
+  max-height: 72rpx; /* 限制最大高度 */
+}
+
+.hot-footer {
+  flex-direction: row;
+  align-items: center;
+}
+
+.hot-icon {
+  margin-right: 8rpx;
+}
+
+.hot-count {
+  font-size: 22rpx;
+  color: #999999;
+}
+
+/* ========== 模板列表 ========== */
+.template-list {
+  margin-top: 16rpx;
+  /* 左右边距由父容器 .section 提供，不需要重复设置 */
+}
+
+.template-item {
+  display: flex; /* 添加 flex 布局 */
+  flex-direction: column; /* 垂直排列 */
+  background-color: #FFFFFF;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 2rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+
+.template-header {
+  display: flex; /* 添加 flex 布局 */
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.template-tag {
+  font-size: 22rpx;
+  font-weight: 500;
+}
+
+.template-badges {
+  display: flex; /* 添加 flex 布局 */
+  flex-direction: row;
+  align-items: center;
+}
+
+.badge {
+  padding: 4rpx 12rpx;
+  border-radius: 4rpx;
+  font-size: 20rpx;
+  margin-left: 8rpx;
+}
+
+.badge.official {
+  background-color: #FFF7E6;
+  color: #FA8C16;
+}
+
+.badge.hot {
+  background-color: #FFF1F0;
+  color: #FF4D4F;
+}
+
+.template-name {
+  font-size: 30rpx;
+  color: #1A1A1A;
+  font-weight: 500;
+  margin-bottom: 12rpx;
+  lines: 2; /* 改为2行显示 */
+  text-overflow: ellipsis;
+  overflow: hidden;
+  word-break: break-all; /* 允许单词内换行 */
+  line-height: 1.4; /* 添加行高 */
+  max-height: 84rpx; /* 限制最大高度为2行 */
+}
+
+.template-desc {
+  font-size: 26rpx;
+  color: #666666;
+  margin-bottom: 16rpx;
+  lines: 2;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  line-height: 1.5;
+  max-height: 78rpx; /* 限制最大高度为2行 */
+}
+
+.template-footer {
+  display: flex; /* 添加 flex 布局 */
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.template-meta {
+  display: flex; /* 添加 flex 布局 */
+  flex-direction: row;
+  align-items: center;
+}
+
+.meta-icon {
+  margin-right: 8rpx;
+}
+
+.meta-text {
+  font-size: 22rpx;
+  color: #999999;
+}
+
+.template-time {
+  font-size: 22rpx;
+  color: #CCCCCC;
+}
+
+/* ========== 空状态 ========== */
+.empty {
+  align-items: center;
+  padding: 120rpx 0;
+}
+
+.empty-icon {
+  margin-bottom: 24rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #999999;
+  margin-bottom: 12rpx;
+}
+
+.empty-desc {
+  font-size: 24rpx;
+  color: #CCCCCC;
+}
+
+/* ========== 加载状态 ========== */
+.loading {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx 0;
+}
+
+.loading-spinner {
+  width: 40rpx;
+  height: 40rpx;
+  border: 3rpx solid #F0F0F0;
+  border-top-color: #00C28A;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 24rpx;
+  color: #999999;
+  margin-left: 16rpx;
+}
+
+/* ========== 底部提示 ========== */
+.bottom {
+  padding: 48rpx 0;
+  align-items: center;
+}
+
+.bottom-text {
+  font-size: 24rpx;
+  color: #CCCCCC;
+}
+</style>
+ 

@@ -1,0 +1,735 @@
+<script lang="uts">
+	import { getContractStatistics, ContractStatus } from '../../api/contracts/index';
+	import type { ContractStatistics } from '../../api/contracts/index';
+	import { checkAuthAndRedirect } from '../../api/auth';
+	
+	export default {
+		onLoad() {
+			// 检查登录状态
+			if (!checkAuthAndRedirect(false)) {
+				return;
+			}
+			// 加载合同摘要数据
+			this.loadContractSummary();
+		},
+		onShow() {
+			// 检查登录状态
+			if (!checkAuthAndRedirect(false)) {
+				return;
+			}
+			// 每次页面显示时刷新数据
+			this.loadContractSummary();
+		},
+		onPullDownRefresh() {
+			// 下拉刷新
+			this.loadContractSummary(true);
+		},
+		data() {
+			return {
+				// 版本切换
+				versionOptions: ['个人版', '企业版'],
+				currentVersionIndex: 0,
+				showVersionDropdown: false,
+				// 状态摘要数据
+				statusData: [
+					{ label: '签署中', count: 0, color: '#1890FF' },
+					{ label: '草稿', count: 0, color: '#909399' },
+					{ label: '已完成', count: 0, color: '#00C28A' }
+				],
+				// 是否正在加载数据
+				isLoading: false,
+				// 快速发起选项
+				quickStartItems: [
+					{ icon: '/static/icons/template.png', label: '模板发起', path: '/pages/template-market/index' },
+					{ icon: '/static/icons/folder.png', label: '文件发起', path: '/pages/contract-create/h5-create?type=file' },
+					{ icon: '/static/icons/image.png', label: '图片发起', path: '/pages/contract-create/h5-create?type=image' },
+					{ icon: '/static/icons/draft.png', label: '草稿发起', path: '/pages/contract-manage/draft' }
+				],
+				// 热门模板数据
+				templates: [
+					{ 
+						name: '借条', 
+						description: '让每一份承诺都有据可依',
+						buttonLabel: '立即使用',
+						buttonColor: '#007BFF',
+						image: '/static/templates/loan.png'
+					},
+					{
+						name: '收据',
+						description: '让每一笔资金流动都有迹可循',
+						image: '/static/templates/receipt.png'
+					},
+					{
+						name: '买卖',
+						description: '让每一次交易都充满安心与信赖',
+						image: '/static/templates/purchase.png'
+					}
+				],
+				// 特色服务数据
+				features: [
+			{
+				name: '天眼审查',
+				description: 'AI一键审查合同内容，全局把控法律风险',
+				icon: '/static/icons/blue-icon.png',
+				iconColor: '#00C28A',
+				path: '/pages/contract-audit/intro' // 跳转到天眼审查宣传页
+			},
+					{
+						name: 'AI起草',
+						description: '与AI对话，快速起草专业合同',
+						icon: '/static/icons/green-icon.png',
+						iconColor: '#00C28A',
+						path: '/pages/ai-draft/index' // 跳转到AI起草页面
+					}
+				]
+			}
+		},
+		methods: {
+			/**
+			 * 处理功能点击
+			 */
+			handleItemClick(item: any): void {
+				// 如果是状态摘要项，跳转到合同管理页面并设置对应的状态筛选
+				if (item.label === '签署中') {
+					uni.switchTab({
+						url: '/pages/contract-manage/index'
+					});
+					// 设置状态筛选参数
+					uni.setStorageSync('contractStatus', ContractStatus.SIGNING);
+					return;
+				}
+				
+				if (item.label === '草稿') {
+					uni.switchTab({
+						url: '/pages/contract-manage/index'
+					});
+					uni.setStorageSync('contractStatus', ContractStatus.DRAFT);
+					return;
+				}
+				
+				if (item.label === '已完成') {
+					uni.switchTab({
+						url: '/pages/contract-manage/index'
+					});
+					uni.setStorageSync('contractStatus', ContractStatus.COMPLETED);
+					return;
+				}
+				
+				// 如果是快速发起项或特色服务项，检查是否有路径
+				if (item.path) {
+					uni.navigateTo({
+						url: item.path
+					})
+					return
+				}
+				
+				// 如果是模板项，跳转到合同创建页面
+				if (item.name) {
+					uni.navigateTo({
+						url: '/pages/contract-create/index'
+					})
+					return
+				}
+				
+				// 默认提示
+				uni.showToast({
+					title: '功能开发中',
+					icon: 'none'
+				})
+			},
+			
+			// 处理快速发起项点击
+			handleQuickStartClick(item: any): void {
+				uni.navigateTo({
+					url: item.path
+				})
+			},
+			
+			// 处理特色服务点击
+			handleFeatureClick(feature: any): void {
+				// 判断是否是 tabBar 页面
+				const tabBarPages = [
+					'/pages/index/index',
+					'/pages/contract-manage/index',
+					'/pages/profile/index'
+				]
+				
+				if (tabBarPages.includes(feature.path)) {
+					// tabBar 页面使用 switchTab
+					uni.switchTab({
+						url: feature.path
+					})
+				} else {
+					// 普通页面使用 navigateTo
+					uni.navigateTo({
+						url: feature.path
+					})
+				}
+			},
+			
+			// 切换版本下拉框显示状态
+			toggleVersionDropdown(): void {
+				this.showVersionDropdown = !this.showVersionDropdown
+				console.log('切换下拉菜单状态：', this.showVersionDropdown)
+				
+				// 触发显示反馈
+				if (this.showVersionDropdown) {
+					uni.showToast({
+						title: '打开下拉菜单',
+						icon: 'none',
+						duration: 1000
+					})
+				}
+			},
+			// 选择版本
+			selectVersion(index: number): void {
+				console.log('选择版本:', this.versionOptions[index])
+				this.currentVersionIndex = index
+				this.showVersionDropdown = false
+				uni.showToast({
+					title: '切换到' + this.versionOptions[index],
+					icon: 'none',
+					duration: 2000
+				})
+			},
+			
+			/**
+			 * 加载合同统计数据（真实API）
+			 */
+			async loadContractSummary(isPullDown: boolean = false): Promise<void> {
+				if (this.isLoading) return;
+				
+				this.isLoading = true;
+				
+				try {
+					// 调用真实API获取统计数据
+					const stats: ContractStatistics = await getContractStatistics();
+					
+					console.log('合同统计数据:', stats);
+					
+					// 更新状态摘要数据
+					this.statusData = [
+						{ label: '签署中', count: stats.signingCount, color: '#1890FF' },
+						{ label: '草稿', count: stats.draftCount, color: '#909399' },
+						{ label: '已完成', count: stats.completedCount, color: '#00C28A' }
+					];
+					
+					console.log('统计数据加载成功');
+					
+				} catch (error) {
+					console.error('加载合同统计失败:', error);
+					uni.showToast({
+						title: '数据加载失败',
+						icon: 'none'
+					});
+				} finally {
+					this.isLoading = false;
+					
+					// 如果是下拉刷新，停止刷新动画
+					if (isPullDown) {
+						uni.stopPullDownRefresh();
+					}
+				}
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="contract-app">
+		<!-- 移除全局层级的红点标记，避免读取hasNotification属性错误 -->
+		
+		<scroll-view scroll-y="true" class="content">
+			<!-- 顶部导航栏 -->
+			<view class="header">
+				<view class="header-dropdown-container">
+					<view class="header-dropdown" @click="toggleVersionDropdown">
+						<text class="header-dropdown-text">{{ versionOptions[currentVersionIndex] }}</text>
+						<text class="header-dropdown-icon">{{ showVersionDropdown ? '▲' : '▼' }}</text>
+					</view>
+				</view>
+				
+				<!-- 版本切换下拉菜单 - 完全独立的view -->
+				<view v-if="showVersionDropdown" class="version-dropdown">
+					<view 
+						v-for="(version, index) in versionOptions" 
+						:key="index"
+						class="version-option"
+						:class="{ active: index === currentVersionIndex }"
+						@click="selectVersion(index)"
+					>
+						<text class="version-option-text">{{ version }}</text>
+					</view>
+				</view>
+				
+				<text class="header-title">Mini Contract Pro</text>
+			</view>
+			
+			<!-- 快速发起合同 - 调整位置使其悬浮在绿色背景上 -->
+			<view class="card quick-start quick-start-floating">
+				<text class="section-title">快速发起</text>
+				<view class="quick-start-grid">
+					<view 
+						v-for="(item, index) in quickStartItems" 
+						:key="index" 
+						class="quick-start-item"
+						@click="handleQuickStartClick(item)"
+					>
+						<image class="quick-start-icon" :src="item.icon" mode="aspectFit"></image>
+						<text class="quick-start-label">{{ item.label }}</text>
+					</view>
+				</view>
+			</view>
+			
+			<!-- 状态摘要 -->
+			<view class="card status-summary">
+				<view class="status-grid">
+					<view 
+						v-for="(item, index) in statusData" 
+						:key="index" 
+						class="status-item"
+						@click="handleItemClick(item)"
+					>
+						<!-- 极简状态项结构 -->
+						<view class="status-count-wrapper">
+							<text class="status-count" :style="{ color: item.color }">{{ item.count }}</text>
+							<!-- 给每个项目固定添加红点，通过定位确保显示在右上角 -->
+							<view class="notification-indicator" v-if="index < 2"></view>
+						</view>
+						<text class="status-label">{{ item.label }}</text>
+					</view>
+				</view>
+			</view>
+			
+			<!-- 热门模板 -->
+			<view class="card hot-templates">
+				<view class="templates-header">
+					<text class="section-title">热门模板</text>
+					<image class="official-tag" src="/static/templates/official-tag.png" mode="aspectFit"></image>
+				</view>
+				
+				<view class="templates-main">
+					<view class="templates-left" @click="handleItemClick(templates[0])">
+						<image class="template-image" :src="templates[0].image" mode="aspectFit"></image>
+					</view>
+					<view class="templates-right-simplified">
+						<view class="position-relative full-height">
+							<image class="template-image-direct top-image" :src="templates[1].image" mode="aspectFit" @click="handleItemClick(templates[1])"></image>
+							<image class="template-image-direct bottom-image" :src="templates[2].image" mode="aspectFit" @click="handleItemClick(templates[2])"></image>
+						</view>
+					</view>
+				</view>
+			</view>
+			
+			<!-- 特色服务 -->
+			<view class="card features">
+				<text class="section-title">特色服务</text>
+				<view class="features-list">
+					<view 
+						v-for="(feature, index) in features" 
+						:key="index" 
+						class="feature-item"
+						@click="handleFeatureClick(feature)"
+					>
+						<view class="feature-icon-container" :style="{ backgroundColor: feature.iconColor + '10' }">
+							<image class="feature-icon" :src="feature.icon" mode="aspectFit"></image>
+						</view>
+						<view class="feature-content">
+							<text class="feature-name">{{ feature.name }}</text>
+							<text class="feature-description">{{ feature.description }}</text>
+						</view>
+						<view class="feature-arrow-container">
+							<text class="feature-arrow">›</text>
+						</view>
+					</view>
+				</view>
+			</view>
+			
+			<!-- 底部占位，防止内容被TabBar遮挡 -->
+			<view class="bottom-placeholder"></view>
+		</scroll-view>
+	</view>
+</template>
+
+<style>
+	/* 全局样式变量 */
+	.contract-app {
+		flex: 1;
+		background-color: #F7F9FC;
+	}
+	
+	/* 内容区域 */
+	.content {
+		flex: 1;
+	}
+	
+	/* 顶部导航栏 */
+	.header {
+		height: 300rpx;
+		background-image: linear-gradient(to bottom, #00C28A, #00C28A 70%, rgba(0, 194, 138, 0.8));
+		padding: 60rpx 32rpx 20rpx;
+		flex-direction: row;
+		align-items: flex-start;
+		justify-content: center;
+		position: relative;
+		padding-top: calc(60rpx + var(--status-bar-height));
+	}
+	
+	.header-dropdown-container {
+		position: absolute;
+		top: calc(60rpx + var(--status-bar-height));
+		left: 32rpx;
+		z-index: 100;
+	}
+	
+	.header-dropdown {
+		flex-direction: row;
+		align-items: center;
+		background-color: rgba(255, 255, 255, 0.2);
+		padding: 8rpx 16rpx;
+		border-radius: 30rpx;
+	}
+	
+	.header-dropdown-text {
+		color: #FFFFFF;
+		font-size: 24rpx;
+		margin-right: 8rpx;
+	}
+	
+	.header-dropdown-icon {
+		color: #FFFFFF;
+		font-size: 20rpx;
+	}
+	
+	.header-title {
+		color: #FFFFFF;
+		font-size: 32rpx;
+		font-weight: 500;
+	}
+	
+	.version-dropdown {
+		position: absolute;
+		top: calc(110rpx + var(--status-bar-height));
+		left: 32rpx;
+		background-color: #FFFFFF;
+		border-radius: 8rpx;
+		box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+		z-index: 1000;
+		width: 200rpx;
+	}
+	
+	.version-option {
+		padding: 20rpx 24rpx;
+		border-bottom-width: 1rpx;
+		border-bottom-color: #F0F0F0;
+	}
+	
+	.version-option:last-child {
+		border-bottom-width: 0;
+	}
+	
+	.version-option.active {
+		background-color: #F6F6F6;
+	}
+	
+	.version-option-text {
+		font-size: 28rpx;
+		color: #333333;
+	}
+	
+	.version-option.active .version-option-text {
+		color: #00C28A;
+		font-weight: 500;
+	}
+	
+	/* 卡片通用样式 */
+	.card {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		margin: 0 16rpx 20rpx;
+		padding: 24rpx;
+		box-shadow: 0 2rpx 10rpx 0 rgba(0, 0, 0, 0.05);
+		overflow: visible; /* 确保卡片不会裁剪溢出内容 */
+	}
+	
+	.section-title {
+		font-size: 30rpx;
+		font-weight: 500;
+		color: #333333;
+		margin-bottom: 24rpx;
+	}
+	
+	/* 热门模板标题特殊样式 */
+	.hot-templates .section-title {
+		margin-bottom: 0; /* 移除底部边距，以便在templates-header中正确对齐 */
+		line-height: 60rpx; /* 与templates-header高度一致 */
+	}
+	
+	/* 快速发起合同 - 添加悬浮样式 */
+	.quick-start-floating {
+		margin-top: -60rpx; /* 向上偏移，使其悬浮在绿色背景上 */
+		position: relative;
+		z-index: 10; /* 确保它在绿色背景之上 */
+	}
+	
+	.quick-start-grid {
+		flex-direction: row;
+		flex-wrap: wrap;
+		justify-content: space-between;
+	}
+	
+	.quick-start-item {
+		width: 25%;
+		align-items: center;
+		margin-bottom: 16rpx;
+	}
+	
+	.quick-start-icon {
+		width: 80rpx;
+		height: 80rpx;
+		margin-bottom: 8rpx;
+	}
+	
+	.quick-start-label {
+		font-size: 24rpx;
+		color: #666666;
+	}
+	
+	/* 状态摘要 */
+	.status-summary {
+		padding: 20rpx 30rpx;
+		/* 确保卡片不会裁剪内容 */
+		overflow: visible;
+	}
+	
+	.status-grid {
+		flex-direction: row;
+		justify-content: space-around;
+		/* 确保网格不会裁剪内容 */
+		overflow: visible;
+	}
+	
+	.status-item {
+		align-items: center;
+		min-width: 100rpx;
+		display: flex;
+		flex-direction: column;
+		/* 确保状态项不会裁剪内容 */
+		overflow: visible;
+		padding: 10rpx 20rpx;
+	}
+	
+	.status-count-wrapper {
+		position: relative;
+		margin-bottom: 12rpx;
+		padding: 8rpx;
+		margin: 0 10rpx 12rpx;
+		/* 确保容器不会裁剪溢出内容 */
+		overflow: visible;
+	}
+	
+	.status-count {
+		font-size: 32rpx;
+		font-weight: 600;
+		text-align: center;
+		padding-right: 8rpx; /* 为红点预留一点额外空间 */
+	}
+	
+	/* 优化的红点标记 - 使用更简单、更可靠的样式 */
+	.notification-indicator {
+		position: absolute;
+		right: -10rpx;
+		top: -8rpx;
+		width: 20rpx;
+		height: 20rpx;
+		border-radius: 50%;
+		background-color: #FF0000;
+		z-index: 10;
+		border: 1.5rpx solid #FFFFFF;
+	}
+	
+	.status-label {
+		font-size: 24rpx;
+		color: #666666;
+	}
+	
+	/* 热门模板 - 修复标题与标签对齐问题 */
+	.templates-header {
+		flex-direction: row;
+		align-items: center; /* 确保垂直居中对齐 */
+		justify-content: flex-start; /* 确保左对齐 */
+		height: 60rpx; /* 固定高度以便对齐 */
+	}
+	
+	.official-tag {
+		width: 120rpx;
+		height: 36rpx; /* 调整高度以更好地对齐 */
+		margin-left: 16rpx;
+		margin-top: 2rpx; /* 微调垂直位置 */
+	}
+	
+	.hot-templates {
+		overflow: hidden;
+	}
+	
+	.templates-main {
+		flex-direction: row;
+		width: 100%;
+		gap: 15rpx; /* 稍微减少间距 */
+		justify-content: center;
+		align-items: center;
+		margin-top: 10rpx; /* 添加适当的顶部间距 */
+	}
+	
+	/* 左侧：借条 */
+	.templates-left {
+		width: 48%; /* 增加宽度 */
+		margin-right: 0;
+		border-radius: 12rpx;
+		overflow: hidden;
+		height: 340rpx; /* 增加高度 */
+	}
+	
+	.template-image {
+		width: 100%;
+		height: 100%;
+		display: block;
+	}
+	
+	/* 右侧：收据和买卖 - 彻底消除间距 */
+	.templates-right-simplified {
+		width: 48%; /* 增加宽度 */
+		margin: 0 0 0 0;
+		padding: 0 0 0 0;
+		display: flex;
+		flex-direction: column;
+		height: 340rpx; /* 增加高度 */
+		gap: 0; 
+		border-radius: 12rpx;
+		overflow: hidden;
+		box-sizing: border-box;
+		font-size: 0;
+		line-height: 0;
+		position: relative;
+	}
+	
+	.position-relative {
+		position: relative;
+	}
+	
+	.full-height {
+		height: 100%;
+	}
+	
+	.template-image-direct {
+		width: 100%;
+		display: block;
+		object-fit: contain;
+		box-sizing: border-box;
+		margin: 0;
+		padding: 0;
+	}
+	
+	.top-image {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 55%;
+	}
+	
+	.bottom-image {
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		height: 55%;
+	}
+	
+	/* 特色服务 */
+	.features-list {
+	}
+	
+	.feature-item {
+		flex-direction: row;
+		align-items: center;
+		padding: 24rpx 0;
+		border-bottom-width: 1rpx;
+		border-bottom-color: #EEEEEE;
+	}
+	
+	.feature-item:last-child {
+		border-bottom-width: 0;
+	}
+	
+	.feature-icon-container {
+		width: 80rpx;
+		height: 80rpx;
+		border-radius: 16rpx;
+		align-items: center;
+		justify-content: center;
+		margin-right: 24rpx;
+	}
+	
+	.feature-icon {
+		width: 48rpx;
+		height: 48rpx;
+	}
+	
+	.feature-content {
+		flex: 1;
+	}
+	
+	.feature-name {
+		font-size: 28rpx;
+		color: #333333;
+		font-weight: 500;
+		margin-bottom: 8rpx;
+	}
+	
+	.feature-description {
+		font-size: 24rpx;
+		color: #999999;
+	}
+	
+	.feature-arrow-container {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-left: 16rpx;
+	}
+	
+	.feature-arrow {
+		color: #CCCCCC;
+		font-size: 36rpx;
+		font-weight: 300;
+		line-height: 36rpx;
+		transform: scaleY(1.2); /* 稍微拉伸，使其更圆润 */
+	}
+	
+	/* 底部占位 */
+	.bottom-placeholder {
+		height: 120rpx;
+	}
+	
+	/* 热门模板卡片特殊样式 */
+	.hot-templates.card {
+		margin: 0 16rpx 20rpx; /* 减少左右外边距 */
+		padding: 20rpx 20rpx 20rpx; /* 自定义内边距 */
+	}
+	
+	.quick-start.card {
+		padding: 20rpx 20rpx 15rpx; /* 自定义内边距 */
+	}
+	
+	/* 全局固定位置的红点样式 */
+	.global-notification-dot {
+		position: absolute;
+		width: 20rpx;
+		height: 20rpx;
+		border-radius: 10rpx;
+		background-color: #FF0000;
+		z-index: 9999;
+		box-shadow: 0 0 0 2rpx #FFFFFF;
+	}
+</style> 

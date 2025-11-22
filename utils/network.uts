@@ -1,0 +1,196 @@
+/**
+ * 网络检查工具模块
+ * 提供网络状态检测、H5服务可用性检测等功能
+ */
+
+/**
+ * 错误类型枚举
+ */
+export const ErrorType = {
+	NETWORK: 'network',    // 网络错误
+	TIMEOUT: 'timeout',    // 超时
+	SERVER: 'server',      // 服务器错误
+	UNKNOWN: 'unknown'     // 未知错误
+} as const
+
+export type ErrorTypeValue = typeof ErrorType[keyof typeof ErrorType]
+
+/**
+ * 网络检查结果
+ */
+export type NetworkCheckResult = {
+	success: boolean
+	errorType?: ErrorTypeValue
+	errorMessage?: string
+}
+
+/**
+ * H5服务检查结果
+ */
+export type H5ServiceCheckResult = {
+	available: boolean
+	errorType?: ErrorTypeValue
+	errorMessage?: string
+}
+
+/**
+ * 检查网络状态
+ * @returns Promise<NetworkCheckResult>
+ */
+export function checkNetworkStatus(): Promise<NetworkCheckResult> {
+	return new Promise((resolve) => {
+		uni.getNetworkType({
+			success: (res) => {
+				if (res.networkType === 'none') {
+					resolve({
+						success: false,
+						errorType: ErrorType.NETWORK,
+						errorMessage: '当前无网络连接\n请检查网络后重试'
+					})
+				} else {
+					resolve({ success: true })
+				}
+			},
+			fail: () => {
+				// 无法获取网络状态时，假设网络正常，继续尝试
+				resolve({ success: true })
+			}
+		})
+	})
+}
+
+/**
+ * 测试H5服务是否可用
+ * @param url H5服务的URL
+ * @param timeout 超时时间（毫秒），默认5000ms
+ * @returns Promise<H5ServiceCheckResult>
+ */
+export function testH5ServiceAvailability(
+	url: string,
+	timeout: number = 5000
+): Promise<H5ServiceCheckResult> {
+	return new Promise((resolve) => {
+		try {
+			const urlObj = new URL(url)
+			const baseUrl = `${urlObj.protocol}//${urlObj.host}`
+
+		uni.request({
+			url: baseUrl,
+			method: 'HEAD',
+			timeout: timeout,
+			dataType: 'text', // 🔧 关键修复：HEAD请求不应解析JSON，避免"Unexpected end of JSON input"错误
+			success: () => {
+				resolve({ available: true })
+			},
+			fail: (err) => {
+				console.error('[网络检查] H5服务不可用:', err)
+				resolve({
+					available: false,
+					errorType: ErrorType.SERVER,
+					errorMessage: 'H5签署服务暂时无法访问\n请稍后重试或联系技术支持'
+				})
+			}
+		})
+		} catch (error) {
+			console.error('[网络检查] URL解析失败:', error)
+			// URL解析失败时，继续尝试加载
+			resolve({ available: true })
+		}
+	})
+}
+
+/**
+ * 分析WebView错误并确定错误类型
+ * @param error WebView错误对象
+ * @returns ErrorTypeValue
+ */
+export function analyzeWebViewError(error: any): ErrorTypeValue {
+	const errorCode = error?.errCode || 0
+	const errorMsg = (error?.errMsg || '').toLowerCase()
+
+	// 网络相关错误码
+	if (errorCode === -1009 || errorCode === -1001 || 
+	    errorMsg.includes('network') || errorMsg.includes('连接')) {
+		return ErrorType.NETWORK
+	}
+
+	// 超时错误
+	if (errorCode === -1001 || errorMsg.includes('timeout') || 
+	    errorMsg.includes('超时')) {
+		return ErrorType.TIMEOUT
+	}
+
+	// 服务器错误（5xx）
+	if (errorCode >= 500 && errorCode < 600) {
+		return ErrorType.SERVER
+	}
+
+	// 默认为未知错误
+	return ErrorType.UNKNOWN
+}
+
+/**
+ * 根据错误类型获取友好的错误提示信息
+ * @param errorType 错误类型
+ * @returns string 错误提示信息
+ */
+export function getErrorMessage(errorType: ErrorTypeValue): string {
+	switch (errorType) {
+		case ErrorType.NETWORK:
+			return '网络连接失败\n请检查网络设置后重试'
+		case ErrorType.TIMEOUT:
+			return '连接超时\n请检查网络状况后重试'
+		case ErrorType.SERVER:
+			return 'H5服务暂时不可用\n请稍后重试或联系客服'
+		default:
+			return '加载失败\n请重试或联系技术支持'
+	}
+}
+
+/**
+ * 设置网络状态变化监听器
+ * @param callback 网络状态变化时的回调函数
+ * @returns 返回取消监听的函数
+ */
+export function setupNetworkListener(
+	callback: (isConnected: boolean) => void
+): () => void {
+	const listener = (res: any) => {
+		callback(res.isConnected)
+	}
+	
+	uni.onNetworkStatusChange(listener)
+	
+	// 返回取消监听的函数
+	return () => {
+		uni.offNetworkStatusChange(listener)
+	}
+}
+
+/**
+ * 执行完整的网络和服务检查流程
+ * @param h5Url 要检查的H5服务URL
+ * @returns Promise<NetworkCheckResult>
+ */
+export async function performFullCheck(
+	h5Url: string
+): Promise<NetworkCheckResult> {
+	// 1. 检查网络状态
+	const networkResult = await checkNetworkStatus()
+	if (!networkResult.success) {
+		return networkResult
+	}
+
+	// 2. 检查H5服务可用性
+	const serviceResult = await testH5ServiceAvailability(h5Url)
+	if (!serviceResult.available) {
+		return {
+			success: false,
+			errorType: serviceResult.errorType,
+			errorMessage: serviceResult.errorMessage
+		}
+	}
+
+	return { success: true }
+}
+

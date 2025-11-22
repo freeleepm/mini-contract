@@ -1,0 +1,290 @@
+/**
+ * 文件下载工具
+ * 处理移动端文件下载的统一逻辑
+ */
+
+import { getBaseURL } from '../config.uts';
+
+/**
+ * 下载合同文件
+ * @param fileUrl 文件URL（可能是相对路径或完整URL）
+ * @param fileName 文件名（可选）
+ */
+export async function downloadContractFile(fileUrl: string, fileName?: string): Promise<void> {
+	if (!fileUrl) {
+		throw new Error('文件URL不能为空');
+	}
+	
+	// 🔧 处理URL：如果是相对路径，拼接完整URL
+	let downloadUrl = fileUrl;
+	if (!fileUrl.startsWith('http://') && !fileUrl.startsWith('https://')) {
+		const baseURL = getBaseURL();
+		downloadUrl = baseURL + (fileUrl.startsWith('/') ? fileUrl : '/' + fileUrl);
+	}
+	
+	console.log('📥 开始下载文件:', downloadUrl);
+	
+	return new Promise((resolve, reject) => {
+		// 显示加载提示
+		uni.showLoading({
+			title: '下载中...',
+			mask: true
+		});
+		
+		// 下载文件
+		uni.downloadFile({
+			url: downloadUrl,
+			success: (res) => {
+				console.log('✅ 文件下载成功，状态码:', res.statusCode);
+				
+				if (res.statusCode === 200) {
+					const tempFilePath = res.tempFilePath;
+					
+					// 🔧 条件编译：不同平台使用不同的保存方式
+					// #ifdef APP-PLUS
+					// App端：保存到相册或文件管理器
+					saveFileToLocal(tempFilePath, fileName || 'contract.pdf')
+						.then(() => {
+							uni.hideLoading();
+							uni.showToast({
+								title: '下载成功',
+								icon: 'success',
+								duration: 2000
+							});
+							resolve();
+						})
+						.catch((error) => {
+							uni.hideLoading();
+							uni.showToast({
+								title: '保存失败',
+								icon: 'none',
+								duration: 2000
+							});
+							reject(error);
+						});
+					// #endif
+					
+					// #ifdef H5
+					// H5端：使用浏览器下载
+					downloadFileInBrowser(tempFilePath, fileName || 'contract.pdf');
+					uni.hideLoading();
+					uni.showToast({
+						title: '下载成功',
+						icon: 'success',
+						duration: 2000
+					});
+					resolve();
+					// #endif
+					
+					// #ifdef MP-WEIXIN
+					// 微信小程序：打开文档
+					uni.openDocument({
+						filePath: tempFilePath,
+						showMenu: true,
+						success: () => {
+							uni.hideLoading();
+							console.log('✅ 文档打开成功');
+							resolve();
+						},
+						fail: (err) => {
+							uni.hideLoading();
+							console.error('❌ 文档打开失败:', err);
+							uni.showToast({
+								title: '打开文件失败',
+								icon: 'none',
+								duration: 2000
+							});
+							reject(err);
+						}
+					});
+					// #endif
+				} else {
+					uni.hideLoading();
+					const errorMsg = `下载失败，状态码: ${res.statusCode}`;
+					console.error('❌', errorMsg);
+					uni.showToast({
+						title: '下载失败',
+						icon: 'none',
+						duration: 2000
+					});
+					reject(new Error(errorMsg));
+				}
+			},
+			fail: (error) => {
+				uni.hideLoading();
+				console.error('❌ 下载文件失败:', error);
+				uni.showToast({
+					title: '下载失败，请重试',
+					icon: 'none',
+					duration: 2000
+				});
+				reject(error);
+			}
+		});
+	});
+}
+
+/**
+ * App端保存文件到本地
+ */
+function saveFileToLocal(tempFilePath: string, fileName: string): Promise<void> {
+	return new Promise((resolve, reject) => {
+		// #ifdef APP-PLUS
+		// 判断文件类型
+		const fileExtension = fileName.split('.').pop()?.toLowerCase() || 'pdf';
+		
+		// 如果是图片，保存到相册
+		if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) {
+			uni.saveImageToPhotosAlbum({
+				filePath: tempFilePath,
+				success: () => {
+					console.log('✅ 图片已保存到相册');
+					resolve();
+				},
+				fail: (err) => {
+					console.error('❌ 保存到相册失败:', err);
+					// 失败时尝试使用 saveFile
+					fallbackSaveFile(tempFilePath, reject, resolve);
+				}
+			});
+		} else {
+			// 非图片文件，使用 saveFile
+			uni.saveFile({
+				tempFilePath: tempFilePath,
+				success: (saveRes) => {
+					console.log('✅ 文件已保存:', saveRes.savedFilePath);
+					
+					// 尝试打开文件
+					uni.openDocument({
+						filePath: saveRes.savedFilePath,
+						showMenu: true,
+						success: () => {
+							console.log('✅ 文件已打开');
+							resolve();
+						},
+						fail: (err) => {
+							console.error('❌ 打开文件失败:', err);
+							// 虽然打开失败，但文件已保存，仍然返回成功
+							resolve();
+						}
+					});
+				},
+				fail: (err) => {
+					console.error('❌ 保存文件失败:', err);
+					reject(err);
+				}
+			});
+		}
+		// #endif
+		
+		// #ifndef APP-PLUS
+		// 其他平台降级处理
+		reject(new Error('当前平台不支持此操作'));
+		// #endif
+	});
+}
+
+/**
+ * saveFile失败时的降级方案
+ */
+function fallbackSaveFile(tempFilePath: string, reject: (reason?: any) => void, resolve: () => void) {
+	uni.saveFile({
+		tempFilePath: tempFilePath,
+		success: (saveRes) => {
+			console.log('✅ 降级保存成功:', saveRes.savedFilePath);
+			resolve();
+		},
+		fail: (err) => {
+			console.error('❌ 降级保存失败:', err);
+			reject(err);
+		}
+	});
+}
+
+/**
+ * H5端浏览器下载
+ */
+function downloadFileInBrowser(url: string, fileName: string) {
+	// #ifdef H5
+	const link = document.createElement('a');
+	link.href = url;
+	link.download = fileName;
+	link.style.display = 'none';
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+	// #endif
+}
+
+/**
+ * 预览文件（先下载后打开）
+ */
+export async function previewFile(fileUrl: string): Promise<void> {
+	if (!fileUrl) {
+		throw new Error('文件URL不能为空');
+	}
+	
+	// 🔧 处理URL：如果是相对路径，拼接完整URL
+	let downloadUrl = fileUrl;
+	if (!fileUrl.startsWith('http://') && !fileUrl.startsWith('https://')) {
+		const baseURL = getBaseURL();
+		downloadUrl = baseURL + (fileUrl.startsWith('/') ? fileUrl : '/' + fileUrl);
+	}
+	
+	console.log('👁️ 预览文件:', downloadUrl);
+	
+	return new Promise((resolve, reject) => {
+		uni.showLoading({
+			title: '加载中...',
+			mask: true
+		});
+		
+		uni.downloadFile({
+			url: downloadUrl,
+			success: (res) => {
+				if (res.statusCode === 200) {
+					uni.openDocument({
+						filePath: res.tempFilePath,
+						showMenu: true,
+						success: () => {
+							uni.hideLoading();
+							console.log('✅ 文档打开成功');
+							resolve();
+						},
+						fail: (err) => {
+							uni.hideLoading();
+							console.error('❌ 文档打开失败:', err);
+							uni.showToast({
+								title: '打开失败',
+								icon: 'none',
+								duration: 2000
+							});
+							reject(err);
+						}
+					});
+				} else {
+					uni.hideLoading();
+					const errorMsg = `加载失败，状态码: ${res.statusCode}`;
+					console.error('❌', errorMsg);
+					uni.showToast({
+						title: '加载失败',
+						icon: 'none',
+						duration: 2000
+					});
+					reject(new Error(errorMsg));
+				}
+			},
+			fail: (error) => {
+				uni.hideLoading();
+				console.error('❌ 下载文件失败:', error);
+				uni.showToast({
+					title: '加载失败',
+					icon: 'none',
+					duration: 2000
+				});
+				reject(error);
+			}
+		});
+	});
+}
+

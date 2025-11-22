@@ -1,0 +1,232 @@
+/**
+ * 实名认证检查工具
+ * 
+ * 提供统一的实名认证状态检查和验证功能
+ */
+
+import { get } from '../api/index';
+
+/**
+ * 实名认证状态枚举
+ */
+export enum KycStatus {
+	NOT_VERIFIED = 0,  // 未认证
+	REVIEWING = 1,     // 审核中
+	VERIFIED = 2,      // 认证成功
+	FAILED = 3         // 认证失败
+}
+
+/**
+ * 用户信息接口
+ */
+export interface UserInfo {
+	id: string;
+	nickname?: string;
+	mobile?: string;
+	verifyStatus: KycStatus;
+	[key: string]: any;
+}
+
+/**
+ * 获取用户实名认证状态
+ * @returns Promise<KycStatus>
+ */
+export async function getKycStatus(): Promise<KycStatus> {
+	try {
+		const userData = await get<UserInfo>('/api/v1/member/user/get');
+		if (userData && userData.verifyStatus !== undefined) {
+			return userData.verifyStatus;
+		}
+		
+		// 降级方案：从本地存储获取
+		const localStatus = uni.getStorageSync('kycStatus');
+		if (localStatus === 'true') {
+			return KycStatus.VERIFIED;
+		}
+		
+		return KycStatus.NOT_VERIFIED;
+	} catch (error) {
+		console.error('获取实名认证状态失败:', error);
+		
+		// 降级方案：从本地存储获取
+		const localStatus = uni.getStorageSync('kycStatus');
+		if (localStatus === 'true') {
+			return KycStatus.VERIFIED;
+		}
+		
+		return KycStatus.NOT_VERIFIED;
+	}
+}
+
+/**
+ * 检查用户是否已实名认证
+ * @returns Promise<boolean>
+ */
+export async function isKycVerified(): Promise<boolean> {
+	const status = await getKycStatus();
+	return status === KycStatus.VERIFIED;
+}
+
+/**
+ * 检查实名认证状态并显示提示（如果需要）
+ * @param showModal 是否显示弹窗提示，默认false
+ * @returns Promise<boolean> 是否已认证
+ */
+export async function checkKycWithPrompt(showModal: boolean = false): Promise<boolean> {
+	const verified = await isKycVerified();
+	
+	if (!verified && showModal) {
+		// 如果需要显示提示，可以在这里触发自定义事件
+		// 或者直接使用uni.showModal作为降级方案
+		uni.showModal({
+			title: '需要认证',
+			content: '此功能需要先完成个人实名认证，是否现在就去认证？',
+			confirmText: '去认证',
+			cancelText: '稍后',
+			success: (res) => {
+				if (res.confirm) {
+					uni.navigateTo({
+						url: '/pages/kyc/personal/index'
+					});
+				}
+			}
+		});
+	}
+	
+	return verified;
+}
+
+/**
+ * 实名认证守卫 Mixin
+ * 可以在页面中混入使用
+ */
+export const kycGuardMixin = {
+	data() {
+		return {
+			// 用户认证状态
+			verifyStatus: KycStatus.NOT_VERIFIED as number,
+			// 是否显示认证弹窗
+			showKycModal: false
+		}
+	},
+	
+	methods: {
+		/**
+		 * 检查实名认证状态
+		 */
+		async checkKycStatus(): Promise<void> {
+			try {
+				const status = await getKycStatus();
+				this.verifyStatus = status;
+			} catch (error) {
+				console.error('检查实名认证状态失败:', error);
+			}
+		},
+		
+		/**
+		 * 检查是否可以执行需要认证的操作
+		 * @returns boolean
+		 */
+		checkCanProceed(): boolean {
+			if (this.verifyStatus === KycStatus.VERIFIED) {
+				return true;
+			}
+			
+			// 显示认证提示
+			this.showKycModal = true;
+			return false;
+		},
+		
+		/**
+		 * 关闭认证提示弹窗
+		 */
+		closeKycModal(): void {
+			this.showKycModal = false;
+		},
+		
+		/**
+		 * 前往实名认证
+		 */
+		goToKyc(): void {
+			this.showKycModal = false;
+			uni.navigateTo({
+				url: '/pages/kyc/personal/index'
+			});
+		}
+	}
+};
+
+/**
+ * 页面级实名认证守卫
+ * 在页面加载时自动检查认证状态，未认证则跳转
+ * 
+ * @param redirectUrl 认证成功后的重定向地址（可选）
+ */
+export async function requireKyc(redirectUrl?: string): Promise<void> {
+	const verified = await isKycVerified();
+	
+	if (!verified) {
+		// 保存当前页面路径，用于认证成功后返回
+		if (redirectUrl) {
+			uni.setStorageSync('kycRedirectUrl', redirectUrl);
+		}
+		
+		uni.showModal({
+			title: '需要认证',
+			content: '此页面需要先完成个人实名认证',
+			confirmText: '去认证',
+			showCancel: false,
+			success: (res) => {
+				if (res.confirm) {
+					uni.navigateTo({
+						url: '/pages/kyc/personal/index'
+					});
+				} else {
+					// 返回上一页
+					uni.navigateBack();
+				}
+			}
+		});
+	}
+}
+
+/**
+ * 格式化认证状态文本
+ * @param status KycStatus
+ * @returns string
+ */
+export function getKycStatusText(status: KycStatus): string {
+	switch (status) {
+		case KycStatus.NOT_VERIFIED:
+			return '未认证';
+		case KycStatus.REVIEWING:
+			return '审核中';
+		case KycStatus.VERIFIED:
+			return '已认证';
+		case KycStatus.FAILED:
+			return '认证失败';
+		default:
+			return '未知状态';
+	}
+}
+
+/**
+ * 获取认证状态对应的颜色
+ * @param status KycStatus
+ * @returns string 颜色值
+ */
+export function getKycStatusColor(status: KycStatus): string {
+	switch (status) {
+		case KycStatus.NOT_VERIFIED:
+			return '#909399'; // 灰色
+		case KycStatus.REVIEWING:
+			return '#FAAD14'; // 橙色
+		case KycStatus.VERIFIED:
+			return '#00C28A'; // 绿色
+		case KycStatus.FAILED:
+			return '#F56C6C'; // 红色
+		default:
+			return '#909399';
+	}
+}
+

@@ -1,0 +1,683 @@
+<script>
+	/**
+	 * 帮助中心页面
+	 */
+	export default {
+		data() {
+			return {
+				// 常见问题列表
+				faqList: [
+					// 合同创建相关
+					{
+						id: 1,
+						title: '如何创建电子合同？',
+						content: '您可以通过首页的快速发起功能，选择以下方式创建合同：\n1. 模板发起：从模板市场选择预设模板\n2. 文件发起：上传PDF、Word等文件\n3. 图片发起：拍照或上传图片\n4. 草稿发起：从已保存的草稿继续编辑\n选择方式后，按照步骤添加签署区、填写签署人信息，即可发送签署。'
+					},
+					{
+						id: 2,
+						title: '什么是AI起草功能？',
+						content: 'AI起草是一项智能合同生成功能，您可以通过与AI对话的方式描述合同需求，AI将根据您的描述自动生成专业的合同文本。这大大提高了合同起草效率，特别适合没有法律背景的用户快速生成标准合同。'
+					},
+					{
+						id: 3,
+						title: '如何使用天眼审查功能？',
+						content: '天眼审查是AI合同审查功能，可以帮助您快速识别合同中的法律风险。使用方法：\n1. 在合同详情页面点击"天眼审查"\n2. AI将自动分析合同内容\n3. 系统会列出发现的风险项，并给出修改建议\n4. 您可以根据建议进行调整\n这个功能可以帮助您全局把控法律风险，避免签署有问题的合同。'
+					},
+					{
+						id: 4,
+						title: '合同模板市场有哪些分类？',
+						content: '我们的模板市场提供多种分类的合同模板，包括但不限于：\n• 借条、收据等金融类\n• 买卖、租赁等交易类\n• 劳动合同、保密协议等企业类\n• 房屋租赁、物业服务等生活类\n所有模板均由专业律师审核，可直接使用或根据需要修改。'
+					},
+					// 签署相关
+					{
+						id: 5,
+						title: '如何添加电子签名？',
+						content: '您可以在"个人中心"-"签名管理"中创建和管理您的电子签名。支持以下方式：\n1. 手写签名：直接在屏幕上手写您的签名\n2. 印章签名：上传或生成企业印章\n3. 拍照上传：拍摄您的手写签名照片\n4. 模板生成：选择预设模板自动生成\n创建后可设置为默认签名，在签署时自动使用。'
+					},
+					{
+						id: 6,
+						title: '如何在合同上签署？',
+						content: '签署流程：\n1. 打开待签署的合同\n2. 查看签署区位置和要求\n3. 点击签署区，选择您的签名或印章\n4. 确认签署信息（姓名、身份证等）\n5. 点击"确认签署"完成\n签署后合同将被锁定，无法再修改。所有签署记录都会被保存用于法律证明。'
+					},
+					{
+						id: 7,
+						title: '电子签名具有法律效力吗？',
+						content: '是的，根据《中华人民共和国电子签名法》，电子签名与手写签名或盖章具有同等的法律效力。我们的平台采用以下技术确保合法有效：\n• CA认证：确保签署人身份真实\n• 时间戳：记录准确的签署时间\n• 数字签名：防止合同被篡改\n• 完整的审计日志：保留所有操作记录\n所有签署的合同都可作为法律证据使用。'
+					},
+					{
+						id: 8,
+						title: '合同签署后可以修改吗？',
+						content: '为保证合同的法律效力，一旦所有参与方完成签署，合同将被锁定，不能再进行修改。如需变更合同条款，请与签约方协商后重新签署一份新的合同。您可以基于已签署的合同创建新版本进行修改。'
+					},
+					{
+						id: 9,
+						title: '如何查看合同签署进度？',
+						content: '您可以在"合同管理"页面查看所有合同的签署进度。系统会显示：\n• 待签署：还需要哪些人签署\n• 签署中：已签署和待签署的人数\n• 已完成：所有人都已签署\n• 已拒签：签署人拒绝签署\n点击合同可查看详细的签署历史和每个签署人的签署时间。'
+					},
+					// 企业相关
+					{
+						id: 10,
+						title: '如何进行企业实名认证？',
+						content: '企业认证流程：\n1. 进入"个人中心"-"我的企业"\n2. 选择要认证的企业\n3. 点击"企业认证"按钮\n4. 按照提示上传以下材料：\n   • 营业执照副本\n   • 法人身份证\n   • 企业公章照片\n5. 提交后等待审核\n认证通常在1-3个工作日内完成。认证后可使用企业印章签署合同，具有更高的法律效力。'
+					},
+					{
+						id: 11,
+						title: '如何管理我的企业成员？',
+						content: '企业管理员可以在"个人中心"-"我的企业"-"成员管理"中进行以下操作：\n1. 添加成员：输入成员手机号或邮箱邀请加入\n2. 设置角色：为成员分配不同的角色权限\n   • 管理员：可管理企业和成员\n   • 签署人：可代表企业签署合同\n   • 查看者：只能查看合同\n3. 删除成员：移除不需要的成员\n4. 修改权限：随时调整成员的角色和权限\n成员加入后可使用企业账户发起和签署合同。'
+					},
+					{
+						id: 12,
+						title: '企业版和个人版有什么区别？',
+						content: '主要区别：\n\n个人版：\n• 适合个人用户\n• 可创建个人签名\n• 有基础的合同管理功能\n\n企业版：\n• 适合企业和团队\n• 可创建企业印章\n• 支持多成员协作\n• 支持企业实名认证\n• 提供更高级的权限管理\n• 支持合同模板库\n• 提供数据统计和分析\n您可以在首页切换版本查看相应功能。'
+					},
+					// 账户安全相关
+					{
+						id: 13,
+						title: '忘记密码怎么办？',
+						content: '密码重置流程：\n1. 在登录页面点击"忘记密码"\n2. 选择重置方式：\n   • 手机验证码：输入注册手机号，接收验证码\n   • 邮箱验证：输入注册邮箱，点击验证链接\n3. 验证成功后输入新密码\n4. 确认密码修改\n如果无法通过以上方式重置，请联系客服寻求帮助。'
+					},
+					{
+						id: 14,
+						title: '如何保护我的账户安全？',
+						content: '账户安全建议：\n1. 设置强密码：使用大小写字母、数字和特殊符号的组合\n2. 定期修改密码：建议每3个月修改一次\n3. 不要分享登录信息：不向他人透露账户密码\n4. 谨慎处理敏感信息：签署前仔细核对合同内容\n5. 及时登出：在公共设备上使用后记得登出\n6. 启用双因素认证：如果平台支持，启用额外的安全验证\n如发现异常登录，请立即修改密码并联系客服。'
+					},
+					{
+						id: 15,
+						title: '我的个人信息安全吗？',
+						content: '我们非常重视您的信息安全：\n• 数据加密：所有数据在传输和存储时都经过加密\n• 隐私保护：严格遵守隐私政策，不会将您的信息分享给第三方\n• 定期备份：确保数据不会丢失\n• 安全审计：定期进行安全审计和漏洞扫描\n• 合规认证：符合国家信息安全标准\n您可以在"个人中心"查看和管理您的个人信息。'
+					},
+					// 常见问题
+					{
+						id: 16,
+						title: '为什么我的合同签署失败了？',
+						content: '签署失败可能的原因：\n1. 网络连接问题：检查您的网络连接\n2. 签署人信息不匹配：确保输入的身份证号等信息正确\n3. 签署人未激活：邀请的签署人可能未激活账户\n4. 合同已过期：某些合同可能有有效期限制\n5. 权限问题：检查您是否有签署权限\n如果问题持续存在，请联系客服并提供合同ID。'
+					},
+					{
+						id: 17,
+						title: '如何导出或下载已签署的合同？',
+						content: '导出合同步骤：\n1. 打开已完成签署的合同\n2. 点击右上角的"更多"菜单\n3. 选择"下载"或"导出"\n4. 选择导出格式（PDF、Word等）\n5. 确认导出\n导出的合同包含所有签署信息和时间戳，可作为法律证据保存。建议您定期备份重要合同。'
+					},
+					{
+						id: 18,
+						title: '可以撤销已发送的合同吗？',
+						content: '撤销规则：\n• 签署前：可以撤销已发送的合同，签署人将收到撤销通知\n• 签署中：如果只有部分人签署，可以撤销（已签署的人需要重新签署）\n• 全部签署完成：无法撤销，合同已生效\n撤销步骤：\n1. 打开合同详情\n2. 点击"撤销合同"\n3. 输入撤销原因\n4. 确认撤销\n撤销后签署人会收到通知，如需重新签署需要重新发送。'
+					}
+				],
+				
+				// 当前展开的问题索引
+				expandedIndex: -1,
+				
+				// 联系方式
+				contact: {
+					phone: '400-000-0000',
+					email: 'shawn@leepm.com',
+					workTime: '周一至周五 9:00-18:00'
+				},
+				
+				// 是否显示联系客服弹窗
+				showContactModal: false,
+				
+				// 搜索相关
+				searchKeyword: '',  // 搜索关键词
+				filteredFaqList: [],  // 过滤后的FAQ列表
+				activeHelpTab: null  // 当前选中的帮助选项
+			}
+		},
+		methods: {
+			// 切换问题展开/收起状态
+			toggleQuestion(index) {
+				if (this.expandedIndex === index) {
+					this.expandedIndex = -1;  // 点击已展开的问题则收起
+				} else {
+					this.expandedIndex = index;  // 展开点击的问题
+				}
+			},
+			
+			// 搜索FAQ
+			searchFAQ() {
+				if (!this.searchKeyword.trim()) {
+					this.filteredFaqList = this.faqList;
+					return;
+				}
+				
+				const keyword = this.searchKeyword.toLowerCase();
+				this.filteredFaqList = this.faqList.filter(item => 
+					item.title.toLowerCase().includes(keyword) || 
+					item.content.toLowerCase().includes(keyword)
+				);
+				
+				// 如果有搜索结果，自动展开第一个
+				if (this.filteredFaqList.length > 0) {
+					this.expandedIndex = this.faqList.indexOf(this.filteredFaqList[0]);
+				}
+			},
+			
+			// 清空搜索
+			clearSearch() {
+				this.searchKeyword = '';
+				this.filteredFaqList = this.faqList;
+				this.expandedIndex = -1;
+			},
+			
+			// 处理帮助项点击
+			handleHelpItemClick(helpType) {
+				this.activeHelpTab = helpType;
+				
+				switch(helpType) {
+					case 'guide':
+						// 使用指南
+						uni.showToast({
+							title: '正在加载使用指南...',
+							icon: 'none'
+						});
+						break;
+					case 'legal':
+						// 法律支持
+						uni.showToast({
+							title: '正在加载法律支持...',
+							icon: 'none'
+						});
+						break;
+					case 'security':
+						// 安全保障
+						uni.showToast({
+							title: '正在加载安全保障信息...',
+							icon: 'none'
+						});
+						break;
+					case 'feedback':
+						// 意见反馈
+						this.submitFeedback();
+						break;
+				}
+			},
+			
+			// 联系客服
+			contactCustomerService() {
+				this.showContactModal = true;
+			},
+			
+			// 关闭联系客服弹窗
+			closeContactModal() {
+				this.showContactModal = false;
+			},
+			
+			// 拨打客服电话
+			callCustomerService() {
+				uni.makePhoneCall({
+					phoneNumber: this.contact.phone,
+					success: () => {
+						console.log('拨打电话成功');
+					},
+					fail: (err) => {
+						console.error('拨打电话失败:', err);
+						uni.showToast({
+							title: '拨打电话失败',
+							icon: 'none'
+						});
+					}
+				});
+				this.closeContactModal();
+			},
+			
+			// 发送邮件
+			sendEmail() {
+				uni.setClipboardData({
+					data: this.contact.email,
+					success: () => {
+						uni.showToast({
+							title: '邮箱已复制',
+							icon: 'success'
+						});
+					}
+				});
+				this.closeContactModal();
+			},
+			
+			// 提交反馈
+			submitFeedback() {
+				uni.navigateTo({
+					url: '/pages/profile/feedback'
+				});
+				this.closeContactModal();
+			}
+		},
+		onLoad() {
+			// 初始化时显示所有FAQ
+			this.filteredFaqList = this.faqList;
+		}
+	}
+</script>
+
+<template>
+	<view class="container">
+		<!-- 内容区域 -->
+		<scroll-view class="content-section" scroll-y="true">
+			<!-- 搜索框 -->
+			<view class="search-box">
+				<text class="search-icon fa fa-search"></text>
+				<input 
+					class="search-input" 
+					placeholder="搜索常见问题" 
+					v-model="searchKeyword"
+					@input="searchFAQ"
+				/>
+				<text v-if="searchKeyword" class="clear-icon fa fa-times" @click="clearSearch"></text>
+			</view>
+			
+			<!-- 搜索结果提示 -->
+			<view v-if="searchKeyword && filteredFaqList.length === 0" class="no-result">
+				<text class="no-result-text">未找到相关问题，请尝试其他关键词</text>
+			</view>
+			
+			<!-- 常见问题列表 -->
+			<view class="faq-section" v-if="filteredFaqList.length > 0">
+				<view class="section-header">
+					<text class="section-title">{{searchKeyword ? '搜索结果' : '常见问题'}}</text>
+					<text v-if="searchKeyword" class="result-count">({{filteredFaqList.length}})</text>
+				</view>
+				
+				<view class="faq-list">
+					<view v-for="(item, index) in filteredFaqList" :key="item.id" class="faq-item">
+						<view class="faq-question" @click="toggleQuestion(faqList.indexOf(item))">
+							<text class="question-text">{{item.title}}</text>
+							<text :class="['arrow-icon', 'fa', expandedIndex === faqList.indexOf(item) ? 'fa-chevron-up' : 'fa-chevron-down']"></text>
+						</view>
+						
+						<view v-if="expandedIndex === faqList.indexOf(item)" class="faq-answer">
+							<text class="answer-text">{{item.content}}</text>
+						</view>
+					</view>
+				</view>
+			</view>
+			
+			<!-- 联系客服 -->
+			<view class="contact-section">
+				<view class="contact-card" @click="contactCustomerService">
+					<view class="contact-icon">
+						<text class="icon-service fa fa-headphones"></text>
+					</view>
+					<view class="contact-info">
+						<text class="contact-title">联系客服</text>
+						<text class="contact-desc">工作时间: {{contact.workTime}}</text>
+					</view>
+					<text class="arrow-right fa fa-chevron-right"></text>
+				</view>
+			</view>
+			
+			<!-- 更多帮助选项 -->
+			<view class="more-help-section">
+				<view class="section-header">
+					<text class="section-title">更多帮助</text>
+				</view>
+				
+				<view class="help-grid">
+					<view class="help-item" @click="handleHelpItemClick('guide')" :class="activeHelpTab === 'guide' ? 'active' : ''">
+						<view class="help-icon-container">
+							<text class="help-icon fa fa-book"></text>
+						</view>
+						<text class="help-text">使用指南</text>
+					</view>
+					<view class="help-item" @click="handleHelpItemClick('legal')" :class="activeHelpTab === 'legal' ? 'active' : ''">
+						<view class="help-icon-container">
+							<text class="help-icon fa fa-gavel"></text>
+						</view>
+						<text class="help-text">法律支持</text>
+					</view>
+					<view class="help-item" @click="handleHelpItemClick('security')" :class="activeHelpTab === 'security' ? 'active' : ''">
+						<view class="help-icon-container">
+							<text class="help-icon fa fa-lock"></text>
+						</view>
+						<text class="help-text">安全保障</text>
+					</view>
+					<view class="help-item" @click="handleHelpItemClick('feedback')" :class="activeHelpTab === 'feedback' ? 'active' : ''">
+						<view class="help-icon-container">
+							<text class="help-icon fa fa-comment"></text>
+						</view>
+						<text class="help-text">意见反馈</text>
+					</view>
+				</view>
+			</view>
+		</scroll-view>
+		
+		<!-- 联系客服弹窗 -->
+		<view v-if="showContactModal" class="modal-overlay">
+			<view class="modal-container">
+				<view class="modal-header">
+					<text class="modal-title">联系客服</text>
+					<text class="close-icon fa fa-times" @click="closeContactModal"></text>
+				</view>
+				<view class="modal-body">
+					<view class="contact-option" @click="callCustomerService">
+						<text class="option-icon fa fa-phone"></text>
+						<text class="option-text">电话客服: {{contact.phone}}</text>
+					</view>
+					<view class="contact-option" @click="sendEmail">
+						<text class="option-icon fa fa-envelope"></text>
+						<text class="option-text">电子邮件: {{contact.email}}</text>
+					</view>
+					<view class="contact-option" @click="submitFeedback">
+						<text class="option-icon fa fa-comment"></text>
+						<text class="option-text">问题反馈</text>
+					</view>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<style>
+	/* FontAwesome基础样式 */
+	@import url("../../static/styles/fontawesome.css");
+	
+	.fa {
+		font-family: 'Font Awesome 6 Free';
+		font-weight: 900;
+		font-style: normal;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+	
+	.fa-brands {
+		font-family: 'Font Awesome 6 Brands';
+		font-weight: 400;
+	}
+	
+	.container {
+		flex: 1;
+		background-color: #F7F9FC;
+	}
+	
+	/* 内容区域样式 */
+	.content-section {
+		flex: 1;
+		padding: 30rpx;
+	}
+	
+	/* 搜索框样式 */
+	.search-box {
+		background-color: #FFFFFF;
+		height: 80rpx;
+		border-radius: 40rpx;
+		flex-direction: row;
+		align-items: center;
+		padding: 0 30rpx;
+		margin-bottom: 30rpx;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+	}
+	
+	.search-icon {
+		font-size: 30rpx;
+		color: #909399;
+		margin-right: 20rpx;
+	}
+	
+	.search-input {
+		flex: 1;
+		height: 80rpx;
+		font-size: 28rpx;
+		color: #303133;
+	}
+	
+	.clear-icon {
+		font-size: 28rpx;
+		color: #909399;
+		margin-left: 10rpx;
+	}
+	
+	/* 搜索结果提示 */
+	.no-result {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 60rpx 30rpx;
+		margin-bottom: 30rpx;
+		align-items: center;
+		justify-content: center;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+	}
+	
+	.no-result-text {
+		font-size: 28rpx;
+		color: #909399;
+	}
+	
+	/* 常见问题样式 */
+	.faq-section {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 30rpx;
+		margin-bottom: 30rpx;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+	}
+	
+	.section-header {
+		margin-bottom: 20rpx;
+	}
+	
+	.section-title {
+		font-size: 32rpx;
+		font-weight: 600;
+		color: #303133;
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	.result-count {
+		font-size: 24rpx;
+		color: #909399;
+		margin-left: 10rpx;
+		font-weight: normal;
+	}
+	
+	.faq-item {
+		padding: 20rpx 0;
+		border-bottom: 1rpx solid #EBEEF5;
+	}
+	
+	.faq-item:last-child {
+		border-bottom: none;
+	}
+	
+	.faq-question {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+	}
+	
+	.question-text {
+		font-size: 28rpx;
+		color: #303133;
+		flex: 1;
+	}
+	
+	.arrow-icon {
+		font-size: 24rpx;
+		color: #909399;
+		width: 40rpx;
+		text-align: center;
+	}
+	
+	.faq-answer {
+		margin-top: 20rpx;
+		padding: 20rpx;
+		background-color: #F5F7FA;
+		border-radius: 8rpx;
+	}
+	
+	.answer-text {
+		font-size: 26rpx;
+		color: #606266;
+		line-height: 1.6;
+	}
+	
+	/* 联系客服样式 */
+	.contact-section {
+		margin-bottom: 30rpx;
+	}
+	
+	.contact-card {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 30rpx;
+		flex-direction: row;
+		align-items: center;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+	}
+	
+	.contact-icon {
+		width: 80rpx;
+		height: 80rpx;
+		border-radius: 40rpx;
+		background-color: rgba(0, 194, 138, 0.1);
+		justify-content: center;
+		align-items: center;
+		margin-right: 20rpx;
+	}
+	
+	.icon-service {
+		font-size: 40rpx;
+		color: #00C28A;
+	}
+	
+	.contact-info {
+		flex: 1;
+	}
+	
+	.contact-title {
+		font-size: 28rpx;
+		color: #303133;
+		font-weight: 500;
+	}
+	
+	.contact-desc {
+		font-size: 24rpx;
+		color: #909399;
+		margin-top: 8rpx;
+	}
+	
+	.arrow-right {
+		font-size: 32rpx;
+		color: #C0C4CC;
+	}
+	
+	/* 更多帮助样式 */
+	.more-help-section {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 30rpx;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+	}
+	
+	.help-grid {
+		flex-direction: row;
+		flex-wrap: wrap;
+		margin-top: 20rpx;
+	}
+	
+	.help-item {
+		width: 25%;
+		align-items: center;
+		padding: 20rpx 0;
+		transition: all 0.3s ease;
+	}
+	
+	.help-item.active .help-icon-container {
+		background-color: rgba(24, 144, 255, 0.2);
+		transform: scale(1.1);
+	}
+	
+	.help-item.active .help-text {
+		color: #1890FF;
+		font-weight: 600;
+	}
+	
+	.help-icon-container {
+		width: 100rpx;
+		height: 100rpx;
+		border-radius: 50rpx;
+		background-color: rgba(24, 144, 255, 0.1);
+		justify-content: center;
+		align-items: center;
+		margin-bottom: 16rpx;
+		transition: all 0.3s ease;
+	}
+	
+	.help-icon {
+		font-size: 48rpx;
+		color: #1890FF;
+	}
+	
+	.help-text {
+		font-size: 24rpx;
+		color: #606266;
+		transition: all 0.3s ease;
+	}
+	
+	/* 弹窗样式 */
+	.modal-overlay {
+		position: fixed;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		left: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+		align-items: center;
+		justify-content: center;
+		z-index: 999;
+	}
+	
+	.modal-container {
+		width: 80%;
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		overflow: hidden;
+		box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.15);
+	}
+	
+	.modal-header {
+		padding: 30rpx;
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		border-bottom: 1rpx solid #EBEEF5;
+	}
+	
+	.modal-title {
+		font-size: 32rpx;
+		font-weight: 600;
+		color: #303133;
+	}
+	
+	.close-icon {
+		font-size: 32rpx;
+		color: #909399;
+	}
+	
+	.modal-body {
+		padding: 30rpx;
+	}
+	
+	.contact-option {
+		flex-direction: row;
+		align-items: center;
+		padding: 20rpx 0;
+		border-bottom: 1rpx solid #EBEEF5;
+	}
+	
+	.contact-option:last-child {
+		border-bottom: none;
+	}
+	
+	.option-icon {
+		width: 60rpx;
+		font-size: 36rpx;
+		color: #00C28A;
+		text-align: center;
+	}
+	
+	.option-text {
+		font-size: 28rpx;
+		color: #606266;
+		margin-left: 20rpx;
+	}
+</style> 

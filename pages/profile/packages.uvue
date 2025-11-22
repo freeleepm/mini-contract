@@ -1,0 +1,1458 @@
+<script>
+	/**
+	 * 个人套餐页面
+	 */
+	export default {
+		data() {
+			return {
+				// 当前身份信息
+				currentIdentity: {
+					type: 'personal',  // 当前身份类型：personal 或 enterprise
+					id: 'personal_001',  // 身份ID
+					name: '张三（个人）',  // 身份名称
+					verified: true,  // 是否已认证
+				},
+				
+				// 套餐信息
+				packageInfo: {
+					name: '个人基础版',
+					expireDate: '2025-12-31',
+					remainingContracts: 18,
+					totalContracts: 100,
+					isExpired: false,
+					autoRenew: false, // 是否自动续费
+					features: [
+						'基础合同创建与签署',
+						'个人电子签名',
+						'移动端全功能支持',
+						'文件/图片发起合同',
+						'合同存档与管理'
+					]
+				},
+				
+				// 可升级套餐列表
+				upgradePackages: [
+					{
+						id: 'personal_premium',
+						name: '个人高级版',
+						price: '99',
+						unit: '年',
+						contractCount: 500,
+						features: [
+							'基础版全部功能',
+							'优先客户支持',
+							'更多签名/印章',
+							'批量合同处理',
+							'高级模板使用权'
+						]
+					},
+					{
+						id: 'personal_pro',
+						name: '个人专业版',
+						price: '199',
+						unit: '年',
+						contractCount: '无限',
+						features: [
+							'高级版全部功能',
+							'7×24小时客户支持',
+							'无限签名/印章',
+							'高级审计报告',
+							'个性化品牌定制'
+						]
+					}
+				],
+				isExpired: false,
+				loading: true, // 添加加载状态
+				currentDate: new Date() // 当前日期
+			}
+		},
+		computed: {
+			progressPercent() {
+				if (this.packageInfo.totalContracts === -1) return 100;
+				return Math.min(100, Math.round(this.packageInfo.remainingContracts / this.packageInfo.totalContracts * 100));
+			},
+			progressColor() {
+				if (this.packageInfo.totalContracts === -1) return '#00C28A';
+				const ratio = this.packageInfo.remainingContracts / this.packageInfo.totalContracts;
+				if (ratio > 0.5) return '#00C28A';
+				if (ratio > 0.2) return '#FAAD14';
+				return '#F56C6C';
+			},
+			usageText() {
+				if (this.packageInfo.totalContracts === -1) {
+					return `已使用 ${this.packageInfo.remainingContracts} 份`;
+				}
+				return `剩余 ${this.packageInfo.remainingContracts}/${this.packageInfo.totalContracts} 份`;
+			}
+		},
+		onLoad() {
+			// 从本地存储加载身份信息
+			this.loadIdentityFromStorage();
+			
+			// 获取当前服务器时间
+			this.getCurrentServerTime();
+			
+			// 模拟API请求延迟
+			setTimeout(() => {
+				// 加载套餐信息
+				this.loadPackageInfo();
+				
+				// 计算套餐是否过期
+				this.checkPackageExpiration();
+				
+				// 数据加载完成
+				this.loading = false;
+			}, 500);
+		},
+		methods: {
+			// 返回上一页
+			goBack() {
+				uni.navigateBack();
+			},
+			
+			// 获取当前服务器时间
+			getCurrentServerTime() {
+				// 实际项目中应调用API获取服务器时间
+				// 这里使用系统时间
+				const date = new Date('2025-07-09 18:12:21');
+				console.log('当前服务器时间:', date.toISOString());
+				this.currentDate = date;
+			},
+			
+			// 检查套餐是否过期
+			checkPackageExpiration() {
+				const expireDate = new Date(this.packageInfo.expireDate);
+				this.isExpired = this.currentDate > expireDate;
+				
+				// 如果过期，更新packageInfo.isExpired
+				if (this.isExpired) {
+					this.packageInfo.isExpired = true;
+				}
+				
+				console.log('套餐过期状态:', this.isExpired ? '已过期' : '有效');
+			},
+			
+			// 从本地存储加载身份
+			loadIdentityFromStorage() {
+				try {
+					const savedIdentity = uni.getStorageSync('currentIdentity');
+					if (savedIdentity) {
+						this.currentIdentity = JSON.parse(savedIdentity);
+					}
+				} catch (e) {
+					console.error('加载身份信息失败:', e);
+				}
+			},
+			
+			// 加载套餐信息
+			loadPackageInfo() {
+				// 此处应调用API获取当前身份的套餐信息
+				// 现在使用模拟数据
+				console.log('加载套餐信息，当前身份:', this.currentIdentity);
+				
+				// 如果是企业身份，显示企业套餐信息
+				if (this.currentIdentity.type === 'enterprise') {
+					this.packageInfo = {
+						name: '企业标准版',
+						expireDate: '2025-12-31',
+						remainingContracts: 856,
+						totalContracts: 1000,
+						isExpired: false,
+						autoRenew: true, // 企业版默认开启自动续费
+						features: [
+							'企业合同创建与签署',
+							'企业电子印章',
+							'多成员协作',
+							'角色与权限管理',
+							'企业合同存档与管理'
+						]
+					};
+					
+					this.upgradePackages = [
+						{
+							id: 'enterprise_premium',
+							name: '企业高级版',
+							price: '999',
+							unit: '年',
+							contractCount: 5000,
+							features: [
+								'标准版全部功能',
+								'优先客户支持',
+								'更多电子印章',
+								'批量合同处理',
+								'高级模板使用权'
+							]
+						},
+						{
+							id: 'enterprise_pro',
+							name: '企业专业版',
+							price: '1999',
+							unit: '年',
+							contractCount: '无限',
+							features: [
+								'高级版全部功能',
+								'7×24小时客户支持',
+								'无限电子印章',
+								'高级审计报告',
+								'企业品牌定制'
+							]
+						}
+					];
+					
+					// 模拟无限额度套餐
+					if (this.upgradePackages[1].contractCount === '无限') {
+						this.upgradePackages[1].contractCount = -1;
+					}
+				}
+				
+				// 模拟过期状态（随机）
+				if (Math.random() > 0.7) {
+					this.packageInfo.isExpired = true;
+					this.isExpired = true;
+					this.packageInfo.autoRenew = false; // 过期状态下自动续费关闭
+				}
+			},
+			
+			// 升级套餐
+			upgradePackage(packageId) {
+				// 过期时跳转到续费页面
+				if (this.isExpired) {
+					uni.showModal({
+						title: '续费提醒',
+						content: '您的套餐已过期，是否立即续费？',
+						success: (res) => {
+							if (res.confirm) {
+								// 调用续费API
+								uni.showToast({
+									title: '跳转到支付页面',
+									icon: 'none'
+								});
+								
+								// 这里应该跳转到续费页面
+								console.log('续费套餐:', this.packageInfo.name);
+							}
+						}
+					});
+					return;
+				}
+				
+				// 获取选中的套餐信息
+				const targetPackage = this.upgradePackages.find(pkg => pkg.id === packageId);
+				if (!targetPackage) {
+					uni.showToast({
+						title: '套餐不存在',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				uni.showModal({
+					title: '确认升级',
+					content: `确定要从"${this.packageInfo.name}"升级到"${targetPackage.name}"吗？`,
+					success: (res) => {
+						if (res.confirm) {
+							// 调用套餐升级API
+							uni.showToast({
+								title: '跳转到支付页面',
+								icon: 'none'
+							});
+							
+							// 这里应该跳转到支付页面
+							console.log('升级到套餐:', targetPackage.name, '(ID:', packageId, ')');
+						}
+					}
+				});
+			},
+			
+			// 购买合同份数
+			buyContracts() {
+				// 过期时跳转到续费页面
+				if (this.isExpired) {
+					uni.showModal({
+						title: '续费提醒',
+						content: '您的套餐已过期，是否立即续费？',
+						success: (res) => {
+							if (res.confirm) {
+								// 调用续费API
+								uni.showToast({
+									title: '跳转到续费页面',
+									icon: 'none'
+								});
+								
+								// 模拟跳转到支付页面
+								setTimeout(() => {
+									uni.navigateTo({
+										url: '/pages/profile/packages-payment?type=renew&package=' + encodeURIComponent(JSON.stringify(this.packageInfo))
+									});
+								}, 500);
+							}
+						}
+					});
+					return;
+				}
+				
+				// 未过期时购买额外份数
+				// 显示选择购买数量的弹窗
+				uni.showActionSheet({
+					itemList: ['10份', '50份', '100份', '200份', '500份'],
+					success: (res) => {
+						// 根据选择确定购买数量
+						const contractAmounts = [10, 50, 100, 200, 500];
+						const selectedAmount = contractAmounts[res.tapIndex];
+						
+						// 显示确认购买对话框
+				uni.showModal({
+							title: '确认购买',
+							content: `确定要购买${selectedAmount}份合同吗？`,
+					success: (res) => {
+						if (res.confirm) {
+									// 显示加载中
+									uni.showLoading({
+										title: '处理中...'
+									});
+									
+									// 模拟API请求
+									setTimeout(() => {
+										uni.hideLoading();
+										
+										// 跳转到支付页面
+										uni.navigateTo({
+											url: `/pages/profile/packages-payment?type=contracts&amount=${selectedAmount}&price=${selectedAmount * 2}`
+										});
+									}, 500);
+								}
+							}
+						});
+					}
+				});
+			},
+			
+			// 切换身份
+			switchIdentity() {
+				// 创建可选择的身份列表
+				const identityList = [
+					{
+						type: 'personal',
+						id: 'personal_001',
+						name: '张三（个人）',
+						verified: true
+					},
+					{
+						type: 'enterprise',
+						id: 'enterprise_001',
+						name: 'ABC科技有限公司',
+						verified: true
+					}
+				];
+				
+				// 显示操作菜单让用户选择身份
+				uni.showActionSheet({
+					itemList: identityList.map(item => item.name),
+					success: (res) => {
+						// 用户选择了某个身份
+						const selectedIdentity = identityList[res.tapIndex];
+						
+						// 更新当前身份
+						this.currentIdentity = selectedIdentity;
+						
+						// 保存到本地存储
+						try {
+							uni.setStorageSync('currentIdentity', JSON.stringify(selectedIdentity));
+						} catch (e) {
+							console.error('保存身份信息失败:', e);
+						}
+						
+						// 重新加载套餐信息
+						this.loading = true;
+						setTimeout(() => {
+							this.loadPackageInfo();
+							this.checkPackageExpiration();
+							this.loading = false;
+							
+							// 提示用户已切换身份
+							uni.showToast({
+								title: '已切换到' + selectedIdentity.name,
+								icon: 'none'
+							});
+						}, 500);
+					}
+				});
+			},
+			
+			// 切换自动续费状态
+			toggleAutoRenew() {
+				if (this.isExpired) {
+					uni.showToast({
+						title: '套餐已过期，请先续费',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				this.packageInfo.autoRenew = !this.packageInfo.autoRenew;
+				
+				// 保存到服务器
+				uni.showLoading({
+					title: '保存中...'
+				});
+				
+				setTimeout(() => {
+					uni.hideLoading();
+					uni.showToast({
+						title: this.packageInfo.autoRenew ? '已开启自动续费' : '已关闭自动续费',
+						icon: 'none'
+					});
+				}, 500);
+			},
+
+			// 获取所有套餐的特性列表
+			getAllFeatures() {
+				const allFeatures = [];
+				this.upgradePackages.forEach(pkg => {
+					allFeatures.push(...pkg.features);
+				});
+				return Array.from(new Set(allFeatures)); // 去重
+			},
+
+			// 检查套餐是否包含某个特性
+			hasFeature(pkg, feature) {
+				return pkg.features.includes(feature);
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="packages-page">
+		<!-- 内容区域 - 直接使用scroll-view作为页面主体 -->
+		<scroll-view 
+			class="content-scroll" 
+			scroll-y="true"
+			:refresher-enabled="true"
+			:refresher-triggered="false"
+			refresher-background="#F7F9FC"
+		>
+			<!-- 加载动画 -->
+			<view v-if="loading" class="loading-container">
+				<view class="loading-spinner"></view>
+				<text class="loading-text">加载中...</text>
+			</view>
+			
+			<view v-else class="content-wrapper">
+				<!-- 当前身份显示 -->
+				<view class="identity-card">
+				<view class="identity-info">
+						<text class="identity-label">当前身份</text>
+						<view class="identity-value-container">
+					<text class="identity-value">{{currentIdentity.name}}</text>
+							<view v-if="currentIdentity.verified" class="verified-tag" :class="{'enterprise-tag': currentIdentity.type === 'enterprise'}">
+								<text class="verified-tag-icon fa fa-check-circle"></text>
+								<text class="verified-tag-text">{{ currentIdentity.type === 'enterprise' ? '企业已认证' : '已认证' }}</text>
+							</view>
+						</view>
+					</view>
+					<view class="identity-switch" @click="switchIdentity">
+						<text class="switch-text">切换身份</text>
+						<text class="switch-icon fa fa-exchange"></text>
+					</view>
+				</view>
+				
+				<!-- 当前套餐卡片 -->
+				<view class="package-card">
+					<!-- 套餐基本信息 -->
+					<view class="package-header">
+						<view class="header-left">
+							<text class="package-name">{{packageInfo.name}}</text>
+							<view class="package-meta">
+								<text class="package-expire-label">有效期至</text>
+								<text class="package-expire-value" :class="{'expire-warning': isExpired}">{{packageInfo.expireDate}}</text>
+						</view>
+					</view>
+						<view class="package-icon">
+							<text class="icon-bg fa fa-diamond"></text>
+						</view>
+					</view>
+					
+					<!-- 套餐使用情况 -->
+					<view class="usage-section">
+						<view class="usage-header">
+							<text class="usage-title">合同使用情况</text>
+							<view class="usage-tag" :style="{backgroundColor: progressColor + '15'}">
+								<text class="usage-value" :style="{color: progressColor}">{{
+									progressPercent < 20 ? '即将用完' : 
+									progressPercent < 50 ? '使用中' : 
+									progressPercent < 80 ? '充足' : 
+									'非常充足'
+								}}</text>
+							</view>
+						</view>
+						
+						<view class="progress-container">
+							<view class="progress-bar">
+								<view class="progress-filled" :style="{width: progressPercent + '%', backgroundColor: progressColor}"></view>
+							</view>
+							
+							<view class="usage-stats">
+								<view class="usage-stat-item">
+									<view class="stat-value-container">
+										<text class="stat-value">{{packageInfo.totalContracts - packageInfo.remainingContracts}}</text>
+										<text class="stat-total">/ {{packageInfo.totalContracts === -1 ? '∞' : packageInfo.totalContracts}}</text>
+							</view>
+									<text class="stat-label">已使用合同</text>
+						</view>
+								
+								<view class="usage-stat-divider"></view>
+								
+								<view class="usage-stat-item">
+									<view class="stat-value-container">
+										<text class="stat-value">{{packageInfo.remainingContracts}}</text>
+										<text class="stat-total">/ {{packageInfo.totalContracts === -1 ? '∞' : packageInfo.totalContracts}}</text>
+									</view>
+									<text class="stat-label">剩余合同</text>
+					</view>
+					
+								<view class="usage-stat-divider"></view>
+								
+								<view class="usage-stat-item">
+									<view class="stat-value-container">
+										<text class="stat-value usage-percent">{{progressPercent}}%</text>
+									</view>
+									<text class="stat-label">使用率</text>
+								</view>
+							</view>
+						</view>
+					</view>
+					
+					<!-- 分隔线 -->
+					<view class="divider"></view>
+					
+					<!-- 套餐功能列表 -->
+					<view class="features-section">
+						<text class="features-title">套餐包含功能</text>
+						<view class="features-groups">
+							<view class="feature-group">
+								<view class="group-header">
+									<view class="group-icon-container">
+										<text class="group-icon fa fa-file-text"></text>
+							</view>
+									<text class="group-title">文档处理</text>
+						</view>
+								<view class="group-items">
+									<view class="feature-item" v-if="packageInfo.features.includes('基础合同创建与签署') || packageInfo.features.includes('企业合同创建与签署')">
+										<view class="feature-icon-container">
+											<text class="feature-icon fa fa-check-circle"></text>
+										</view>
+										<text class="feature-name">合同创建与签署</text>
+									</view>
+									<view class="feature-item" v-if="packageInfo.features.includes('文件/图片发起合同')">
+										<view class="feature-icon-container">
+											<text class="feature-icon fa fa-check-circle"></text>
+										</view>
+										<text class="feature-name">文件/图片发起合同</text>
+									</view>
+									<view class="feature-item" v-if="packageInfo.features.includes('合同存档与管理') || packageInfo.features.includes('企业合同存档与管理')">
+										<view class="feature-icon-container">
+											<text class="feature-icon fa fa-check-circle"></text>
+										</view>
+										<text class="feature-name">合同存档与管理</text>
+									</view>
+								</view>
+							</view>
+							
+							<view class="feature-group">
+								<view class="group-header">
+									<view class="group-icon-container">
+										<text class="group-icon fa fa-user"></text>
+									</view>
+									<text class="group-title">身份与签名</text>
+								</view>
+								<view class="group-items">
+									<view class="feature-item" v-if="packageInfo.features.includes('个人电子签名')">
+										<view class="feature-icon-container">
+											<text class="feature-icon fa fa-check-circle"></text>
+										</view>
+										<text class="feature-name">个人电子签名</text>
+									</view>
+									<view class="feature-item" v-if="packageInfo.features.includes('企业电子印章')">
+										<view class="feature-icon-container">
+											<text class="feature-icon fa fa-check-circle"></text>
+										</view>
+										<text class="feature-name">企业电子印章</text>
+									</view>
+									<view class="feature-item" v-if="packageInfo.features.includes('多成员协作')">
+										<view class="feature-icon-container">
+											<text class="feature-icon fa fa-check-circle"></text>
+										</view>
+										<text class="feature-name">多成员协作</text>
+									</view>
+								</view>
+							</view>
+							
+							<view class="feature-group">
+								<view class="group-header">
+									<view class="group-icon-container">
+										<text class="group-icon fa fa-cog"></text>
+									</view>
+									<text class="group-title">系统功能</text>
+								</view>
+								<view class="group-items">
+									<view class="feature-item" v-if="packageInfo.features.includes('移动端全功能支持')">
+										<view class="feature-icon-container">
+											<text class="feature-icon fa fa-check-circle"></text>
+										</view>
+										<text class="feature-name">移动端全功能支持</text>
+									</view>
+									<view class="feature-item" v-if="packageInfo.features.includes('角色与权限管理')">
+										<view class="feature-icon-container">
+											<text class="feature-icon fa fa-check-circle"></text>
+										</view>
+										<text class="feature-name">角色与权限管理</text>
+									</view>
+									<view class="feature-item" v-if="!packageInfo.features.some(f => f.includes('权限管理') || f.includes('移动端'))">
+										<view class="feature-icon-container">
+											<text class="feature-icon fa fa-check-circle"></text>
+										</view>
+										<text class="feature-name">基础系统功能</text>
+									</view>
+								</view>
+							</view>
+						</view>
+					</view>
+					
+					<!-- 自动续费开关 -->
+					<view class="auto-renew-container" :class="{'disabled': isExpired}" v-if="!isExpired">
+						<view class="auto-renew-info">
+							<text class="auto-renew-label">到期自动续费</text>
+							<text class="auto-renew-desc">开启后，系统将在套餐到期前自动为您续费</text>
+						</view>
+						<view class="auto-renew-switch" :class="{'switch-on': packageInfo.autoRenew}" @click="toggleAutoRenew">
+							<view class="switch-handle"></view>
+						</view>
+					</view>
+				</view>
+				
+				<!-- 升级套餐选项 -->
+				<view class="upgrade-section">
+					<view class="upgrade-header">
+						<view class="upgrade-title-container">
+							<text class="upgrade-title">升级套餐</text>
+							<view class="upgrade-badge">
+								<text class="upgrade-badge-text">提升合同额度</text>
+							</view>
+						</view>
+						<text class="upgrade-subtitle">选择更适合您的方案，享受更多功能</text>
+					</view>
+					
+					<!-- 当前套餐提示 -->
+					<view class="current-package-hint">
+						<text class="hint-icon fa fa-info-circle"></text>
+						<text class="hint-text">您当前套餐：{{packageInfo.name}}</text>
+					</view>
+					
+					<!-- 套餐卡片列表 -->
+					<view class="upgrade-cards">
+						<view v-for="(pkg, index) in upgradePackages" :key="pkg.id" 
+							class="upgrade-package-card"
+							:class="{'recommended-card': pkg.id === 'personal_pro' || pkg.id === 'enterprise_pro'}"
+						>
+							<!-- 推荐标签 -->
+							<view v-if="pkg.id === 'personal_pro' || pkg.id === 'enterprise_pro'" class="recommended-tag">
+								<text class="recommended-tag-text">推荐</text>
+							</view>
+							
+							<!-- 套餐头部 -->
+							<view class="package-card-header">
+								<text class="package-card-name">{{pkg.name}}</text>
+								<view class="package-card-price">
+									<text class="price-currency">¥</text>
+									<text class="price-amount">{{pkg.price}}</text>
+									<text class="price-unit">/{{pkg.unit}}</text>
+								</view>
+							</view>
+							
+							<!-- 合同数量 -->
+							<view class="package-highlight">
+								<view class="highlight-icon-container">
+									<text class="highlight-icon fa fa-file-text"></text>
+								</view>
+								<view class="highlight-content">
+									<text class="highlight-label">合同数量</text>
+									<text class="highlight-value">{{pkg.contractCount === -1 ? '无限' : pkg.contractCount + '份'}}</text>
+									</view>
+							</view>
+							
+							<!-- 功能列表 -->
+							<view class="package-features">
+								<view v-for="(feature, featureIndex) in pkg.features" :key="featureIndex" class="package-feature-item">
+									<text class="feature-check fa fa-check"></text>
+									<text class="package-feature-text">{{feature}}</text>
+								</view>
+							</view>
+							
+							<!-- 升级按钮 -->
+							<view class="package-upgrade-button" :class="{'primary-button': pkg.id === 'personal_pro' || pkg.id === 'enterprise_pro'}" @click="upgradePackage(pkg.id)">
+								<text class="package-button-text">{{isExpired ? '立即续费' : '立即升级'}}</text>
+							</view>
+						</view>
+					</view>
+				</view>
+				
+				<!-- 购买合同份数 -->
+				<view class="buy-contracts-card">
+					<view class="buy-contracts-content">
+						<text class="buy-title">需要更多合同份数？</text>
+						<text class="buy-desc">{{isExpired ? '您的套餐已过期，续费后可继续使用' : '单独购买合同份数可提高您的合同签署额度'}}</text>
+					</view>
+					<view class="buy-contracts-button" @click="buyContracts">
+						<text class="button-text">{{isExpired ? '立即续费' : '购买合同'}}</text>
+						<text class="button-icon fa fa-plus"></text>
+					</view>
+				</view>
+			</view>
+		</scroll-view>
+	</view>
+</template>
+
+<style>
+	.packages-page {
+		flex: 1;
+		background-color: #F7F9FC;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+	}
+	
+	/* 内容滚动区域 */
+	.content-scroll {
+		flex: 1;
+	}
+
+	.content-wrapper {
+		padding: 24rpx;
+	}
+	
+	/* 加载状态 */
+	.loading-container {
+		flex: 1;
+		align-items: center;
+		justify-content: center;
+		padding: 100rpx 0;
+	}
+	
+	.loading-spinner {
+		width: 60rpx;
+		height: 60rpx;
+		border-width: 6rpx;
+		border-color: #EEEEEE;
+		border-radius: 30rpx;
+		border-top-color: #00C28A;
+		animation: spin 1s linear infinite;
+	}
+	
+	.loading-text {
+		font-size: 28rpx;
+		color: #909399;
+		margin-top: 20rpx;
+	}
+	
+	@keyframes spin {
+		0% { transform: rotate(0deg); }
+		100% { transform: rotate(360deg); }
+	}
+	
+	/* 身份卡片 */
+	.identity-card {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 32rpx;
+		margin: 16rpx 0 30rpx 0;
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.08);
+	}
+	
+	.identity-info {
+		flex-direction: column;
+	}
+	
+	.identity-label {
+		font-size: 26rpx;
+		color: #909399;
+		margin-bottom: 12rpx;
+	}
+	
+	.identity-value-container {
+		flex-direction: column;
+		align-items: flex-start;
+}
+
+.identity-value {
+	font-size: 34rpx;
+	color: #303133;
+	font-weight: 500;
+	margin-bottom: 12rpx;
+}
+
+.verified-tag {
+	flex-direction: row;
+	align-items: center;
+	background-color: rgba(0, 194, 138, 0.1);
+	border-radius: 20rpx;
+	padding: 4rpx 12rpx;
+}
+
+.enterprise-tag {
+	background-color: rgba(24, 144, 255, 0.08);
+}
+
+.enterprise-tag .verified-tag-text {
+	color: #1890FF;
+}
+
+.enterprise-tag .verified-tag-icon {
+	color: #1890FF;
+}
+
+.verified-tag-text {
+	font-size: 22rpx;
+	color: #00C28A;
+	font-weight: 500;
+}
+
+.verified-tag-icon {
+	font-size: 24rpx;
+	color: #00C28A;
+	margin-right: 6rpx;
+}
+	
+	.identity-switch {
+		flex-direction: row;
+		align-items: center;
+		padding: 14rpx 24rpx;
+		background-color: rgba(24, 144, 255, 0.08);
+		border-radius: 30rpx;
+	}
+	
+	.switch-text {
+		font-size: 26rpx;
+		color: #1890FF;
+		margin-right: 10rpx;
+	}
+	
+	.switch-icon {
+		font-size: 24rpx;
+		color: #1890FF;
+	}
+	
+	/* 套餐卡片 */
+	.package-card {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 40rpx;
+		margin-bottom: 30rpx;
+		box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.08);
+	}
+	
+	.package-header {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 36rpx;
+	}
+	
+	.header-left {
+		flex-direction: column;
+	}
+	
+	.package-name {
+		font-size: 42rpx;
+		color: #303133;
+		font-weight: 600;
+		margin-bottom: 16rpx;
+	}
+	
+	.package-meta {
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	.package-expire-label {
+		font-size: 28rpx;
+		color: #909399;
+		margin-right: 12rpx;
+	}
+	
+	.package-expire-value {
+		font-size: 28rpx;
+		color: #606266;
+		font-weight: 500;
+	}
+	
+	.expire-warning {
+		color: #F56C6C;
+	}
+	
+	.package-icon {
+		width: 84rpx;
+		height: 84rpx;
+		background-color: rgba(0, 194, 138, 0.12);
+		border-radius: 42rpx;
+		align-items: center;
+		justify-content: center;
+		display: flex;
+		box-shadow: 0 4rpx 8rpx rgba(0, 194, 138, 0.15);
+	}
+	
+	.package-icon.level-0 {
+		background-color: rgba(24, 144, 255, 0.12);
+		box-shadow: 0 4rpx 8rpx rgba(24, 144, 255, 0.15);
+	}
+	
+	.package-icon.level-1 {
+		background-color: rgba(250, 173, 20, 0.12);
+		box-shadow: 0 4rpx 8rpx rgba(250, 173, 20, 0.15);
+	}
+	
+	.icon-bg {
+		font-size: 36rpx;
+		color: #00C28A;
+		text-align: center;
+		line-height: 84rpx;
+		width: 100%;
+		height: 100%;
+	}
+	
+	.level-0 .icon-bg {
+		color: #1890FF;
+	}
+	
+	.level-1 .icon-bg {
+		color: #FAAD14;
+	}
+	
+	/* 使用情况 */
+	.usage-section {
+		margin: 32rpx 0;
+		background-color: #FAFBFC;
+		border-radius: 16rpx;
+		padding: 30rpx;
+	}
+	
+	.usage-header {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 24rpx;
+	}
+	
+	.usage-title {
+		font-size: 32rpx;
+		color: #303133;
+		font-weight: 500;
+	}
+	
+	.usage-tag {
+		padding: 8rpx 16rpx;
+		border-radius: 20rpx;
+		background-color: rgba(0, 194, 138, 0.1);
+	}
+	
+	.usage-value {
+		font-size: 26rpx;
+		font-weight: 500;
+		color: #00C28A;
+	}
+	
+	.progress-container {
+		margin-top: 24rpx;
+	}
+	
+	.progress-bar {
+		height: 24rpx;
+		background-color: #F0F2F5;
+		border-radius: 12rpx;
+		overflow: hidden;
+		box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
+		margin-bottom: 30rpx;
+	}
+	
+	.progress-filled {
+		height: 24rpx;
+		background-color: #00C28A;
+		border-radius: 12rpx;
+	}
+	
+	.usage-stats {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 10rpx 0;
+	}
+	
+	.usage-stat-item {
+		flex-direction: column;
+		align-items: center;
+		flex: 1;
+	}
+	
+	.stat-value-container {
+		flex-direction: row;
+		align-items: baseline;
+		margin-bottom: 8rpx;
+	}
+	
+	.stat-value {
+		font-size: 32rpx;
+		color: #303133;
+		font-weight: 600;
+	}
+	
+	.usage-percent {
+		color: #1890FF;
+	}
+	
+	.stat-total {
+		font-size: 24rpx;
+		color: #909399;
+		margin-left: 4rpx;
+	}
+	
+	.stat-label {
+		font-size: 24rpx;
+		color: #909399;
+	}
+	
+	.usage-stat-divider {
+		width: 1rpx;
+		height: 60rpx;
+		background-color: #EBEEF5;
+	}
+	
+	/* 通用分隔线 */
+	.divider {
+		height: 1rpx;
+		background-color: #EBEEF5;
+		margin: 36rpx 0;
+	}
+	
+	/* 功能列表 */
+	.features-section {
+		margin: 20rpx 0;
+	}
+	
+	.features-title {
+		font-size: 32rpx;
+		color: #303133;
+		font-weight: 500;
+		margin-bottom: 24rpx;
+	}
+	
+	.features-groups {
+		margin-top: 20rpx;
+	}
+	
+	.feature-group {
+		margin-bottom: 36rpx;
+	}
+	
+	.group-header {
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 20rpx;
+	}
+
+	.group-icon-container {
+		width: 56rpx;
+		height: 56rpx;
+		background-color: rgba(24, 144, 255, 0.1);
+		border-radius: 28rpx;
+		align-items: center;
+		justify-content: center;
+		margin-right: 16rpx;
+	}
+	
+	.group-icon {
+		font-size: 28rpx;
+		color: #1890FF;
+	}
+	
+	.group-title {
+		font-size: 30rpx;
+		color: #303133;
+		font-weight: 500;
+	}
+	
+	.group-items {
+		padding-left: 72rpx;
+	}
+	
+	.feature-item {
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 20rpx;
+	}
+	
+	.feature-item:last-child {
+		margin-bottom: 0;
+	}
+
+	.feature-icon-container {
+		width: 40rpx;
+		height: 40rpx;
+		align-items: center;
+		justify-content: center;
+		margin-right: 16rpx;
+	}
+	
+	.feature-icon {
+		font-size: 26rpx;
+		color: #00C28A;
+	}
+	
+	.feature-name {
+		font-size: 28rpx;
+		color: #606266;
+		line-height: 1.4;
+	}
+	
+	/* 自动续费开关 */
+	.auto-renew-container {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		margin-top: 36rpx;
+		background-color: rgba(0, 194, 138, 0.05);
+		padding: 24rpx;
+		border-radius: 12rpx;
+	}
+	
+	.auto-renew-info {
+		flex-direction: column;
+	}
+	
+	.auto-renew-label {
+		font-size: 30rpx;
+		color: #303133;
+		font-weight: 500;
+		margin-bottom: 8rpx;
+	}
+	
+	.auto-renew-desc {
+		font-size: 26rpx;
+		color: #909399;
+		line-height: 1.4;
+	}
+	
+	.auto-renew-switch {
+		width: 100rpx;
+		height: 48rpx;
+		background-color: #DCDFE6;
+		border-radius: 24rpx;
+		position: relative;
+		transition-property: background-color;
+		transition-duration: 0.3s;
+	}
+	
+	.switch-handle {
+		width: 44rpx;
+		height: 44rpx;
+		background-color: #FFFFFF;
+		border-radius: 22rpx;
+		position: absolute;
+		top: 2rpx;
+		left: 2rpx;
+		box-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
+		transition-property: transform;
+		transition-duration: 0.3s;
+	}
+	
+	.switch-on {
+		background-color: #00C28A;
+	}
+	
+	.switch-on .switch-handle {
+		transform: translateX(52rpx);
+	}
+	
+	/* 升级套餐部分 */
+	.upgrade-section {
+		margin: 30rpx 0;
+		padding: 0;
+	}
+
+	.upgrade-header {
+		padding: 0 8rpx 24rpx 8rpx;
+	}
+
+	.upgrade-title-container {
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 12rpx;
+	}
+
+	.upgrade-title {
+		font-size: 36rpx;
+		color: #303133;
+		font-weight: 600;
+		margin-right: 16rpx;
+	}
+
+	.upgrade-badge {
+		background-color: rgba(0, 194, 138, 0.1);
+		padding: 6rpx 16rpx;
+		border-radius: 20rpx;
+	}
+
+	.upgrade-badge-text {
+		font-size: 24rpx;
+		color: #00C28A;
+		font-weight: 500;
+	}
+
+	.upgrade-subtitle {
+		font-size: 28rpx;
+		color: #909399;
+		line-height: 1.4;
+	}
+
+	.current-package-hint {
+		flex-direction: row;
+		align-items: center;
+		background-color: rgba(24, 144, 255, 0.08);
+		padding: 16rpx 24rpx;
+		border-radius: 12rpx;
+		margin-bottom: 24rpx;
+	}
+
+	.hint-icon {
+		font-size: 28rpx;
+		color: #1890FF;
+		margin-right: 12rpx;
+	}
+
+	.hint-text {
+		font-size: 28rpx;
+		color: #1890FF;
+		font-weight: 500;
+	}
+
+	/* 套餐卡片列表 */
+	.upgrade-cards {
+		flex-direction: column;
+		gap: 24rpx;
+	}
+
+	.upgrade-package-card {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 40rpx;
+		box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.08);
+		position: relative;
+		border: 1rpx solid #EBEEF5;
+	}
+
+	.recommended-card {
+		border: 2rpx solid #00C28A;
+		box-shadow: 0 8rpx 20rpx rgba(0, 194, 138, 0.12);
+	}
+
+	.recommended-tag {
+		position: absolute;
+		top: 0;
+		right: 40rpx;
+		background-color: #00C28A;
+		padding: 8rpx 24rpx;
+		border-bottom-left-radius: 12rpx;
+		border-bottom-right-radius: 12rpx;
+	}
+
+	.recommended-tag-text {
+		font-size: 24rpx;
+		color: #FFFFFF;
+		font-weight: 500;
+	}
+
+	.package-card-header {
+		flex-direction: column;
+		align-items: center;
+		margin-bottom: 36rpx;
+		padding-bottom: 24rpx;
+		border-bottom: 1rpx solid #EBEEF5;
+	}
+	
+	.package-card-name {
+		font-size: 36rpx;
+		color: #303133;
+		font-weight: 600;
+		margin-bottom: 16rpx;
+	}
+	
+	.package-card-price {
+		flex-direction: row;
+		align-items: baseline;
+	}
+	
+	.price-currency {
+		font-size: 28rpx;
+		color: #F56C6C;
+		margin-right: 4rpx;
+	}
+	
+	.price-amount {
+		font-size: 48rpx;
+		color: #F56C6C;
+		font-weight: 600;
+	}
+	
+	.price-unit {
+		font-size: 28rpx;
+		color: #909399;
+		margin-left: 4rpx;
+	}
+
+	.package-highlight {
+		flex-direction: row;
+		align-items: center;
+		background-color: #F7F9FC;
+		padding: 24rpx;
+		border-radius: 12rpx;
+		margin-bottom: 30rpx;
+	}
+
+	.highlight-icon-container {
+		width: 56rpx;
+		height: 56rpx;
+		background-color: rgba(24, 144, 255, 0.1);
+		border-radius: 28rpx;
+		align-items: center;
+		justify-content: center;
+		margin-right: 20rpx;
+	}
+	
+	.highlight-icon {
+		font-size: 28rpx;
+		color: #1890FF;
+	}
+
+	.highlight-content {
+		flex-direction: column;
+	}
+
+	.highlight-label {
+		font-size: 26rpx;
+		color: #909399;
+		margin-bottom: 6rpx;
+	}
+
+	.highlight-value {
+		font-size: 32rpx;
+		color: #303133;
+		font-weight: 600;
+	}
+
+	.package-features {
+		margin-bottom: 36rpx;
+	}
+
+	.package-feature-item {
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 20rpx;
+	}
+	
+	.feature-check {
+		font-size: 26rpx;
+		color: #00C28A;
+		margin-right: 16rpx;
+		width: 32rpx;
+		text-align: center;
+	}
+	
+	.package-feature-text {
+		font-size: 28rpx;
+		color: #606266;
+		line-height: 1.4;
+	}
+
+	.package-upgrade-button {
+		height: 90rpx;
+		border-radius: 45rpx;
+		background-color: #F5F7FA;
+		align-items: center;
+		justify-content: center;
+		border-width: 1rpx;
+		border-color: #DCDFE6;
+		border-style: solid;
+		overflow: hidden;
+		margin-top: 10rpx;
+	}
+
+	.primary-button {
+		background-color: #00C28A;
+		box-shadow: 0 4rpx 12rpx rgba(0, 194, 138, 0.25);
+		border-color: #00C28A;
+	}
+
+	.package-button-text {
+		font-size: 30rpx;
+		color: #606266;
+		font-weight: 500;
+	}
+
+	.primary-button .package-button-text {
+		color: #FFFFFF;
+	}
+	
+	/* 购买合同卡片 */
+	.buy-contracts-card {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 40rpx;
+		margin-bottom: 60rpx;
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.08);
+	}
+	
+	.buy-contracts-content {
+		flex-direction: column;
+		flex: 1;
+	}
+	
+	.buy-title {
+		font-size: 32rpx;
+		color: #303133;
+		font-weight: 500;
+		margin-bottom: 12rpx;
+	}
+	
+	.buy-desc {
+		font-size: 28rpx;
+		color: #909399;
+		line-height: 1.4;
+	}
+	
+	.buy-contracts-button {
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		background-color: #00C28A;
+		border-radius: 45rpx;
+		height: 90rpx;
+		padding: 0 36rpx;
+		margin-left: 24rpx;
+		box-shadow: 0 4rpx 12rpx rgba(0, 194, 138, 0.25);
+	}
+
+	.buy-contracts-button .button-text {
+		color: #FFFFFF;
+		font-size: 28rpx;
+		font-weight: 500;
+	}
+
+	.buy-contracts-button .button-icon {
+		color: #FFFFFF;
+		font-size: 24rpx;
+		margin-left: 8rpx;
+	}
+</style> 

@@ -1,0 +1,246 @@
+/**
+ * AI合同起草 API
+ * 
+ * @author 小华同学AI
+ * @since 2025-11-08
+ */
+
+import { request } from '../index'
+import { AI_GENERATION_TIMEOUT } from '../config'
+
+// ========== 推荐话术 ==========
+
+/**
+ * 获取推荐话术列表
+ */
+export const getTemplateList = async () => {
+  const data = await request({
+    url: '/seal/ai-draft/template/list',
+    method: 'GET'
+  })
+  // request函数已经解包，直接返回data，所以我们需要重新包装
+  return {
+    code: 0,
+    msg: '',
+    data: data
+  }
+}
+
+/**
+ * 根据合同类型获取推荐话术
+ */
+export const getTemplateListByType = (contractType: string) => {
+  return request({
+    url: `/seal/ai-draft/template/list-by-type?contractType=${encodeURIComponent(contractType)}`,
+    method: 'GET'
+  })
+}
+
+/**
+ * 增加话术使用次数
+ */
+export const incrementTemplateUse = async (id: number) => {
+  const result = await request({
+    url: `/seal/ai-draft/template/increment-use/${id}`,
+    method: 'POST'
+  })
+  return {
+    code: 0,
+    msg: '',
+    data: result
+  }
+}
+
+// ========== 对话管理 ==========
+
+/**
+ * 创建对话
+ */
+export const createConversation = async (data: {
+  title: string
+  contractType?: string
+}) => {
+  const result = await request({
+    url: '/seal/ai-draft/conversation/create',
+    method: 'POST',
+    data
+  })
+  return {
+    code: 0,
+    msg: '',
+    data: result
+  }
+}
+
+/**
+ * 获取对话分页列表
+ */
+export const getConversationPage = async (params: {
+  pageNo: number
+  pageSize: number
+  status?: number
+  contractType?: string
+}) => {
+  const data = await request({
+    url: '/seal/ai-draft/conversation/page',
+    method: 'GET',
+    data: params  // uni-app中GET请求也用data传参
+  })
+  return {
+    code: 0,
+    msg: '',
+    data: data
+  }
+}
+
+/**
+ * 获取对话详情
+ */
+export const getConversation = (id: number) => {
+  return request({
+    url: `/seal/ai-draft/conversation/get?id=${id}`,
+    method: 'GET'
+  })
+}
+
+/**
+ * 删除对话
+ */
+export const deleteConversation = (id: number) => {
+  return request({
+    url: `/seal/ai-draft/conversation/delete?id=${id}`,
+    method: 'DELETE'
+  })
+}
+
+// ========== 消息管理 ==========
+
+/**
+ * 发送消息
+ */
+export const sendMessage = async (data: {
+  conversationId: number
+  content: string
+}) => {
+  const result = await request({
+    url: '/seal/ai-draft/message/send',
+    method: 'POST',
+    data
+  })
+  return {
+    code: 0,
+    msg: '',
+    data: result
+  }
+}
+
+/**
+ * 获取对话消息列表
+ */
+export const getMessageList = async (conversationId: number) => {
+  const data = await request({
+    url: '/seal/ai-draft/message/list',
+    method: 'GET',
+    data: { conversationId }  // GET请求也用data传参
+  })
+  return {
+    code: 0,
+    msg: '',
+    data: data
+  }
+}
+
+// ========== 合同管理 ==========
+
+/**
+ * 生成合同
+ * 注意：AI生成合同需要较长时间，因此使用更长的超时时间
+ */
+export const generateContract = async (data: {
+  conversationId: number
+}) => {
+  const result = await request({
+    url: '/seal/ai-draft/contract/generate',
+    method: 'POST',
+    data,
+    timeout: AI_GENERATION_TIMEOUT // 使用3分钟超时，因为AI生成需要较长时间
+  })
+  return {
+    code: 0,
+    msg: '',
+    data: result
+  }
+}
+
+/**
+ * 更新合同内容
+ */
+export const updateContract = (data: {
+  id: number
+  content: string
+}) => {
+  return request({
+    url: '/seal/ai-draft/contract/update',
+    method: 'PUT',
+    data
+  })
+}
+
+/**
+ * 获取合同详情
+ */
+export const getContract = (id: number) => {
+  return request({
+    url: `/seal/ai-draft/contract/get?id=${id}`,
+    method: 'GET'
+  })
+}
+
+// ========== PDF导出和签署 ==========
+
+/**
+ * 导出合同为PDF
+ */
+export const exportPdf = (contractId: number) => {
+  return request({
+    url: '/seal/ai-draft/contract/export-pdf',
+    method: 'POST',
+    data: { contractId }
+  })
+}
+
+/**
+ * 创建签署任务
+ */
+export const createSigningTask = (data: {
+  contractId: number
+  taskName?: string
+  deadline?: string
+  remark?: string
+  participants: Array<{
+    type: string
+    signatoryName: string
+    companyName?: string
+    userName: string
+    userMobile: string
+    signPosition?: string
+  }>
+}) => {
+  return request({
+    url: '/seal/ai-draft/contract/create-signing',
+    method: 'POST',
+    data
+  })
+}
+
+// ========== 对话详情和管理 ==========
+
+/**
+ * 获取对话详情（包含所有消息）
+ */
+export const getConversationDetail = (id: number) => {
+  return request({
+    url: `/seal/ai-draft/conversation/detail?id=${id}`,
+    method: 'GET'
+  })
+}

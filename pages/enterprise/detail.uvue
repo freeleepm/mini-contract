@@ -1,0 +1,632 @@
+<template>
+  <view class="page-container">
+    <!-- 企业信息卡片 -->
+    <view class="card">
+      <view class="card-content centered-content">
+        <view class="info-cluster">
+          <view class="copy-item" @click="copyText(enterprise.name, '企业名称')">
+            <h2 class="company-name">{{ enterprise.name || '加载中…' }}</h2>
+            <text class="copy-icon fa fa-copy"></text>
+          </view>
+          <view class="status-role-row">
+            <view class="badge" :class="statusClass">{{ statusText }}</view>
+            <view v-if="isOwner" class="role-button owner" @click="noop">所有者</view>
+            <view v-else-if="isAdmin" class="role-button admin" @click="noop">
+              <text class="fa fa-shield role-icon"></text>
+              <text>管理员</text>
+            </view>
+            <view v-else class="role-button member" @click="noop">
+              <text class="fa fa-user role-icon"></text>
+              <text>成员</text>
+            </view>
+          </view>
+          <view class="copy-item" @click="copyText(enterprise.creditCode, '营业执照号')">
+            <p class="credit-code">{{ enterprise.creditCode || '未填写统一社会信用代码' }}</p>
+            <text class="copy-icon fa fa-copy"></text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 基本信息卡片 - 重构的部分 -->
+    <view class="card">
+      <view class="card-header">
+        <h3 class="card-title-text">基本信息</h3>
+      </view>
+      <view class="card-content">
+        <view class="info-row">
+          <text class="info-label">法定代表人</text>
+          <text class="info-value">{{ enterprise.legalName || '--' }}</text>
+        </view>
+        <view class="separator"></view>
+        
+        <view class="info-row">
+          <text class="info-label">联系人</text>
+          <text class="info-value text-gray">{{ enterprise.contactName || '--' }}</text>
+        </view>
+        <view class="separator"></view>
+        
+        <view class="info-row">
+          <text class="info-label">成员</text>
+          <text class="info-value">{{ memberCount }}人</text>
+        </view>
+        <view class="separator"></view>
+        
+        <view class="info-row">
+          <text class="info-label">创建时间</text>
+          <text class="info-value">{{ fDate(enterprise.createTime) }}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 企业功能卡片 -->
+    <view class="card">
+      <view class="card-header">
+        <h3 class="card-title-text">企业功能</h3>
+      </view>
+      <view class="card-content">
+        <view class="functions-grid">
+          <view class="function-item" @click="navigate('/pages/contract-create/index',{enterpriseId})">
+            <view class="function-icon-wrapper bg-blue">
+              <text class="fa fa-plus icon-blue"></text>
+            </view>
+            <span class="function-label">创建合同</span>
+          </view>
+
+          <view class="function-item" @click="go('contracts')">
+            <view class="function-icon-wrapper bg-green">
+              <text class="fa fa-file-text-o icon-green"></text>
+            </view>
+            <span class="function-label">合同管理</span>
+          </view>
+
+          <view class="function-item" @click="go('members')">
+            <view class="function-icon-wrapper bg-yellow">
+              <text class="fa fa-users icon-yellow"></text>
+            </view>
+            <span class="function-label">成员管理</span>
+          </view>
+
+          <view class="function-item" @click="go('seals')">
+            <view class="function-icon-wrapper bg-red">
+              <text class="fa fa-certificate icon-red"></text>
+            </view>
+            <span class="function-label">印章管理</span>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 底部安全区域占位 -->
+    <view class="bottom-safe-area"></view>
+    
+    <!-- 底部固定操作栏 -->
+    <view class="bottom-bar">
+      <!-- 认证按钮（仅未认证的所有者可见）-->
+      <button 
+        v-if="enterprise.id && enterprise.status!==2 && isOwner" 
+        class="primary-button" 
+        @click="verify"
+      >
+        <text class="fa fa-shield button-icon"></text>
+        <text>{{ enterprise.status===3 ? '重新认证' : '立即认证' }}</text>
+      </button>
+      
+      <!-- 退出企业按钮（非所有者可见）-->
+      <button 
+        v-if="!isOwner" 
+        class="danger-button" 
+        @click="quit"
+      >
+        <text class="fa fa-sign-out button-icon"></text>
+        <text>退出企业</text>
+      </button>
+      
+      <!-- 删除企业按钮（仅所有者可见）-->
+      <button 
+        v-if="isOwner" 
+        class="danger-outline-button" 
+        @click="confirmDelete"
+      >
+        <text class="fa fa-trash button-icon"></text>
+        <text>删除企业</text>
+      </button>
+    </view>
+  </view>
+</template>
+
+<script>
+import { getEnterpriseDetail, deleteEnterprise, EnterpriseStatus as ES, EnterpriseRole as ER } from '../../api/enterprise/index';
+
+export default {
+  data() {
+    return {
+      enterpriseId: 0,
+      enterprise: {},
+      isOwner: false,
+      isAdmin: false,
+      memberCount: 0,  // 成员数量
+      ES
+    };
+  },
+  
+  computed: {
+    statusClass() {
+      const m = {
+        0: 'pending',
+        1: 'review',
+        2: 'ok',
+        3: 'fail'
+      };
+      return m[this.enterprise.status] || 'pending';
+    },
+    
+    statusText() {
+      return {
+        0: '未认证',
+        1: '审核中',
+        2: '已认证',
+        3: '认证失败'
+      }[this.enterprise.status] || '未认证';
+    }
+  },
+  
+  async onLoad({id}) {
+    this.enterpriseId = +id || 0;
+    await this.fetch();
+  },
+  
+  methods: {
+    async fetch() {
+      try {
+        const d = await getEnterpriseDetail(this.enterpriseId);
+        this.enterprise = d;
+        this.isOwner = d.owner || d.role === ER.OWNER;
+        this.isAdmin = d.role === ER.ADMIN;
+        
+        // 直接从企业详情获取成员数量（后端已返回）
+        this.memberCount = d.memberCount || 0;
+      } catch (error) {
+        console.error('获取企业详情失败:', error);
+        uni.showToast({
+          title: '加载失败，请重试',
+          icon: 'none'
+        });
+      }
+    },
+    
+    fDate(s) {
+      if (!s) return '未知';
+      try {
+      const d = new Date(s);
+        // 检查日期是否有效
+        if (isNaN(d.getTime())) {
+          return '未知';
+        }
+      return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+      } catch (error) {
+        console.error('日期格式化失败:', error);
+        return '未知';
+      }
+    },
+    
+    go(type) {
+      const map = {
+        contracts: ['/pages/contract-manage/index', {enterpriseId: this.enterpriseId}],
+        members: ['/pages/enterprise/members', {id: this.enterpriseId}],
+        seals: ['/pages/enterprise/seals', {id: this.enterpriseId}]
+      };
+      const [url, p] = map[type];
+      this.navigate(url, p);
+    },
+    
+    navigate(u, p) {
+      const q = Object.entries(p).map(([k, v]) => `${k}=${v}`).join('&');
+      uni.navigateTo({
+        url: u + (q ? `?${q}` : '')
+      });
+    },
+    
+    verify() {
+      this.navigate('/pages/kyc/enterprise/index', {
+        id: this.enterpriseId,
+        name: this.enterprise.name
+      });
+    },
+    
+    quit() {
+      uni.showModal({
+        title: '确认退出',
+        content: `确定退出${this.enterprise.name}?`,
+        success: r => {
+          if (r.confirm) {
+            uni.showToast({
+              title: '功能开发中',
+              icon: 'none'
+            });
+          }
+        }
+      });
+    },
+    
+    // 确认删除企业
+    confirmDelete() {
+      if (this.memberCount > 1) {
+        uni.showToast({
+          title: '企业存在其他成员，无法删除',
+          icon: 'none',
+          duration: 2000
+        });
+        return;
+      }
+      
+      uni.showModal({
+        title: '危险操作',
+        content: `删除企业"${this.enterprise.name}"后，所有相关数据将被清除且无法恢复。确定要删除吗？`,
+        confirmText: '确认删除',
+        cancelText: '取消',
+        confirmColor: '#F56C6C',
+        success: (res) => {
+          if (res.confirm) {
+            this.performDelete();
+          }
+        }
+      });
+    },
+    
+    // 执行删除
+    async performDelete() {
+      try {
+        uni.showLoading({
+          title: '删除中...',
+          mask: true
+        });
+        
+        await deleteEnterprise(this.enterpriseId);
+        
+        uni.hideLoading();
+        uni.showToast({
+          title: '删除成功',
+          icon: 'success',
+          duration: 1500
+        });
+        
+        // 延迟返回企业列表页
+        setTimeout(() => {
+          uni.navigateBack({
+            delta: 1,
+            fail: () => {
+              // 如果返回失败，跳转到企业列表
+              uni.reLaunch({
+                url: '/pages/enterprise/list'
+              });
+            }
+          });
+        }, 1500);
+        
+      } catch (error) {
+        uni.hideLoading();
+        console.error('删除企业失败:', error);
+        uni.showToast({
+          title: '删除失败，请重试',
+          icon: 'none',
+          duration: 2000
+        });
+      }
+    },
+    
+    noop() {
+        // Placeholder for button clicks that do nothing
+    },
+    
+    // 复制文本到剪贴板
+    copyText(text, label) {
+      if (!text || text === '未填写统一社会信用代码') {
+        uni.showToast({
+          title: `${label}未填写`,
+          icon: 'none'
+        });
+        return;
+      }
+      
+      uni.setClipboardData({
+        data: text,
+        success: () => {
+          uni.showToast({
+            title: `${label}已复制`,
+            icon: 'success',
+            duration: 1500
+          });
+        },
+        fail: () => {
+          uni.showToast({
+            title: '复制失败，请重试',
+            icon: 'none'
+          });
+        }
+      });
+    }
+  }
+}
+</script>
+
+<style scoped>
+/* Base Styles */
+.page-container {
+  min-height: 100vh;
+  background-color: #F7F9FC;
+  padding: 30rpx;
+  box-sizing: border-box;
+}
+.fa {
+  font-family: 'Font Awesome 6 Free';
+  font-style: normal;
+}
+.card {
+  background-color: #FFFFFF;
+  border-radius: 16rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+  margin-bottom: 30rpx;
+}
+.card-header {
+  padding: 24rpx 30rpx 16rpx;
+}
+.card-content {
+  padding: 30rpx;
+}
+.card-title-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #303133;
+}
+.separator {
+  height: 1rpx;
+  background-color: #EBEEF5;
+  margin: 16rpx 0;
+}
+
+/* Centered Info Card */
+.centered-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 24rpx;
+}
+.info-cluster {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
+}
+.copy-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.copy-item:active {
+  opacity: 0.7;
+}
+
+.copy-icon {
+  font-size: 24rpx;
+  color: #909399;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.copy-item:hover .copy-icon,
+.copy-item:active .copy-icon {
+  opacity: 1;
+}
+
+.company-name {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #303133;
+}
+.status-role-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+}
+.badge {
+  font-size: 22rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+  font-weight: 500;
+}
+.badge.pending { background-color: rgba(250, 173, 20, 0.1); color: #FAAD14; border: 1rpx solid rgba(250, 173, 20, 0.2); }
+.badge.review { background-color: rgba(24, 144, 255, 0.1); color: #1890FF; }
+.badge.ok { background-color: rgba(0, 194, 138, 0.1); color: #00C28A; }
+.badge.fail { background-color: rgba(245, 108, 108, 0.1); color: #F56C6C; }
+
+.credit-code {
+  font-size: 24rpx;
+  color: #606266;
+  font-family: monospace;
+  margin: 0;
+}
+.role-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+  border: 1rpx solid;
+  font-size: 22rpx;
+  font-weight: 500;
+}
+.role-button .role-icon {
+  margin-right: 8rpx;
+}
+.role-button.owner { background-color: rgba(24, 144, 255, 0.08); border-color: rgba(24, 144, 255, 0.2); color: #1890FF; }
+.role-button.admin { background-color: rgba(0, 194, 138, 0.08); border-color: rgba(0, 194, 138, 0.2); color: #00C28A; }
+.role-button.member { background-color: #F5F7FA; border-color: #EBEEF5; color: #909399; }
+
+/* 新的基本信息卡片样式 */
+.info-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12rpx 0;
+  width: 100%;
+}
+.info-label {
+  font-size: 28rpx;
+  color: #606266;
+  flex: 1;
+  text-align: left;
+}
+.info-value {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #303133;
+  flex: 1;
+  text-align: right;
+}
+.text-gray {
+  color: #909399;
+}
+
+/* Functions Grid Card */
+.functions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20rpx;
+}
+.function-item {
+  height: 160rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  border: 1rpx solid #EBEEF5;
+  border-radius: 12rpx;
+  padding: 20rpx 0;
+  box-sizing: border-box;
+}
+.function-icon-wrapper {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8rpx;
+}
+.function-icon-wrapper .fa {
+  font-size: 36rpx;
+}
+.function-label {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #303133;
+  line-height: 1;
+}
+.bg-blue { background-color: rgba(24, 144, 255, 0.1); }
+.icon-blue { color: #1890FF; }
+.bg-green { background-color: rgba(0, 194, 138, 0.1); }
+.icon-green { color: #00C28A; }
+.bg-yellow { background-color: rgba(250, 173, 20, 0.1); }
+.icon-yellow { color: #FAAD14; }
+.bg-red { background-color: rgba(245, 108, 108, 0.1); }
+.icon-red { color: #F56C6C; }
+
+/* Action Buttons */
+/* ========== 底部固定操作栏 ========== */
+.bottom-safe-area {
+  height: 140rpx; /* 为底部操作栏预留空间 */
+}
+
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #FFFFFF;
+  padding: 30rpx; /* 统一上下左右间距 */
+  box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+  /* 底部安全区域适配 - 叠加在基础间距上 */
+  padding-bottom: calc(30rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(30rpx + env(safe-area-inset-bottom));
+  /* 按钮横向排列 */
+  display: flex;
+  flex-direction: row;
+  gap: 20rpx;
+  align-items: center;
+}
+
+/* ========== 主操作按钮 ========== */
+.primary-button {
+  flex: 1;
+  height: 88rpx;
+  background-color: #00C28A;
+  color: #FFFFFF;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  font-weight: 500;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+}
+
+.primary-button:active {
+  opacity: 0.9;
+}
+
+/* ========== 危险操作按钮（实心）========== */
+.danger-button {
+  flex: 1;
+  height: 88rpx;
+  background-color: #F56C6C;
+  color: #FFFFFF;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  font-weight: 500;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+}
+
+.danger-button:active {
+  background-color: #FF7E7E;
+}
+
+/* ========== 危险操作按钮（描边）========== */
+.danger-outline-button {
+  flex: 1;
+  height: 88rpx;
+  background-color: #FEF0F0;
+  color: #F56C6C;
+  border: 2rpx solid #F56C6C;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+}
+
+.danger-outline-button:active {
+  background-color: rgba(245, 108, 108, 0.15);
+}
+
+/* ========== 按钮图标 ========== */
+.button-icon {
+  font-size: 28rpx;
+}
+</style> 

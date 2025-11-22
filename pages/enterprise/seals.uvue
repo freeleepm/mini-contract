@@ -1,0 +1,1044 @@
+<template>
+  <view class="container">
+    <!-- 企业信息卡片 -->
+    <view class="enterprise-card">
+      <view class="enterprise-logo">
+        <image :src="enterpriseLogo" mode="aspectFill"></image>
+      </view>
+      <view class="enterprise-info">
+        <text class="enterprise-name">{{ enterpriseName }}</text>
+        <view class="enterprise-status" v-if="isVerified">
+          <text class="status-icon fa fa-circle-check"></text>
+          <text class="status-text">已认证</text>
+        </view>
+        <text class="enterprise-credit-code" v-if="enterpriseCreditCode">{{ enterpriseCreditCode }}</text>
+      </view>
+    </view>
+    
+    <!-- 内容区域 -->
+    <scroll-view class="content-section" scroll-y="true" @scrolltolower="loadMore">
+      <!-- 计数与新建按钮区 -->
+      <view class="header-actions">
+        <view class="counter-badge">
+          <text class="counter-text">{{ total }} 个印章</text>
+        </view>
+        
+        <view class="create-button" @click="createSeal">
+          <text class="create-text">+ 新建印章</text>
+        </view>
+      </view>
+      
+      <!-- 印章列表 -->
+      <view class="seal-list" v-if="sealList.length > 0">
+        <view class="seal-item" v-for="(seal, index) in sealList" :key="seal.id">
+          <view class="seal-card" :class="{'default-seal': seal.isDefault}">
+            <!-- 卡片顶部信息 -->
+            <view class="card-header" :class="{
+              'header-official': seal.type === 1, 
+              'header-finance': seal.type === 2,
+              'header-contract': seal.type === 3
+            }">
+              <view class="seal-badge">
+                <text class="badge-text">{{ getSealTypeText(seal.type) }}</text>
+              </view>
+              <view class="enterprise-seal-tag">
+                <text class="enterprise-seal-text">企业印章</text>
+              </view>
+            </view>
+            
+            <!-- 卡片主体内容 -->
+            <view class="card-body">
+              <!-- 印章图像区域 -->
+              <view class="seal-image-wrapper">
+                <image 
+                  class="seal-image" 
+                  :src="seal.image" 
+                  mode="aspectFit"
+                  @error="handleImageError(seal)"
+                  @load="handleImageLoad(seal)"
+                ></image>
+              </view>
+              
+              <!-- 印章信息区域 -->
+              <view class="seal-info">
+                <view class="seal-name-row">
+                  <text class="seal-name">{{ seal.name }}</text>
+                  <!-- 印章状态标签 -->
+                  <view v-if="seal.status === 1" class="status-tag status-disabled">
+                    <text class="status-icon fa fa-ban"></text>
+                    <text class="status-text">已禁用</text>
+                  </view>
+                </view>
+                
+                <view class="seal-meta">
+                  <view class="meta-section time-section">
+                    <view class="meta-label-row">
+                      <text class="meta-label">创建时间</text>
+                    </view>
+                    <view class="meta-value-row">
+                      <text class="time-icon">●</text>
+                      <text class="meta-value">{{ formatDate(seal.createTime) }}</text>
+                    </view>
+                  </view>
+                  
+                  <view class="meta-section auth-section">
+                    <view class="meta-label-row">
+                      <text class="meta-label">授权成员</text>
+                      <view class="count-badge">
+                        <text class="count-text">{{ seal.grantCount || 0 }}</text>
+                      </view>
+                    </view>
+                  </view>
+                </view>
+              </view>
+            </view>
+            
+            <!-- 卡片底部操作区 -->
+            <view class="card-footer">
+              <!-- 启用/禁用按钮 -->
+              <view 
+                v-if="seal.status === 1" 
+                class="action-button enable-btn" 
+                @click="toggleSealStatus(seal, 0)"
+              >
+                <text class="action-icon fa fa-check-circle"></text>
+                <text class="action-text">启用</text>
+              </view>
+              <view 
+                v-else 
+                class="action-button disable-btn" 
+                @click="toggleSealStatus(seal, 1)"
+              >
+                <text class="action-icon fa fa-ban"></text>
+                <text class="action-text">禁用</text>
+              </view>
+              
+              <view class="action-button auth-btn" @click="authSeal(seal)">
+                <text class="action-icon fa fa-user-cog"></text>
+                <text class="action-text">授权管理</text>
+              </view>
+              <view class="action-button delete-btn" @click="deleteSeal(seal)">
+                <text class="action-icon fa fa-trash"></text>
+                <text class="action-text">删除</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 无印章提示 -->
+      <view class="empty-state" v-if="sealList.length === 0 && !loading">
+        <image class="empty-image" src="/static/icons/template.png" mode="aspectFit"></image>
+        <text class="empty-title">暂无企业印章</text>
+        <text class="empty-subtitle">创建企业印章，在合同签署时使用</text>
+        <view class="empty-action" @click="createSeal">
+          <text class="empty-action-text">+ 创建第一个印章</text>
+        </view>
+      </view>
+      
+      <!-- 加载中提示 -->
+      <view class="loading-state" v-if="loading">
+        <view class="loading-spinner"></view>
+        <text class="loading-text">加载中...</text>
+      </view>
+      
+      <!-- 底部提示 -->
+      <view class="footer-tips">
+        <view class="tip-item">
+          <text class="tip-text">· 企业印章需要授权后才能使用</text>
+        </view>
+        <view class="tip-item">
+          <text class="tip-text">· 个人印章请在个人身份下管理</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</template>
+
+<script>
+import { 
+  getEnterpriseSealPage, 
+  deleteEnterpriseSeal,
+  getEnterpriseDetail,
+  updateSeal
+} from '../../api/enterprise/index';
+
+export default {
+  data() {
+    return {
+      enterpriseId: 0,
+      enterpriseName: "企业名称",
+      enterpriseCreditCode: "", // 统一社会信用代码
+      enterpriseLogo: "/static/icons/blue-icon.png",
+      isVerified: false, // 企业认证状态
+      searchText: '',
+      loading: true,
+      sealList: [] as any[],
+      pageNo: 1,
+      pageSize: 10,
+      hasMore: false,
+      total: 0
+    };
+  },
+  async onLoad(options) {
+    if (options && options.id) {
+      this.enterpriseId = Number(options.id);
+      // 加载企业详情
+      await this.loadEnterpriseDetail();
+    } else {
+      // 如果没有传入企业ID，则从缓存或全局状态获取
+      const currentEnterprise = uni.getStorageSync('currentEnterprise');
+      if (currentEnterprise) {
+        try {
+          const enterpriseData = JSON.parse(currentEnterprise);
+          this.enterpriseId = enterpriseData.id;
+          this.enterpriseName = enterpriseData.name || "企业名称";
+          this.enterpriseCreditCode = enterpriseData.creditCode || "";
+          this.enterpriseLogo = enterpriseData.logo || "/static/icons/blue-icon.png";
+          this.isVerified = enterpriseData.status === 1;
+        } catch (e) {
+          console.error('解析企业信息失败:', e);
+          this.enterpriseId = currentEnterprise.id;
+        }
+      }
+    }
+    
+    // 加载印章列表
+    this.loadSealList();
+  },
+  
+  onShow() {
+    // 🎯 页面显示时检查是否需要刷新
+    // 从印章创建页面返回时会自动调用
+    console.log('[企业印章] 页面显示，检查刷新标记');
+  },
+  
+  onPullDownRefresh() {
+    // 下拉刷新
+    this.loadSealList(true).then(() => {
+      uni.stopPullDownRefresh();
+    });
+  },
+  
+  mounted() {
+    // 🎯 监听印章创建成功的全局事件
+    uni.$on('refreshEnterpriseSealList', this.handleRefreshEvent);
+    console.log('[企业印章] 已注册刷新事件监听');
+  },
+  
+  beforeUnmount() {
+    // 🎯 页面销毁前移除事件监听
+    uni.$off('refreshEnterpriseSealList', this.handleRefreshEvent);
+    console.log('[企业印章] 已移除刷新事件监听');
+  },
+  
+  methods: {
+    // 🎯 处理印章列表刷新事件
+    handleRefreshEvent() {
+      console.log('[企业印章] 收到刷新事件，开始刷新列表');
+      this.loadSealList(true);
+    },
+    
+    // 加载企业详情
+    async loadEnterpriseDetail() {
+      try {
+        console.log('[企业印章] 🔍 开始加载企业详情, enterpriseId:', this.enterpriseId);
+        
+        // ✅ request 函数已经自动解包，返回的直接就是 Enterprise 对象
+        const enterprise = await getEnterpriseDetail(this.enterpriseId);
+        
+        console.log('[企业印章] ✅ 获取到企业数据:', JSON.stringify(enterprise));
+        
+        if (enterprise) {
+          // ✅ 直接使用 enterprise，不需要 .data
+          this.enterpriseName = enterprise.name || "企业名称";
+          this.enterpriseCreditCode = enterprise.creditCode || "";
+          this.enterpriseLogo = enterprise.logo || "/static/icons/blue-icon.png";
+          this.isVerified = enterprise.status === 1; // 1表示已认证
+          
+          console.log('[企业印章] 🎯 数据已赋值:', {
+            name: this.enterpriseName,
+            creditCode: this.enterpriseCreditCode,
+            logo: this.enterpriseLogo,
+            isVerified: this.isVerified
+          });
+          
+          // 强制刷新视图
+          this.$forceUpdate();
+        } else {
+          console.error('[企业印章] ❌ 企业数据为空');
+        }
+      } catch (error) {
+        console.error('[企业印章] ❌ 获取企业详情失败:', error);
+        uni.showToast({
+          title: '获取企业信息失败',
+          icon: 'none'
+        });
+      }
+    },
+    
+    // 加载印章列表
+    async loadSealList(isRefresh = false) {
+      if (isRefresh) {
+        this.pageNo = 1;
+        this.sealList = [];
+      }
+      
+      this.loading = true;
+      
+      try {
+        const params = {
+          enterpriseId: this.enterpriseId,
+          pageNo: this.pageNo,
+          pageSize: this.pageSize,
+          name: this.searchText
+        };
+        
+        // ✅ 获取印章列表，response 已经被 request 函数自动解包
+        const response = await getEnterpriseSealPage(params);
+        
+        if (response && Array.isArray(response.list)) {
+          // 🔧 数据映射：将 sealData 字段映射到 image 字段（兼容前端显示）
+          const mappedList = response.list.map(seal => {
+            const imageUrl = seal.sealData || seal.image;
+            console.log(`[企业印章] 印章 ${seal.name} 图片URL:`, imageUrl);
+            return {
+              ...seal,
+              image: imageUrl // 优先使用 sealData，回退到 image
+            };
+          });
+          
+          if (isRefresh) {
+            this.sealList = mappedList;
+          } else {
+            // ✅ 合并列表
+            this.sealList = [...this.sealList, ...mappedList];
+          }
+          
+          this.total = response.total || 0;
+          this.hasMore = this.sealList.length < this.total;
+          
+          console.log(`[企业印章] 加载成功：${mappedList.length} 个印章，总计 ${this.total} 个`);
+          
+          if (this.hasMore) {
+            this.pageNo++;
+          }
+        }
+      } catch (error) {
+        console.error('获取印章列表失败:', error);
+        uni.showToast({
+          title: '获取印章列表失败',
+          icon: 'none'
+        });
+      }
+      
+      this.loading = false;
+    },
+    
+    // 加载更多
+    loadMore() {
+      if (this.hasMore && !this.loading) {
+        this.loadSealList();
+      }
+    },
+    
+    // 处理搜索
+    handleSearch() {
+      this.loadSealList(true);
+    },
+    
+    // 创建印章
+    createSeal() {
+      uni.navigateTo({
+        url: `/pages/enterprise/seal-create?enterpriseId=${this.enterpriseId}`
+      });
+    },
+    
+    // 授权印章
+    authSeal(seal) {
+      // 🔧 修复:传递 enterpriseId 参数给授权管理页面
+      uni.navigateTo({
+        url: `/pages/enterprise/seal-authorize?id=${seal.id}&enterpriseId=${this.enterpriseId}`
+      });
+    },
+    
+    // 切换印章状态（启用/禁用）
+    async toggleSealStatus(seal, newStatus) {
+      const statusText = newStatus === 0 ? '启用' : '禁用';
+      const confirmText = newStatus === 0 
+        ? `确定要启用印章"${seal.name}"吗？启用后将可以正常使用和授权。`
+        : `确定要禁用印章"${seal.name}"吗？禁用后将无法使用，已授权的用户也无法使用此印章。`;
+      
+      uni.showModal({
+        title: `${statusText}印章`,
+        content: confirmText,
+        success: async (res) => {
+          if (res.confirm) {
+            try {
+              // 调用 updateSeal API 更新印章状态
+              // ✅ updateSeal 只接受一个参数，需要传递完整的印章对象
+              await updateSeal({
+                id: seal.id,
+                name: seal.name,
+                type: seal.type,
+                generationMethod: seal.generationMethod,
+                sealData: seal.sealData, // ✅ 后端字段名为 sealData
+                status: newStatus,
+                enterpriseId: seal.enterpriseId
+              });
+              
+              uni.showToast({
+                title: `${statusText}成功`,
+                icon: 'success'
+              });
+              
+              // 重新加载印章列表
+              this.loadSealList(true);
+            } catch (error) {
+              console.error(`${statusText}印章失败:`, error);
+              uni.showToast({
+                title: `${statusText}失败`,
+                icon: 'none'
+              });
+            }
+          }
+        }
+      });
+    },
+    
+    // 删除印章
+    deleteSeal(seal) {
+      uni.showModal({
+        title: '删除印章',
+        content: `确定要删除印章"${seal.name}"吗？删除后不可恢复。`,
+        success: async (res) => {
+          if (res.confirm) {
+            try {
+              // ✅ deleteEnterpriseSeal 返回 Promise<boolean>
+              const success = await deleteEnterpriseSeal(seal.id);
+              
+              if (success) {
+                uni.showToast({
+                  title: '删除成功',
+                  icon: 'success'
+                });
+                
+                // 重新加载印章列表
+                this.loadSealList(true);
+              } else {
+                uni.showToast({
+                  title: '删除失败',
+                  icon: 'none'
+                });
+              }
+            } catch (error) {
+              console.error('删除印章失败:', error);
+              uni.showToast({
+                title: '删除印章失败',
+                icon: 'none'
+              });
+            }
+          }
+        }
+      });
+    },
+    
+    // 格式化日期
+    formatDate(timestamp) {
+      if (!timestamp) return '';
+      
+      const date = new Date(timestamp);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    },
+    
+    // 获取印章类型文本
+    getSealTypeText(type) {
+      switch (type) {
+        case 1:
+          return '公章';
+        case 2:
+          return '财务章';
+        case 3:
+          return '合同章';
+        default:
+          return '其他';
+      }
+    },
+    
+    // 处理图片加载错误
+    handleImageError(seal) {
+      console.error(`[企业印章] ❌ 图片加载失败: ${seal.name}, URL: ${seal.image}`);
+      uni.showToast({
+        title: `印章"${seal.name}"图片加载失败`,
+        icon: 'none',
+        duration: 2000
+      });
+    },
+    
+    // 处理图片加载成功
+    handleImageLoad(seal) {
+      console.log(`[企业印章] ✅ 图片加载成功: ${seal.name}, URL: ${seal.image}`);
+    }
+  }
+};
+</script>
+
+<style lang="scss">
+/* 根容器 */
+.container {
+  flex: 1;
+  background-color: #F7F9FC;
+}
+
+.enterprise-card {
+  background-color: #FFFFFF;
+  margin: 20rpx;
+  padding: 24rpx;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.enterprise-logo {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 12rpx;
+  overflow: hidden;
+  margin-right: 20rpx;
+  box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.1);
+}
+
+.enterprise-logo image {
+  width: 100%;
+  height: 100%;
+}
+
+.enterprise-info {
+  flex: 1;
+}
+
+.enterprise-name {
+  font-size: 34rpx;
+  font-weight: bold;
+  color: #333333;
+  margin-bottom: 6rpx;
+}
+
+.enterprise-status {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 6rpx;
+}
+
+.status-icon {
+  font-size: 24rpx;
+  color: #00C28A;
+  margin-right: 6rpx;
+}
+
+.status-text {
+  font-size: 24rpx;
+  color: #00C28A;
+}
+
+.enterprise-credit-code {
+  font-size: 22rpx;
+  color: #999999;
+}
+
+/* 内容区域 */
+.content-section {
+  flex: 1;
+}
+
+/* 头部操作区 */
+.header-actions {
+  padding: 30rpx;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.counter-badge {
+  background-color: rgba(0, 194, 138, 0.1);
+  padding: 12rpx 24rpx;
+  border-radius: 30rpx;
+}
+
+.counter-text {
+  font-size: 28rpx;
+  color: #00C28A;
+  font-weight: 500;
+}
+
+.create-button {
+  background-color: #00C28A;
+  padding: 12rpx 32rpx;
+  border-radius: 30rpx;
+}
+
+.create-text {
+  font-size: 28rpx;
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+/* 印章列表 */
+.seal-list {
+  padding: 0 30rpx 30rpx;
+}
+
+.seal-item {
+  margin-bottom: 30rpx;
+}
+
+/* 印章卡片 */
+.seal-card {
+  background-color: #FFFFFF;
+  border-radius: 20rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  border: 1rpx solid #F0F0F0;
+}
+
+.seal-card.default-seal {
+  border: 2rpx solid #00C28A;
+  box-shadow: 0 4rpx 12rpx rgba(0, 194, 138, 0.15);
+}
+
+/* 卡片头部 - 去掉渐变，使用纯色 */
+.card-header {
+  padding: 20rpx 24rpx;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #F7F9FC;
+}
+
+.card-header.header-official {
+  background-color: #EEF2FF;
+}
+
+.card-header.header-finance {
+  background-color: #FFF1F2;
+}
+
+.card-header.header-contract {
+  background-color: #EFF6FF;
+}
+
+.seal-badge {
+  background-color: #FFFFFF;
+  padding: 8rpx 20rpx;
+  border-radius: 30rpx;
+  border: 1rpx solid #E5E7EB;
+}
+
+.badge-text {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #374151;
+}
+
+.card-header.header-official .badge-text {
+  color: #4F46E5;
+}
+
+.card-header.header-finance .badge-text {
+  color: #DC2626;
+}
+
+.card-header.header-contract .badge-text {
+  color: #2563EB;
+}
+
+.enterprise-seal-tag {
+  background-color: rgba(0, 194, 138, 0.1);
+  border: 1rpx solid rgba(0, 194, 138, 0.2);
+  padding: 6rpx 16rpx;
+  border-radius: 30rpx;
+}
+
+.enterprise-seal-text {
+  font-size: 22rpx;
+  color: #00C28A;
+  font-weight: 500;
+}
+
+/* 卡片主体 */
+.card-body {
+  padding: 24rpx;
+  flex-direction: row;
+}
+
+.seal-image-wrapper {
+  width: 160rpx;
+  height: 160rpx;
+  justify-content: center;
+  align-items: center;
+  margin-right: 24rpx;
+  background-color: #FAFAFA;
+  border-radius: 12rpx;
+  border: 1rpx solid #E5E7EB;
+}
+
+.seal-image {
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: 8rpx;
+  display: block;
+}
+
+.seal-info {
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.seal-name-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+  width: 100%;  /* 🎯 确保占满宽度 */
+}
+
+.seal-name {
+  flex: 1;  /* 🎯 占据剩余空间 */
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #303133;
+  overflow: hidden;  /* 🎯 隐藏溢出内容 */
+  text-overflow: ellipsis;  /* 🎯 显示省略号 */
+  white-space: nowrap;  /* 🎯 不换行 */
+}
+
+/* 印章状态标签样式 */
+.status-tag {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4rpx;
+  padding: 4rpx 10rpx;
+  border-radius: 16rpx;
+  flex-shrink: 0;  /* 🎯 防止状态标签被压缩 */
+}
+
+.status-tag.status-disabled {
+  background-color: rgba(245, 108, 108, 0.1);
+}
+
+.status-tag.status-disabled .status-icon {
+  color: #F56C6C;
+  font-size: 20rpx;
+}
+
+.status-tag.status-disabled .status-text {
+  color: #F56C6C;
+  font-size: 20rpx;
+  font-weight: 500;
+}
+
+.seal-time {
+  font-size: 24rpx;
+  color: #909399;
+  margin-bottom: 16rpx;
+}
+
+/* 空状态 */
+.empty-container {
+  padding: 120rpx 30rpx;
+  justify-content: center;
+  align-items: center;
+}
+
+.empty-image {
+  width: 240rpx;
+  height: 240rpx;
+  margin-bottom: 32rpx;
+  opacity: 0.6;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #909399;
+  margin-bottom: 12rpx;
+}
+
+.empty-sub-text {
+  font-size: 24rpx;
+  color: #C0C4CC;
+}
+
+/* 加载更多 */
+.load-more {
+  padding: 30rpx;
+  justify-content: center;
+  align-items: center;
+}
+
+.load-more-text {
+  font-size: 24rpx;
+  color: #909399;
+}
+
+/* 加载中 */
+.loading-container {
+  padding: 120rpx 30rpx;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-spinner {
+  width: 60rpx;
+  height: 60rpx;
+  border: 4rpx solid #F5F7FA;
+  border-top-color: #00C28A;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: #909399;
+  margin-top: 24rpx;
+}
+
+/* 印章元数据 */
+.seal-meta {
+  flex-direction: row;
+  justify-content: space-between;
+  margin-top: 16rpx;
+}
+
+.meta-section {
+  flex: 1;
+  flex-direction: column;
+}
+
+.time-section {
+  margin-right: 24rpx;
+}
+
+.auth-section {
+  align-items: flex-end;
+}
+
+.meta-label-row {
+  margin-bottom: 8rpx;
+}
+
+.meta-label {
+  font-size: 24rpx;
+  color: #909399;
+}
+
+.meta-value-row {
+  flex-direction: row;
+  align-items: center;
+}
+
+.time-icon {
+  font-size: 20rpx;
+  color: #00C28A;
+  margin-right: 8rpx;
+}
+
+.meta-value {
+  font-size: 26rpx;
+  color: #606266;
+}
+
+.count-badge {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 194, 138, 0.1);
+  padding: 4rpx 12rpx;
+  border-radius: 20rpx;
+  margin-left: 8rpx;
+  min-width: 40rpx;
+}
+
+.count-text {
+  font-size: 22rpx;
+  color: #00C28A;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* 卡片底部操作 */
+.card-footer {
+  padding: 16rpx 24rpx;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 16rpx;
+  border-top: 1rpx solid #F0F2F5;
+}
+
+.action-button {
+  flex: 1;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 20rpx;
+  border-radius: 10rpx;
+  gap: 8rpx;
+}
+
+.action-icon {
+  font-size: 30rpx;
+}
+
+.action-text {
+  font-size: 28rpx;
+  font-weight: 500;
+}
+
+/* 启用按钮 */
+.enable-btn {
+  background-color: #ECFDF5;
+  border: 1rpx solid #D1FAE5;
+}
+
+.enable-btn .action-icon {
+  color: #00C28A;
+}
+
+.enable-btn .action-text {
+  color: #00C28A;
+}
+
+/* 禁用按钮 */
+.disable-btn {
+  background-color: #FEF3F2;
+  border: 1rpx solid #FED7D7;
+}
+
+.disable-btn .action-icon {
+  color: #F56C6C;
+}
+
+.disable-btn .action-text {
+  color: #F56C6C;
+}
+
+/* 授权管理按钮 */
+.auth-btn {
+  background-color: #EFF6FF;
+  border: 1rpx solid #DBEAFE;
+}
+
+.auth-btn .action-icon {
+  color: #2563EB;
+}
+
+.auth-btn .action-text {
+  color: #2563EB;
+}
+
+/* 删除按钮 */
+.delete-btn {
+  background-color: #FEF2F2;
+  border: 1rpx solid #FECACA;
+}
+
+.delete-btn .action-icon {
+  color: #DC2626;
+}
+
+.delete-btn .action-text {
+  color: #DC2626;
+}
+
+.fa {
+  font-family: 'Font Awesome 6 Free';
+  font-size: 26rpx;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon {
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+}
+
+.icon-settings:before {
+  content: "\f013"; /* 齿轮图标 */
+}
+
+.icon-trash:before {
+  content: "\f2ed"; /* 垃圾桶图标 */
+}
+
+/* 空状态 */
+.empty-state {
+  padding: 120rpx 30rpx;
+  justify-content: center;
+  align-items: center;
+}
+
+.empty-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 12rpx;
+}
+
+.empty-subtitle {
+  font-size: 26rpx;
+  color: #909399;
+  margin-bottom: 40rpx;
+}
+
+.empty-action {
+  background-color: #00C28A;
+  padding: 16rpx 48rpx;
+  border-radius: 44rpx;
+}
+
+.empty-action-text {
+  font-size: 28rpx;
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+/* 加载状态 */
+.loading-state {
+  padding: 120rpx 30rpx;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 底部提示 */
+.footer-tips {
+  padding: 40rpx 30rpx;
+  background-color: #FAFBFC;
+  border-radius: 16rpx;
+  margin: 0 30rpx 30rpx;
+}
+
+.tip-item {
+  margin-bottom: 12rpx;
+}
+
+.tip-item:last-child {
+  margin-bottom: 0;
+}
+
+.tip-text {
+  font-size: 24rpx;
+  color: #909399;
+  line-height: 1.6;
+}
+</style> 
