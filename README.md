@@ -114,7 +114,7 @@
 目录结构
 -----------------------------------
 
-```json
+``` 
 mini-contract-pro/
 ├── App.uvue                        // 应用配置，全局样式和生命周期管理
 ├── main.uts                        // 应用入口文件
@@ -561,28 +561,28 @@ userSeal.create(sealData)
 
 > Web 用户端，可以在后台对自己的合同进行相应的签署和查看
 
-![](.images/pc/01_pc.png)
+![](.images/pc/pc_01@4x.png)
 
 
 
-![](.images/pc/02_pc.png)
+![](.images/pc/pc_02@4x.png)
 
 > pc 端同样支持手机号+密码的方式与短信验证码的方式进行登录；
 
 
 
-![](.images/pc/03_pc.png)
+![](.images/pc/pc_03@4x.png)
 
 > 工作台支持查看基本的合同信息
 
 
 
-![](.images/pc/04_pc.png)
-![](.images/pc/16_pc.jpeg)
-![](.images/pc/11_pc.jpeg)
-![](.images/pc/12_pc.jpeg)
-![](.images/pc/13_pc.jpeg)
-![](.images/pc/14_pc.jpeg)
+![](.images/pc/pc_04@4x.png)
+![](.images/pc/pc_16@4x.png)
+![](.images/pc/pc_11@4x.png)
+![](.images/pc/pc_12@4x.png)
+![](.images/pc/pc_13@4x.png)
+![](.images/pc/pc_14@4x.png)
 
 
 > 查看 所有的合同信息，支持在线签署和查看合同进度情况
@@ -593,11 +593,11 @@ userSeal.create(sealData)
 
 
 
-![](.images/pc/05_pc.png)
-![](.images/pc/06_pc.png)
-![](.images/pc/17_pc.jpeg)
-![](.images/pc/18_pc.jpeg)
-![](.images/pc/19_pc.jpeg)
+![](.images/pc/pc_05@4x.png)
+![](.images/pc/pc_06@4x.png)
+![](.images/pc/pc_17@4x.png)
+![](.images/pc/pc_18@4x.png)
+![](.images/pc/pc_19@4x.png)
 
 > 自行创建和管理个人印章和企业印章 
 
@@ -606,24 +606,24 @@ userSeal.create(sealData)
 
 
 
-![](.images/pc/07_pc.png)
+![](.images/pc/pc_07@4x.png)
 
 
-![](.images/pc/08_pc.png)
+![](.images/pc/pc_08@4x.png)
 
- ![](.images/pc/20_pc.jpeg)
- ![](.images/pc/21_pc.jpeg)
+ ![](.images/pc/pc_20@4x.png)
+ ![](.images/pc/pc_21@4x.png)
 
 > 管理人员支持创建合同模版
 
 
-![](.images/pc/09_pc.png)
-![](.images/pc/21_pc.png)
+![](.images/pc/pc_09@4x.png)
+![](.images/pc/pc_21@4x.png)
 
 > 管理人员可以邀请企业员工
 
 
-![](.images/pc/10_pc.png)
+![](.images/pc/pc_10@4x.png)
 
 > 查看个人的基本信息
 
