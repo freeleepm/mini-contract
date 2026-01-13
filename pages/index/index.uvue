@@ -2,23 +2,59 @@
 	import { getContractStatistics, ContractStatus } from '../../api/contracts/index';
 	import type { ContractStatistics } from '../../api/contracts/index';
 	import { checkAuthAndRedirect } from '../../api/auth';
+	import { getSealPageUrl } from '../../api/seals/index';
+	import { checkNetworkStatus, testH5ServiceAvailability } from '../../utils/network';
+	import { getSealToken } from '../../utils/sealTokenManager';
+	import { getEnterpriseList, EnterpriseStatus } from '../../api/enterprise/index';
+	import { get } from '@/api/index';
+	import PrivacyGuideModal from '../../components/PrivacyGuideModal.uvue';
 	
 	export default {
-		onLoad() {
+		components: {
+			PrivacyGuideModal
+		},
+		async onLoad() {
+			// 检查隐私协议同意状态
+			this.checkPrivacyAgreement();
+			this.safeTop = this.getSafeTop();
+		
 			// 检查登录状态
 			if (!checkAuthAndRedirect(false)) {
 				return;
 			}
+			// 🔧 关键修复：先确保 sealToken 存在且有效，再发起API请求
+			try {
+				await getSealToken();
+			} catch (error) {
+				console.error('[首页] sealToken 获取失败:', error);
+			}
+			// 从本地存储加载上次选择的身份
+			this.loadIdentityFromStorage();
+			// 获取用户信息
+			this.getUserInfo();
 			// 加载合同摘要数据
 			this.loadContractSummary();
 		},
-		onShow() {
+		async onShow() {
 			// 检查登录状态
 			if (!checkAuthAndRedirect(false)) {
 				return;
 			}
+			this.safeTop = this.getSafeTop();
+			// 🔧 确保 sealToken 有效
+			try {
+				await getSealToken();
+			} catch (error) {
+				console.error('[首页] sealToken 获取失败:', error);
+			}
+			// 从本地存储加载身份（确保与个人中心同步）
+			this.loadIdentityFromStorage();
 			// 每次页面显示时刷新数据
 			this.loadContractSummary();
+		},
+		onHide() {
+			// 页面隐藏时关闭弹窗
+			this.showIdentityDropdown = false;
 		},
 		onPullDownRefresh() {
 			// 下拉刷新
@@ -26,14 +62,30 @@
 		},
 		data() {
 			return {
-				// 版本切换
-				versionOptions: ['个人版', '企业版'],
-				currentVersionIndex: 0,
-				showVersionDropdown: false,
+				safeTop: 0,
+				// 隐私协议引导弹窗
+				showPrivacyModal: false,  // 是否显示隐私协议引导弹窗
+				// 身份切换相关（复用个人中心逻辑）
+				showIdentityDropdown: false,  // 是否显示身份切换弹窗
+				currentIdentity: {
+					type: 'personal',  // 当前身份类型：personal 或 enterprise
+					id: '',  // 身份ID
+					name: '个人',  // 身份名称
+					verified: false,  // 当前身份是否已认证
+					role: ''  // 角色（企业身份才有）
+				},
+				// 企业列表
+				enterprises: [] as any[],
+				// 用户信息（用于身份切换）
+				userInfo: {
+					id: '',
+					name: '',
+					isVerified: false
+				},
 				// 状态摘要数据
 				statusData: [
 					{ label: '签署中', count: 0, color: '#1890FF' },
-					{ label: '草稿', count: 0, color: '#909399' },
+					{ label: '填写表单', count: 0, color: '#FAAD14' },
 					{ label: '已完成', count: 0, color: '#00C28A' }
 				],
 				// 是否正在加载数据
@@ -43,7 +95,7 @@
 					{ icon: '/static/icons/template.png', label: '模板发起', path: '/pages/template-market/index' },
 					{ icon: '/static/icons/folder.png', label: '文件发起', path: '/pages/contract-create/h5-create?type=file' },
 					{ icon: '/static/icons/image.png', label: '图片发起', path: '/pages/contract-create/h5-create?type=image' },
-					{ icon: '/static/icons/draft.png', label: '草稿发起', path: '/pages/contract-manage/draft' }
+					{ icon: '/static/icons/draft.png', label: '草稿发起', path: null } // 功能暂未开放，不设置路径
 				],
 				// 热门模板数据
 				templates: [
@@ -85,6 +137,95 @@
 			}
 		},
 		methods: {
+			getSafeTop(): number {
+				try {
+					const sys: any = uni.getSystemInfoSync();
+					let top = sys && sys.statusBarHeight ? Number(sys.statusBarHeight) : 0;
+					const getMenuBtn: any = (uni as any).getMenuButtonBoundingClientRect;
+					if (typeof getMenuBtn === 'function') {
+						const rect: any = getMenuBtn();
+						if (rect && rect.top) {
+							top = Number(rect.top);
+						}
+					}
+					return top;
+				} catch (e) {
+					return 0;
+				}
+			},
+			// ========== 隐私协议相关方法 ==========
+			
+			/**
+			 * 检查隐私协议同意状态
+			 */
+			checkPrivacyAgreement(): void {
+				try {
+					const privacyStatus = uni.getStorageSync('privacyAgreementStatus');
+					if (!privacyStatus) {
+						// 首次访问，显示隐私协议引导弹窗
+						this.showPrivacyModal = true;
+						console.log('[首页] 首次访问，显示隐私协议引导弹窗');
+					} else if (privacyStatus === 'accepted') {
+						console.log('[首页] 用户已同意隐私协议');
+					} else if (privacyStatus === 'declined') {
+						console.log('[首页] 用户已拒绝隐私协议');
+					}
+				} catch (error) {
+					console.error('[首页] 检查隐私协议状态失败:', error);
+				}
+			},
+			
+			/**
+			 * 用户同意隐私协议
+			 */
+			handlePrivacyAgree(): void {
+				try {
+					// 保存同意状态到本地存储
+					uni.setStorageSync('privacyAgreementStatus', 'accepted');
+					// 关闭弹窗
+					this.showPrivacyModal = false;
+					console.log('[首页] 用户已同意隐私协议');
+					
+					// 显示成功提示
+					uni.showToast({
+						title: '感谢您的信任',
+						icon: 'success',
+						duration: 1500
+					});
+				} catch (error) {
+					console.error('[首页] 保存隐私协议同意状态失败:', error);
+					uni.showToast({
+						title: '操作失败，请重试',
+						icon: 'none',
+						duration: 2000
+					});
+				}
+			},
+			
+			/**
+			 * 用户不同意隐私协议
+			 */
+			handlePrivacyDisagree(): void {
+				try {
+					// 保存拒绝状态到本地存储
+					uni.setStorageSync('privacyAgreementStatus', 'declined');
+					// 关闭隐私协议弹窗
+					this.showPrivacyModal = false;
+					console.log('[首页] 用户不同意隐私协议，已关闭弹窗');
+					
+					// 显示提示信息
+					uni.showToast({
+						title: '您已拒绝隐私协议',
+						icon: 'none',
+						duration: 2000
+					});
+				} catch (error) {
+					console.error('[首页] 保存隐私协议状态失败:', error);
+				}
+			},
+			
+			// ========== 功能点击相关方法 ==========
+			
 			/**
 			 * 处理功能点击
 			 */
@@ -99,11 +240,11 @@
 					return;
 				}
 				
-				if (item.label === '草稿') {
+				if (item.label === '填写表单') {
 					uni.switchTab({
 						url: '/pages/contract-manage/index'
 					});
-					uni.setStorageSync('contractStatus', ContractStatus.DRAFT);
+					uni.setStorageSync('contractStatus', ContractStatus.FORM_FILLING);
 					return;
 				}
 				
@@ -138,11 +279,97 @@
 				})
 			},
 			
-			// 处理快速发起项点击
-			handleQuickStartClick(item: any): void {
-				uni.navigateTo({
-					url: item.path
-				})
+			// 处理快速发起项点击（先检测H5服务，再跳转）
+			async handleQuickStartClick(item: any): Promise<void> {
+				// 草稿发起功能暂未开放（通过 path 为 null 或 label 判断）
+				if (item.label === '草稿发起' || !item.path) {
+					uni.showToast({
+						title: '该功能暂未开放，敬请期待',
+						icon: 'none',
+						duration: 2000
+					});
+					return;
+				}
+				
+				// 模板发起不需要检测H5服务
+				if (item.path === '/pages/template-market/index') {
+					uni.navigateTo({ url: item.path });
+					return;
+				}
+				
+				// 文件发起、图片发起需要检测H5服务
+				try {
+					uni.showLoading({ title: '正在检测服务...', mask: true });
+					
+					// 步骤 1: 检查网络状态
+					const networkResult = await checkNetworkStatus();
+					if (!networkResult.success) {
+						uni.hideLoading();
+						uni.showModal({
+							title: '网络异常',
+							content: networkResult.errorMessage || '请检查网络连接后重试',
+							showCancel: false
+						});
+						return;
+					}
+					
+					// 步骤 2: 获取 H5 创建合同 URL
+					uni.showLoading({ title: '正在连接服务...', mask: true });
+					const type = item.path.includes('type=file') ? 'file' : 'image';
+					
+					// 获取当前选择的企业ID
+					let enterpriseId: number | undefined = undefined;
+					try {
+						const savedIdentity = uni.getStorageSync('currentIdentity');
+						if (savedIdentity) {
+							const identity = JSON.parse(savedIdentity) as { type?: string; id?: number };
+							if (identity && identity.type === 'enterprise' && identity.id) {
+								enterpriseId = identity.id;
+							}
+						}
+					} catch (e) {
+						console.warn('[首页] 获取当前身份信息失败:', e);
+					}
+					
+					let createUrl: string;
+					try {
+						createUrl = await getSealPageUrl('create', undefined, { type, enterpriseId });
+					} catch (error) {
+						uni.hideLoading();
+						uni.showModal({
+							title: '服务异常',
+							content: '无法连接到创建服务\n请稍后重试或联系技术支持',
+							showCancel: false
+						});
+						return;
+					}
+					
+					// 步骤 3: 测试 H5 服务器可用性
+					uni.showLoading({ title: '正在检测服务状态...', mask: true });
+					const serviceResult = await testH5ServiceAvailability(createUrl, 8000);
+					
+					uni.hideLoading();
+					
+					if (!serviceResult.available) {
+						uni.showModal({
+							title: '签署服务暂时不可用',
+							content: serviceResult.errorMessage || 'H5签署服务暂时无法访问\n请稍后重试或联系技术支持',
+							showCancel: false
+						});
+						return;
+					}
+					
+					// 步骤 4: 所有检测通过，跳转到创建页面
+					uni.navigateTo({ url: item.path });
+					
+				} catch (error) {
+					uni.hideLoading();
+					uni.showModal({
+						title: '检测失败',
+						content: '无法完成服务检测\n请稍后重试',
+						showCancel: false
+					});
+				}
 			},
 			
 			// 处理特色服务点击
@@ -167,30 +394,185 @@
 				}
 			},
 			
-			// 切换版本下拉框显示状态
-			toggleVersionDropdown(): void {
-				this.showVersionDropdown = !this.showVersionDropdown
-				console.log('切换下拉菜单状态：', this.showVersionDropdown)
-				
-				// 触发显示反馈
-				if (this.showVersionDropdown) {
-					uni.showToast({
-						title: '打开下拉菜单',
-						icon: 'none',
-						duration: 1000
-					})
+			// ========== 身份切换相关方法（复用个人中心逻辑）==========
+			
+			// 获取用户信息
+			async getUserInfo(): Promise<void> {
+				try {
+					console.log('[首页] 开始获取用户信息...');
+					const res = await get<any>('/api/v1/member/user/get');
+					
+					console.log('[首页] 获取用户信息成功:', JSON.stringify(res));
+					
+					// 更新用户信息
+					this.userInfo = {
+						id: res.id?.toString() || '',
+						name: res.nickname || '未命名用户',
+						isVerified: res.verifyStatus === 2
+					};
+					
+					// 如果是首次加载且未从缓存加载，则设置默认身份
+					if (!this.currentIdentity.id) {
+						this.currentIdentity = {
+							type: 'personal',
+							id: this.userInfo.id,
+							name: '个人',
+							verified: this.userInfo.isVerified,
+							role: ''
+						};
+						this.saveIdentityToStorage();
+					} else if (this.currentIdentity.type === 'personal') {
+						// 如果当前是个人身份，更新认证状态
+						this.currentIdentity.verified = this.userInfo.isVerified;
+						this.currentIdentity.id = this.userInfo.id;
+						this.saveIdentityToStorage();
+					}
+					
+					// 如果用户已认证，加载企业列表
+					if (this.userInfo.isVerified) {
+						this.loadEnterpriseList();
+					}
+				} catch (error) {
+					console.error('[首页] 获取用户信息失败:', error);
 				}
 			},
-			// 选择版本
-			selectVersion(index: number): void {
-				console.log('选择版本:', this.versionOptions[index])
-				this.currentVersionIndex = index
-				this.showVersionDropdown = false
+			
+			// 加载企业列表
+			async loadEnterpriseList(): Promise<void> {
+				try {
+					console.log('[首页] 开始加载企业列表...');
+					const response = await getEnterpriseList();
+					
+					console.log('[首页] 企业列表API响应:', response);
+					
+					if (response && response.list) {
+						this.enterprises = response.list.map(item => ({
+							id: item.id,
+							name: item.name,
+							verified: item.status === EnterpriseStatus.VERIFIED,
+							role: this.mapRoleToText(item.role)
+						}));
+						console.log('[首页] 企业列表加载成功，企业数量:', this.enterprises.length);
+						
+						// 如果当前身份是企业，更新企业信息
+						if (this.currentIdentity.type === 'enterprise' && this.currentIdentity.id) {
+							const currentEnterprise = this.enterprises.find(e => e.id === this.currentIdentity.id);
+							if (currentEnterprise) {
+								this.currentIdentity.role = currentEnterprise.role;
+								this.currentIdentity.verified = currentEnterprise.verified;
+								this.saveIdentityToStorage();
+							}
+						}
+					}
+				} catch (error) {
+					console.error('[首页] 获取企业列表失败:', error);
+				}
+			},
+			
+			// 将API角色值映射为角色文本
+			mapRoleToText(role: number): string {
+				switch (role) {
+					case 1:
+						return '所有者';
+					case 2:
+						return '管理员';
+					case 3:
+						return '成员';
+					default:
+						return '成员';
+				}
+			},
+			
+			// 切换身份下拉菜单
+			toggleIdentityDropdown(): void {
+				// 在用户未实名认证的情况下，不允许打开身份切换菜单
+				if (!this.userInfo.isVerified) {
+					uni.showToast({
+						title: '请先完成实名认证',
+						icon: 'none'
+					});
+					return;
+				}
+				this.showIdentityDropdown = !this.showIdentityDropdown;
+			},
+			
+			// 关闭身份下拉菜单
+			closeIdentityDropdown(): void {
+				this.showIdentityDropdown = false;
+			},
+			
+			// 切换身份
+			switchIdentity(type: string, enterprise: any = null): void {
+				if (type === 'personal') {
+					this.currentIdentity = {
+						type: 'personal',
+						id: this.userInfo.id || '',
+						name: '个人',
+						verified: this.userInfo.isVerified,
+						role: ''
+					};
+					console.log('[首页] 切换到个人身份');
+				} else if (type === 'enterprise' && enterprise) {
+					this.currentIdentity = {
+						type: 'enterprise',
+						id: enterprise.id,
+						name: enterprise.name,
+						verified: enterprise.verified,
+						role: enterprise.role
+					};
+					console.log('[首页] 切换到企业身份:', enterprise.name);
+				}
+				
+				// 保存身份选择到本地存储
+				this.saveIdentityToStorage();
+				
+				// 关闭下拉菜单
+				this.closeIdentityDropdown();
+				
+				// 刷新页面数据
+				this.loadContractSummary();
+				
+				// 显示切换成功提示
 				uni.showToast({
-					title: '切换到' + this.versionOptions[index],
+					title: '已切换到' + this.currentIdentity.name,
 					icon: 'none',
-					duration: 2000
-				})
+					duration: 1500
+				});
+			},
+			
+			// 保存身份选择到本地存储
+			saveIdentityToStorage(): void {
+				uni.setStorageSync('currentIdentity', JSON.stringify(this.currentIdentity));
+			},
+			
+			// 从本地存储加载身份
+			loadIdentityFromStorage(): void {
+				try {
+					const savedIdentity = uni.getStorageSync('currentIdentity');
+					if (savedIdentity) {
+						const parsedIdentity = JSON.parse(savedIdentity) as { type: string; id: string; name: string; verified: boolean; role: string };
+						
+						if (parsedIdentity) {
+							// 兼容旧数据
+							if (parsedIdentity.type === 'personal' && parsedIdentity.name !== '个人') {
+								parsedIdentity.name = '个人';
+							}
+							
+							this.currentIdentity = parsedIdentity;
+							console.log('[首页] 从本地存储加载身份:', this.currentIdentity.name);
+						}
+					}
+				} catch (e) {
+					console.error('[首页] 加载身份信息失败:', e);
+				}
+			},
+			
+			// 添加新企业
+			addEnterprise(): void {
+				this.closeIdentityDropdown();
+				uni.navigateTo({
+					url: '/pages/enterprise/add'
+				});
 			},
 			
 			/**
@@ -210,7 +592,7 @@
 					// 更新状态摘要数据
 					this.statusData = [
 						{ label: '签署中', count: stats.signingCount, color: '#1890FF' },
-						{ label: '草稿', count: stats.draftCount, color: '#909399' },
+						{ label: '填写表单', count: stats.formFillingCount, color: '#FAAD14' },
 						{ label: '已完成', count: stats.completedCount, color: '#00C28A' }
 					];
 					
@@ -241,28 +623,84 @@
 		
 		<scroll-view scroll-y="true" class="content">
 			<!-- 顶部导航栏 -->
-			<view class="header">
+			<view class="header" :style="{ '--safe-top': safeTop + 'px' }">
 				<view class="header-dropdown-container">
-					<view class="header-dropdown" @click="toggleVersionDropdown">
-						<text class="header-dropdown-text">{{ versionOptions[currentVersionIndex] }}</text>
-						<text class="header-dropdown-icon">{{ showVersionDropdown ? '▲' : '▼' }}</text>
+					<view class="header-dropdown" @click="toggleIdentityDropdown">
+						<text class="header-dropdown-text">{{ currentIdentity.type === 'personal' ? '个人' : '企业' }}</text>
+						<text class="header-dropdown-icon">{{ showIdentityDropdown ? '▲' : '▼' }}</text>
 					</view>
 				</view>
 				
-				<!-- 版本切换下拉菜单 - 完全独立的view -->
-				<view v-if="showVersionDropdown" class="version-dropdown">
-					<view 
-						v-for="(version, index) in versionOptions" 
-						:key="index"
-						class="version-option"
-						:class="{ active: index === currentVersionIndex }"
-						@click="selectVersion(index)"
-					>
-						<text class="version-option-text">{{ version }}</text>
+				<text class="header-title">Contract.Pro</text>
+			</view>
+			
+			<!-- 身份切换弹窗遮罩 -->
+			<view v-if="showIdentityDropdown" class="identity-mask" @click="closeIdentityDropdown"></view>
+			
+			<!-- 身份切换弹窗 -->
+			<view v-if="showIdentityDropdown" class="identity-dropdown-container">
+				<view class="identity-dropdown">
+					<view class="dropdown-header">
+						<text class="dropdown-title">切换身份</text>
+					</view>
+					
+					<!-- 个人身份 -->
+					<view class="dropdown-section">
+						<text class="section-label">个人</text>
+					</view>
+					<view class="identity-option" :class="{ active: currentIdentity.type === 'personal' }" @click="switchIdentity('personal')">
+						<view class="option-left">
+							<view class="option-info">
+								<view class="option-name-row">
+									<text class="option-name">个人</text>
+								</view>
+								<view class="option-status-row">
+									<view class="option-verified" v-if="userInfo.isVerified">
+										<text class="verified-text-small">已认证</text>
+									</view>
+									<view class="option-unverified" v-else>
+										<text class="unverified-text">未认证</text>
+									</view>
+								</view>
+							</view>
+						</view>
+						<text v-if="currentIdentity.type === 'personal'" class="option-check">✓</text>
+					</view>
+					
+					<!-- 企业身份 -->
+					<view class="dropdown-section" v-if="enterprises.length > 0">
+						<text class="section-label">企业身份</text>
+					</view>
+					<view v-if="enterprises.length > 0">
+						<view v-for="(enterprise, index) in enterprises" :key="index" class="identity-option" :class="{ active: currentIdentity.type === 'enterprise' && currentIdentity.id === enterprise.id }" @click="switchIdentity('enterprise', enterprise)">
+							<view class="option-left">
+								<view class="option-info">
+									<view class="option-name-row">
+										<text class="option-name">{{ enterprise.name }}</text>
+										<view class="option-role">
+											<text class="role-text-small">{{ enterprise.role }}</text>
+										</view>
+									</view>
+									<view class="option-status-row">
+										<view v-if="enterprise.verified" class="option-verified">
+											<text class="verified-text-small">已认证</text>
+										</view>
+										<view v-else class="option-unverified">
+											<text class="unverified-text">未认证</text>
+										</view>
+									</view>
+								</view>
+							</view>
+							<text v-if="currentIdentity.type === 'enterprise' && currentIdentity.id === enterprise.id" class="option-check">✓</text>
+						</view>
+					</view>
+					
+					<!-- 添加新企业 -->
+					<view class="add-enterprise" @click="addEnterprise">
+						<text class="add-icon">+</text>
+						<text class="add-text">添加新企业</text>
 					</view>
 				</view>
-				
-				<text class="header-title">Mini Contract Pro</text>
 			</view>
 			
 			<!-- 快速发起合同 - 调整位置使其悬浮在绿色背景上 -->
@@ -345,9 +783,22 @@
 				</view>
 			</view>
 			
+			<!-- 版权信息 -->
+			<view class="copyright-section">
+				<text class="copyright-title">Contract.Pro 让签约更简单</text>
+				<text class="copyright-text">©️ 小华同学 AI 版权所有</text>
+			</view>
+			
 			<!-- 底部占位，防止内容被TabBar遮挡 -->
 			<view class="bottom-placeholder"></view>
 		</scroll-view>
+		
+		<!-- 隐私协议引导弹窗 -->
+		<PrivacyGuideModal 
+			:show="showPrivacyModal" 
+			@agree="handlePrivacyAgree" 
+			@disagree="handlePrivacyDisagree"
+		/>
 	</view>
 </template>
 
@@ -372,12 +823,12 @@
 		align-items: flex-start;
 		justify-content: center;
 		position: relative;
-		padding-top: calc(60rpx + var(--status-bar-height));
+		padding-top: calc(60rpx + var(--safe-top));
 	}
 	
 	.header-dropdown-container {
 		position: absolute;
-		top: calc(60rpx + var(--status-bar-height));
+		top: calc(60rpx + var(--safe-top));
 		left: 32rpx;
 		z-index: 100;
 	}
@@ -388,12 +839,17 @@
 		background-color: rgba(255, 255, 255, 0.2);
 		padding: 8rpx 16rpx;
 		border-radius: 30rpx;
+		max-width: 280rpx;
 	}
 	
 	.header-dropdown-text {
 		color: #FFFFFF;
 		font-size: 24rpx;
 		margin-right: 8rpx;
+		max-width: 220rpx;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		lines: 1;
 	}
 	
 	.header-dropdown-icon {
@@ -407,39 +863,167 @@
 		font-weight: 500;
 	}
 	
-	.version-dropdown {
-		position: absolute;
-		top: calc(110rpx + var(--status-bar-height));
-		left: 32rpx;
-		background-color: #FFFFFF;
-		border-radius: 8rpx;
-		box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
-		z-index: 1000;
-		width: 200rpx;
+	/* ========== 身份切换弹窗样式 ========== */
+	
+	/* 遮罩层 */
+	.identity-mask {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+		z-index: 999;
 	}
 	
-	.version-option {
-		padding: 20rpx 24rpx;
+	/* 弹窗容器 */
+	.identity-dropdown-container {
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 1000;
+	}
+	
+	/* 弹窗主体 */
+	.identity-dropdown {
+		background-color: #FFFFFF;
+		border-top-left-radius: 24rpx;
+		border-top-right-radius: 24rpx;
+		padding: 32rpx;
+		max-height: 70vh;
+	}
+	
+	/* 弹窗标题 */
+	.dropdown-header {
+		align-items: center;
+		margin-bottom: 24rpx;
+		padding-bottom: 24rpx;
 		border-bottom-width: 1rpx;
 		border-bottom-color: #F0F0F0;
 	}
 	
-	.version-option:last-child {
-		border-bottom-width: 0;
-	}
-	
-	.version-option.active {
-		background-color: #F6F6F6;
-	}
-	
-	.version-option-text {
-		font-size: 28rpx;
+	.dropdown-title {
+		font-size: 32rpx;
+		font-weight: 600;
 		color: #333333;
 	}
 	
-	.version-option.active .version-option-text {
-		color: #00C28A;
+	/* 分组标题 */
+	.dropdown-section {
+		margin-top: 16rpx;
+		margin-bottom: 12rpx;
+	}
+	
+	.section-label {
+		font-size: 24rpx;
+		color: #999999;
+	}
+	
+	/* 身份选项 */
+	.identity-option {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 24rpx 16rpx;
+		background-color: #F8F9FA;
+		border-radius: 12rpx;
+		margin-bottom: 12rpx;
+	}
+	
+	.identity-option.active {
+		background-color: #E8F8F3;
+		border-width: 1rpx;
+		border-color: #00C28A;
+	}
+	
+	.option-left {
+		flex: 1;
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	.option-info {
+		flex: 1;
+	}
+	
+	.option-name-row {
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 8rpx;
+	}
+	
+	.option-name {
+		font-size: 28rpx;
 		font-weight: 500;
+		color: #333333;
+		margin-right: 12rpx;
+	}
+	
+	.option-role {
+		background-color: #E8F8F3;
+		padding: 4rpx 12rpx;
+		border-radius: 16rpx;
+	}
+	
+	.role-text-small {
+		font-size: 20rpx;
+		color: #00C28A;
+	}
+	
+	.option-status-row {
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	.option-verified {
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	.verified-text-small {
+		font-size: 22rpx;
+		color: #00C28A;
+	}
+	
+	.option-unverified {
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	.unverified-text {
+		font-size: 22rpx;
+		color: #FF9800;
+	}
+	
+	.option-check {
+		font-size: 32rpx;
+		color: #00C28A;
+		font-weight: bold;
+	}
+	
+	/* 添加新企业 */
+	.add-enterprise {
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		padding: 24rpx;
+		margin-top: 16rpx;
+		border-width: 1rpx;
+		border-color: #E0E0E0;
+		border-style: dashed;
+		border-radius: 12rpx;
+	}
+	
+	.add-icon {
+		font-size: 32rpx;
+		color: #00C28A;
+		margin-right: 8rpx;
+	}
+	
+	.add-text {
+		font-size: 28rpx;
+		color: #00C28A;
 	}
 	
 	/* 卡片通用样式 */
@@ -705,6 +1289,30 @@
 		font-weight: 300;
 		line-height: 36rpx;
 		transform: scaleY(1.2); /* 稍微拉伸，使其更圆润 */
+	}
+	
+	/* 版权信息 */
+	.copyright-section {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 12rpx 32rpx 8rpx;
+		margin-top: 0;
+	}
+	
+	.copyright-title {
+		font-size: 24rpx;
+		font-weight: 400;
+		color: #999999;
+		line-height: 32rpx;
+		margin-bottom: 2rpx;
+	}
+	
+	.copyright-text {
+		font-size: 22rpx;
+		color: #BBBBBB;
+		line-height: 30rpx;
 	}
 	
 	/* 底部占位 */

@@ -1,0 +1,239 @@
+<script lang="uts">
+/**
+ * 用户隐私协议引导弹窗组件
+ * 作者：小华同学AI
+ */
+export default {
+	name: 'PrivacyGuideModal',
+	props: {
+		// 是否显示弹窗
+		show: {
+			type: Boolean,
+			default: false
+		}
+	},
+	emits: ['agree', 'disagree'],
+	methods: {
+		// 同意并继续
+		handleAgree(): void {
+			this.$emit('agree');
+		},
+		
+		// 不同意
+		handleDisagree(): void {
+			this.$emit('disagree');
+		},
+		
+		// 跳转到隐私政策页面
+		goToPrivacy(): void {
+			uni.navigateTo({
+				url: '/pages/agreement/privacy'
+			});
+		},
+		
+		// 跳转到用户协议页面
+		goToUserAgreement(): void {
+			uni.navigateTo({
+				url: '/pages/agreement/user'
+			});
+		}
+	}
+}
+</script>
+
+<template>
+	<view v-if="show" class="privacy-modal-container">
+		<!-- 遮罩层 -->
+		<view class="privacy-mask"></view>
+		
+		<!-- 弹窗主体 -->
+		<view class="privacy-modal" @click.stop="">
+			<!-- 顶部图标 -->
+			<view class="modal-icon-container">
+				<view class="shield-icon">
+					<!-- 使用Unicode字符绘制盾牌图标 -->
+					<text class="shield-icon-text">✓</text>
+				</view>
+			</view>
+			
+			<!-- 标题 -->
+			<view class="modal-title">
+				<text class="title-text">用户隐私保护指引</text>
+			</view>
+			
+			<!-- 内容 -->
+			<view class="modal-content">
+				<text class="content-text">欢迎使用 Contract.Pro，我们将通过</text>
+				<text class="link-text" @click="goToPrivacy">《签隐私政策》</text>
+				<text class="content-text">帮助您了解我们收集、使用、存储和共享您的个人信息的情况。</text>
+				
+				<text class="content-text content-margin-top">未经您的同意或授权，我们不会主动向任何第三方提供您的个人信息。当您使用一些功能或服务时，我们可能会在获得您的授权同意后，从第三方处获取您的个人信息，共享或向其提供您的个人信息。您可阅读我们的</text>
+				<text class="link-text" @click="goToPrivacy">《电子签隐私政策》</text>
+				<text class="content-text">，充分了解相关信息。</text>
+				
+				<text class="content-text content-margin-top">如果您是未满14周岁的未成年人，请通知您的监护人对</text>
+				<text class="link-text" @click="goToPrivacy">《电子签隐私政策》</text>
+				<text class="content-text">进行审阅和授权同意。</text>
+			</view>
+			
+			<!-- 同意按钮 -->
+			<view class="modal-button" @click="handleAgree">
+				<text class="button-text">同意并继续</text>
+			</view>
+			
+			<!-- 不同意链接 -->
+			<view class="modal-disagree" @click="handleDisagree">
+				<text class="disagree-text">不同意</text>
+			</view>
+		</view>
+	</view>
+</template>
+
+<style>
+	/* 弹窗容器 */
+	.privacy-modal-container {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 9999;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 80rpx 0;
+		overflow: visible;
+	}
+	
+	/* 遮罩层 */
+	.privacy-mask {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.6);
+	}
+	
+	/* 弹窗主体 */
+	.privacy-modal {
+		position: relative;
+		width: 600rpx;
+		background-color: #FFFFFF;
+		border-radius: 24rpx;
+		padding: 80rpx 40rpx 40rpx;
+		z-index: 10000;
+		margin-top: 60rpx;
+		overflow: visible;
+	}
+	
+	/* 顶部图标容器 */
+	.modal-icon-container {
+		position: absolute;
+		top: -60rpx;
+		left: 50%;
+		transform: translateX(-50%);
+		width: 120rpx;
+		height: 120rpx;
+		background-color: #FFFFFF;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.1);
+		z-index: 10001;
+	}
+	
+	/* 盾牌图标 */
+	.shield-icon {
+		width: 100rpx;
+		height: 100rpx;
+		background: linear-gradient(135deg, #00C28A 0%, #00A876 100%);
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		position: relative;
+	}
+	
+	/* 盾牌图标内的对勾 */
+	.shield-icon-text {
+		font-size: 56rpx;
+		color: #FFFFFF;
+		font-weight: bold;
+		line-height: 1;
+	}
+	
+	/* 标题 */
+	.modal-title {
+		margin-top: 20rpx;
+		margin-bottom: 40rpx;
+		text-align: center;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+	
+	.title-text {
+		font-size: 36rpx;
+		font-weight: 600;
+		color: #333333;
+		text-align: center;
+	}
+	
+	/* 内容 */
+	.modal-content {
+		margin-bottom: 40rpx;
+		line-height: 1.8;
+	}
+	
+	.content-text {
+		font-size: 26rpx;
+		color: #666666;
+		line-height: 1.8;
+	}
+	
+	.content-margin-top {
+		margin-top: 24rpx;
+		display: block;
+	}
+	
+	.link-text {
+		font-size: 26rpx;
+		color: #00C28A;
+		line-height: 1.8;
+	}
+	
+	/* 同意按钮 */
+	.modal-button {
+		width: 100%;
+		height: 88rpx;
+		background: linear-gradient(135deg, #00C28A 0%, #00A876 100%);
+		border-radius: 44rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 24rpx;
+	}
+	
+	.button-text {
+		font-size: 32rpx;
+		font-weight: 500;
+		color: #FFFFFF;
+	}
+	
+	/* 不同意链接 */
+	.modal-disagree {
+		width: 100%;
+		height: 80rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.disagree-text {
+		font-size: 28rpx;
+		color: #999999;
+		text-align: center;
+	}
+</style>

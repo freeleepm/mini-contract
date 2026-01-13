@@ -57,10 +57,19 @@
 <script>
 import { getConversationPage } from '../../api/ai-draft/index.uts'
 
+// 对话项接口定义
+interface ConversationItem {
+  id: number;
+  title: string;
+  createTime: string;
+  lastMessage: string;
+  messageCount: number;
+}
+
 export default {
   data() {
     return {
-      conversations: [],
+      conversations: [] as ConversationItem[],
       loading: false,
       loadError: false,
       pageNo: 1,
@@ -95,10 +104,10 @@ export default {
           
           if (res.code === 0 || res.code === 200) {
             // 直接使用 res.data，因为 API 已经封装好了返回格式
-            const data = res.data || { total: 0, list: [] }
+            const data = (res.data || { total: 0, list: [] }) as { total?: number; list?: ConversationItem[] }
             this.total = data.total || 0
             
-            const list = data.list || []
+            const list = (data.list || []) as ConversationItem[]
             
             if (refresh) {
               this.conversations = list
@@ -116,7 +125,7 @@ export default {
               icon: 'none'
             })
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('加载异常:', error)
           this.loadError = true
           uni.showToast({

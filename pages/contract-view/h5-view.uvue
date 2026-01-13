@@ -57,7 +57,7 @@ export default {
 		}
 	},
 	
-	onLoad(options) {
+	onLoad(options: any) {
 		console.log('[H5预览] 页面加载，参数:', options);
 		
 		// 获取任务ID
@@ -153,24 +153,16 @@ export default {
 		/**
 		 * H5页面加载完成
 		 */
-		handleLoad(e) {
+		handleLoad(e: any): void {
 			console.log('[H5预览] 页面加载完成:', e);
-			
 			this.loading = false;
-			
 			uni.hideLoading();
-			
-			uni.showToast({
-				title: '页面加载完成',
-				icon: 'success',
-				duration: 1500
-			});
 		},
 		
 		/**
 		 * H5页面加载失败
 		 */
-		handleError(e) {
+		handleError(e: any): void {
 			console.error('[H5预览] 页面加载失败:', e);
 			
 			this.loading = false;
@@ -197,40 +189,56 @@ export default {
 		/**
 		 * 接收H5页面消息
 		 */
-		handleMessage(e) {
-			console.log('[H5预览] 收到H5消息:', e);
+		handleMessage(e : WebViewMessageEvent) {
+			console.log('[H5预览] ✅ 收到H5消息事件');
+			console.log('[H5预览] e.detail:', JSON.stringify(e.detail));
 			
-			const messages = e.detail.data;
-			if (!messages || messages.length === 0) {
+			// 兼容不同版本的消息格式
+			let data : any = null;
+			
+			// 格式1: e.detail.data 是数组
+			if (e.detail.data != null && Array.isArray(e.detail.data) && e.detail.data.length > 0) {
+				data = e.detail.data[e.detail.data.length - 1];
+				console.log('[H5预览] 从数组获取消息:', JSON.stringify(data));
+			} 
+			// 格式2: e.detail.data 直接是对象
+			else if (e.detail.data != null && typeof e.detail.data === 'object') {
+				data = e.detail.data;
+				console.log('[H5预览] 直接获取消息对象:', JSON.stringify(data));
+			}
+			// 格式3: e.detail 本身就是消息（检查是否有 type 属性）
+			else if (e.detail != null) {
+				const detail = e.detail as any;
+				if (detail.type != null) {
+					data = detail;
+					console.log('[H5预览] 从 detail 获取消息:', JSON.stringify(data));
+				}
+			}
+			
+			if (data == null) {
+				console.log('[H5预览] ⚠️ 无法解析消息数据');
 				return;
 			}
 			
-			const data = messages[messages.length - 1];
-			console.log('[H5预览] 处理消息:', data);
+			const messageType = (data as any).type;
+			console.log('[H5预览] 处理消息, type:', messageType);
 			
-			switch(data.type) {
-				case 'close':
-					console.log('[H5预览] H5页面请求关闭');
-					uni.navigateBack();
-					break;
-				
-				case 'ready':
-					console.log('[H5预览] H5页面已准备就绪');
-					break;
-					
-				case 'ERROR':
-					this.handleH5Error(data.message);
-					break;
-					
-				default:
-					console.log('[H5预览] 未知消息类型:', data.type);
+			if (messageType == 'close') {
+				console.log('[H5预览] 🚀 H5页面请求关闭，执行 navigateBack');
+				uni.navigateBack();
+			} else if (messageType == 'ready') {
+				console.log('[H5预览] H5页面已准备就绪');
+			} else if (messageType == 'ERROR') {
+				this.handleH5Error((data as any).message);
+			} else {
+				console.log('[H5预览] 未知消息类型:', messageType);
 			}
 		},
 		
 		/**
 		 * H5错误处理
 		 */
-		handleH5Error(message) {
+		handleH5Error(message: string | null): void {
 			console.error('[H5预览] H5错误:', message);
 			
 			uni.showModal({
@@ -243,7 +251,7 @@ export default {
 		/**
 		 * 下载合同
 		 */
-		async handleDownload() {
+		async handleDownload(): Promise<void> {
 			// 如果正在下载，直接返回
 			if (this.downloading) return;
 			
@@ -319,7 +327,6 @@ export default {
 				:class="{ 'disabled': !canDownload, 'loading': downloading }"
 				@click="handleDownload"
 			>
-				<text class="fa fa-download btn-icon"></text>
 				<text class="btn-text">{{ downloading ? '下载中...' : (canDownload ? '下载合同' : '签署完成后可下载') }}</text>
 			</view>
 		</view>
@@ -349,6 +356,7 @@ export default {
 	flex: 1;
 	width: 100%;
 	height: 100%;
+	position: relative;
 }
 
 .webview-content {

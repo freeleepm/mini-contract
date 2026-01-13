@@ -118,7 +118,7 @@ export default {
       } catch (error) {
         console.error('加载任务状态失败', error);
         uni.showToast({
-          title: error.message || '加载失败',
+          title: (error instanceof Error ? error.message : String(error)) || '加载失败',
           icon: 'none'
         });
       }
@@ -130,7 +130,7 @@ export default {
       
       this.pollTimer = setInterval(() => {
         this.loadTaskStatus()
-      }, 3000) // 每3秒轮询一次
+      }, 3000) as any // 每3秒轮询一次
     },
 
     // 停止轮询
@@ -194,7 +194,7 @@ export default {
         uni.hideLoading();
         console.error('重试失败', error);
         uni.showToast({
-          title: error.message || '网络错误',
+          title: (error instanceof Error ? error.message : String(error)) || '网络错误',
           icon: 'none'
         });
       }

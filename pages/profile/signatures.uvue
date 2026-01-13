@@ -1,4 +1,14 @@
 <script>
+	// 定义签名项类型
+	interface SignatureItem {
+		id: string;
+		name: string;
+		type: string;
+		image: string;
+		isDefault: boolean;
+		createTime: string;
+	}
+	
 	/**
 	 * 签名管理页面
 	 */
@@ -22,7 +32,7 @@
 						isDefault: false,
 						createTime: '2023-06-15 09:45:12'
 					}
-				],
+				] as SignatureItem[],
 				seals: [
 					{
 						id: 'seal_1',
@@ -32,7 +42,7 @@
 						isDefault: true,
 						createTime: '2023-05-20 16:18:33'
 					}
-				],
+				] as SignatureItem[],
 				showAddSignaturePopup: false,
 				newSignatureType: 'handwriting', // 'handwriting', 'upload', 'type'
 				handwritingImage: '',
@@ -138,7 +148,7 @@
 				}
 				
 				// 创建新签名对象
-				const newSignature = {
+				const newSignature: SignatureItem = {
 					id: 'signature_' + Date.now(),
 					name: this.newSignatureName,
 					type: this.newSignatureType,

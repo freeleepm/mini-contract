@@ -1,4 +1,5 @@
 /**
+ * 小华同学AI
  * API 请求工具类
  * 封装uni.request，统一处理请求和响应
  */
@@ -29,9 +30,81 @@ export interface RequestOptions {
 let isRedirectingToLogin = false;
 let redirectTimer: number | null = null;
 
-// 全局变量：防止并发刷新token
+// Token刷新相关全局变量
 let isRefreshingToken = false;
 let refreshTokenPromise: Promise<string> | null = null;
+
+// Seal-Token 兑换相关全局变量（防止并发重复兑换）
+let isGeneratingSealToken = false;
+let generateSealTokenPromise: Promise<string> | null = null;
+
+/**
+ * 🆕 确保 Seal-Token 存在（在发送seal业务请求前调用）
+ * 如果本地没有sealToken，自动调用exchange-token接口获取
+ */
+async function ensureSealTokenInternal(): Promise<string> {
+    // 检查本地是否已有 sealToken
+    const existingToken = uni.getStorageSync('sealToken');
+    if (existingToken) {
+        return existingToken;
+    }
+    
+    // 检查是否有 member token（前提条件）
+    const memberToken = uni.getStorageSync('token');
+    if (!memberToken) {
+        throw new Error('请先登录');
+    }
+    
+    // 如果正在获取中，等待现有的 Promise
+    if (isGeneratingSealToken && generateSealTokenPromise) {
+        console.log('[API] ⏳ Seal-Token 正在获取中，等待...');
+        return generateSealTokenPromise;
+    }
+    
+    console.log('[API] 🔄 Seal-Token 不存在，自动获取...');
+    isGeneratingSealToken = true;
+    
+    generateSealTokenPromise = new Promise<string>((resolve, reject) => {
+        uni.request({
+            url: `${API_BASE_URL}/api/v1/seal/auth/exchange-token`,
+            method: 'POST',
+            data: { expireMinutes: 43200 }, // 30天
+            header: {
+                'Content-Type': 'application/json',
+                'tenant-id': TENANT_ID,
+                'Authorization': `Bearer ${memberToken}`
+            },
+            success: (res: any) => {
+                if (res.statusCode === 200) {
+                    const data = res.data;
+                    if (data.code === 0 && data.data?.token) {
+                        const newToken = data.data.token;
+                        uni.setStorageSync('sealToken', newToken);
+                        console.log('[API] ✅ Seal-Token 自动获取成功');
+                        resolve(newToken);
+                    } else {
+                        console.error('[API] ❌ Seal-Token 获取失败:', data.msg);
+                        reject(new Error(data.msg || 'Seal-Token获取失败'));
+                    }
+                } else {
+                    reject(new Error(`HTTP ${res.statusCode}`));
+                }
+            },
+            fail: (err: any) => {
+                console.error('[API] ❌ Seal-Token 网络错误:', err);
+                reject(err);
+            }
+        });
+    });
+    
+    try {
+        const token = await generateSealTokenPromise;
+        return token;
+    } finally {
+        isGeneratingSealToken = false;
+        generateSealTokenPromise = null;
+    }
+}
 
 // 上传进度回调接口
 export interface UploadProgressCallback {
@@ -55,16 +128,16 @@ async function refreshToken(): Promise<string> {
             const refreshToken = uni.getStorageSync('refreshToken');
             if (!refreshToken) {
                 console.error('❌ 刷新失败：没有refreshToken');
-                reject(new Error('没有refreshToken'));
+                reject(new Error('登录信息已失效'));
                 return;
             }
             
             console.log('✅ 找到refreshToken:', refreshToken.substring(0, 30) + '...');
-            console.log('📤 发送刷新Token请求到:', buildFullUrl('/app-api/member/auth/refresh-token'));
+
             
             const response = await new Promise<any>((resolveRefresh, rejectRefresh) => {
                 uni.request({
-                    url: buildFullUrl('/app-api/member/auth/refresh-token'),
+                    url: buildFullUrl('/api/v1/member/auth/refresh-token'),
                     method: 'POST',
                     header: {
                         'Content-Type': 'application/json',
@@ -79,12 +152,12 @@ async function refreshToken(): Promise<string> {
                             const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
                             console.log('📥 刷新Token响应数据:', JSON.stringify(data));
                             
-                            if (data.code === 0 || data.code === 200) {
+                            if (data && (data.code === 0 || data.code === 200)) {
                                 console.log('✅ 刷新Token成功，返回数据:', data.data);
                                 resolveRefresh(data.data);
                             } else {
-                                console.error('❌ 刷新Token业务错误 - Code:', data.code, 'Message:', data.msg);
-                                rejectRefresh(new Error(data.msg || '刷新token失败'));
+                                console.error('❌ 刷新Token业务错误 - Code:', data?.code, 'Message:', data?.msg);
+                                rejectRefresh(new Error(data?.msg || '刷新token失败'));
                             }
                         } else {
                             console.error('❌ 刷新Token HTTP错误 - Status:', res.statusCode);
@@ -120,9 +193,9 @@ async function refreshToken(): Promise<string> {
                 console.error('❌ 响应数据中没有accessToken字段');
                 reject(new Error('刷新token返回数据格式错误：缺少accessToken'));
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('❌ Token刷新异常:', error);
-            console.error('异常详情:', error.message || error);
+            console.error('异常详情:', error?.message || error);
             reject(error);
         } finally {
             isRefreshingToken = false;
@@ -139,9 +212,52 @@ async function refreshToken(): Promise<string> {
  * @param options 请求配置
  */
 export function request<T>(options: RequestOptions): Promise<T> {
+    // 判断接口类型
+    const isSealAuthApi = options.url.includes('/api/v1/seal/auth/');
+    const isSealBusinessApi = options.url.includes('/api/v1/seal/') && !isSealAuthApi;
+    
+    // 🆕 关键修复：如果是seal业务接口且缺少sealToken，先自动获取
+    if (isSealBusinessApi && options.isAuth !== false) {
+        const existingSealToken = uni.getStorageSync('sealToken');
+        if (!existingSealToken) {
+            console.log('[API] 🔧 Seal业务接口缺少token，先自动获取...');
+            return ensureSealTokenInternal().then((token) => {
+                console.log('[API] ✅ Seal-Token 获取完成，token 前20位:', token.substring(0, 20) + '...');
+                // 🔧 关键：确保 token 已写入 storage 后再执行请求
+                // 由于 ensureSealTokenInternal 内部已经 setStorageSync，这里再次确认
+                const verifyToken = uni.getStorageSync('sealToken');
+                console.log('[API] 🔍 验证 storage 中的 token:', verifyToken ? (verifyToken.substring(0, 20) + '...') : 'undefined');
+                return executeRequest<T>(options, isSealAuthApi, isSealBusinessApi);
+            }).catch((error) => {
+                console.error('[API] ❌ Seal-Token 获取失败:', error);
+                throw error;
+            });
+        }
+    }
+    
+    return executeRequest<T>(options, isSealAuthApi, isSealBusinessApi);
+}
+
+/**
+ * 执行实际的HTTP请求
+ */
+function executeRequest<T>(options: RequestOptions, isSealAuthApi: boolean, isSealBusinessApi: boolean): Promise<T> {
     return new Promise<T>((resolve, reject) => {
+        // 🔧 关键修复：根据后端架构选择正确的认证方式
+        // 
+        // 后端架构设计：
+        // - /portal/api/v1/seal/** - 使用 Authorization Token (member token)
+        // - /app-api/api/v1/seal/** - 被 SealAuthInterceptor 拦截，需要 Seal-Token 头
+        // 
+        // 移动端使用 /app-api 前缀，所以：
+        // - seal 认证接口（/auth/*）使用 Authorization 头（用于兑换 token）
+        // - seal 业务接口使用 Seal-Token 头
+        // - member 接口使用 Authorization 头
+        
         const token = uni.getStorageSync('token');
-        console.log(`请求URL: ${options.url}, 方法: ${options.method || 'GET'}, Token: ${token ? '已设置' : '未设置'}`);
+        const sealToken = uni.getStorageSync('sealToken');
+        
+        console.log(`请求URL: ${options.url}, 方法: ${options.method || 'GET'}, 接口类型: ${isSealAuthApi ? 'Seal认证' : isSealBusinessApi ? 'Seal业务' : 'Member'}`);
         
         // 构建完整URL - 处理GET请求的params参数
         let fullUrl = buildFullUrl(options.url);
@@ -158,11 +274,42 @@ export function request<T>(options: RequestOptions): Promise<T> {
             }
         }
         
-        const header: any = {
+        const headers: any = {
             'Content-Type': 'application/json',
             'tenant-id': TENANT_ID, // 使用配置中的租户ID
             ...options.header
         };
+        
+        // 添加认证头
+        if (options.isAuth !== false) {
+            // Seal业务接口（非认证接口）使用 Seal-Token
+            if (isSealBusinessApi) {
+                if (sealToken) {
+                    headers['Seal-Token'] = sealToken;
+                    console.log('已添加Seal-Token头:', sealToken.substring(0, 20) + '...');
+                } else {
+                    console.warn('⚠️ Seal业务接口缺少Seal-Token，请求可能失败');
+                }
+            } 
+            // Seal认证接口使用 Authorization（member token）
+            else if (isSealAuthApi) {
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                    console.log('已添加Authorization头（Seal认证接口）');
+                } else {
+                    console.warn('⚠️ Seal认证接口缺少member token');
+                }
+            }
+            // 其他接口（member接口）使用 Authorization
+            else {
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                    console.log('已添加Authorization头（Member接口）');
+                } else {
+                    console.warn('⚠️ Member接口缺少token');
+                }
+            }
+        }
         
         // 详细打印请求信息，便于调试
         console.log(`==== API请求详情 ====`);
@@ -170,29 +317,24 @@ export function request<T>(options: RequestOptions): Promise<T> {
         console.log(`方法: ${options.method || 'GET'}`);
         console.log(`数据: ${JSON.stringify(options.data)}`);
         console.log(`查询参数: ${JSON.stringify(options.params)}`);
-        console.log(`请求头: ${JSON.stringify(header)}`);
+        console.log(`请求头: ${JSON.stringify(headers)}`);
         
         if (options.isAuth !== false) {
-            console.log(`认证状态: ${token ? '已设置token' : '未设置token'}`);
-            if (!token) {
-                console.warn('警告: 接口需要认证但未设置token，可能导致401错误');
+            if (isSealBusinessApi) {
+                console.log(`认证状态: ${sealToken ? '已设置Seal-Token' : '未设置Seal-Token'}`);
+            } else {
+                console.log(`认证状态: ${token ? '已设置token' : '未设置token'}`);
             }
         } else {
             console.log('认证状态: 不需要认证');
         }
         console.log(`==== API请求详情结束 ====`);
         
-        // 如果需要授权且有token，添加到请求头
-        if (options.isAuth !== false && token) {
-            header.Authorization = `Bearer ${token}`;
-            console.log('已添加Authorization头:', `Bearer ${token.substring(0, 10)}...`);
-        }
-        
         uni.request({
             url: fullUrl,
             method: options.method || 'GET',
             data: options.data,
-            header,
+            header: headers,
             timeout: options.timeout || TIMEOUT,
             success: (res: any) => {
                 try {
@@ -209,7 +351,7 @@ export function request<T>(options: RequestOptions): Promise<T> {
                         console.log(`API原始响应(${options.url}, ${typeof res.data}):`, res.data);
                     }
                     
-                    let responseData: ApiResponse<T>;
+                    let responseData: ApiResponse<T> | null = null;
                     
                     // 如果返回的数据是字符串，尝试解析为JSON
                     if (typeof res.data === 'string') {
@@ -223,70 +365,159 @@ export function request<T>(options: RequestOptions): Promise<T> {
                                     data: null as any
                                 };
                             } else {
-                                responseData = JSON.parse(res.data);
+                                // ✅ 检测响应是否为HTML（服务不可用、路径错误等情况）
+                                const trimmedData = res.data.trim();
+                                if (trimmedData.startsWith('<!DOCTYPE') || 
+                                    trimmedData.startsWith('<html') || 
+                                    trimmedData.startsWith('<HTML')) {
+                                    console.error('❌ API返回了HTML页面，而不是JSON数据');
+                                    console.error('请求URL:', fullUrl);
+                                    console.error('HTTP状态码:', res.statusCode);
+                                    
+                                    // 给出友好的错误提示
+                                    let errorMessage = '服务异常';
+                                    if (res.statusCode === 404) {
+                                        errorMessage = 'API接口不存在';
+                                    } else if (res.statusCode === 401 || res.statusCode === 403) {
+                                        errorMessage = '认证失败，请重新登录';
+                                    } else if (res.statusCode >= 500) {
+                                        errorMessage = '服务器错误';
+                                    } else {
+                                        errorMessage = 'API路径配置错误';
+                                    }
+                                    
+                                    reject(new Error(errorMessage));
+                                    return;
+                                }
+                                
+                                const parsedData = JSON.parse(res.data);
+                                responseData = parsedData as ApiResponse<T>;
                                 console.log(`API解析后响应(${options.url}):`, JSON.stringify(responseData).substring(0, 100) + '...');
                             }
                         } catch (parseError) {
                             console.error('JSON解析失败:', parseError);
-                            console.error('JSON解析失败的原始数据:', res.data);
+                            console.error('JSON解析失败的原始数据:', typeof res.data === 'string' ? res.data.substring(0, 200) : res.data);
                             
-                            // 尝试修复常见的JSON格式问题
-                            try {
-                                // 尝试修复不完整的JSON
-                                const fixedJson = res.data + '}';
-                                responseData = JSON.parse(fixedJson);
-                                console.log('修复JSON成功:', JSON.stringify(responseData).substring(0, 100) + '...');
-                            } catch (fixError) {
-                                console.log('尝试修复JSON失败:', fixError);
-                                
-                                // 检查HTTP状态码
-                                if (res.statusCode >= 200 && res.statusCode < 300) {
-                                    // HTTP成功但JSON解析失败，创建一个默认的成功响应
-                                    console.log('HTTP成功但JSON解析失败，创建默认成功响应');
-                                    responseData = {
-                                        code: 200,
-                                        msg: '请求成功（响应格式异常）',
-                                        data: res.data as any
-                                    };
-                                } else {
-                                    // HTTP失败且JSON解析失败
-                                    console.log('HTTP失败且JSON解析失败，创建默认失败响应');
-                                    responseData = {
-                                        code: res.statusCode,
-                                        msg: '请求失败（响应格式异常）',
-                                        data: res.data as any
-                                    };
-                                }
+                            // 无法解析JSON，给出友好提示
+                            console.error('❌ 响应数据不是有效的JSON格式');
+                            
+                            let errorMessage = '服务异常';
+                            if (res.statusCode === 404) {
+                                errorMessage = 'API接口不存在，请检查接口路径';
+                            } else if (res.statusCode === 401) {
+                                errorMessage = '未授权，请重新登录';
+                            } else if (res.statusCode === 403) {
+                                errorMessage = '无权限访问此资源';
+                            } else if (res.statusCode >= 500) {
+                                errorMessage = '服务器内部错误';
+                            } else {
+                                errorMessage = 'API返回格式错误';
                             }
+                            
+                            // 显示用户友好的提示
+                            uni.showToast({
+                                title: errorMessage,
+                                icon: 'none',
+                                duration: 2500
+                            });
+                            
+                            reject(new Error(errorMessage));
+                            return;
                         }
                     } else {
                         // 已经是对象，直接使用
                         responseData = res.data as ApiResponse<T>;
                     }
                     
+                    // ✅ 确保 responseData 已被赋值
+                    if (!responseData) {
+                        console.error('❌ responseData 未初始化');
+                        reject(new Error('响应数据解析失败'));
+                        return;
+                    }
+                    
+                    // ✅ 类型断言：此时 responseData 肯定不为 null
+                    const apiResponse: ApiResponse<T> = responseData;
+                    
                     // 根据业务状态码处理
-                    if (responseData.code === 0 || responseData.code === 200) {
+                    if (apiResponse.code === 0 || apiResponse.code === 200) {
                         // 成功状态码
-                        resolve(responseData.data);
-					} else if (responseData.code === 401) {
-						// 未授权，但需要区分是否为登录接口或刷新token接口
-						console.error('========== 401 Token过期错误 ==========');
-						console.error('错误码:', responseData.code);
-						console.error('错误信息:', responseData.msg);
+                        resolve(apiResponse.data);
+					} else if (apiResponse.code === 401 || apiResponse.code === 1012005005 || apiResponse.code === 1012005006) {
+						// 未授权或Token无效/过期错误
+						// 401: HTTP未授权
+						// 1012005005: 无效的访问令牌
+						// 1012005006: 访问令牌已过期
+						console.error('========== Token无效/过期错误 ==========');
+						console.error('错误码:', apiResponse.code);
+						console.error('错误信息:', apiResponse.msg);
 						console.error('请求URL:', options.url);
 						console.error('当前token:', uni.getStorageSync('token') ? '存在' : '不存在');
+						console.error('当前sealToken:', uni.getStorageSync('sealToken') ? '存在' : '不存在');
 						console.error('当前refreshToken:', uni.getStorageSync('refreshToken') ? '存在' : '不存在');
 						console.error('========================================');
 						
-						// 如果不是登录/刷新token接口且需要认证，尝试刷新token
+						// 🔧 关键修复：区分 Seal 业务接口和 Member 接口的 401 错误处理
+						const isSealBusinessApi = options.url.includes('/api/v1/seal/') && !options.url.includes('/api/v1/seal/auth/');
+						const retryCount = options.retryCount || 0;
+						
+						// 如果不是登录/刷新token接口且需要认证
 						if (options.isAuth !== false && 
 						    !options.url.includes('/auth/login') && 
 						    !options.url.includes('/auth/refresh-token')) {
 							
-							// 检查是否有refreshToken
-							const refreshTokenStr = uni.getStorageSync('refreshToken');
-							const retryCount = options.retryCount || 0;
+							// 🆕 Seal 业务接口返回 401：尝试重新兑换 Seal-Token
+							if (isSealBusinessApi && retryCount === 0) {
+								console.log('【Seal Token】Seal业务接口返回401，尝试重新兑换Seal-Token...');
+								
+								// 使用防重复兑换的机制
+								const refreshSealToken = async (): Promise<string> => {
+									if (isGeneratingSealToken && generateSealTokenPromise) {
+										console.log('【Seal Token】等待现有兑换完成...');
+										return generateSealTokenPromise;
+									}
+									
+									isGeneratingSealToken = true;
+									generateSealTokenPromise = new Promise<string>(async (resolveToken, rejectToken) => {
+										try {
+											const { generateSealToken } = await import('./seals/index');
+											const newToken = await generateSealToken();
+											uni.setStorageSync('sealToken', newToken);
+											console.log('【Seal Token】✅ Seal-Token 重新兑换成功');
+											resolveToken(newToken);
+										} catch (error) {
+											console.error('【Seal Token】❌ Seal-Token 重新兑换失败:', error);
+											rejectToken(error);
+										} finally {
+											isGeneratingSealToken = false;
+											generateSealTokenPromise = null;
+										}
+									});
+									return generateSealTokenPromise;
+								};
+								
+								refreshSealToken()
+									.then((newSealToken: string) => {
+										console.log('【Seal Token】准备重试原请求:', options.url);
+										// 重试原请求，标记已重试
+										request<T>({
+											...options,
+											retryCount: 1
+										})
+											.then(resolve)
+											.catch(reject);
+									})
+									.catch((error: any) => {
+										console.error('【Seal Token】❌ Seal-Token 重新兑换失败:', error);
+										// Seal-Token 兑换失败，不触发退出登录，只返回错误
+										// 因为 member token 可能仍然有效
+										reject(new Error(apiResponse.msg || 'Seal-Token获取失败'));
+									});
+								return; // 重要：提前返回，避免执行后续逻辑
+							}
 							
+							// Member 接口返回 401：尝试刷新 member token
+							const refreshTokenStr = uni.getStorageSync('refreshToken');
 							console.log('尝试token刷新流程 - refreshToken存在:', !!refreshTokenStr, '重试次数:', retryCount);
 							
 							// 如果有refreshToken且未重试过，尝试刷新token后重试
@@ -311,27 +542,29 @@ export function request<T>(options: RequestOptions): Promise<T> {
 										console.error('【Token刷新】❌ Token刷新失败:', error);
 										console.error('【Token刷新】错误详情:', error.message);
 										// 刷新失败，清除登录信息并跳转
-										handleLoginExpired('Token刷新失败: ' + error.message);
-										reject(new Error(responseData.msg || '未授权'));
+										// 优化用户提示信息，避免显示技术性错误
+										handleLoginExpired('登录信息已失效，请重新登录');
+										reject(new Error(apiResponse.msg || '未授权'));
 									});
 							} else {
 								// 没有refreshToken或已经重试过，直接处理登录过期
 								const reason = !refreshTokenStr ? '没有refreshToken' : '已重试过但失败';
 								console.error('【Token刷新】跳过刷新流程，原因:', reason);
-								handleLoginExpired(reason);
-								reject(new Error(responseData.msg || '未授权'));
+								// 优化用户提示信息，避免显示技术性错误
+								handleLoginExpired('登录信息已失效，请重新登录');
+								reject(new Error(apiResponse.msg || '未授权'));
 							}
 						} else {
 							// 登录/刷新token接口的401错误，显示具体错误信息
 							const errorType = options.url.includes('/auth/login') ? '登录失败' : '刷新Token失败';
-							console.error(`【${errorType}】直接返回401错误:`, responseData.msg);
+							console.error(`【${errorType}】直接返回401错误:`, apiResponse.msg);
 							if (!isRedirectingToLogin) {
 								uni.showToast({
-									title: responseData.msg || errorType,
+									title: apiResponse.msg || errorType,
 									icon: 'none'
 								});
 							}
-							reject(new Error(responseData.msg || '未授权'));
+							reject(new Error(apiResponse.msg || '未授权'));
 						}
 						
 						// 处理登录过期的函数
@@ -345,10 +578,16 @@ export function request<T>(options: RequestOptions): Promise<T> {
 								// 清除所有登录信息
 								uni.removeStorageSync('token');
 								uni.removeStorageSync('refreshToken');
+								uni.removeStorageSync('sealToken');
 								uni.removeStorageSync('userId');
 								uni.removeStorageSync('userInfo');
 								
-								const message = reason ? `登录已过期(${reason})` : '登录已过期，请重新登录';
+								// 优化用户提示信息，避免显示技术性错误
+								// 如果已经包含"请重新登录"，直接使用；否则使用友好的提示
+								let message = '登录已过期，请重新登录';
+								if (reason && reason.includes('请重新登录')) {
+									message = reason;
+								}
 								uni.showToast({
 									title: message,
 									icon: 'none',
@@ -380,30 +619,46 @@ export function request<T>(options: RequestOptions): Promise<T> {
 						}
                     } else {
                         // 其他业务错误
-                        console.error('API业务错误:', responseData.code, responseData.msg);
-                        reject(new Error(responseData.msg || '请求失败'));
+                        console.error('API业务错误:', apiResponse.code, apiResponse.msg);
+                        reject(new Error(apiResponse.msg || '请求失败'));
                     }
                 } catch (error) {
-                    console.error('处理响应数据失败:', error);
+                    console.error('❌ 处理响应数据失败:', error);
+                    console.error('请求URL:', fullUrl);
+                    console.error('HTTP状态码:', res.statusCode);
                     
-                    // 尝试基于HTTP状态码返回一个基本响应
-                    if (res.statusCode >= 200 && res.statusCode < 300) {
-                        // HTTP成功，返回一个空对象
-                        console.log('处理响应失败但HTTP成功，返回空对象');
-                        resolve({} as T);
-                    } else {
-                        reject(new Error('解析响应数据失败'));
-                    }
+                    // 给出友好的错误提示
+                    uni.showToast({
+                        title: '数据处理失败',
+                        icon: 'none',
+                        duration: 2000
+                    });
+                    
+                    reject(new Error('数据处理失败'));
                 }
             },
             fail: (err: any) => {
                 // 请求失败
-                console.error('请求失败:', err);
-                const errMsg = err.errMsg || '网络异常，请稍后重试';
+                console.error('❌ 网络请求失败');
+                console.error('请求URL:', fullUrl);
+                console.error('错误信息:', err);
+                
+                // 优化错误提示
+                let errMsg = '网络异常';
+                const errMsgLower = (err.errMsg || '').toLowerCase();
+                
+                if (errMsgLower.includes('timeout')) {
+                    errMsg = '请求超时，请检查网络';
+                } else if (errMsgLower.includes('fail')) {
+                    errMsg = '网络连接失败';
+                } else if (err.errMsg) {
+                    errMsg = err.errMsg;
+                }
                 
                 uni.showToast({
                     title: errMsg,
-                    icon: 'none'
+                    icon: 'none',
+                    duration: 2000
                 });
                 
                 reject(new Error(errMsg));
@@ -441,10 +696,11 @@ function buildFullUrl(url: string): string {
  * @param options 其他选项
  */
 export function get<T>(url: string, data?: any, options?: Partial<RequestOptions>): Promise<T> {
+    // 🔧 修复：GET 请求参数应该放到 params 字段，确保在所有平台（H5/小程序）都能正确转换为查询字符串
     return request<T>({
         url,
         method: 'GET',
-        data,
+        params: data,  // ✅ 使用 params 而不是 data，确保跨平台兼容
         ...options
     });
 }
@@ -528,7 +784,7 @@ export function uploadFile(url: string, filePath: string, options?: {
                 url: fullUrl,
                 filePath,
                 name: options?.name || 'file',
-                formData: options?.formData,
+                formData: options?.formData as UTSJSONObject | null | undefined,
                 header,
                 success: (res) => {
                     try {
@@ -872,10 +1128,10 @@ export function createFileRecord(fileInfo: {
                         const jsonData = JSON.parse(res.data);
                         console.log('记录文件响应内容(解析后):', JSON.stringify(jsonData));
                         
-                        if (jsonData.code === 0 || jsonData.code === 200) {
+                        if (jsonData && (jsonData.code === 0 || jsonData.code === 200)) {
                             resolve(jsonData.data);
                         } else {
-                            reject(new Error(jsonData.msg || '记录文件失败'));
+                            reject(new Error(jsonData?.msg || '记录文件失败'));
                         }
                     } catch (parseError) {
                         console.error('解析响应JSON失败:', parseError);
@@ -888,7 +1144,7 @@ export function createFileRecord(fileInfo: {
                             const jsonData = JSON.parse(fixedJson);
                             console.log('修复JSON成功:', JSON.stringify(jsonData));
                             
-                            if (jsonData.code === 0 || jsonData.code === 200) {
+                            if (jsonData && (jsonData.code === 0 || jsonData.code === 200)) {
                                 resolve(jsonData.data);
                                 return;
                             }
@@ -907,11 +1163,11 @@ export function createFileRecord(fileInfo: {
                 } else if (typeof res.data === 'object') {
                     console.log('记录文件响应内容(对象):', JSON.stringify(res.data));
                     
-                    const responseData = res.data;
-                    if (responseData.code === 0 || responseData.code === 200) {
+                    const responseData = res.data as { code?: number; data?: any; msg?: string };
+                    if (responseData && (responseData.code === 0 || responseData.code === 200)) {
                         resolve(responseData.data);
                     } else {
-                        reject(new Error(responseData.msg || '记录文件失败'));
+                        reject(new Error(responseData?.msg || '记录文件失败'));
                     }
                 } else {
                     console.log('记录文件响应内容(其他类型):', res.data);
@@ -1062,9 +1318,9 @@ export function uploadFileAdvanced(filePath: string, options?: {
                     reject(error);
                 }
             })();
-        } catch (error) {
+        } catch (error: any) {
             console.error('文件上传初始化异常:', error);
-            reject(new Error('文件上传初始化异常: ' + (error.message || String(error))));
+            reject(new Error('文件上传初始化异常: ' + (error?.message || String(error))));
         }
     });
 }
@@ -1298,7 +1554,9 @@ export function simpleUpload(
             } else {
                 console.log('使用后端上传模式');
                 // 后端上传模式
-                uploadFile(filePath, directory, onProgress).then(resolve).catch(reject);
+                uploadFile(filePath, directory, {
+                    onProgress: onProgress
+                }).then(resolve).catch(reject);
             }
         } catch (error) {
             console.error('文件上传失败:', error);

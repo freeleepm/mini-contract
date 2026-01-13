@@ -58,19 +58,21 @@ export interface ParticipantInfo {
 	userName: string;
 	userAvatar?: string;
 	signStatus: ParticipantStatus;
+	status?: ParticipantStatus;  // 兼容字段，与 signStatus 相同
 	signTime?: string;
 	signIp?: string;
 	sealId?: number;
 	sealName?: string;
 	sealImageUrl?: string;
 	order: number;  // 签署顺序
+	flowMode?: string;  // 流程模式：TWO_STAGE, SIMPLE, DIRECT
 }
 
 /**
  * 合同基本信息
  */
 export interface Contract {
-        id: string;
+	id: string;
 	name: string;                // 合同名称
 	status: ContractStatus;      // 状态
 	templateId?: string;         // 模板ID（如果从模板创建）
@@ -80,6 +82,8 @@ export interface Contract {
 	deadline?: string;           // 截止时间
 	reason?: string;             // 拒绝原因
 	participants: ParticipantInfo[]; // 参与人列表
+	creator?: number;            // 创建者用户ID
+	currentUserParticipant?: ParticipantInfo; // 当前用户的参与人信息（后端已处理）
 }
 
 /**
@@ -90,6 +94,7 @@ export interface ContractListResponse {
 	total: number;
 	pageSize: number;
 	pageNo: number;
+	hasMore?: boolean;  // 是否有更多数据
 }
 
 /**
@@ -98,6 +103,7 @@ export interface ContractListResponse {
 export interface ContractStatistics {
 	totalCount: number;      // 总数
 	draftCount: number;      // 草稿
+	formFillingCount: number; // 表单填写中
 	signingCount: number;    // 签署中
 	completedCount: number;  // 已完成
 	cancelledCount: number;  // 已撤销

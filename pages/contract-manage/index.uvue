@@ -18,8 +18,17 @@ import {
 	testH5ServiceAvailability,
 	ErrorType
 } from '../../utils/network';
-import { kycGuardMixin } from '../../utils/kyc-check';
+import { kycGuardMixin, KycStatus } from '../../utils/kyc-check';
 import KycModal from '../../components/KycModal.uvue';
+
+	// 定义 Tab 类型
+	interface SmartTab {
+		id: string;
+		name: string;
+		roleFilter: string | null;
+		status: number | null;
+		isOther?: boolean;
+	}
 	
 	export default {
 		// 引入实名认证守卫 Mixin
@@ -32,6 +41,7 @@ import KycModal from '../../components/KycModal.uvue';
 		
 		data() {
 			return {
+				safeTop: 0,
 			// 🔧 合同状态常量（注意：后端状态从1开始，不是0！）
 			STATUS_DRAFT: 1,
 			STATUS_SIGNING: 2,
@@ -83,20 +93,14 @@ import KycModal from '../../components/KycModal.uvue';
 				{ 
 					id: 'wait-form', 
 					name: '待填表', 
-					roleFilter: 'signer', 
+					roleFilter: null, 
 					status: 7  // 表单填写中
 				},
 				{ 
-					id: 'wait-me', 
-					name: '待签', 
-					roleFilter: 'signer', 
-					status: 2  // 签署中
-				},
-				{ 
-					id: 'wait-others', 
-					name: '待对方', 
-					roleFilter: 'creator', 
-					status: 2  // 签署中
+					id: 'signing', 
+					name: '签署中', 
+					roleFilter: null, 
+					status: 2  // 签署中（所有签署中的任务）
 				},
 				{ 
 					id: 'completed', 
@@ -117,7 +121,7 @@ import KycModal from '../../components/KycModal.uvue';
 					status: null,
 					isOther: true  // 标记为"其他"，包含拒签、撤销、过期
 				}
-			],
+			] as SmartTab[],
 				currentTab: 'all' as string,
 				
 				// 合同列表
@@ -131,11 +135,15 @@ import KycModal from '../../components/KycModal.uvue';
 				hasMore: true,
 				
 		// 下拉刷新
-			isRefreshing: false
+			isRefreshing: false,
+			
+			// Mixin 中的属性（显式声明以解决类型问题）
+			verifyStatus: KycStatus.NOT_VERIFIED as number
 		}
 	},
 	
 	onLoad() {
+		this.safeTop = this.getSafeTop();
 		// 检查登录状态
 		if (!checkAuthAndRedirect(false)) {
 			return;
@@ -159,17 +167,19 @@ import KycModal from '../../components/KycModal.uvue';
 			this.currentUserId = '1';
 		}
 		
-		// 加载合同列表
-		this.loadContractList(true);
+		// 🔧 检查是否有从首页传递过来的状态筛选参数（在 onLoad 中先检查，避免先加载默认数据）
+		// 如果没有状态筛选参数，需要加载默认数据
+		this.checkAndApplyStatusFilter(true);
 		
 		// 检查实名认证状态
-		this.checkKycStatus();
+		(this as any).checkKycStatus();
 	},
 	
 onShow() {
-	// 🔧 禁用 onShow 中的自动刷新，避免重复调用接口
-	// 用户可以通过下拉刷新手动刷新列表
-	console.log('📱 页面显示（onShow），已禁用自动刷新以避免重复请求');
+	this.safeTop = this.getSafeTop();
+	// 🔧 检查是否有从首页传递过来的状态筛选参数（tabBar 页面从其他页面返回时也会触发）
+	// 从其他页面返回时，不需要加载默认数据（避免覆盖已有数据）
+	this.checkAndApplyStatusFilter(false);
 },
 	
 		onReachBottom() {
@@ -180,6 +190,78 @@ onShow() {
 		},
 	
 		methods: {
+			getSafeTop(): number {
+				try {
+					const sys: any = uni.getSystemInfoSync();
+					let top = sys && sys.statusBarHeight ? Number(sys.statusBarHeight) : 0;
+					const getMenuBtn: any = (uni as any).getMenuButtonBoundingClientRect;
+					if (typeof getMenuBtn === 'function') {
+						const rect: any = getMenuBtn();
+						if (rect && rect.top) {
+							top = Number(rect.top);
+						}
+					}
+					return top;
+				} catch (e) {
+					return 0;
+				}
+			},
+	/**
+	 * 🔧 检查并应用状态筛选（从首页跳转时使用）
+	 * @param shouldLoadDefault 如果没有状态筛选参数，是否加载默认数据
+	 */
+	checkAndApplyStatusFilter(shouldLoadDefault: boolean = false): void {
+		try {
+			const contractStatus = uni.getStorageSync('contractStatus');
+			// 🔧 修复：将存储的值转换为数字进行比较，因为存储可能是字符串
+			const statusValue = contractStatus !== null && contractStatus !== undefined && contractStatus !== '' 
+				? Number(contractStatus) 
+				: null;
+			
+			if (statusValue !== null && !isNaN(statusValue)) {
+				console.log('📱 从首页跳转，状态筛选:', statusValue);
+				
+				// 根据状态找到对应的 Tab
+				let targetTabId = 'all';
+				if (statusValue === 2) {
+					// 签署中 → 签署中 Tab
+					targetTabId = 'signing';
+				} else if (statusValue === 7) {
+					// 表单填写中 → 待填表 Tab
+					targetTabId = 'wait-form';
+				} else if (statusValue === 3) {
+					// 已完成 → 已完成 Tab
+					targetTabId = 'completed';
+				} else if (statusValue === 1) {
+					// 草稿 → 草稿 Tab
+					targetTabId = 'draft';
+				}
+				
+				// 🔧 修复：无论当前Tab是否相同，都切换并刷新列表
+				console.log('📱 切换到Tab:', targetTabId, '当前Tab:', this.currentTab);
+				this.currentTab = targetTabId;
+				this.currentPage = 1;
+				this.contractList = [];
+				this.hasMore = true;
+				this.loadContractList(true);
+				
+				// 清除存储的状态，避免下次进入页面时重复切换
+				uni.removeStorageSync('contractStatus');
+			} else {
+				// 如果没有状态筛选参数，且需要加载默认数据，才加载
+				if (shouldLoadDefault && this.contractList.length === 0) {
+					this.loadContractList(true);
+				}
+			}
+		} catch (error) {
+			console.error('读取状态筛选参数失败:', error);
+			// 出错时，如果需要加载默认数据，才加载
+			if (shouldLoadDefault && this.contractList.length === 0) {
+				this.loadContractList(true);
+			}
+		}
+	},
+	
 	/**
 	 * 🆕 判断是否可以填写表单
 	 * 条件：任务状态=表单填写中(7) 且 当前用户的参与人模式=TWO_STAGE 且 状态=PENDING(0)
@@ -190,19 +272,20 @@ onShow() {
 			return false;
 		}
 		
-		// 用户ID检查
-		if (!this.currentUserId || this.currentUserId === '') {
-			return false;
+		// 优先使用后端已处理好的 currentUserParticipant 字段
+		if (contract.currentUserParticipant) {
+			const p = contract.currentUserParticipant;
+			return p.flowMode === 'TWO_STAGE' && p.status === this.PARTICIPANT_PENDING;
 		}
 		
-		// 参与者检查
+		// 降级方案：参与者检查
 		if (!contract.participants || contract.participants.length === 0) {
 			return false;
 		}
 		
-		// 查找当前用户的参与者信息
+		// 查找当前用户的参与者信息（使用 isCurrentUser 匹配，更准确）
 		const myParticipant = contract.participants.find(
-			(p: any) => String(p.userId) === String(this.currentUserId)
+			(p: any) => p.isCurrentUser === true
 		);
 		
 		if (!myParticipant) {
@@ -214,16 +297,24 @@ onShow() {
 	},
 	
 	/**
-	 * 🔧 判断是否可以签署（与PC端逻辑同步）
+	 * 🔧 判断是否可以签署
 	 * 
 	 * 签署权限规则：
-	 * 1. FORM_FILLING(7)状态：只有DIRECT模式且状态为PENDING的参与者可以签署
-	 * 2. SIGNING(2)状态：所有状态为PENDING或FORM_FILLED的参与者都可以签署
+	 * 1. FORM_FILLING(7)状态：任何人都不能签署！必须等所有人填完表
+	 * 2. SIGNING(2)状态：状态为PENDING或FORM_FILLED的参与者可以签署
 	 */
 	canSign(contract: Contract): boolean {
-		// 状态检查：签署中或表单填写中都可能需要签署
-		if (contract.status !== this.STATUS_SIGNING && contract.status !== this.STATUS_FORM_FILLING) {
+		// 🔧 只有签署中状态才能签署，表单填写中不能签署！
+		if (contract.status !== this.STATUS_SIGNING) {
 			return false;
+		}
+		
+		// 优先使用后端已处理好的 currentUserParticipant 字段
+		if (contract.currentUserParticipant) {
+			const p = contract.currentUserParticipant;
+			// 🎯 SIGNING(2)阶段：状态为PENDING或FORM_FILLED的参与者都可以签署
+			return p.status === this.PARTICIPANT_PENDING || 
+			       p.status === this.PARTICIPANT_FORM_FILLED;
 		}
 		
 		// 参与者检查
@@ -240,18 +331,58 @@ onShow() {
 			return false;
 		}
 		
-		// 🎯 FORM_FILLING(7)阶段：只有DIRECT模式的参与者可以签署（无需填表）
-		if (contract.status === this.STATUS_FORM_FILLING) {
-			return myParticipant.flowMode === 'DIRECT' && myParticipant.status === this.PARTICIPANT_PENDING;
-		}
-		
 		// 🎯 SIGNING(2)阶段：状态为PENDING或FORM_FILLED的参与者都可以签署
-		// PENDING: 直接进入签署阶段的参与者（SIMPLE/DIRECT模式）
-		// FORM_FILLED: 已完成表单填写的参与者（TWO_STAGE模式）
 		return myParticipant.status === this.PARTICIPANT_PENDING || 
 		       myParticipant.status === this.PARTICIPANT_FORM_FILLED;
 	},
 		
+	/**
+	 * 🆕 判断当前用户是否在等待他人填写表单
+	 * 
+	 * 显示条件：
+	 * 1. 任务状态=表单填写中(7)
+	 * 2. 用户是DIRECT模式（无需填表）
+	 *    OR
+	 *    用户是TWO_STAGE模式 且 已填写表单(FORM_FILLED)
+	 */
+	isWaitingForOthersToFillForm(contract: Contract): boolean {
+		// 状态检查：必须是表单填写中
+		if (contract.status !== this.STATUS_FORM_FILLING) {
+			return false;
+		}
+		
+		let p: any = null;
+		
+		// 优先使用后端已处理好的 currentUserParticipant 字段
+		if (contract.currentUserParticipant) {
+			p = contract.currentUserParticipant;
+		} else {
+			// 降级方案：查找当前用户
+			if (!contract.participants || contract.participants.length === 0) {
+				return false;
+			}
+			p = contract.participants.find(
+				(item: any) => item.isCurrentUser === true
+			);
+		}
+		
+		if (!p) {
+			return false;
+		}
+		
+		// 情况1：DIRECT模式的用户在表单填写阶段始终等待他人
+		if (p.flowMode === 'DIRECT' && p.status === this.PARTICIPANT_PENDING) {
+			return true;
+		}
+		
+		// 情况2：TWO_STAGE模式用户已填写表单，但在等待他人填写
+		if (p.flowMode === 'TWO_STAGE' && p.status === this.PARTICIPANT_FORM_FILLED) {
+			return true;
+		}
+		
+		return false;
+	},
+	
 	/**
 	 * 判断是否可以撤销
 	 */
@@ -490,17 +621,103 @@ onShow() {
 		},
 		
 	/**
-	 * 填写表单（跳转H5表单页面）
+	 * 填写表单（先检测H5服务，再跳转H5表单页面）
+	 * 
+	 * 检测流程：
+	 * 1. 检查用户网络状态
+	 * 2. 获取 H5 表单填写 URL
+	 * 3. 测试 H5 服务器可用性
+	 * 4. 检测通过后才跳转
 	 */
-	fillForm(contract: Contract, event: Event): void {
+	async fillForm(contract: Contract, event: Event): Promise<void> {
 		event.stopPropagation();
 		
-		console.log('填写表单:', contract);
+		console.log('[合同列表] 准备填写表单:', contract.id);
 		
-		// 跳转到H5表单填写页面
-		uni.navigateTo({
-			url: `/pages/contract-form/h5-fill?taskId=${contract.id}`
-		});
+		try {
+			// 显示检测进度
+			uni.showLoading({ 
+				title: '正在检测服务...',
+				mask: true 
+			});
+			
+			// 步骤 1: 检查网络状态
+			console.log('[合同列表] 步骤 1: 检查网络状态');
+			const networkResult = await checkNetworkStatus();
+			if (!networkResult.success) {
+				uni.hideLoading();
+				uni.showModal({
+					title: '网络异常',
+					content: networkResult.errorMessage || '请检查网络连接后重试',
+					showCancel: false
+				});
+				return;
+			}
+			console.log('[合同列表] ✓ 网络状态正常');
+			
+			// 步骤 2: 获取 H5 表单填写 URL
+			console.log('[合同列表] 步骤 2: 获取 H5 表单填写 URL');
+			uni.showLoading({ 
+				title: '正在连接服务...',
+				mask: true 
+			});
+			
+			let formUrl: string;
+			try {
+				formUrl = await getSealPageUrl('form', contract.id);
+				console.log('[合同列表] ✓ H5 URL 获取成功');
+			} catch (error) {
+				uni.hideLoading();
+				console.error('[合同列表] ✗ H5 URL 获取失败:', error);
+				
+				uni.showModal({
+					title: '服务异常',
+					content: '无法连接到表单服务\n请稍后重试或联系技术支持',
+					showCancel: false
+				});
+				return;
+			}
+			
+			// 步骤 3: 测试 H5 服务器可用性（关键步骤）
+			console.log('[合同列表] 步骤 3: 测试 H5 服务器可用性');
+			uni.showLoading({ 
+				title: '正在检测服务状态...',
+				mask: true 
+			});
+			
+			const serviceResult = await testH5ServiceAvailability(formUrl, 8000);
+			
+			uni.hideLoading();
+			
+			if (!serviceResult.available) {
+				console.error('[合同列表] ✗ H5 服务不可用');
+				
+				uni.showModal({
+					title: '签署服务暂时不可用',
+					content: serviceResult.errorMessage || 'H5签署服务暂时无法访问\n请稍后重试或联系技术支持',
+					showCancel: false
+				});
+				return;
+			}
+			
+			console.log('[合同列表] ✓ H5 服务可用');
+			console.log('[合同列表] ✓ 所有检测通过，跳转到表单填写页面');
+			
+			// 步骤 4: 所有检测通过，跳转到表单填写页面
+			uni.navigateTo({
+				url: `/pages/contract-form/h5-fill?taskId=${contract.id}`
+			});
+			
+		} catch (error) {
+			uni.hideLoading();
+			console.error('[合同列表] 表单填写前检测失败:', error);
+			
+			uni.showModal({
+				title: '检测失败',
+				content: '无法完成服务检测\n请稍后重试',
+				showCancel: false
+			});
+		}
 	},
 	
 	/**
@@ -722,18 +939,87 @@ onShow() {
 	},
 		
 	/**
-	 * 导航到创建页面（需要先验证实名认证）
+	 * 导航到创建页面（需要先验证实名认证，并检测H5服务）
 	 */
-		navigateToCreate(): void {
+		async navigateToCreate(): Promise<void> {
 			// 先检查实名认证（使用 Mixin 中的方法）
-			if (!this.checkCanProceed()) {
+			if (!(this as any).checkCanProceed()) {
 				return
 			}
 			
-			// 已认证，直接跳转到 H5 创建页面（默认模板创建）
-			uni.navigateTo({
-				url: '/pages/contract-create/h5-create?type=template'
-			});
+			try {
+				uni.showLoading({ title: '正在检测服务...', mask: true });
+				
+				// 步骤 1: 检查网络状态
+				const networkResult = await checkNetworkStatus();
+				if (!networkResult.success) {
+					uni.hideLoading();
+					uni.showModal({
+						title: '网络异常',
+						content: networkResult.errorMessage || '请检查网络连接后重试',
+						showCancel: false
+					});
+					return;
+				}
+				
+				// 步骤 2: 获取 H5 创建合同 URL
+				uni.showLoading({ title: '正在连接服务...', mask: true });
+				
+				// 获取当前选择的企业ID
+				let enterpriseId: number | undefined = undefined;
+				try {
+					const savedIdentity = uni.getStorageSync('currentIdentity');
+					if (savedIdentity) {
+						const identity = JSON.parse(savedIdentity) as { type?: string; id?: number } | null;
+						if (identity && identity.type === 'enterprise' && identity.id) {
+							enterpriseId = identity.id;
+						}
+					}
+				} catch (e) {
+					console.warn('[合同管理] 获取当前身份信息失败:', e);
+				}
+				
+				let createUrl: string;
+				try {
+					createUrl = await getSealPageUrl('create', undefined, { type: 'template', enterpriseId });
+				} catch (error) {
+					uni.hideLoading();
+					uni.showModal({
+						title: '服务异常',
+						content: '无法连接到创建服务\n请稍后重试或联系技术支持',
+						showCancel: false
+					});
+					return;
+				}
+				
+				// 步骤 3: 测试 H5 服务器可用性
+				uni.showLoading({ title: '正在检测服务状态...', mask: true });
+				const serviceResult = await testH5ServiceAvailability(createUrl, 8000);
+				
+				uni.hideLoading();
+				
+				if (!serviceResult.available) {
+					uni.showModal({
+						title: '签署服务暂时不可用',
+						content: serviceResult.errorMessage || 'H5签署服务暂时无法访问\n请稍后重试或联系技术支持',
+						showCancel: false
+					});
+					return;
+				}
+				
+				// 步骤 4: 所有检测通过，跳转到 H5 创建页面
+				uni.navigateTo({
+					url: '/pages/contract-create/h5-create?type=template'
+				});
+				
+			} catch (error) {
+				uni.hideLoading();
+				uni.showModal({
+					title: '检测失败',
+					content: '无法完成服务检测\n请稍后重试',
+					showCancel: false
+				});
+			}
 		},
 			
 		/**
@@ -829,7 +1115,7 @@ onShow() {
 <template>
 	<view class="contract-manage">
 		<!-- 顶部导航栏 -->
-		<view class="header">
+		<view class="header" :style="{ '--safe-top': safeTop + 'px' }">
 			<!-- 导航栏 -->
 			<view class="nav-bar">
 				<view class="nav-left"></view>
@@ -850,7 +1136,8 @@ onShow() {
 					<input 
 						class="search-input" 
 						type="text" 
-						v-model:value="searchText"
+						:value="searchText"
+						@input="searchText = $event.detail.value"
 						placeholder="搜索合同名称" 
 						confirm-type="search"
 						@confirm="searchContracts"
@@ -996,6 +1283,15 @@ onShow() {
 					<text class="fa fa-signature action-icon"></text>
 					<text class="action-text">去签署</text>
 				</view>
+				
+				<!-- 🆕 等待对方填表提示：DIRECT模式用户在表单填写阶段看到 -->
+				<view 
+					v-if="isWaitingForOthersToFillForm(contract)" 
+					class="action-button waiting"
+				>
+					<text class="fa fa-hourglass-half action-icon"></text>
+					<text class="action-text">等待他人填表</text>
+				</view>
 					
 					<!-- 🔧 催签按钮：只有创建者才能催签 -->
 					<view 
@@ -1039,10 +1335,6 @@ onShow() {
 				<text class="empty-title">暂无合同</text>
 			<text class="empty-desc">您还没有创建任何合同</text>
 			<text class="empty-tip">点击右下角 + 按钮开始创建您的第一份合同</text>
-				<view class="empty-action" @click="navigateToCreate">
-					<text class="empty-action-text">立即创建</text>
-					<text class="fa fa-arrow-right empty-action-icon"></text>
-				</view>
 			</view>
 			
 			<!-- 加载状态 -->
@@ -1093,6 +1385,7 @@ onShow() {
 	.header {
 	background-color: #FFFFFF;
 	box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.06);
+		padding-top: var(--safe-top);
 		z-index: 10;
 	}
 	
@@ -1116,9 +1409,9 @@ onShow() {
 	}
 	
 	.page-title {
-		font-size: 32rpx;
-	font-weight: 500;
-	color: #303133;
+		font-size: 24rpx;
+		font-weight: 500;
+		color: #303133;
 	}
 	
 	.action-btn {
@@ -1503,6 +1796,16 @@ onShow() {
 	.action-button.sign .action-icon,
 	.action-button.sign .action-text {
 		color: #10B981;
+	}
+	
+/* 等待填表按钮（灰色，不可点击） */
+	.action-button.waiting {
+		background-color: rgba(156, 163, 175, 0.1);
+	}
+	
+	.action-button.waiting .action-icon,
+	.action-button.waiting .action-text {
+		color: #9CA3AF;
 	}
 	
 /* 催签按钮 */

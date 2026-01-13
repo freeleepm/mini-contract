@@ -1,0 +1,80 @@
+/**
+ * Seal Token 统一配置
+ * 
+ * 用途：管理移动端和PC端的 Seal Token 兑换配置
+ * 包括：有效期、平台标识、接口地址等
+ * 
+ * 🎯 平台说明：
+ * - mobile: uni-app 移动端，包括原生页面和内嵌的 WebView（H5页面）
+ * - pc: PC 管理后台的 iframe
+ * 
+ * ⚠️ 重要说明：
+ * H5 不是独立平台！移动端通过 <web-view> 组件加载 seal-core 的 H5 页面，
+ * 本质上是移动端的一部分，因此统一使用 'mobile' 配置。
+ */
+
+/**
+ * 平台类型
+ */
+export enum PlatformType {
+	MOBILE = 'mobile',        // 移动端（包括 uni-app 原生页面和 WebView 中的 H5 页面）
+	PC_IFRAME = 'pc-iframe'   // PC端 iframe
+}
+
+/**
+ * Seal Token 配置接口
+ */
+export interface SealTokenConfig {
+	expireMinutes: number;  // Token 有效期（分钟）
+	platform: PlatformType; // 平台标识
+	description: string;    // 配置说明
+}
+
+/**
+ * 统一 Seal Token 配置
+ */
+export const SEAL_TOKEN_CONFIG: Record<string, SealTokenConfig> = {
+	// 移动端配置（包括 uni-app 原生页面和 WebView 中的 H5 页面）
+	mobile: {
+		expireMinutes: 30 * 24 * 60, // 30天（43200分钟）
+		platform: PlatformType.MOBILE,
+		description: 'APP 场景，包括原生页面和内嵌的 H5 WebView，用户长时间登录'
+	},
+	
+	// PC端配置
+	pc: {
+		expireMinutes: 2 * 60, // 2小时（120分钟）
+		platform: PlatformType.PC_IFRAME,
+		description: '管理后台，安全要求高，Token 有效期短'
+	}
+};
+
+/**
+ * 获取平台配置
+ * 
+ * @param platformKey 平台标识：'mobile' | 'pc'
+ * @returns Seal Token 配置
+ * 
+ * 🎯 使用说明：
+ * - 移动端 uni-app（包括原生页面和 WebView）：使用 'mobile'
+ * - PC 管理后台 iframe：使用 'pc'
+ */
+export function getSealTokenConfig(platformKey: string = 'mobile'): SealTokenConfig {
+	const config = SEAL_TOKEN_CONFIG[platformKey];
+	if (!config) {
+		console.warn(`[Seal Config] 未找到平台配置: ${platformKey}，使用默认移动端配置`);
+		return SEAL_TOKEN_CONFIG.mobile;
+	}
+	return config;
+}
+
+/**
+ * 日志前缀
+ */
+export const LOG_PREFIX = '[Seal Token]';
+
+/**
+ * ⚠️ 注意：Seal Core H5/PC URL 配置已迁移到 api/config.uts
+ * 请从 api/config.uts 导入 SEAL_CORE_H5_URL
+ */
+

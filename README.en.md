@@ -1,22 +1,22 @@
-  Mini Contract Pro (Free Open Source Electronic Contract)
+  Mini Contract.Pro (Free Open Source Electronic Contract)
   ===============
 
 
-Current Latest Version: v3.0.0 (Release Date: November 22, 2025)
+Current Latest Version: v3.1.0 (Release Date: January 13, 2026)
 
-[![License](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![Author](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![Version](https://img.shields.io/static/v1?label=version&message=3.0.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)
-
-
+[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.1.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
 
 
 
 
 
-<h3 align="center">Mini Contract Pro</h3>
+
+
+<h3 align="center">Mini Contract.Pro</h3>
 
 
 
-🚀🚀🚀  As a free open-source product with independent intellectual property rights, Mini Contract Pro has always adhered to the principle of "making digital contract development simpler". Mini-Contract-Pro is also an open-source electronic signature solution designed specifically for developers, innovatively adopting a "dual-mode engine" architecture. Through modular design, it meets the full-scenario requirements from judicial-level signing to lightweight collaboration. The first open-source electronic signature platform to support both evidence chain and non-evidence chain dual modes, we have helped 100+ enterprise customers achieve digital transformation of contract signing processes.
+🔥🔥🔥  As a free open-source product with independent intellectual property rights, Mini Contract Pro has always adhered to the principle of "making digital contract development simpler". Mini Contract.Pro is also an open-source electronic signature solution designed specifically for developers, innovatively adopting a "dual-mode engine" architecture. Through modular design, it meets the full-scenario requirements from judicial-level signing to lightweight collaboration. The first open-source electronic signature platform to support both evidence chain and non-evidence chain dual modes, we have helped 100+ enterprise customers achieve digital transformation of contract signing processes.
 
 
 
@@ -439,9 +439,10 @@ Wrap H5 pages with `H5LoadingContainer` and `H5ErrorContainer` components, refer
 
 
 
-
 Project Screenshots
 ----
+
+#### User (Moblie)
 
 
 ![](.images/app/app_01@4x.png)
@@ -556,7 +557,7 @@ Project Screenshots
 
 
 
-#### User Portal (Web)
+#### User(PC)
 
 > User web portal, you can sign and view your contracts in the backend
 
@@ -570,7 +571,7 @@ Project Screenshots
 
 
 
-![](.images/pc/pc_03@4x.png)
+![](.images/pc/pc03@4x.png)
 
 > The workspace supports viewing basic contract information
 
@@ -604,7 +605,7 @@ Project Screenshots
 
 
 
-![](.images/pc/pc_07@4x.png)
+![](.images/pc/pc07@4x.png)
 
 
 ![](.images/pc/pc_08@4x.png)
@@ -627,13 +628,18 @@ Project Screenshots
 
 
 
-#### Platform Portal
-
-> Coming soon.....
-
-
-
 ### Recent Updates
+
+##### V 3.1.0
+
+- [x] [New] WeChat & WeChat Official Account login now available  
+- [x] [New] You can pre-place stamp/seal fields while creating a contract  
+- [x] [New] Pick signers straight from your history—no re-typing  
+- [x] [Fix] Mini-program compatibility issues resolved  
+- [x] [Fix] Faster PDF loading performance  
+- [x] [Fix] Various bugs reported in GitHub/other issues
+
+
 
 ##### V 3.0 Pro Version
 - [x] 【New】Brand new page design style
@@ -645,8 +651,8 @@ Project Screenshots
 ### Technical Documentation
 
 * Online Demo:
+ https://m-sign.leepm.com (moblie) ，https://pc-sign.leepm.com (PC)
 
-![](.images/yihetong_qrcode.png)
 
 
 ### Star Trend

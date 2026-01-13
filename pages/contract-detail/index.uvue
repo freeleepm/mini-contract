@@ -15,6 +15,11 @@ import type { Contract } from '../../api/contracts/index';
 // import { getTemplateDetail } from '../../api/templates/index';
 import { downloadContractFile } from '../../api/utils/download.uts';
 import { post } from '../../api/index';
+import { getSealPageUrl } from '../../api/seals/index';
+import { 
+	checkNetworkStatus, 
+	testH5ServiceAvailability
+} from '../../utils/network';
 	
 	export default {
 		data() {
@@ -161,8 +166,8 @@ onShow() {
 			this.contract = detail;
 				
 			// 🔧 优化：模板名称直接从签署任务中获取（后端已包含 templateName 字段）
-			if (detail.templateName) {
-				this.templateName = detail.templateName;
+			if ((detail as any).templateName) {
+				this.templateName = (detail as any).templateName;
 				console.log('模板名称:', this.templateName);
 			} else if (detail.templateId) {
 				// 兜底方案：如果后端没有返回 templateName，显示模板ID
@@ -199,31 +204,175 @@ onShow() {
 		},
 		
 	/**
-	 * 🆕 填写表单（跳转H5签署页面-表单模式）
+	 * 🆕 填写表单（先检测H5服务，再跳转H5表单页面）
+	 * 
+	 * 检测流程：
+	 * 1. 检查用户网络状态
+	 * 2. 获取 H5 表单填写 URL
+	 * 3. 测试 H5 服务器可用性
+	 * 4. 检测通过后才跳转
 	 */
-	handleFillForm(): void {
+	async handleFillForm(): Promise<void> {
 		if (!this.contract) return;
 		
-		console.log('填写表单:', this.contract.id);
+		console.log('[合同详情] 准备填写表单:', this.contract.id);
 		
-		// 跳转到H5表单填写页面
-		uni.navigateTo({
-			url: `/pages/contract-form/h5-fill?taskId=${this.contract.id}`
-		});
+		try {
+			// 显示检测进度
+			uni.showLoading({ 
+				title: '正在检测服务...',
+				mask: true 
+			});
+			
+			// 步骤 1: 检查网络状态
+			const networkResult = await checkNetworkStatus();
+			if (!networkResult.success) {
+				uni.hideLoading();
+				uni.showModal({
+					title: '网络异常',
+					content: networkResult.errorMessage || '请检查网络连接后重试',
+					showCancel: false
+				});
+				return;
+			}
+			
+			// 步骤 2: 获取 H5 表单填写 URL
+			uni.showLoading({ 
+				title: '正在连接服务...',
+				mask: true 
+			});
+			
+			let formUrl: string;
+			try {
+				formUrl = await getSealPageUrl('form', this.contract.id);
+			} catch (error) {
+				uni.hideLoading();
+				uni.showModal({
+					title: '服务异常',
+					content: '无法连接到表单服务\n请稍后重试或联系技术支持',
+					showCancel: false
+				});
+				return;
+			}
+			
+			// 步骤 3: 测试 H5 服务器可用性
+			uni.showLoading({ 
+				title: '正在检测服务状态...',
+				mask: true 
+			});
+			
+			const serviceResult = await testH5ServiceAvailability(formUrl, 8000);
+			
+			uni.hideLoading();
+			
+			if (!serviceResult.available) {
+				uni.showModal({
+					title: '签署服务暂时不可用',
+					content: serviceResult.errorMessage || 'H5签署服务暂时无法访问\n请稍后重试或联系技术支持',
+					showCancel: false
+				});
+				return;
+			}
+			
+			// 步骤 4: 所有检测通过，跳转到表单填写页面
+			uni.navigateTo({
+				url: `/pages/contract-form/h5-fill?taskId=${this.contract.id}`
+			});
+			
+		} catch (error) {
+			uni.hideLoading();
+			uni.showModal({
+				title: '检测失败',
+				content: '无法完成服务检测\n请稍后重试',
+				showCancel: false
+			});
+		}
 	},
 	
 	/**
-	 * 签署合同（跳转H5签署页面）
+	 * 签署合同（先检测H5服务，再跳转H5签署页面）
+	 * 
+	 * 检测流程：
+	 * 1. 检查用户网络状态
+	 * 2. 获取 H5 签署 URL
+	 * 3. 测试 H5 服务器可用性
+	 * 4. 检测通过后才跳转
 	 */
-handleSign(): void {
+async handleSign(): Promise<void> {
 	if (!this.contract) return;
 	
-	console.log('签署合同:', this.contract.id);
+	console.log('[合同详情] 准备签署合同:', this.contract.id);
 	
-	// 跳转到H5签署页面
-	uni.navigateTo({
-		url: `/pages/contract-sign/h5-sign?taskId=${this.contract.id}`
-	});
+	try {
+		// 显示检测进度
+		uni.showLoading({ 
+			title: '正在检测签署服务...',
+			mask: true 
+		});
+		
+		// 步骤 1: 检查网络状态
+		const networkResult = await checkNetworkStatus();
+		if (!networkResult.success) {
+			uni.hideLoading();
+			uni.showModal({
+				title: '网络异常',
+				content: networkResult.errorMessage || '请检查网络连接后重试',
+				showCancel: false
+			});
+			return;
+		}
+		
+		// 步骤 2: 获取 H5 签署 URL
+		uni.showLoading({ 
+			title: '正在连接签署服务...',
+			mask: true 
+		});
+		
+		let signUrl: string;
+		try {
+			signUrl = await getSealPageUrl('sign', this.contract.id);
+		} catch (error) {
+			uni.hideLoading();
+			uni.showModal({
+				title: '服务异常',
+				content: '无法连接到签署服务\n请稍后重试或联系技术支持',
+				showCancel: false
+			});
+			return;
+		}
+		
+		// 步骤 3: 测试 H5 服务器可用性
+		uni.showLoading({ 
+			title: '正在检测服务状态...',
+			mask: true 
+		});
+		
+		const serviceResult = await testH5ServiceAvailability(signUrl, 8000);
+		
+		uni.hideLoading();
+		
+		if (!serviceResult.available) {
+			uni.showModal({
+				title: '签署服务暂时不可用',
+				content: serviceResult.errorMessage || 'H5签署服务暂时无法访问\n请稍后重试或联系技术支持',
+				showCancel: false
+			});
+			return;
+		}
+		
+		// 步骤 4: 所有检测通过，跳转到签署页面
+		uni.navigateTo({
+			url: `/pages/contract-sign/h5-sign?taskId=${this.contract.id}`
+		});
+		
+	} catch (error) {
+		uni.hideLoading();
+		uni.showModal({
+			title: '检测失败',
+			content: '无法完成服务检测\n请稍后重试',
+			showCancel: false
+		});
+	}
 },
 		
 		/**
@@ -389,7 +538,7 @@ handleSign(): void {
 			uni.hideLoading();
 			console.error('AI审查启动失败:', error);
 			uni.showToast({
-				title: error.message || '网络错误',
+				title: (error instanceof Error ? error.message : String(error)) || '网络错误',
 				icon: 'none',
 				duration: 2000
 			});
@@ -397,31 +546,96 @@ handleSign(): void {
 	},
 	
 	/**
-	 * 预览合同
+	 * 预览合同（先检测H5服务，再跳转H5预览页面）
+	 * 
+	 * 检测流程：
+	 * 1. 检查用户网络状态
+	 * 2. 获取 H5 预览 URL
+	 * 3. 测试 H5 服务器可用性
+	 * 4. 检测通过后才跳转
 	 */
-	handlePreview(): void {
+	async handlePreview(): Promise<void> {
 			if (!this.contract) return;
 			
-			console.log('预览合同:', this.contract.id);
-			console.log('合同状态:', this.contract.status);
-			console.log('fileUrl:', this.contract.fileUrl);
+			console.log('[合同详情] 准备预览合同:', this.contract.id);
 			
-			// 🔧 后端已经自动处理：已完成时 fileUrl = signedFileUrl，其他状态 fileUrl = 原文件
-			// 所以前端直接使用 fileUrl 即可
-			const previewUrl = this.contract.fileUrl;
-			console.log('✅ 使用后端返回的文件URL:', previewUrl);
-			
-			// 跳转到H5预览页面，传递文件URL和状态（避免重复调用接口）
-			const encodedUrl = encodeURIComponent(previewUrl);
-			const jumpUrl = `/pages/contract-view/h5-view?taskId=${this.contract.id}&fileUrl=${encodedUrl}&status=${this.contract.status}`;
-			
-			console.log('🚀 跳转URL:', jumpUrl);
-			console.log('📄 文件URL:', previewUrl);
-			console.log('🔐 编码后的URL:', encodedUrl);
-			
-			uni.navigateTo({
-				url: jumpUrl
-			});
+			try {
+				// 显示检测进度
+				uni.showLoading({ 
+					title: '正在检测预览服务...',
+					mask: true 
+				});
+				
+				// 步骤 1: 检查网络状态
+				const networkResult = await checkNetworkStatus();
+				if (!networkResult.success) {
+					uni.hideLoading();
+					uni.showModal({
+						title: '网络异常',
+						content: networkResult.errorMessage || '请检查网络连接后重试',
+						showCancel: false
+					});
+					return;
+				}
+				
+				// 步骤 2: 获取 H5 预览 URL
+				uni.showLoading({ 
+					title: '正在连接预览服务...',
+					mask: true 
+				});
+				
+				let viewUrl: string;
+				try {
+					viewUrl = await getSealPageUrl('view', this.contract.id);
+				} catch (error) {
+					uni.hideLoading();
+					uni.showModal({
+						title: '服务异常',
+						content: '无法连接到预览服务\n请稍后重试或联系技术支持',
+						showCancel: false
+					});
+					return;
+				}
+				
+				// 步骤 3: 测试 H5 服务器可用性
+				uni.showLoading({ 
+					title: '正在检测服务状态...',
+					mask: true 
+				});
+				
+				const serviceResult = await testH5ServiceAvailability(viewUrl, 8000);
+				
+				uni.hideLoading();
+				
+				if (!serviceResult.available) {
+					uni.showModal({
+						title: '预览服务暂时不可用',
+						content: serviceResult.errorMessage || 'H5预览服务暂时无法访问\n请稍后重试或联系技术支持',
+						showCancel: false
+					});
+					return;
+				}
+				
+				// 步骤 4: 所有检测通过，跳转到预览页面
+				// 🔧 后端已经自动处理：已完成时 fileUrl = signedFileUrl，其他状态 fileUrl = 原文件
+				const previewUrl = this.contract.fileUrl;
+				const encodedUrl = encodeURIComponent(previewUrl);
+				const jumpUrl = `/pages/contract-view/h5-view?taskId=${this.contract.id}&fileUrl=${encodedUrl}&status=${this.contract.status}`;
+				
+				console.log('🚀 跳转URL:', jumpUrl);
+				
+				uni.navigateTo({
+					url: jumpUrl
+				});
+				
+			} catch (error) {
+				uni.hideLoading();
+				uni.showModal({
+					title: '检测失败',
+					content: '无法完成服务检测\n请稍后重试',
+					showCancel: false
+				});
+			}
 		},
 		
 		/**
@@ -556,17 +770,17 @@ handleSign(): void {
 	},
 	
 	/**
-	 * 🔧 判断是否可以签署（与PC端逻辑同步）
+	 * 🔧 判断是否可以签署
 	 * 
 	 * 签署权限规则：
-	 * 1. FORM_FILLING(7)状态：只有DIRECT模式且状态为PENDING的参与者可以签署
+	 * 1. FORM_FILLING(7)状态：任何人都不能签署！必须等所有人填完表
 	 * 2. SIGNING(2)状态：所有状态为PENDING或FORM_FILLED的参与者都可以签署
 	 */
 	canSign(): boolean {
 		if (!this.contract) return false;
 		
-		// 状态检查：签署中或表单填写中都可能需要签署
-		if (this.contract.status !== this.STATUS_SIGNING && this.contract.status !== 7) return false;
+		// 🔧 只有签署中状态才能签署，表单填写中不能签署！
+		if (this.contract.status !== this.STATUS_SIGNING) return false;
 		
 		// 🔧 直接使用后端返回的isCurrentUser字段，支持userId和手机号两种匹配方式
 		const myParticipant = this.contract.participants?.find(
@@ -574,11 +788,6 @@ handleSign(): void {
 		);
 		
 		if (!myParticipant) return false;
-		
-		// 🎯 FORM_FILLING(7)阶段：只有DIRECT模式的参与者可以签署（无需填表）
-		if (this.contract.status === 7) {
-			return myParticipant.flowMode === 'DIRECT' && myParticipant.status === this.PARTICIPANT_PENDING;
-		}
 		
 		// 🎯 SIGNING(2)阶段：状态为PENDING或FORM_FILLED的参与者都可以签署
 		// PENDING: 直接进入签署阶段的参与者（SIMPLE/DIRECT模式）

@@ -6,11 +6,11 @@
 		data() {
 			return {
 				appInfo: {
-					name: 'Mini Contract Pro',
+					name: 'Contract.Pro',
 					logo: '/static/logo.png',
 					version: 'v1.0.0',
 					buildNumber: '20230615',
-					description: 'Mini Contract Pro是一款专业的电子合同签署工具，提供安全、高效、合法的电子签约服务。支持多种合同模板，实现快速创建、签署、管理电子合同。',
+					description: 'Contract.Pro是一款专业的电子合同签署工具，提供安全、高效、合法的电子签约服务。支持多种合同模板，实现快速创建、签署、管理电子合同。',
 					features: [
 						'快速创建合同',
 						'多人在线签署',
@@ -23,7 +23,7 @@
 						email: 'support@example.com',
 						phone: '400-123-4567'
 					},
-					copyright: '© 2025 Mini Contract Pro 版权所有'
+					copyright: '© 2025 Contract.Pro版权所有'
 				}
 			}
 		},

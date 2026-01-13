@@ -95,11 +95,30 @@
 <script>
 import { getTemplateList, getConversationPage, createConversation, incrementTemplateUse } from '../../api/ai-draft/index.uts'
 
+// 模板项接口定义
+interface TemplateItem {
+  id: number;
+  title: string;
+  description: string;
+  useCount: number;
+  contractType?: string;
+  prompt?: string;
+}
+
+// 对话项接口定义
+interface ConversationItem {
+  id: number;
+  title: string;
+  lastMessageTime: string;
+  status: number;
+  totalMessages: number;
+}
+
 export default {
   data() {
     return {
-      templateList: [],
-      conversationList: [],
+      templateList: [] as TemplateItem[],
+      conversationList: [] as ConversationItem[],
       loading: false,
       loadError: false
     }
@@ -124,7 +143,7 @@ export default {
         console.log('推荐话术响应:', templatesRes)
         
         if (templatesRes.code === 0 || templatesRes.code === 200) {
-          this.templateList = templatesRes.data || []
+          this.templateList = (templatesRes.data || []) as TemplateItem[]
           console.log('推荐话术加载成功:', this.templateList.length, '条')
         } else {
           console.error('推荐话术加载失败:', templatesRes.msg)
@@ -139,14 +158,14 @@ export default {
         console.log('最近对话响应:', conversationsRes)
         
         if (conversationsRes.code === 0 || conversationsRes.code === 200) {
-          const data = conversationsRes.data || { total: 0, list: [] }
-          this.conversationList = data.list || []
+          const data = (conversationsRes.data as { total?: number; list?: ConversationItem[] }) || { total: 0, list: [] }
+          this.conversationList = (data.list || []) as ConversationItem[]
           console.log('最近对话加载成功:', this.conversationList.length, '条')
         } else {
           console.error('最近对话加载失败:', conversationsRes.msg)
           this.conversationList = []
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('加载数据失败:', error)
         this.loadError = true
         uni.showToast({
@@ -159,7 +178,7 @@ export default {
       }
     },
     
-    async handleTemplateClick(template) {
+    async handleTemplateClick(template: TemplateItem) {
       console.log('点击了模板:', template.title)
       uni.showLoading({
         title: '创建对话中...',
@@ -202,7 +221,7 @@ export default {
             duration: 2000
           })
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('创建对话异常:', error)
         uni.hideLoading()
         uni.showToast({
@@ -213,7 +232,7 @@ export default {
       }
     },
     
-    handleConversationClick(conversation) {
+    handleConversationClick(conversation: ConversationItem) {
       uni.navigateTo({
         url: `/pages/ai-draft/chat?conversationId=${conversation.id}`
       })
@@ -282,20 +301,20 @@ export default {
       })
     },
     
-    getStatusText(status) {
-      const statusMap = {
+    getStatusText(status: number) {
+      const statusMap: Record<number, string> = {
         0: '进行中',
         1: '已生成',
         2: '已签署'
-      }
-      return statusMap[status] || '未知'
+      };
+      return statusMap[status] || '未知';
     },
     
-    formatTime(time) {
+    formatTime(time: string): string {
       if (!time) return ''
       const date = new Date(time)
       const now = new Date()
-      const diff = now - date
+      const diff = now.getTime() - date.getTime()
       
       if (diff < 60000) return '刚刚'
       if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前'

@@ -1,24 +1,25 @@
 /*!
- * Font Awesome 6.5.1 本地版本 - 适配uni-app-x
+ * Font Awesome 6.5.1 CDN版本 - 适配uni-app-x / 微信小程序
  * 包含Solid和Brands图标系列
+ * CDN来源: cdnjs.cloudflare.com (稳定可靠)
  */
 
-/* Solid字体定义 */
+/* Solid字体定义 - CDN */
 @font-face {
   font-family: 'Font Awesome 6 Free';
   font-style: normal;
   font-weight: 900;
   font-display: swap;
-  src: url('../fonts/fontawesome/fontawesome-webfont.woff2') format('woff2');
+  src: url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/webfonts/fa-solid-900.woff2') format('woff2');
 }
 
-/* Brands字体定义 */
+/* Brands字体定义 - CDN */
 @font-face {
   font-family: 'Font Awesome 6 Brands';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('../fonts/fontawesome/fontawesome-brands.woff2') format('woff2');
+  src: url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/webfonts/fa-brands-400.woff2') format('woff2');
 }
 
 /* 基础类 */
@@ -271,6 +272,16 @@
 .fa-check-circle::before { content: "\f058"; } /* 圆圈勾号 - 已签署 */
 .fa-user-slash::before { content: "\f506"; } /* 用户斜杠 - 无参与人 */
 
+/* 🎭 人脸识别指南弹窗专用图标 */
+.icon-hat::before { content: "\f8c0"; } /* 牛仔帽 - 轮廓清晰 */
+.icon-sunglasses::before { content: "\f530"; } /* 眼镜 - 保持眼镜 */
+.icon-users::before { content: "\f500"; } /* 用户组(双人) - 简洁清晰 */
+.fa-hat-cowboy::before { content: "\f8c0"; } /* 牛仔帽 */
+.fa-glasses::before { content: "\f530"; } /* 眼镜 */
+.fa-crown::before { content: "\f521"; } /* 皇冠 */
+.fa-user-tie::before { content: "\f508"; } /* 用户领带 */
+.fa-graduation-cap::before { content: "\f19d"; } /* 毕业帽 */
+
 /* 自定义社交图标 - 为了兼容现有代码 */
 .fa-weixin-custom::before { 
   font-family: 'Font Awesome 6 Brands';
@@ -319,6 +330,9 @@
 .fa-gavel::before { content: "\f0e3"; }
 .fa-comment::before { content: "\f075"; }
 .fa-headphones::before { content: "\f025"; }
+.fa-lightbulb::before { content: "\f0eb"; }
+.fa-balance-scale::before { content: "\f24e"; }
+.fa-quote-left::before { content: "\f10d"; }
 
 /* 加载和刷新 */
 .fa-spinner::before { content: "\f110"; }

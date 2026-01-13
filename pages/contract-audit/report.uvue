@@ -120,7 +120,14 @@ export default {
         aiModel: '',
         endTime: ''
       },
-      risks: []
+      risks: [] as Array<{
+        id?: number;
+        riskType?: string;
+        riskLevel?: number;
+        riskDescription?: string;
+        suggestion?: string;
+        [key: string]: any;
+      }>
     }
   },
   onLoad(options) {
@@ -151,7 +158,7 @@ export default {
       } catch (error) {
         console.error('[报告页面] 加载报告失败', error)
           uni.showToast({
-          title: error.message || '加载失败',
+          title: (error instanceof Error ? error.message : String(error)) || '加载失败',
             icon: 'none'
           })
         }

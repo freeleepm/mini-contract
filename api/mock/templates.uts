@@ -235,7 +235,8 @@ export async function getMockTemplateDetail(id: string): Promise<TemplateDetail>
                         { label: '其他用途', value: '其他用途' }
                     ]
                 }
-            ]
+            ],
+            signatories: []
         };
     } else if (id === 'template_lease_1') {
         return {
@@ -321,7 +322,8 @@ export async function getMockTemplateDetail(id: string): Promise<TemplateDetail>
                         { label: '年付', value: '年付' }
                     ]
                 }
-            ]
+            ],
+            signatories: []
         };
     } else {
         // 默认返回一个通用模板
@@ -381,7 +383,8 @@ export async function getMockTemplateDetail(id: string): Promise<TemplateDetail>
                     required: false,
                     placeholder: '请输入其他约定（选填）'
                 }
-            ]
+            ],
+            signatories: []
         };
     }
 }

@@ -201,12 +201,17 @@ export const getContract = (id: number) => {
 /**
  * 导出合同为PDF
  */
-export const exportPdf = (contractId: number) => {
-  return request({
+export const exportPdf = async (contractId: number) => {
+  const result = await request({
     url: '/seal/ai-draft/contract/export-pdf',
     method: 'POST',
     data: { contractId }
   })
+  return {
+    code: 0,
+    msg: '',
+    data: result
+  }
 }
 
 /**

@@ -1,46 +1,80 @@
 {
-    "name" : "mini-contract",
-    "appid" : "",
-    "description" : "",
-    "versionName" : "1.0.0",
-    "versionCode" : "100",
-    "uni-app-x" : {},
-    /* 快应用特有相关 */
-    "quickapp" : {},
-    /* 小程序特有相关 */
-    "mp-weixin" : {
-        "appid" : "",
-        "setting" : {
-            "urlCheck" : false
-        },
-        "usingComponents" : true
-    },
-    "mp-alipay" : {
-        "usingComponents" : true
-    },
-    "mp-baidu" : {
-        "usingComponents" : true
-    },
-    "mp-toutiao" : {
-        "usingComponents" : true
-    },
-    "uniStatistics" : {
-        "enable" : false
-    },
-    "vueVersion" : "3",
-    "app" : {
-        "distribute" : {
-            "icons" : {
-                "android" : {
-                    "hdpi" : "",
-                    "xhdpi" : "",
-                    "xxhdpi" : "",
-                    "xxxhdpi" : ""
-                }
-            }
-        },
-        "modules": {
-            "FaceRecognition": {}
-        }
-    }
+	"name": "Contract.Pro",
+	"appid": "__UNI__20EA0B1",
+	"description": "电子合同",
+	"versionName": "1.0.0",
+	"versionCode": "100",
+	"uni-app-x": {},
+	/* 快应用特有相关 */
+	"quickapp": {},
+	/* 小程序特有相关 */
+	"mp-weixin": {
+		"appid": "wx22db0d6ebe81e2ee",
+		"setting": {
+			"urlCheck": false
+		},
+		"usingComponents": true,
+		"permission": {}
+	},
+	"mp-alipay": {
+		"usingComponents": true
+	},
+	"mp-baidu": {
+		"usingComponents": true
+	},
+	"mp-toutiao": {
+		"usingComponents": true
+	},
+	"uniStatistics": {
+		"enable": false
+	},
+	"vueVersion": "3",
+	"app": {
+		"distribute": {
+			"icons": {
+				"android": {
+					"hdpi": "",
+					"xhdpi": "",
+					"xxhdpi": "",
+					"xxxhdpi": ""
+				}
+			}
+		},
+		"modules": {
+			"FaceRecognition": {}
+		}
+	},
+	"app-android": {
+		"distribute": {
+			"modules": {},
+			"icons": {
+				"hdpi": "",
+				"xhdpi": "",
+				"xxhdpi": "",
+				"xxxhdpi": ""
+			},
+			"splashScreens": {
+				"default": {}
+			}
+		},
+		"modules": {
+			"FaceRecognition": {}
+		}
+	},
+	"app-ios": {
+		"distribute": {
+			"modules": {},
+			"icons": {},
+			"splashScreens": {}
+		},
+		"modules": {
+			"FaceRecognition": {}
+		}
+	},
+	"web": {
+		"router": {
+			"mode": ""
+		},
+		"title": "Contract.Pro"
+	}
 }

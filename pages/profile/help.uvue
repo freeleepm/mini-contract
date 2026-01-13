@@ -1,4 +1,11 @@
 <script>
+	// 定义FAQ项类型
+	interface FaqItem {
+		id: number;
+		title: string;
+		content: string;
+	}
+	
 	/**
 	 * 帮助中心页面
 	 */
@@ -119,8 +126,8 @@
 				
 				// 搜索相关
 				searchKeyword: '',  // 搜索关键词
-				filteredFaqList: [],  // 过滤后的FAQ列表
-				activeHelpTab: null  // 当前选中的帮助选项
+				filteredFaqList: [] as FaqItem[],  // 过滤后的FAQ列表
+				activeHelpTab: null as string | null  // 当前选中的帮助选项
 			}
 		},
 		methods: {

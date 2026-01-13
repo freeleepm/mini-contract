@@ -5,6 +5,35 @@
 	import EnterpriseKycModal from '../../components/EnterpriseKycModal.uvue';
 	import KycModal from '../../components/KycModal.uvue';
 
+	// 定义企业列表项类型
+	interface EnterpriseItem {
+		id: number;
+		name: string;
+		verified: boolean;
+		role: string;
+	}
+	
+	// 定义用户信息类型
+	interface UserInfoType {
+		id: string;
+		name: string;
+		phone: string;
+		avatar: string;
+		isVerified: boolean;
+		verifyStatus?: number;
+		point: number;
+		level: any;
+	}
+	
+	// 定义身份类型
+	interface IdentityType {
+		type: string;
+		id: string | number;
+		name: string;
+		verified: boolean;
+		role: string;
+	}
+
 	/**
 	 * 个人中心页面
 	 */
@@ -15,6 +44,7 @@
 		},
 		data() {
 			return {
+				safeTop: 0,
 				// 用户信息
 				userInfo: {
 					id: '', // 添加用户ID
@@ -22,9 +52,10 @@
 					phone: '',
 					avatar: '/static/logo.png',
 					isVerified: false, // 个人是否已实名认证
+					verifyStatus: 0,
 					point: 0,
 					level: null
-				},
+				} as UserInfoType,
 				
 				// 身份切换相关
 				showIdentityDropdown: false,  // 是否显示身份切换弹窗
@@ -36,10 +67,10 @@
 					name: '个人',  // 身份名称，个人固定为"个人身份"
 					verified: false,  // 当前身份是否已认证
 					role: ''  // 角色（企业身份才有）
-				},
+				} as IdentityType,
 				
 				// 企业列表
-				enterprises: [],
+				enterprises: [] as EnterpriseItem[],
 				
 				// 是否为企业管理员（默认为false，在加载身份后根据角色更新）
 				isEnterpriseAdmin: false,
@@ -66,6 +97,7 @@
 		
 	onLoad() {
 		try {
+			this.safeTop = this.getSafeTop();
 			// 重置销毁标记
 			this.isDestroyed = false;
 			
@@ -86,6 +118,7 @@
 	
 	onShow() {
 		try {
+			this.safeTop = this.getSafeTop();
 			// 重置销毁标记
 			this.isDestroyed = false;
 			
@@ -147,6 +180,22 @@
 	},
 		
 		methods: {
+			getSafeTop(): number {
+				try {
+					const sys: any = uni.getSystemInfoSync();
+					let top = sys && sys.statusBarHeight ? Number(sys.statusBarHeight) : 0;
+					const getMenuBtn: any = (uni as any).getMenuButtonBoundingClientRect;
+					if (typeof getMenuBtn === 'function') {
+						const rect: any = getMenuBtn();
+						if (rect && rect.top) {
+							top = Number(rect.top);
+						}
+					}
+					return top;
+				} catch (e) {
+					return 0;
+				}
+			},
 			// 手机号脱敏处理
 			maskPhoneNumber(phone) {
 				if (!phone) return '';
@@ -227,7 +276,7 @@
 					// 记录加载时间
 					this.lastLoadTime = Date.now();
 					this.loading = false;
-				} catch (error) {
+				} catch (error: any) {
 					console.error('获取用户信息失败:', error);
 					this.loading = false;
 					
@@ -237,9 +286,10 @@
 					}
 					
 					// 只有在非401错误时才显示toast，401错误会自动跳转登录
-					if (!error.message || !error.message.includes('未授权')) {
+					const errorMsg = error?.message || '';
+					if (!errorMsg.includes('未授权')) {
 						uni.showToast({
-							title: '获取用户信息失败: ' + (error.message || '未知错误'),
+							title: '获取用户信息失败: ' + (errorMsg || '未知错误'),
 							icon: 'none'
 						});
 					}
@@ -341,7 +391,7 @@
 			},
 			
 			// 切换身份
-			switchIdentity(type, enterprise = null) {
+			switchIdentity(type: string, enterprise: EnterpriseItem | null = null) {
 				if (type === 'personal') {
 					this.currentIdentity = {
 						type: 'personal',
@@ -387,22 +437,24 @@
 				try {
 					const savedIdentity = uni.getStorageSync('currentIdentity');
 					if (savedIdentity) {
-						const parsedIdentity = JSON.parse(savedIdentity);
-
-						// 兼容旧数据，如果name是包含"（个人）"的格式，则重置为"个人身份"
-						if (parsedIdentity.type === 'personal' && parsedIdentity.name !== '个人') {
-							parsedIdentity.name = '个人';
-						}
+						const parsedIdentity = JSON.parse(savedIdentity) as IdentityType | null;
 						
-						this.currentIdentity = parsedIdentity;
-						
-						// 如果是企业身份，更新管理权限
-						if (this.currentIdentity.type === 'enterprise') {
-							this.isEnterpriseAdmin = ['管理员', '所有者'].includes(this.currentIdentity.role);
-							console.log('从本地存储加载企业身份，管理员权限:', this.isEnterpriseAdmin, '角色:', this.currentIdentity.role);
-						} else {
-							// 个人身份不是管理员
-							this.isEnterpriseAdmin = false;
+						if (parsedIdentity) {
+							// 兼容旧数据，如果name是包含"（个人）"的格式，则重置为"个人身份"
+							if (parsedIdentity.type === 'personal' && parsedIdentity.name !== '个人') {
+								parsedIdentity.name = '个人';
+							}
+							
+							this.currentIdentity = parsedIdentity;
+							
+							// 如果是企业身份，更新管理权限
+							if (this.currentIdentity.type === 'enterprise') {
+								this.isEnterpriseAdmin = ['管理员', '所有者'].includes(this.currentIdentity.role);
+								console.log('从本地存储加载企业身份，管理员权限:', this.isEnterpriseAdmin, '角色:', this.currentIdentity.role);
+							} else {
+								// 个人身份不是管理员
+								this.isEnterpriseAdmin = false;
+							}
 						}
 					}
 				} catch (e) {
@@ -428,14 +480,14 @@
 				try {
 					const savedIdentity = uni.getStorageSync('currentIdentity');
 					if (savedIdentity) {
-						const identity = JSON.parse(savedIdentity);
+						const identity = JSON.parse(savedIdentity) as IdentityType | null;
 						
 						// 如果当前身份是企业且有ID，直接跳转到企业认证页面
-						if (identity.type === 'enterprise' && identity.id) {
+						if (identity && identity.type === 'enterprise' && identity.id) {
 							console.log('使用当前选中的企业进行认证，企业ID:', identity.id);
 							
 							// 查找当前选中企业的完整信息
-							let currentEnterprise = null;
+							let currentEnterprise: EnterpriseItem | undefined = undefined;
 							if (this.enterprises && this.enterprises.length > 0) {
 								currentEnterprise = this.enterprises.find(item => item.id === identity.id);
 							}
@@ -478,17 +530,27 @@
 				let defaultEnterpriseId = "default_enterprise_" + Date.now();
 				let defaultEnterpriseName = "我的企业";
 				
+				// 定义企业列表项类型
+				interface EnterpriseListItem {
+					id: string;
+					name: string;
+					logo: string;
+					status: EnterpriseStatus;
+					certStatus: string;
+					role: number;
+				}
+				
 				// 创建企业列表（如果不存在）
 				try {
 					let enterprises = uni.getStorageSync('enterpriseList');
-					let enterpriseList = [];
+					let enterpriseList: EnterpriseListItem[] = [];
 					
 					if (enterprises) {
-						enterpriseList = JSON.parse(enterprises);
+						enterpriseList = JSON.parse(enterprises) as EnterpriseListItem[];
 					}
 					
 					// 检查是否已经有默认企业
-					let defaultEnterprise = enterpriseList.find(item => item.name === defaultEnterpriseName);
+					let defaultEnterprise: EnterpriseListItem | undefined = enterpriseList.find(item => item.name === defaultEnterpriseName);
 					
 					if (!defaultEnterprise) {
 						// 创建默认企业并添加到列表中
@@ -521,14 +583,24 @@
 			},
 			
 			// 准备企业数据，确保企业信息保存到本地存储
-			prepareEnterpriseData(enterpriseId, enterpriseData) {
+			prepareEnterpriseData(enterpriseId: string | number, enterpriseData: EnterpriseItem | undefined) {
+				// 定义企业列表项类型
+				interface EnterpriseListItem {
+					id: string | number;
+					name: string;
+					logo: string;
+					status: EnterpriseStatus;
+					certStatus: string;
+					role: number;
+				}
+				
 				try {
 					// 读取企业列表
 					let enterprises = uni.getStorageSync('enterpriseList');
-					let enterpriseList = [];
+					let enterpriseList: EnterpriseListItem[] = [];
 					
 					if (enterprises) {
-						enterpriseList = JSON.parse(enterprises);
+						enterpriseList = JSON.parse(enterprises) as EnterpriseListItem[];
 					}
 					
 					// 检查企业是否已在列表中
@@ -537,10 +609,10 @@
 					if (index === -1) {
 						// 如果不在列表中且有企业数据，则添加到列表
 						if (enterpriseData) {
-							const enterprise = {
+							const enterprise: EnterpriseListItem = {
 								id: enterpriseData.id,
 								name: enterpriseData.name,
-								logo: enterpriseData.logo || '/static/icons/blue-icon.png',
+								logo: '/static/icons/blue-icon.png',
 								status: enterpriseData.verified ? EnterpriseStatus.VERIFIED : EnterpriseStatus.UNVERIFIED,
 								certStatus: enterpriseData.verified ? 'approved' : 'pending',
 								role: enterpriseData.role === '所有者' ? 1 : (enterpriseData.role === '管理员' ? 2 : 3)
@@ -854,7 +926,7 @@
 </script>
 
 <template>
-	<view class="profile-container">
+	<view class="profile-container" :style="{ '--safe-top': safeTop + 'px' }">
 		<!-- 状态栏占位 -->
 		<view class="status-bar-placeholder"></view>
 		
@@ -1083,7 +1155,7 @@
 				
 				<!-- 应用版本 -->
 				<view class="app-version">
-					<text class="version-text">Mini Contract Pro v1.0.0</text>
+					<text class="version-text">Contract.Pro v1.0.0</text>
 				</view>
 			</view>
 		</scroll-view>
@@ -1202,8 +1274,8 @@
 	
 	/* 状态栏占位 */
 	.status-bar-placeholder {
-		height: var(--status-bar-height);
-		background-color: #00C28A;
+		height: 0;
+		background-color: transparent;
 	}
 	
 	/* 图标字体 */
@@ -1243,7 +1315,7 @@
 	/* 用户信息卡片 */
 	.user-info-card {
 		background: linear-gradient(135deg, #00C28A 0%, #08B783 100%);
-		padding: 40rpx 32rpx 40rpx 32rpx; /* 减少底部内边距，不再为身份切换卡片留空间 */
+		padding: calc(40rpx + var(--safe-top)) 32rpx 40rpx 32rpx; /* 减少底部内边距，不再为身份切换卡片留空间 */
 		border-bottom-left-radius: 0; /* 移除圆角 */
 		border-bottom-right-radius: 0; /* 移除圆角 */
 		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);

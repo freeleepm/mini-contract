@@ -1,41 +1,73 @@
-.DS_Store
-node_modules
-unpackage
-.hbuilderx
-# local env files
-.env.local
-.env.*.local
+# IDE 和编辑器
+.cursor/
+.gemini/
+.vscode/
+.idea/
+.hbuilderx/
+*.swp
+*.swo
+*~
+.project
 
-# Log files
-logs
+# 依赖
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# 构建输出
+unpackage/
+dist/
+build/
+*.zip
+
+# uni-app 临时文件
+.temp/
+.hbuilder/
+.compile-cache/
+
+# 系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# 日志
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+lerna-debug.log*
 pnpm-debug.log*
 
-# Editor directories and files
-.idea
-.cursor
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# 环境变量
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# Lock files
-pnpm-lock.yaml
+# 临时文件
+*.tmp
+*.temp
+.cache/
+*.bak
+*.swp
 
-# Yarn v2
-.pnp.*
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
+# 测试覆盖率
+coverage/
+*.lcov
+.nyc_output/
 
-# Vab
-public/video
-*.zip
-*.7z
-*.rar
-src/vab/styles/themes/red.scss
+# 编辑器临时文件
+*~
+\#*\#
+.#*
+
+# 文档（根据需要可以取消注释）
+# API_DOCS_APP_AUTH.md

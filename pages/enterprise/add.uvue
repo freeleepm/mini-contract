@@ -264,7 +264,7 @@
 							url: `/pages/kyc/enterprise/index?id=${enterpriseId}&name=${this.enterpriseInfo.name}&creditCode=${this.enterpriseInfo.creditCode}&legalPerson=${this.enterpriseInfo.legalName}`
 						});
 					}, 1500);
-				} catch (error) {
+				} catch (error: any) {
 					uni.hideLoading();
 					console.error('创建企业失败:', error);
 					
@@ -399,7 +399,7 @@
 				<!-- 优化后的提示信息 -->
 				<view class="form-tips">
 					<view class="tips-icon-container">
-						<text class="icon fa fa-lightbulb-o"></text>
+						<text class="fa fa-lightbulb"></text>
 					</view>
 					<view class="tips-content">
 						<text class="tips-title">创建提示</text>
@@ -630,10 +630,10 @@
 		padding: 6rpx; /* 添加内边距，确保图标有足够空间 */
 	}
 	
-	.form-tips .icon {
+	.form-tips .fa {
 		color: #FAAD14;
 		font-size: 32rpx;
-		line-height: 1; /* 确保图标垂直居中 */
+		line-height: 1;
 	}
 	
 	.tips-content {
@@ -680,5 +680,18 @@
 	.submit-button[disabled] {
 		background-color: #A0CFBE;
 		color: #FFFFFF;
+	}
+	
+	/* FontAwesome 图标样式 */
+	.fa {
+		font-family: 'Font Awesome 6 Free';
+		font-weight: 900;
+		font-size: 26rpx;
+		font-style: normal;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+		display: inline-block;
+		line-height: 1;
+		text-rendering: auto;
 	}
 </style> 

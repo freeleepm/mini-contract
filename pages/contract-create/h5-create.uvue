@@ -16,6 +16,7 @@
  * @date 2025-11-02
  */
 import { getSealPageUrl } from '../../api/seals/index';
+import { API_BASE_URL } from '../../api/config';
 
 export default {
 	data() {
@@ -37,6 +38,12 @@ export default {
 			
 		// 草稿ID（继续编辑草稿时使用）
 		draftId: '',
+		
+		// PDF URL（从AI起草预览页面传递）
+		pdfUrl: '',
+		
+		// 合同名称（从AI起草预览页面传递）
+		contractName: '',
 		
 		// JSBridge状态
 		bridgeReady: false,
@@ -63,6 +70,20 @@ export default {
 		if (options.draftId) {
 			this.draftId = options.draftId;
 			console.log('[H5容器] 草稿ID:', this.draftId);
+		}
+		
+		// 获取PDF URL（从AI起草预览页面传递）
+		if (options.pdfUrl) {
+			const decoded = decodeURIComponent(options.pdfUrl ?? '');
+			this.pdfUrl = decoded || '';
+			console.log('[H5容器] PDF URL:', this.pdfUrl);
+		}
+		
+		// 获取合同名称（从AI起草预览页面传递）
+		if (options.name) {
+			const decoded = decodeURIComponent(options.name ?? '');
+			this.contractName = decoded || '';
+			console.log('[H5容器] 合同名称:', this.contractName);
 		}
 		
 		// 初始化JSBridge
@@ -202,9 +223,6 @@ export default {
 		try {
 			// 构建额外参数
 			const params: Record<string, string | number> = {};
-				
-				// 添加创建类型参数
-				params.type = this.createType;
 			
 			// 如果有模板ID，添加到参数中
 			if (this.templateId) {
@@ -218,9 +236,54 @@ export default {
 					console.log('[H5容器] 携带草稿ID参数:', this.draftId);
 				}
 				
-				// 使用统一的印章应用，mode=create，type区分创建方式
-			this.createUrl = await getSealPageUrl('create', '', params);
-				console.log('[H5容器] ✅ H5页面URL已生成 (type=' + this.createType + '):', this.createUrl);
+				// 如果有PDF URL，添加到参数中（AI起草功能使用）
+				if (this.pdfUrl) {
+					params.pdfUrl = this.pdfUrl;
+					console.log('[H5容器] 携带PDF URL参数:', this.pdfUrl);
+				}
+				
+				// 如果有合同名称，添加到参数中（AI起草功能使用）
+				if (this.contractName) {
+					params.name = this.contractName;
+					console.log('[H5容器] 携带合同名称参数:', this.contractName);
+				}
+				
+				// 获取当前选择的企业ID（如果用户以企业身份操作）
+				let enterpriseId: number | undefined = undefined;
+				try {
+					const savedIdentity = uni.getStorageSync('currentIdentity');
+					console.log('[H5容器] 读取到的身份信息:', savedIdentity);
+					if (savedIdentity) {
+						const identity = JSON.parse(savedIdentity) as { type?: string; id?: string | number } | null;
+						console.log('[H5容器] 解析后的身份信息:', JSON.stringify(identity));
+						if (identity && identity.type === 'enterprise' && identity.id) {
+							enterpriseId = Number(identity.id);  // 确保是数字类型
+							console.log('[H5容器] ✅ 携带企业ID参数:', enterpriseId);
+						} else {
+							console.log('[H5容器] 当前是个人身份，不携带企业ID');
+						}
+					} else {
+						console.log('[H5容器] 未找到身份信息');
+					}
+				} catch (e) {
+					console.warn('[H5容器] 获取当前身份信息失败:', e);
+				}
+				
+				// 如果有企业ID，添加到参数中
+				if (enterpriseId) {
+					params.enterpriseId = enterpriseId;
+				}
+				
+				// 🔧 修复：根据 createType 选择独立路由（不再通过 type 参数区分）
+				let mode: 'create' | 'create-file' | 'create-image' = 'create';
+				if (this.createType === 'file') {
+					mode = 'create-file';
+				} else if (this.createType === 'image') {
+					mode = 'create-image';
+				}
+				
+			this.createUrl = await getSealPageUrl(mode, '', params);
+				console.log('[H5容器] ✅ H5页面URL已生成 (mode=' + mode + '):', this.createUrl);
 				
 				uni.showLoading({
 					title: '加载创建页面...'
@@ -240,17 +303,8 @@ export default {
 		 */
 		handleLoad(e) {
 			console.log('[H5创建] 页面加载完成:', e);
-			
 			this.loading = false;
-			
-			// 隐藏加载提示
 			uni.hideLoading();
-			
-			uni.showToast({
-				title: '页面加载完成',
-				icon: 'success',
-				duration: 1500
-			});
 		},
 		
 		/**
@@ -560,8 +614,7 @@ export default {
 				// 显示上传进度
 				uni.showLoading({ title: '上传中...' });
 				
-				// 获取API基础URL和token
-				const API_BASE_URL = 'http://localhost:48080'; // TODO: 从配置读取
+				// 获取token
 				const token = uni.getStorageSync('token');
 				
 				// 上传文件
@@ -576,9 +629,12 @@ export default {
 						uni.hideLoading();
 						
 						try {
-							const result = JSON.parse(uploadRes.data);
+							const result = JSON.parse(uploadRes.data) as { code?: number; msg?: string; data?: { id?: string; url?: string } | string } | null;
 							
-							if (result.code === 0) {
+							if (result && result.code === 0 && result.data) {
+								const data = result.data;
+								const fileId = typeof data === 'object' ? (data.id || '') : data;
+								const fileUrl = typeof data === 'object' ? (data.url || '') : data;
 								console.log('[JSBridge] 文件上传成功:', result.data);
 								
 								this.postMessageToH5({
@@ -586,14 +642,14 @@ export default {
 									callbackId: callbackId,
 									success: true,
 									data: {
-										fileId: result.data.id || result.data,
-										fileUrl: result.data.url || result.data
+										fileId: fileId,
+										fileUrl: fileUrl
 									}
 								});
 							} else {
-								throw new Error(result.msg || '上传失败');
+								throw new Error((result && result.msg) || '上传失败');
 							}
-						} catch (parseError) {
+						} catch (parseError: any) {
 							console.error('[JSBridge] 解析上传结果失败:', parseError);
 							throw new Error('解析响应失败');
 						}
@@ -629,7 +685,7 @@ export default {
 					action: 'uploadFileResult',
 					callbackId: callbackId,
 					success: false,
-					error: error.message || '文件上传异常'
+					error: (error instanceof Error ? error.message : String(error)) || '文件上传异常'
 				});
 			}
 		},
@@ -653,9 +709,9 @@ export default {
 		/**
 		 * 获取文件类型
 		 */
-		getFileType(fileName) {
-			const ext = fileName.split('.').pop().toLowerCase();
-			const typeMap = {
+		getFileType(fileName: string) {
+			const ext = fileName.split('.').pop()?.toLowerCase() || '';
+			const typeMap: Record<string, string> = {
 				'pdf': 'application/pdf',
 				'doc': 'application/msword',
 				'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -669,7 +725,7 @@ export default {
 		/**
 		 * 创建合同完成
 		 */
-		handleCreateCompleted(taskId) {
+		handleCreateCompleted(taskId: string | number | undefined) {
 			console.log('[H5创建] 创建完成，任务ID:', taskId);
 			
 			// 显示成功提示
@@ -691,7 +747,7 @@ export default {
 		/**
 		 * 表单提交成功
 		 */
-		handleFormSubmitted(taskId) {
+		handleFormSubmitted(taskId: string | number | undefined) {
 			console.log('[H5创建] 表单提交成功，任务ID:', taskId);
 			
 			// 显示成功提示并返回
@@ -714,7 +770,7 @@ export default {
 		/**
 		 * H5错误处理
 		 */
-		handleH5Error(message) {
+		handleH5Error(message: string | undefined) {
 			console.error('[H5创建] H5错误:', message);
 			
 			uni.showModal({

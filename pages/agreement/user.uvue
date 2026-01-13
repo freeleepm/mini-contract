@@ -25,7 +25,7 @@
 				
 				<view class="agreement-section">
 					<text class="section-title">一、总则</text>
-					<text class="section-content">1.1 本协议是您与捷Mini Contract Pro（以下简称"本平台"）之间关于您使用本平台服务所订立的协议。</text>
+					<text class="section-content">1.1 本协议是您与捷Contract.Pro（以下简称"本平台"）之间关于您使用本平台服务所订立的协议。</text>
 					<text class="section-content">1.2 本协议描述本平台与用户之间关于服务使用的权利义务。"用户"是指注册、登录、使用本服务的个人或企业。</text>
 					<text class="section-content">1.3 您在使用本平台提供的各项服务之前，应仔细阅读本协议。如您不同意本协议及/或随时对其的修改，您可以选择不使用本平台的服务；一旦您使用本平台的服务，即视为您已了解并完全同意本协议各项内容。</text>
 				</view>
@@ -33,7 +33,7 @@
 				<view class="agreement-section">
 					<text class="section-title">二、用户注册与账号管理</text>
 					<text class="section-content">2.1 用户资格：您确认，在您完成注册程序或实际使用本平台服务时，您应当是具备完全民事权利能力和完全民事行为能力的自然人、法人或其他组织。若您不具备前述主体资格，请勿使用本平台服务，否则您及您的监护人应承担因此而导致的一切后果。</text>
-					<text class="section-content">2.2 注册信息：在使用本服务前，您必须注册一个"Mini Contract Pro"账号。注册时，您应提供真实、准确、完整的个人或企业信息，并在信息发生变更时及时更新相关信息。若您提供的信息不真实、不准确或不完整，您可能无法使用本服务或在使用过程中受到限制。</text>
+					<text class="section-content">2.2 注册信息：在使用本服务前，您必须注册一个"Contract.Pro"账号。注册时，您应提供真实、准确、完整的个人或企业信息，并在信息发生变更时及时更新相关信息。若您提供的信息不真实、不准确或不完整，您可能无法使用本服务或在使用过程中受到限制。</text>
 					<text class="section-content">2.3 账号安全：您应妥善保管账号及密码信息，因您保管不善可能导致遭受盗号或密码失窃，责任由您自行承担。您同意，如发现有他人冒用或盗用您的账号及密码或发生其他任何安全问题时，应立即通知本平台。</text>
 				</view>
 				
@@ -101,7 +101,7 @@
 				</view>
 				
 				<view class="agreement-footer">
-					<text class="footer-text">Mini Contract Pro</text>
+					<text class="footer-text">Contract.Pro</text>
 				</view>
 			</view>
 		</scroll-view>

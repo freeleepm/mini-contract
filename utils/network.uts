@@ -70,32 +70,85 @@ export function testH5ServiceAvailability(
 	timeout: number = 5000
 ): Promise<H5ServiceCheckResult> {
 	return new Promise((resolve) => {
-		try {
-			const urlObj = new URL(url)
-			const baseUrl = `${urlObj.protocol}//${urlObj.host}`
-
-		uni.request({
-			url: baseUrl,
-			method: 'HEAD',
-			timeout: timeout,
-			dataType: 'text', // 🔧 关键修复：HEAD请求不应解析JSON，避免"Unexpected end of JSON input"错误
-			success: () => {
-				resolve({ available: true })
-			},
-			fail: (err) => {
-				console.error('[网络检查] H5服务不可用:', err)
-				resolve({
-					available: false,
-					errorType: ErrorType.SERVER,
-					errorMessage: 'H5签署服务暂时无法访问\n请稍后重试或联系技术支持'
-				})
-			}
-		})
-		} catch (error) {
-			console.error('[网络检查] URL解析失败:', error)
-			// URL解析失败时，继续尝试加载
-			resolve({ available: true })
+		// 🔧 修复：小程序环境不支持 new URL()，改用正则表达式验证
+		// 验证 URL 格式：必须以 http:// 或 https:// 开头，包含有效的主机名
+		const urlPattern = /^https?:\/\/[^\s/$.?#].[^\s]*$/i
+		
+		if (!url || typeof url !== 'string') {
+			console.error('[网络检查] URL为空或无效')
+			resolve({
+				available: false,
+				errorType: ErrorType.SERVER,
+				errorMessage: 'URL为空\n请联系技术支持'
+			})
+			return
 		}
+		
+		if (!urlPattern.test(url)) {
+			console.error('[网络检查] URL格式无效:', url)
+			resolve({
+				available: false,
+				errorType: ErrorType.SERVER,
+				errorMessage: 'URL格式无效\n请联系技术支持'
+			})
+			return
+		}
+		
+		console.log('[网络检查] URL格式验证通过:', url)
+		
+		const fetchFn = (globalThis as any)?.fetch
+		if (typeof fetchFn !== 'function') {
+			console.log('[网络检查] URL格式验证通过:', url)
+			resolve({ available: true })
+			return
+		}
+		
+		let finished = false
+		const finish = (result: H5ServiceCheckResult) => {
+			if (finished) return
+			finished = true
+			resolve(result)
+		}
+		
+		let controller: any = null
+		try {
+			const AbortCtrl = (globalThis as any)?.AbortController
+			if (typeof AbortCtrl === 'function') {
+				controller = new AbortCtrl()
+			}
+		} catch (e) {
+			controller = null
+		}
+		
+		const timer = setTimeout(() => {
+			try {
+				if (controller) controller.abort()
+			} catch (e) {}
+			finish({
+				available: false,
+				errorType: ErrorType.TIMEOUT,
+				errorMessage: '连接超时\n请检查网络状况后重试'
+			})
+		}, timeout)
+		
+		fetchFn(url, {
+			method: 'GET',
+			mode: 'no-cors',
+			cache: 'no-store',
+			...(controller ? { signal: controller.signal } : {})
+		}).then(() => {
+			clearTimeout(timer)
+			console.log('[网络检查] URL格式验证通过:', url)
+			finish({ available: true })
+		}).catch((error: any) => {
+			clearTimeout(timer)
+			console.error('[网络检查] 服务不可达:', error)
+			finish({
+				available: false,
+				errorType: ErrorType.SERVER,
+				errorMessage: 'H5服务暂时不可用\n请稍后重试或联系客服'
+			})
+		})
 	})
 }
 

@@ -137,7 +137,7 @@ export default {
 			} catch (error) {
 				console.error('加载审查历史失败', error);
 				uni.showToast({
-					title: error.message || '加载失败',
+					title: (error instanceof Error ? error.message : String(error)) || '加载失败',
 					icon: 'none'
 				});
 			} finally {
@@ -213,9 +213,9 @@ export default {
 					content: '是否重新审查该合同？',
 					confirmText: '确认',
 					cancelText: '取消'
-				});
+				}) as { confirm: boolean; cancel: boolean } | null;
 				
-				if (!result.confirm) {
+				if (!result || !result.confirm) {
 					return;
 				}
 
@@ -242,7 +242,7 @@ export default {
 				uni.hideLoading();
 				console.error('重新审查失败', error);
 				uni.showToast({
-					title: error.message || '操作失败',
+					title: (error instanceof Error ? error.message : String(error)) || '操作失败',
 					icon: 'none'
 				});
 			}

@@ -1,0 +1,305 @@
+/**
+ * 小华同学AI
+ * 微信公众号授权实现
+ * 支持 OAuth2.0 网页授权登录
+ */
+
+import { 
+    SocialType, 
+    getSocialAuthRedirect,
+    socialLogin, 
+    getSocialUser,
+    bindSocialUser,
+    createWeixinJsapiSignature,
+    type SocialLoginResponse,
+    type SocialUserInfo,
+    type WxJsapiSignatureResponse
+} from '@/api/auth/social'
+import { getSealToken, clearSealToken } from '@/utils/sealTokenManager'
+
+// 社交类型 - 微信公众号
+const SOCIAL_TYPE = SocialType.WECHAT_MP
+
+/**
+ * 存储 openid 到本地
+ */
+function setOpenid(openid: string): void {
+    if (openid) {
+        uni.setStorageSync('wechat_openid', openid)
+        console.log('[WechatOfficialAccount] openid 已保存')
+    }
+}
+
+/**
+ * 获取本地存储的 openid
+ */
+export function getOpenid(): string {
+    return uni.getStorageSync('wechat_openid') || ''
+}
+
+/**
+ * 获取当前页面的根URL
+ */
+function getRootUrl(): string {
+    // #ifdef H5
+    const { protocol, host } = window.location
+    return `${protocol}//${host}/`
+    // #endif
+    // #ifndef H5
+    return ''
+    // #endif
+}
+
+/**
+ * 获取当前完整URL
+ */
+function getCurrentUrl(): string {
+    // #ifdef H5
+    return window.location.href
+    // #endif
+    // #ifndef H5
+    return ''
+    // #endif
+}
+
+/**
+ * 保存登录信息到本地存储
+ */
+async function saveLoginInfo(response: SocialLoginResponse): Promise<void> {
+    // 保存 token
+    uni.setStorageSync('token', response.accessToken)
+    uni.setStorageSync('refreshToken', response.refreshToken)
+    uni.setStorageSync('userId', response.userId)
+    
+    // 保存 openid
+    if (response.openid) {
+        setOpenid(response.openid)
+    }
+    
+    console.log('[WechatOfficialAccount] 登录信息已保存')
+    
+    // 兑换 Seal-Token
+    try {
+        console.log('[WechatOfficialAccount] 开始兑换 Seal-Token...')
+        clearSealToken()
+        await getSealToken()
+        console.log('[WechatOfficialAccount] ✅ Seal-Token 兑换成功')
+    } catch (error) {
+        console.error('[WechatOfficialAccount] ⚠️ Seal-Token 兑换失败，但不影响登录:', error)
+    }
+}
+
+/**
+ * 获取微信公众号授权登录URL
+ * @param event 事件类型：login-登录 / bind-绑定
+ */
+async function getLoginUrl(event: string = 'login'): Promise<string | null> {
+    try {
+        // 构建回调页面URL
+        const redirectUri = getRootUrl() + 'pages/login/callback?event=' + event
+        console.log('[WechatOfficialAccount] 回调地址:', redirectUri)
+        
+        // 调用后端获取授权URL
+        const authUrl = await getSocialAuthRedirect(SOCIAL_TYPE, redirectUri)
+        console.log('[WechatOfficialAccount] 获取授权URL成功')
+        
+        return authUrl
+    } catch (error) {
+        console.error('[WechatOfficialAccount] 获取授权URL失败:', error)
+        return null
+    }
+}
+
+/**
+ * 微信公众号登录
+ * @param code 授权码（回调时传入）
+ * @param state 状态码（回调时传入）
+ * @returns 登录结果
+ */
+export async function login(code: string = '', state: string = ''): Promise<boolean | SocialLoginResponse> {
+    console.log('[WechatOfficialAccount] 开始登录流程...')
+    
+    // #ifdef H5
+    // 情况一：没有 code，需要跳转到微信授权页
+    if (!code) {
+        console.log('[WechatOfficialAccount] 无授权码，准备跳转微信授权页...')
+        
+        const loginUrl = await getLoginUrl('login')
+        if (loginUrl) {
+            // 保存当前页面URL，授权后跳回
+            uni.setStorageSync('wechat_return_url', getCurrentUrl())
+            console.log('[WechatOfficialAccount] 跳转到微信授权页:', loginUrl)
+            
+            // 跳转到微信授权页
+            window.location.href = loginUrl
+        } else {
+            uni.showToast({
+                title: '获取授权地址失败',
+                icon: 'none'
+            })
+        }
+        return false
+    }
+    
+    // 情况二：有 code，使用 code 进行登录
+    console.log('[WechatOfficialAccount] 使用授权码登录...')
+    
+    try {
+        const response = await socialLogin({
+            type: SOCIAL_TYPE,
+            code: code,
+            state: state || 'default'
+        })
+        
+        console.log('[WechatOfficialAccount] 登录成功')
+        
+        // 保存登录信息
+        await saveLoginInfo(response)
+        
+        return response
+    } catch (error) {
+        console.error('[WechatOfficialAccount] 登录失败:', error)
+        uni.showToast({
+            title: (error as any)?.message || '登录失败',
+            icon: 'none'
+        })
+        return false
+    }
+    // #endif
+    
+    // #ifndef H5
+    console.warn('[WechatOfficialAccount] 当前环境不支持公众号登录')
+    return false
+    // #endif
+}
+
+/**
+ * 绑定微信公众号账号
+ * @param code 授权码（回调时传入）
+ * @param state 状态码（回调时传入）
+ */
+export async function bind(code: string = '', state: string = ''): Promise<boolean> {
+    console.log('[WechatOfficialAccount] 开始绑定流程...')
+    
+    // #ifdef H5
+    // 情况一：没有 code，需要跳转到微信授权页
+    if (!code) {
+        const loginUrl = await getLoginUrl('bind')
+        if (loginUrl) {
+            uni.setStorageSync('wechat_return_url', getCurrentUrl())
+            window.location.href = loginUrl
+        }
+        return false
+    }
+    
+    // 情况二：有 code，使用 code 进行绑定
+    try {
+        const openid = await bindSocialUser(SOCIAL_TYPE, code, state || 'bind')
+        
+        if (openid) {
+            setOpenid(openid)
+            console.log('[WechatOfficialAccount] 绑定成功')
+            return true
+        }
+        return false
+    } catch (error) {
+        console.error('[WechatOfficialAccount] 绑定失败:', error)
+        return false
+    }
+    // #endif
+    
+    // #ifndef H5
+    return false
+    // #endif
+}
+
+/**
+ * 初始化微信 JSSDK
+ * 用于调用微信支付等功能
+ */
+export async function initWxJsSdk(): Promise<boolean> {
+    // #ifdef H5
+    try {
+        const url = getCurrentUrl().split('#')[0] // 去掉 hash 部分
+        const signature = await createWeixinJsapiSignature(url)
+        
+        console.log('[WechatOfficialAccount] JSSDK 签名获取成功')
+        
+        // 配置 wx.config
+        // 注意：需要在 index.html 中引入微信 JSSDK
+        if (typeof (window as any).wx !== 'undefined') {
+            (window as any).wx.config({
+                debug: false,
+                appId: signature.appId,
+                timestamp: signature.timestamp,
+                nonceStr: signature.nonceStr,
+                signature: signature.signature,
+                jsApiList: [
+                    'chooseWXPay',
+                    'updateAppMessageShareData',
+                    'updateTimelineShareData',
+                    'getLocation',
+                    'openLocation',
+                    'scanQRCode'
+                ]
+            })
+            
+            return new Promise((resolve) => {
+                (window as any).wx.ready(() => {
+                    console.log('[WechatOfficialAccount] JSSDK 初始化成功')
+                    resolve(true)
+                });
+                
+                (window as any).wx.error((err: any) => {
+                    console.error('[WechatOfficialAccount] JSSDK 初始化失败:', err)
+                    resolve(false)
+                })
+            })
+        } else {
+            console.warn('[WechatOfficialAccount] 未引入微信 JSSDK')
+            return false
+        }
+    } catch (error) {
+        console.error('[WechatOfficialAccount] JSSDK 初始化失败:', error)
+        return false
+    }
+    // #endif
+    
+    // #ifndef H5
+    return false
+    // #endif
+}
+
+/**
+ * 获取微信用户信息
+ */
+export async function getWechatUserInfo(): Promise<SocialUserInfo | null> {
+    try {
+        return await getSocialUser(SOCIAL_TYPE)
+    } catch (error) {
+        console.error('[WechatOfficialAccount] 获取用户信息失败:', error)
+        return null
+    }
+}
+
+/**
+ * 检查是否已绑定微信
+ */
+export async function isWechatBound(): Promise<boolean> {
+    const userInfo = await getWechatUserInfo()
+    return userInfo !== null && !!userInfo.openid
+}
+
+/**
+ * 获取回调后的返回URL
+ */
+export function getReturnUrl(): string {
+    return uni.getStorageSync('wechat_return_url') || ''
+}
+
+/**
+ * 清除返回URL
+ */
+export function clearReturnUrl(): void {
+    uni.removeStorageSync('wechat_return_url')
+}

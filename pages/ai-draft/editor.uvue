@@ -72,9 +72,11 @@ export default {
       contractTitle: '',
       contractContent: '',
       originalContent: '',
+      originalHtml: '',
       isSaved: true,
-      saveTimer: null,
-      loading: false
+      saveTimer: null as number | null,
+      loading: false,
+      isInitializing: true
     }
   },
   computed: {
@@ -91,17 +93,27 @@ export default {
     }
   },
   onUnload() {
-    // 页面卸载时保存
-    if (!this.isSaved) {
+    // 页面卸载时保存（仅在初始化完成后且有未保存内容时）
+    console.log('=== onUnload 触发 ===')
+    console.log('isSaved:', this.isSaved)
+    console.log('isInitializing:', this.isInitializing)
+    if (!this.isSaved && !this.isInitializing) {
+      console.log('触发onUnload保存')
       this.saveContract(true)
+    } else {
+      console.log('跳过onUnload保存')
     }
   },
   methods: {
     async loadContract() {
+      console.log('=== loadContract 开始 ===')
+      console.log('contractId:', this.contractId)
       try {
         uni.showLoading({ title: '加载中...' })
         const res = await getContract(this.contractId)
         uni.hideLoading()
+        
+        console.log('getContract 返回:', res)
         
         // 检查响应结构
         if (!res || typeof res !== 'object') {
@@ -111,24 +123,38 @@ export default {
         
         // 如果响应有code字段，检查code
         if ('code' in res && res.code !== 0) {
-          throw new Error(res.msg || '加载失败')
+          throw new Error((res as { msg?: string }).msg || '加载失败')
         }
         
         // 获取合同数据
-        const contractData = res.data || res
+        const contractData = (res as { data?: any }).data || res
         
         if (contractData && contractData.title) {
+          console.log('=== 开始设置合同数据 ===')
+          console.log('后端返回的content长度:', (contractData.content || '').length)
+          console.log('后端返回的content前200字符:', (contractData.content || '').substring(0, 200))
+          
           this.contractTitle = contractData.title
-          // 从HTML中提取文本内容（简化处理）
+          this.originalHtml = contractData.content || ''
           this.contractContent = this.extractTextFromHtml(contractData.content)
           this.originalContent = this.contractContent
           this.isSaved = true
           
-          console.log('合同加载成功，标题:', this.contractTitle)
+          console.log('✅ 合同加载成功')
+          console.log('contractTitle:', this.contractTitle)
+          console.log('originalHtml长度:', this.originalHtml.length)
+          console.log('contractContent长度:', this.contractContent.length)
+          console.log('originalContent长度:', this.originalContent.length)
+          
+          // 延迟设置初始化完成，避免v-model触发的input事件导致意外保存
+          setTimeout(() => {
+            this.isInitializing = false
+            console.log('✅ 编辑器初始化完成，isInitializing=false')
+          }, 500)
         } else {
           throw new Error('合同数据为空')
         }
-      } catch (error) {
+      } catch (error: any) {
         uni.hideLoading()
         console.error('加载合同失败:', error)
         uni.showToast({
@@ -144,13 +170,23 @@ export default {
       }
     },
     
-    handleTitleChange(e) {
+    handleTitleChange(e: { detail: { value: string } }) {
+      // 初始化阶段忽略input事件，避免意外保存覆盖原始内容
+      if (this.isInitializing) {
+        console.log('初始化阶段，忽略标题变更事件')
+        return
+      }
       this.contractTitle = e.detail.value
       this.isSaved = false
       this.scheduleAutoSave()
     },
     
-    handleContentChange(e) {
+    handleContentChange(e: { detail: { value: string } }) {
+      // 初始化阶段忽略input事件，避免意外保存覆盖原始内容
+      if (this.isInitializing) {
+        console.log('初始化阶段，忽略内容变更事件')
+        return
+      }
       this.contractContent = e.detail.value
       this.isSaved = false
       this.scheduleAutoSave()
@@ -167,13 +203,41 @@ export default {
     },
     
     async saveContract(sync = false) {
-      if (this.isSaved) return
+      console.log('=== saveContract 被调用 ===')
+      console.log('isSaved:', this.isSaved)
+      console.log('isInitializing:', this.isInitializing)
+      console.log('sync:', sync)
+      
+      if (this.isSaved) {
+        console.log('isSaved=true，跳过保存')
+        return
+      }
       
       this.loading = true
       
       try {
-        // 将文本内容包装为简单HTML
-        const htmlContent = this.wrapTextAsHtml(this.contractContent)
+        let htmlContent = ''
+        
+        // 判断用户是否修改了内容
+        const contentChanged = this.contractContent !== this.originalContent
+        console.log('内容是否变更:', contentChanged)
+        console.log('contractContent长度:', this.contractContent.length)
+        console.log('originalContent长度:', this.originalContent.length)
+        console.log('originalHtml长度:', this.originalHtml.length)
+        
+        if (contentChanged) {
+          // 用户修改了内容，生成新的HTML
+          htmlContent = this.wrapTextAsHtml(this.contractContent)
+          console.log('⚠️ 内容已修改，生成新HTML，长度:', htmlContent.length)
+        } else if (this.originalHtml) {
+          // 用户没有修改内容，保留原始HTML
+          htmlContent = this.originalHtml
+          console.log('✅ 内容未修改，保留原始HTML，长度:', htmlContent.length)
+        } else {
+          // 没有原始HTML，生成新的
+          htmlContent = this.wrapTextAsHtml(this.contractContent)
+          console.log('⚠️ 无原始HTML，生成新HTML，长度:', htmlContent.length)
+        }
         
         // updateContract返回的是data字段(true/false)，不是完整响应对象
         const result = await updateContract({
@@ -185,8 +249,11 @@ export default {
         if (result === true) {
           this.isSaved = true
           this.originalContent = this.contractContent
+          // 如果保存的是新生成的HTML，更新originalHtml
+          if (contentChanged) {
+            this.originalHtml = htmlContent
+          }
           if (!sync) {
-            // 异步保存时显示提示
             uni.showToast({
               title: '保存成功',
               icon: 'success',
@@ -199,7 +266,7 @@ export default {
             icon: 'none'
           })
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('保存失败:', error)
         if (!sync) {
           uni.showToast({
@@ -217,9 +284,16 @@ export default {
     },
     
     async handlePreview() {
-      // 先保存当前内容
-      if (!this.isSaved) {
+      console.log('=== handlePreview 触发 ===')
+      console.log('isSaved:', this.isSaved)
+      console.log('isInitializing:', this.isInitializing)
+      
+      // 先保存当前内容（仅在初始化完成后且有未保存内容时）
+      if (!this.isSaved && !this.isInitializing) {
+        console.log('预览前触发保存')
         await this.saveContract(true)
+      } else {
+        console.log('预览前跳过保存')
       }
       
       // 跳转到PDF预览页
@@ -229,8 +303,9 @@ export default {
     },
     
     async handleExport() {
-      // 先保存当前内容
-      if (!this.isSaved) {
+      console.log('=== handleExport 触发 ===')
+      // 先保存当前内容（仅在初始化完成后且有未保存内容时）
+      if (!this.isSaved && !this.isInitializing) {
         uni.showLoading({ title: '保存中...', mask: true })
         await this.saveContract(true)
         uni.hideLoading()
@@ -265,7 +340,8 @@ export default {
     },
     
     async handleComplete() {
-      if (!this.isSaved) {
+      console.log('=== handleComplete 触发 ===')
+      if (!this.isSaved && !this.isInitializing) {
         await this.saveContract(false)
       }
       
@@ -280,7 +356,7 @@ export default {
       })
     },
     
-    extractTextFromHtml(html) {
+    extractTextFromHtml(html: string | undefined) {
       if (!html) return ''
       
       try {
@@ -295,52 +371,47 @@ export default {
         // 3. 移除<script>标签及其内容
         text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
         
-        // 4. 移除<style>标签及其内容（关键！）
+        // 4. 移除<style>标签及其内容
         text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
         
         // 5. 移除<head>标签及其内容
         text = text.replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
         
-        // 6. 移除所有HTML标签，但保留内容
-        text = text.replace(/<[^>]+>/g, ' ')
+        // 6. 将<br>和</p>标签转换为换行符，保留段落结构
+        text = text.replace(/<br\s*\/?>/gi, '\n')
+        text = text.replace(/<\/p>/gi, '\n\n')
+        text = text.replace(/<\/div>/gi, '\n')
+        text = text.replace(/<\/h[1-6]>/gi, '\n\n')
         
-        // 7. 处理HTML实体
+        // 7. 移除所有剩余HTML标签
+        text = text.replace(/<[^>]+>/g, '')
+        
+        // 8. 处理HTML实体
         text = text
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&amp;/g, '&')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&amp;/g, '&')
           .replace(/&quot;/g, '"')
           .replace(/&#39;/g, "'")
           .replace(/&ldquo;/g, '"')
           .replace(/&rdquo;/g, '"')
         
-        // 8. 移除多余的空白字符
-        text = text
-          .replace(/\s+/g, ' ')  // 将多个空白字符替换为单个空格
-        .trim()
-        
-        // 9. 按句子分段，每个句子一行
-        text = text
-          .replace(/([。！？])\s*/g, '$1\n')  // 中文标点后换行
-          .replace(/([.!?])\s+/g, '$1\n')    // 英文标点后换行
-        
-        // 10. 移除空行
+        // 9. 清理多余空白，但保留段落结构
         text = text
           .split('\n')
           .map(line => line.trim())
           .filter(line => line.length > 0)
-          .join('\n\n')  // 段落间空一行
+          .join('\n')
         
         return text.trim()
-      } catch (error) {
+      } catch (error: any) {
         console.error('提取文本失败:', error)
         return ''
       }
     },
     
-    wrapTextAsHtml(text) {
-      // 如果文本为空，返回一个包含标题的基本HTML结构
+    wrapTextAsHtml(text: string | undefined) {
       if (!text || !text.trim()) {
         return `<!DOCTYPE html>
 <html>
@@ -348,9 +419,29 @@ export default {
   <meta charset="UTF-8">
   <title>${this.contractTitle || '未命名合同'}</title>
   <style>
-    body { font-family: SimSun, serif; line-height: 1.8; padding: 40px; }
-    h1 { text-align: center; font-size: 24px; margin-bottom: 30px; }
-    p { text-indent: 2em; margin: 10px 0; }
+    body { 
+      font-family: 'SimSun', '宋体', serif; 
+      line-height: 2.0; 
+      padding: 60px 80px;
+      font-size: 14px;
+      color: #333;
+    }
+    h1 { 
+      text-align: center; 
+      font-size: 22px; 
+      font-weight: bold;
+      margin-bottom: 40px;
+      line-height: 1.5;
+    }
+    p { 
+      text-indent: 2em; 
+      margin: 12px 0;
+      text-align: justify;
+    }
+    .signature-line {
+      margin-top: 40px;
+      line-height: 2.5;
+    }
   </style>
 </head>
 <body>
@@ -360,22 +451,52 @@ export default {
 </html>`
       }
       
-      // 简单包装为HTML
-      const paragraphs = text.split('\n').filter(p => p.trim())
+      // 将文本按段落分割并生成HTML
+      const lines = text.split('\n').filter(line => line.trim())
+      const bodyContent = lines.map(line => {
+        const trimmed = line.trim()
+        // 识别签名行（包含下划线或冒号的行）
+        if (trimmed.includes('___') || trimmed.includes('：___') || 
+            (trimmed.includes('：') && trimmed.length < 50)) {
+          return `<p class="signature-line">${trimmed}</p>`
+        }
+        return `<p>${trimmed}</p>`
+      }).join('\n  ')
+      
       return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <title>${this.contractTitle || '未命名合同'}</title>
   <style>
-    body { font-family: SimSun, serif; line-height: 1.8; padding: 40px; }
-    h1 { text-align: center; font-size: 24px; margin-bottom: 30px; }
-    p { text-indent: 2em; margin: 10px 0; }
+    body { 
+      font-family: 'SimSun', '宋体', serif; 
+      line-height: 2.0; 
+      padding: 60px 80px;
+      font-size: 14px;
+      color: #333;
+    }
+    h1 { 
+      text-align: center; 
+      font-size: 22px; 
+      font-weight: bold;
+      margin-bottom: 40px;
+      line-height: 1.5;
+    }
+    p { 
+      text-indent: 2em; 
+      margin: 12px 0;
+      text-align: justify;
+    }
+    .signature-line {
+      margin-top: 40px;
+      line-height: 2.5;
+    }
   </style>
 </head>
 <body>
   <h1>${this.contractTitle || '未命名合同'}</h1>
-  ${paragraphs.map(p => `<p>${p}</p>`).join('\n  ')}
+  ${bodyContent}
 </body>
 </html>`
     }

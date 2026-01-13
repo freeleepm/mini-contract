@@ -5,7 +5,8 @@
  * 注意：Seal模块使用统一的版本化路径 /api/v1/seal
  */
 import { get, post, put, del } from '../index';
-import { ADMIN_H5_BASE_URL } from '../config.uts';
+import { SEAL_CORE_H5_URL } from '../config.uts';
+import { getSealTokenConfig, LOG_PREFIX } from '../../config/seal.config';
 
 // ==================== 数据类型定义 ====================
 
@@ -373,18 +374,61 @@ export function deleteSignTask(id: string): Promise<void> {
  * @returns 页面完整URL
  */
 /**
- * 生成 Seal-Token
+ * 生成 Seal-Token（统一接口）
  * 移动端使用标准 Authorization Token 换取 Seal-Token
- * @param expireMinutes Token 有效期（分钟），默认 30 天
+ * 企业ID通过Token加密传递，而非URL明文参数
+ * 
+ * 🆕 统一接口：/api/v1/seal/auth/exchange-token
+ * 兼容移动端和PC端，后端根据请求来源自动识别用户
+ * 
+ * @param options 可选参数
+ * @param options.expireMinutes Token 有效期（分钟），默认使用配置文件中的值（30天）
+ * @param options.enterpriseId 企业ID（可选，加密到Token中）
  * @returns Promise<Seal-Token>
  */
-export async function generateSealToken(expireMinutes: number = 43200): Promise<string> {
+export async function generateSealToken(options?: { 
+	expireMinutes?: number, 
+	enterpriseId?: number
+}): Promise<string> {
 	try {
-		const response = await post<{ token: string }>('/api/v1/seal/seal-info/generate-token', {
-			expireMinutes
-		});
-		console.log('[Seal API] ✅ Seal-Token 生成成功');
-		return response.token;
+		// 🆕 使用统一配置（静态导入，兼容小程序环境）
+		const config = getSealTokenConfig('mobile');
+		const finalExpireMinutes = options?.expireMinutes || config.expireMinutes;
+		
+		// 企业ID加密到Token中（安全增强）
+		if (options?.enterpriseId) {
+			console.log(`${LOG_PREFIX} 🏢 传递企业ID到Token:`, options.enterpriseId);
+		}
+		
+		console.log(`${LOG_PREFIX} 移动端兑换 Seal-Token, expireMinutes: ${finalExpireMinutes}, platform: ${config.platform}`);
+	
+	// 🆕 使用统一接口（兼容旧接口和新接口）
+	const response = await post<any>('/api/v1/seal/auth/exchange-token', {
+		enterpriseId: options?.enterpriseId,
+		expireMinutes: finalExpireMinutes
+	});
+	
+	// 🔧 调试日志：打印后端返回的原始数据
+	console.log(`${LOG_PREFIX} 📦 后端返回数据类型:`, typeof response);
+	console.log(`${LOG_PREFIX} 📦 后端返回数据内容:`, JSON.stringify(response));
+	
+	// 🔧 兼容两种返回格式：
+	// 1. 直接返回 token 字符串：response = "eyJhbGc..."
+	// 2. 返回对象：response = { token: "eyJhbGc..." }
+	let token: string;
+	if (typeof response === 'string') {
+		token = response;
+		console.log(`${LOG_PREFIX} ✅ 后端直接返回 token 字符串`);
+	} else if (response && typeof response === 'object' && response.token) {
+		token = response.token;
+		console.log(`${LOG_PREFIX} ✅ 后端返回 { token: string } 对象`);
+	} else {
+		console.error(`${LOG_PREFIX} ❌ 无法从后端响应中提取 token:`, response);
+		throw new Error('后端返回数据格式错误：无法提取 token');
+	}
+	
+	console.log(`${LOG_PREFIX} ✅ Seal-Token 生成成功, token 前20位:`, token.substring(0, 20) + '...');
+	return token;
 	} catch (error) {
 		console.error('[Seal API] ❌ 生成 Seal-Token 失败:', error);
 		throw error;
@@ -392,25 +436,51 @@ export async function generateSealToken(expireMinutes: number = 43200): Promise<
 }
 
 export async function getSealPageUrl(
-	mode: 'create' | 'sign' | 'view' | 'form' | 'seal-create' | 'template-preview',
+	mode: 'create' | 'create-file' | 'create-image' | 'sign' | 'view' | 'form' | 'seal-create' | 'template-preview',
 	taskId?: string,
-	options?: { token?: string, enterpriseId?: number, templateId?: number, type?: string, draftId?: string }
+	options?: { token?: string, enterpriseId?: number, enterpriseName?: string, templateId?: number, type?: string, draftId?: string, pdfUrl?: string, name?: string }
 ): Promise<string> {
-	// 生成 Seal-Token (使用移动端的标准 Authorization token 换取)
-	const sealToken = options?.token || await generateSealToken();
+	// 🆕 获取统一配置（静态导入，兼容小程序环境）
+	const config = getSealTokenConfig('mobile');
 	
-	// ✅ 使用导入的 ADMIN_H5_BASE_URL（已在文件顶部导入）
-	// 构建URL，传递 Seal-Token
-	let url = `${ADMIN_H5_BASE_URL}/h5-seal.html?mode=${mode}&token=${encodeURIComponent(sealToken)}`;
+	// 生成 Seal-Token（安全增强：enterpriseId 加密到 Token 中，而非 URL 明文传递）
+	const sealToken = options?.token || await generateSealToken({
+		enterpriseId: options?.enterpriseId  // ✅ 企业ID加密到Token中
+	});
+	
+	// 根据 mode 映射到 seal-core 的路由路径（独立路由设计）
+	let path = '';
+	switch (mode) {
+		case 'create': path = '/h5/sign/create'; break;           // 模板创建
+		case 'create-file': path = '/h5/sign/create-file'; break; // 🆕 文件创建
+		case 'create-image': path = '/h5/sign/create-image'; break; // 🆕 图片创建
+		case 'sign': path = '/h5/sign/document'; break;
+		case 'view': path = '/h5/preview/contract'; break;
+		case 'form': path = '/h5/sign/form'; break;
+		case 'seal-create': path = '/h5/seal/create'; break;
+		case 'template-preview': path = '/h5/template/preview'; break;
+		default: path = '/h5/sign/create';
+	}
+	
+	// 🆕 构建URL，使用统一配置的平台标识
+	// ⚠️ 安全增强：enterpriseId 不再通过 URL 明文传递，而是加密在 Token 中
+	let url = `${SEAL_CORE_H5_URL}${path}?token=${encodeURIComponent(sealToken)}&platform=${config.platform}`;
 	
 	// 如果有taskId，添加到URL
 	if (taskId) {
 		url += `&taskId=${taskId}`;
 	}
 	
-	// 如果有enterpriseId，添加到URL（告诉H5这是企业印章创建）
+	// 🔧 临时方案：同时通过URL传递enterpriseId（直到Token生成逻辑完全修复）
+	// TODO: 未来移除此URL参数，完全依赖Token中的enterprise_id
 	if (options?.enterpriseId) {
 		url += `&enterpriseId=${options.enterpriseId}`;
+	}
+	
+	// 🆕 如果有enterpriseName，添加到URL（用于印章创建时自动填充）
+	// 企业名称不是敏感信息，可以明文传递
+	if (options?.enterpriseName) {
+		url += `&enterpriseName=${encodeURIComponent(options.enterpriseName)}`;
 	}
 	
 	// 🆕 如果有templateId，添加到URL（用于模版预览模式）
@@ -428,7 +498,18 @@ export async function getSealPageUrl(
 		url += `&draftId=${options.draftId}`;
 	}
 	
-	console.log('[getSealPageUrl] 🎯 H5页面URL已生成:', url);
+	// 如果有pdfUrl，添加到URL（AI起草功能使用，跳过文件上传步骤）
+	if (options?.pdfUrl) {
+		url += `&pdfUrl=${encodeURIComponent(options.pdfUrl)}`;
+	}
+	
+	// 如果有name，添加到URL（合同名称，AI起草功能使用）
+	if (options?.name) {
+		url += `&name=${encodeURIComponent(options.name)}`;
+	}
+	
+	console.log(`${LOG_PREFIX} 🎯 Seal Core H5页面URL:`, url);
+	console.log(`${LOG_PREFIX} 🔒 enterpriseId 已加密到 Token 中:`, options?.enterpriseId || 'null');
 	return url;
 }
 
@@ -493,3 +574,11 @@ export function getSignTaskStatusClass(status: SignTaskStatus): string {
 	};
 	return classMap[status] || 'status-unknown';
 }
+
+// ==================== Token 管理工具 ====================
+// 🆕 统一使用 /utils/sealTokenManager.uts 管理 Seal Token
+// 参考 PC 端 SealTokenManager 实现：缓存、有效期检查、自动刷新
+// 
+// 使用方式：
+// import { getSealToken, clearSealToken } from '@/utils/sealTokenManager'
+// await getSealToken() // 获取有效的 token（自动检查过期、自动刷新）

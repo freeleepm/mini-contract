@@ -67,6 +67,12 @@ export default {
                 '不要佩戴墨镜、帽子等遮挡面部的物品',
                 '照片将用于实名认证，请确保真实有效'
             ],
+            // 图标化的注意事项
+            iconTips: [
+                { icon: 'icon-hat', text: '不要戴帽子' },
+                { icon: 'icon-sunglasses', text: '不要戴墨镜' },
+                { icon: 'icon-users', text: '避免他人入镜' }
+            ],
             
             // 上传状态
             uploadStatus: {
@@ -334,7 +340,13 @@ export default {
                             })
                             
             // 使用前端直传模式上传照片
-                            const uploadOptions = {
+                            const uploadOptions: {
+                                fileName?: string;
+                                directory?: string;
+                                fileType?: string;
+                                onProgress?: (percent: number) => void;
+                                expirationHours?: number;
+                            } = {
                                 fileName: customFileName,
                                 directory: UPLOAD_CONFIG.DIRECTORIES.VERIFY,
                 // 设置过期时间为24小时，确保未使用的照片会自动删除
@@ -772,22 +784,28 @@ export default {
 						<text class="modal-title">人脸拍摄指南</text>
 					</view>
 					<view class="modal-body">
+						<!-- 文字提示 -->
 						<view class="guidance-item" v-for="(tip, index) in guidanceTips" :key="index">
 							<text class="guidance-number">{{ index + 1 }}.</text>
 							<text class="guidance-text">{{ tip }}</text>
 						</view>
-						<view class="guidance-image-container">
-							<view class="guidance-image-wrapper good">
-								<view class="guidance-image-placeholder">
-									<text class="icon icon-user"></text>
-								</view>
-								<text class="guidance-image-label">正确示例</text>
+						
+						<!-- 人脸轮廓示意图 -->
+						<view class="face-outline-container">
+							<view class="face-outline">
+								<view class="face-outline-border"></view>
 							</view>
-							<view class="guidance-image-wrapper bad">
-								<view class="guidance-image-placeholder">
-									<text class="icon icon-user-slash"></text>
+							<text class="face-outline-tip">识别时请确保半米内无其他游客</text>
+						</view>
+						
+						<!-- 图标化注意事项 -->
+						<view class="icon-tips-container">
+							<view class="icon-tip-item" v-for="(tip, index) in iconTips" :key="index">
+								<view class="icon-tip-circle">
+									<text class="icon" :class="tip.icon"></text>
+									<view class="icon-tip-slash"></view>
 								</view>
-								<text class="guidance-image-label">错误示例</text>
+								<text class="icon-tip-text">{{ tip.text }}</text>
 							</view>
 						</view>
 					</view>
@@ -1263,49 +1281,85 @@ export default {
 	flex: 1;
 }
 
-.guidance-image-container {
+/* 人脸轮廓示意图 */
+.face-outline-container {
+	align-items: center;
+	margin-top: 40rpx;
+	margin-bottom: 30rpx;
+}
+
+.face-outline {
+	width: 280rpx;
+	height: 340rpx;
+	position: relative;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 20rpx;
+}
+
+.face-outline-border {
+	width: 100%;
+	height: 100%;
+	border-width: 3rpx;
+	border-style: dashed;
+	border-color: #FF4D4F;
+	border-radius: 140rpx 140rpx 180rpx 180rpx;
+	background-color: #FAFAFA;
+}
+
+.face-outline-tip {
+	font-size: 24rpx;
+	color: #FF4D4F;
+	text-align: center;
+	line-height: 36rpx;
+}
+
+/* 图标化注意事项 */
+.icon-tips-container {
 	flex-direction: row;
 	justify-content: space-around;
 	margin-top: 30rpx;
+	padding: 0 20rpx;
 }
 
-.guidance-image-wrapper {
+.icon-tip-item {
 	align-items: center;
-	width: 200rpx;
+	flex: 1;
 }
 
-.guidance-image-placeholder {
-	width: 160rpx;
-	height: 160rpx;
-	border-radius: 80rpx;
+.icon-tip-circle {
+	width: 100rpx;
+	height: 100rpx;
+	border-radius: 50rpx;
+	border-width: 3rpx;
+	border-color: #FF4D4F;
 	align-items: center;
 	justify-content: center;
 	margin-bottom: 10rpx;
+	position: relative;
+	background-color: #FFFFFF;
+	overflow: hidden;
 }
 
-.guidance-image-wrapper.good .guidance-image-placeholder {
-	background-color: rgba(0, 194, 138, 0.1);
+.icon-tip-circle .icon {
+	font-size: 40rpx;
+	color: #333333;
 }
 
-.guidance-image-wrapper.bad .guidance-image-placeholder {
-	background-color: rgba(255, 77, 79, 0.1);
+.icon-tip-slash {
+	position: absolute;
+	width: 140rpx;
+	height: 3rpx;
+	background-color: #FF4D4F;
+	transform: rotate(45deg);
+	top: 48rpx;
+	left: -20rpx;
 }
 
-.guidance-image-placeholder .icon {
-	font-size: 80rpx;
-}
-
-.guidance-image-wrapper.good .icon {
-	color: #00C28A;
-}
-
-.guidance-image-wrapper.bad .icon {
-	color: #FF4D4F;
-}
-
-.guidance-image-label {
-	font-size: 26rpx;
+.icon-tip-text {
+	font-size: 24rpx;
 	color: #666666;
+	text-align: center;
 }
 
 .modal-footer {

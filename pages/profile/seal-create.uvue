@@ -7,6 +7,8 @@
  * - 与PC端印章生成逻辑保持一致
  */
 import { getSealPageUrl } from '../../api/seals/index';
+import { checkNetworkStatus, testH5ServiceAvailability } from '../../utils/network';
+import { SEAL_CORE_H5_URL } from '../../api/config';
 
 export default {
   data() {
@@ -30,11 +32,64 @@ export default {
   },
   
   methods: {
-		/**
-		 * 构建印章创建页面URL
-		 */
+	/**
+	 * 构建印章创建页面URL
+	 */
 	async buildCreateUrl() {
 		try {
+			// 🔧 步骤 1: 检查网络状态
+			uni.showLoading({ title: '正在检测网络...', mask: true });
+			const networkResult = await checkNetworkStatus();
+			
+			if (!networkResult.success) {
+				uni.hideLoading();
+				this.loading = false;
+				this.errorMessage = networkResult.errorMessage || '网络连接失败';
+				uni.showModal({
+					title: '网络异常',
+					content: networkResult.errorMessage || '请检查网络连接后重试',
+					showCancel: true,
+					confirmText: '重试',
+					cancelText: '返回',
+					success: (res) => {
+						if (res.confirm) {
+							this.reloadPage();
+						} else {
+							uni.navigateBack();
+						}
+					}
+				});
+				return;
+			}
+			
+			// 🔧 步骤 2: 检查 H5 服务可用性
+			uni.showLoading({ title: '正在检测服务...', mask: true });
+			const serviceResult = await testH5ServiceAvailability(SEAL_CORE_H5_URL);
+			
+			if (!serviceResult.available) {
+				uni.hideLoading();
+				this.loading = false;
+				this.errorMessage = serviceResult.errorMessage || 'H5服务暂时不可用';
+				uni.showModal({
+					title: '服务异常',
+					content: serviceResult.errorMessage || 'H5服务暂时不可用\n请稍后重试或联系技术支持',
+					showCancel: true,
+					confirmText: '重试',
+					cancelText: '返回',
+					success: (res) => {
+						if (res.confirm) {
+							this.reloadPage();
+						} else {
+							uni.navigateBack();
+						}
+					}
+				});
+				return;
+			}
+			
+			// 🔧 步骤 3: 构建创建页面 URL
+			uni.showLoading({ title: '正在连接印章服务...', mask: true });
+			
 			// 使用统一印章应用，mode=seal-create
 			// ✅ getSealPageUrl 现在是异步函数，需要 await
 			this.createUrl = await getSealPageUrl('seal-create');
@@ -43,10 +98,22 @@ export default {
 			// 不显示"加载创建页面..."提示
 		} catch (error) {
 			console.error('[印章创建] ❌ 构建URL失败:', error);
+			uni.hideLoading();
+			this.loading = false;
 			this.errorMessage = '印章创建页面加载失败';
-			uni.showToast({
-				title: this.errorMessage,
-				icon: 'none'
+			uni.showModal({
+				title: '错误',
+				content: '印章创建页面加载失败\n请稍后重试或联系技术支持',
+				showCancel: true,
+				confirmText: '重试',
+				cancelText: '返回',
+				success: (res) => {
+					if (res.confirm) {
+						this.reloadPage();
+					} else {
+						uni.navigateBack();
+					}
+				}
 			});
 		}
 	},
@@ -199,156 +266,166 @@ export default {
 </script>
 
 <template>
-	<view class="seal-create-container">
-		<!-- 加载中提示（不显示文字，只显示加载动画） -->
-		<view v-if="loading" class="loading-container">
-			<view class="loading-spinner"></view>
-		</view>
-		
-	<!-- 错误提示 -->
-	<view v-if="errorMessage" class="error-container">
-		<text class="fa fa-exclamation-circle error-icon"></text>
-		<text class="error-text">{{ errorMessage }}</text>
-		<view class="error-buttons">
-			<view class="error-btn secondary" @click="() => uni.navigateBack()">
-				<text class="btn-text">返回</text>
-			</view>
-			<view class="error-btn primary" @click="reloadPage">
-				<text class="fa fa-refresh btn-icon"></text>
-				<text class="btn-text">重新加载</text>
-			</view>
-				</view>
-				</view>
-		
-		<!-- WebView -->
-		<web-view 
-			v-if="createUrl && !errorMessage"
-			:src="createUrl"
-			@load="handleLoad"
-			@error="handleError"
-			@message="handleMessage"
-		></web-view>
-	</view>
+  <view class="seal-create-container">
+    <!-- 加载中提示 -->
+    <view v-if="loading" class="loading-container">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">正在连接印章服务...</text>
+    </view>
+    
+    <!-- 错误提示 -->
+    <view v-if="errorMessage" class="error-container">
+      <text class="fa fa-circle-exclamation error-icon"></text>
+      <text class="error-title">加载失败</text>
+      <text class="error-text">{{ errorMessage }}</text>
+      <view class="error-buttons">
+        <view class="error-btn secondary" @click="() => uni.navigateBack()">
+          <text class="btn-text">返回</text>
+        </view>
+        <view class="error-btn primary" @click="reloadPage">
+          <text class="fa fa-rotate-right btn-icon"></text>
+          <text class="btn-text">重新加载</text>
+        </view>
+      </view>
+    </view>
+    
+    <!-- WebView -->
+    <web-view 
+      v-if="createUrl && !errorMessage"
+      :src="createUrl"
+      class="webview"
+      @load="handleLoad"
+      @error="handleError"
+      @message="handleMessage"
+    ></web-view>
+  </view>
 </template>
 
-<style>
-/* FontAwesome基础样式 */
-.fa {
-	font-family: FontAwesome;
-	font-size: 26rpx;
-	font-style: normal;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-}
+<style scoped>
+@import url('../../static/styles/fontawesome.css');
 
-/* 页面容器 */
 .seal-create-container {
-	width: 100%;
-	height: 100%;
-  background-color: #F7F9FC;
+  flex: 1;
+  background-color: #F7F8FA;
+  display: flex;
+  flex-direction: column;
 }
 
-/* 加载中容器 */
+/* ============ 加载中样式 ============ */
 .loading-container {
-	width: 100%;
-	height: 100%;
-	align-items: center;
-	justify-content: center;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  background-color: #FFFFFF;
 }
 
 .loading-spinner {
-	width: 80rpx;
-	height: 80rpx;
-	border-width: 4rpx;
-	border-style: solid;
-	border-color: #E4E7ED;
-	border-top-color: #00C28A;
-	border-radius: 40rpx;
-	animation: spin 1s linear infinite;
+  width: 64rpx;
+  height: 64rpx;
+  border: 4rpx solid #E5E6EB;
+  border-top-color: #00C28A;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 24rpx;
 }
 
 @keyframes spin {
-	0% {
-		transform: rotate(0deg);
-	}
-	100% {
-		transform: rotate(360deg);
-	}
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .loading-text {
-	font-size: 28rpx;
-  color: #909399;
-	margin-top: 30rpx;
+  font-size: 28rpx;
+  color: #86909C;
+  font-weight: 500;
 }
 
-/* 错误容器 */
+/* ============ 错误提示样式 ============ */
 .error-container {
-  width: 100%;
-  height: 100%;
-  align-items: center;
+  flex: 1;
+  display: flex;
   justify-content: center;
-	padding: 60rpx;
+  align-items: center;
+  flex-direction: column;
+  padding: 60rpx;
+  background-color: #FFFFFF;
 }
 
 .error-icon {
-	font-size: 100rpx;
-	color: #F56C6C;
-	margin-bottom: 30rpx;
+  font-family: FontAwesome;
+  font-size: 96rpx;
+  color: #F53F3F;
+  margin-bottom: 24rpx;
+}
+
+.error-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1D2129;
+  margin-bottom: 12rpx;
 }
 
 .error-text {
-	font-size: 30rpx;
-	color: #606266;
-	text-align: center;
-	line-height: 50rpx;
-	margin-bottom: 40rpx;
+  font-size: 26rpx;
+  color: #86909C;
+  text-align: center;
+  margin-bottom: 48rpx;
+  line-height: 1.5;
 }
 
-/* 错误按钮组 */
 .error-buttons {
-	flex-direction: row;
-	align-items: center;
-	justify-content: center;
-	margin-top: 40rpx;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 24rpx;
 }
 
 .error-btn {
-	min-width: 200rpx;
-	height: 88rpx;
-	border-radius: 12rpx;
-	flex-direction: row;
-	align-items: center;
-	justify-content: center;
-	margin: 0 10rpx;
-}
-
-.error-btn.secondary {
-	background-color: #F5F7FA;
-	border: 1rpx solid #DCDFE6;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 0 40rpx;
+  height: 72rpx;
+  border-radius: 8rpx; /* 小圆角，商务风 */
+  min-width: 200rpx;
 }
 
 .error-btn.primary {
-	background-color: #00C28A;
+  background-color: #00C28A;
 }
 
-.error-btn.secondary .btn-text {
-  color: #606266;
-}
-
-.error-btn.primary .btn-text {
-	color: #FFFFFF;
+.error-btn.secondary {
+  background-color: #F7F8FA;
+  border: 1rpx solid #E5E6EB;
 }
 
 .btn-icon {
-	font-size: 28rpx;
-	color: #FFFFFF;
-	margin-right: 8rpx;
+  font-family: FontAwesome;
+  font-size: 24rpx;
+  margin-right: 8rpx;
+}
+
+.error-btn.primary .btn-icon,
+.error-btn.primary .btn-text {
+  color: #FFFFFF;
+}
+
+.error-btn.secondary .btn-text {
+  color: #4E5969;
 }
 
 .btn-text {
   font-size: 28rpx;
   font-weight: 500;
+}
+
+.webview {
+  flex: 1;
+  width: 100%;
+  height: 100%;
 }
 </style> 
 

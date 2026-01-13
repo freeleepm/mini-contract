@@ -1,37 +1,38 @@
 /**
+ * 小华同学AI
  * API 配置文件
  * 存储API基础URL和其他全局配置
  */
 
 // 环境配置
 export const ENV = {
-    DEV: 'development',
-    PROD: 'production',
-    TEST: 'testing'
+    DEV: 'development' as const,
+    PROD: 'production' as const,
+    TEST: 'testing' as const
 };
 
 // 当前环境 - 可以根据需要修改
-export const CURRENT_ENV = ENV.DEV;
+// 本地开发请使用 ENV.DEV，后台服务地址为 http://localhost:48080
+export const CURRENT_ENV: string = ENV.DEV as string;
 
 // 不同环境的API基础URL
-export const API_BASE_URLS = {
-    [ENV.DEV]: 'http://localhost:48080/app-api',  // 应用端接口
-    [ENV.TEST]: 'https://test-api.example.com/app-api',
-    [ENV.PROD]: 'https://api.example.com/app-api'
-};
-
-// 不同环境的后台H5页面基础URL
-export const ADMIN_H5_BASE_URLS = {
-    [ENV.DEV]: 'http://localhost:80',  // 后台H5页面地址
-    [ENV.TEST]: 'https://test-admin.example.com',
-    [ENV.PROD]: 'https://admin.example.com'
+export const API_BASE_URLS: Record<string, string> = {
+    'development': 'http://localhost:48080/app-api',  // 应用端接口
+    'testing': 'https://test-api.example.com/app-api',
+    'production': '/app-api'  // 生产环境使用相对路径，保留 /app-api 前缀
 };
 
 // 导出当前环境的API基础URL
-export const API_BASE_URL = API_BASE_URLS[CURRENT_ENV];
+export const API_BASE_URL: string = API_BASE_URLS[CURRENT_ENV] || '/app-api';
 
-// 导出当前环境的后台H5基础URL
-export const ADMIN_H5_BASE_URL = ADMIN_H5_BASE_URLS[CURRENT_ENV];
+// Seal Core H5 页面基础 URL
+export const SEAL_CORE_H5_URLS: Record<string, string> = {
+    'development': 'http://localhost:3100',
+    'testing': 'https://test-seal.example.com',
+    'production': 'https://prod-seal.example.com'
+};
+
+export const SEAL_CORE_H5_URL: string = SEAL_CORE_H5_URLS[CURRENT_ENV] || 'https://h5-sign.leepm.com';
 
 /**
  * 获取当前环境的API基础URL
@@ -47,14 +48,33 @@ export const TENANT_ID = '1';
 // 超时时间（毫秒）- 默认30秒
 export const TIMEOUT = 30000;
 
-// AI审查专用超时时间（毫秒）- 3分钟，因为AI分析需要较长时间
-export const AI_AUDIT_TIMEOUT = 180000;
-
 // AI生成合同专用超时时间（毫秒）- 3分钟，因为AI生成合同需要较长时间
 export const AI_GENERATION_TIMEOUT = 180000;
 
+// 文件上传配置类型
+export interface UploadConfigType {
+    MODE: string;
+    MAX_SIZE: {
+        IMAGE: number;
+        DOCUMENT: number;
+    };
+    ALLOWED_TYPES: {
+        IMAGE: string[];
+        DOCUMENT: string[];
+    };
+    DIRECTORIES: {
+        AVATAR: string;
+        VERIFY: string;
+        DOCUMENT: string;
+    };
+    EXPIRATION: {
+        VERIFY: number;
+        DEFAULT: number;
+    };
+}
+
 // 文件上传配置
-export const UPLOAD_CONFIG = {
+export const UPLOAD_CONFIG: UploadConfigType = {
     // 文件上传模式: 'server'(后端上传) 或 'client'(前端直传)
     MODE: 'client', // 使用前端直传模式
     // 文件大小限制（单位：MB）
@@ -80,15 +100,4 @@ export const UPLOAD_CONFIG = {
         // 通用文件过期时间（7天）
         DEFAULT: 7 * 24
     }
-};
-
-// 导出默认配置
-export default {
-    API_BASE_URL,
-    TENANT_ID,
-    TIMEOUT,
-    AI_AUDIT_TIMEOUT,
-    AI_GENERATION_TIMEOUT,
-    CURRENT_ENV,
-    UPLOAD_CONFIG
 }; 

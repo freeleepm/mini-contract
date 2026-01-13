@@ -3,11 +3,11 @@
 	import type { TemplateDetail } from '../../api/templates/index';
 	import { getSealPageUrl } from '../../api/seals/index';
 	import { formatDateTime } from '../../utils/date';
-	import { kycGuardMixin } from '../../utils/kyc-check';
+	import { checkNetworkStatus, testH5ServiceAvailability } from '../../utils/network';
+	import { getKycStatus, KycStatus } from '../../utils/kyc-check';
 	import KycModal from '../../components/KycModal.uvue';
 	
 	export default {
-		mixins: [kycGuardMixin],
 		components: {
 			KycModal
 		},
@@ -22,7 +22,11 @@
 			// H5预览页面URL
 			viewUrl: '',
 			// PDF预览图加载状态
-			imageLoading: true
+			imageLoading: true,
+			// 用户认证状态
+			verifyStatus: KycStatus.NOT_VERIFIED as number,
+			// 是否显示认证弹窗
+			showKycModal: false
 			}
 		},
 		onLoad(options: any) {
@@ -47,6 +51,39 @@
 			}
 		},
 		methods: {
+			// 检查实名认证状态
+			async checkKycStatus(): Promise<void> {
+				try {
+					const status = await getKycStatus();
+					this.verifyStatus = status;
+				} catch (error) {
+					console.error('检查实名认证状态失败:', error);
+				}
+			},
+			
+			// 检查是否可以执行需要认证的操作
+			checkCanProceed(): boolean {
+				if (this.verifyStatus === KycStatus.VERIFIED) {
+					return true;
+				}
+				// 显示认证提示
+				this.showKycModal = true;
+				return false;
+			},
+			
+			// 关闭认证提示弹窗
+			closeKycModal(): void {
+				this.showKycModal = false;
+			},
+			
+			// 前往实名认证
+			goToKyc(): void {
+				this.showKycModal = false;
+				uni.navigateTo({
+					url: '/pages/kyc/personal/index'
+				});
+			},
+			
 			// 获取模板详情
 			async getTemplateDetail(): Promise<void> {
 				if (this.isLoading) return;
@@ -76,45 +113,96 @@
 				}
 			},
 			
-	// 预览模板（带字段位置标记）
-	async handlePreview(): Promise<void> {
-		if (!this.templateDetail) return;
-		
-		console.log('[模板详情] 🆕 准备使用新的模板预览模式:', {
-			id: this.templateId,
-			name: this.templateDetail.name,
-			content: this.templateDetail.content,
-			fieldCount: this.getAllFields().length
-		});
-		
-		// 构建模板预览 H5 URL - 使用新的 template-preview 模式
-		const fileUrl = this.templateDetail.content || this.templateDetail.previewUrl;
-		
-		if (!fileUrl) {
-			uni.showToast({
-				title: '模板文件不存在',
-				icon: 'none'
-			});
-			return;
-		}
-		
-		// 使用新的 getSealPageUrl 函数，传入 template-preview 模式
-		// ✅ getSealPageUrl 现在是异步函数，需要 await
-		// 🔧 修复：传递 templateId 参数（而不是 fileUrl）
-		this.viewUrl = await getSealPageUrl('template-preview', undefined, {
-			templateId: Number(this.templateId)
-		});
+ 	// 预览模板（带字段位置标记）
+ 	async handlePreview(): Promise<void> {
+ 		if (!this.templateDetail) return;
+ 		
+ 		console.log('[模板详情] 🆕 准备使用新的模板预览模式:', {
+ 			id: this.templateId,
+ 			name: this.templateDetail.name,
+ 			content: this.templateDetail.content,
+ 			fieldCount: this.getAllFields().length
+ 		});
+ 		
+ 		// 构建模板预览 H5 URL - 使用新的 template-preview 模式
+ 		const fileUrl = this.templateDetail.content || this.templateDetail.previewUrl;
+ 		
+ 		if (!fileUrl) {
+ 			uni.showToast({
+ 				title: '模板文件不存在',
+ 				icon: 'none'
+ 			});
+ 			return;
+ 		}
+
+		try {
+			uni.showLoading({ title: '正在检测服务...', mask: true });
+			
+			// 步骤 1: 检查网络状态
+			const networkResult = await checkNetworkStatus();
+			if (!networkResult.success) {
+				uni.hideLoading();
+				uni.showModal({
+					title: '网络异常',
+					content: networkResult.errorMessage || '请检查网络连接后重试',
+					showCancel: false
+				});
+				return;
+			}
+			
+			// 步骤 2: 生成 H5 预览 URL
+			uni.showLoading({ title: '正在连接服务...', mask: true });
+			
+			// 使用新的 getSealPageUrl 函数，传入 template-preview 模式
+			// ✅ getSealPageUrl 现在是异步函数，需要 await
+			// 🔧 修复：传递 templateId 参数（而不是 fileUrl）
+			try {
+				this.viewUrl = await getSealPageUrl('template-preview', undefined, {
+					templateId: Number(this.templateId)
+				});
+			} catch (error) {
+				uni.hideLoading();
+				uni.showModal({
+					title: '服务异常',
+					content: '无法连接到预览服务\n请稍后重试或联系技术支持',
+					showCancel: false
+				});
+				return;
+			}
 			
 			console.log('[模板详情] ✅ 生成H5模板预览URL:', this.viewUrl);
 			
-			// 跳转到 WebView 页面（创建新页面或使用现有的 h5-view 页面）
+			// 步骤 3: 校验 H5 URL 格式
+			uni.showLoading({ title: '正在检测服务状态...', mask: true });
+			const serviceResult = await testH5ServiceAvailability(this.viewUrl, 8000);
+			
+			uni.hideLoading();
+			
+			if (!serviceResult.available) {
+				uni.showModal({
+					title: '预览服务暂时不可用',
+					content: serviceResult.errorMessage || 'H5预览服务暂时无法访问\n请稍后重试或联系技术支持',
+					showCancel: false
+				});
+				return;
+			}
+			
+			// 步骤 4: 跳转到 WebView 页面
 			uni.navigateTo({
 				url: `/pages/template-preview/h5-preview?url=${encodeURIComponent(this.viewUrl)}`
 			});
-		},
+		} catch (error) {
+			uni.hideLoading();
+			uni.showModal({
+				title: '打开失败',
+				content: '无法打开预览\n请稍后重试',
+				showCancel: false
+			});
+		}
+ 	},
 			
-		// 使用此模板创建合同
-		handleUseTemplate(): void {
+		// 使用此模板创建合同（先检测H5服务，再跳转）
+		async handleUseTemplate(): Promise<void> {
 			if (!this.templateDetail) return;
 		
 		// 先检查实名认证状态
@@ -125,10 +213,79 @@
 			
 			console.log('[模板详情] 使用模板创建合同:', this.templateId);
 			
-			// 跳转到H5创建合同页面，传递模板ID
-			uni.navigateTo({
-				url: `/pages/contract-create/h5-create?templateId=${this.templateId}`
-			});
+			try {
+				uni.showLoading({ title: '正在检测服务...', mask: true });
+				
+				// 步骤 1: 检查网络状态
+				const networkResult = await checkNetworkStatus();
+				if (!networkResult.success) {
+					uni.hideLoading();
+					uni.showModal({
+						title: '网络异常',
+						content: networkResult.errorMessage || '请检查网络连接后重试',
+						showCancel: false
+					});
+					return;
+				}
+				
+				// 步骤 2: 获取 H5 创建合同 URL
+				uni.showLoading({ title: '正在连接服务...', mask: true });
+				
+				// 获取当前选择的企业ID
+				let enterpriseId: number | undefined = undefined;
+				try {
+					const savedIdentity = uni.getStorageSync('currentIdentity');
+					if (savedIdentity && typeof savedIdentity === 'string') {
+						const identity = JSON.parse(savedIdentity) as { type?: string; id?: number };
+						if (identity && identity.type === 'enterprise' && identity.id) {
+							enterpriseId = identity.id;
+						}
+					}
+				} catch (e) {
+					console.warn('[模板详情] 获取当前身份信息失败:', e);
+				}
+				
+				let createUrl: string;
+				try {
+					createUrl = await getSealPageUrl('create', undefined, { templateId: Number(this.templateId), enterpriseId });
+				} catch (error) {
+					uni.hideLoading();
+					uni.showModal({
+						title: '服务异常',
+						content: '无法连接到创建服务\n请稍后重试或联系技术支持',
+						showCancel: false
+					});
+					return;
+				}
+				
+				// 步骤 3: 测试 H5 服务器可用性
+				uni.showLoading({ title: '正在检测服务状态...', mask: true });
+				const serviceResult = await testH5ServiceAvailability(createUrl, 8000);
+				
+				uni.hideLoading();
+				
+				if (!serviceResult.available) {
+					uni.showModal({
+						title: '签署服务暂时不可用',
+						content: serviceResult.errorMessage || 'H5签署服务暂时无法访问\n请稍后重试或联系技术支持',
+						showCancel: false
+					});
+					return;
+				}
+				
+				// 步骤 4: 所有检测通过，跳转到H5创建合同页面
+				uni.navigateTo({
+					url: `/pages/contract-create/h5-create?templateId=${this.templateId}`
+				});
+				
+			} catch (error) {
+				uni.hideLoading();
+				uni.showModal({
+					title: '检测失败',
+					content: '无法完成服务检测\n请稍后重试',
+					showCancel: false
+				});
+			}
 		},
 			
 			// 格式化时间
@@ -359,13 +516,7 @@
 			<view class="no-preview-container" v-else>
 				<text class="icon icon-file-pdf no-preview-icon"></text>
 				<text class="no-preview-text">暂无PDF预览图</text>
-				<text class="no-preview-hint">点击下方按钮查看完整PDF</text>
-				<view class="preview-btn-wrapper" v-if="templateDetail.content">
-					<view class="preview-btn" @click="handlePreview">
-						<text class="icon icon-eye preview-btn-icon"></text>
-						<text class="preview-btn-text">预览完整PDF</text>
-								</view>
-				</view>
+				<text class="no-preview-hint">点击右上角"查看完整PDF"按钮查看</text>
 						</view>
 						
 			<!-- 字段图例 -->
@@ -1196,40 +1347,6 @@
 	font-size: 24rpx;
 	color: #C0C4CC;
 	margin-bottom: 30rpx;
-}
-
-.preview-btn-wrapper {
-	width: 100%;
-	padding: 0 40rpx;
-}
-
-.preview-btn {
-	display: flex;  /* 确保flex布局生效 */
-	width: 100%;
-	height: 88rpx;
-		flex-direction: row;
-		align-items: center;
-	justify-content: center;
-	background-color: #00C28A;
-	border-radius: 44rpx;
-	cursor: pointer;
-	transition: opacity 0.2s;
-}
-
-.preview-btn:active {
-	opacity: 0.9;
-}
-
-.preview-btn-icon {
-	font-size: 32rpx;
-	color: #FFFFFF;
-	margin-right: 8rpx;
-}
-
-.preview-btn-text {
-	font-size: 30rpx;
-	color: #FFFFFF;
-	font-weight: 500;
 }
 
 /* 字段图例 */

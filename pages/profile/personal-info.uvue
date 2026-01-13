@@ -62,10 +62,10 @@
 					
 					console.log('更新后的个人信息:', JSON.stringify(this.userInfo))
 
-				} catch (error) {
+				} catch (error: any) {
 					console.error('获取用户信息失败:', error)
 					uni.showToast({
-						title: error.message || '获取用户信息失败',
+						title: (error && error.message) ? error.message : '获取用户信息失败',
 						icon: 'none'
 					})
 				}
@@ -124,9 +124,9 @@
 						title: '姓名修改成功',
 						icon: 'success'
 					});
-				} catch (error) {
+				} catch (error: any) {
 					uni.showToast({
-						title: error.message || '姓名修改失败',
+						title: (error && error.message) ? error.message : '姓名修改失败',
 						icon: 'none'
 					});
 				}

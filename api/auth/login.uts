@@ -2,7 +2,7 @@
  * 登录相关API
  */
 
-import { request, type ApiResponse } from '../index'
+import { request } from '../index'
 
 /**
  * 手机号+验证码登录请求参数
@@ -42,8 +42,9 @@ export interface SendCodeRequest {
  * 手机号+验证码登录（登录即注册）
  * @param data 登录参数
  * @returns 登录结果
+ * @note request 函数已经解包了 ApiResponse，所以直接返回 data 部分
  */
-export function smsLogin(data: SmsLoginRequest): Promise<ApiResponse<LoginResponse>> {
+export function smsLogin(data: SmsLoginRequest): Promise<LoginResponse> {
 	return request<LoginResponse>({
 		url: '/api/v1/member/auth/sms-login',
 		method: 'POST',
@@ -56,8 +57,9 @@ export function smsLogin(data: SmsLoginRequest): Promise<ApiResponse<LoginRespon
  * 手机号+密码登录
  * @param data 登录参数
  * @returns 登录结果
+ * @note request 函数已经解包了 ApiResponse，所以直接返回 data 部分
  */
-export function passwordLogin(data: PasswordLoginRequest): Promise<ApiResponse<LoginResponse>> {
+export function passwordLogin(data: PasswordLoginRequest): Promise<LoginResponse> {
 	return request<LoginResponse>({
 		url: '/api/v1/member/auth/login',
 		method: 'POST',
@@ -70,8 +72,9 @@ export function passwordLogin(data: PasswordLoginRequest): Promise<ApiResponse<L
  * 发送登录验证码
  * @param mobile 手机号
  * @returns 发送结果
+ * @note request 函数已经解包了 ApiResponse，所以直接返回 data 部分
  */
-export function sendLoginCode(mobile: string): Promise<ApiResponse<boolean>> {
+export function sendLoginCode(mobile: string): Promise<boolean> {
 	return request<boolean>({
 		url: '/api/v1/member/auth/send-sms-code',
 		method: 'POST',
@@ -83,3 +86,21 @@ export function sendLoginCode(mobile: string): Promise<ApiResponse<boolean>> {
 	})
 }
 
+export function sendUpdatePasswordCode(mobile: string): Promise<boolean> {
+	return request<boolean>({
+		url: '/api/v1/member/auth/send-sms-code',
+		method: 'POST',
+		data: {
+			mobile: mobile,
+			scene: 3 
+		}
+	})
+}
+
+export function updateUserPassword(data: { password: string; code: string }): Promise<boolean> {
+	return request<boolean>({
+		url: '/api/v1/member/user/update-password',
+		method: 'PUT',
+		data
+	})
+}

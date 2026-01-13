@@ -45,7 +45,8 @@ import { getSealPageUrl, submitSignResult } from '../../api/seals/index';
 import { 
 	analyzeWebViewError,
 	getErrorMessage,
-	ErrorType
+	ErrorType,
+	type ErrorTypeValue
 } from '../../utils/network';
 import H5LoadingContainer from '../../components/H5LoadingContainer.uvue';
 import H5ErrorContainer from '../../components/H5ErrorContainer.uvue';
@@ -59,26 +60,26 @@ export default {
 	data() {
 		return {
 			// H5签署页面URL
-			signUrl: '',
+			signUrl: '' as string,
 			
 			// 任务ID
-			taskId: '',
+			taskId: '' as string,
 			
 			// 文件ID（可选）
-			fileId: '',
+			fileId: '' as string,
 			
 			// 页面加载状态
-			loading: true,
+			loading: true as boolean,
 			
 			// 错误信息（仅用于运行时错误）
-			errorMessage: '',
+			errorMessage: '' as string,
 			
 			// 错误类型（仅用于运行时错误）
-			errorType: ''
+			errorType: '' as string
 		}
 	},
 	
-	onLoad(options) {
+	onLoad(options: any) {
 		console.log('[H5签署] 页面加载，参数:', options);
 		
 		// 获取任务ID
@@ -134,7 +135,7 @@ export default {
 		/**
 		 * WebView加载完成
 		 */
-		handleLoad(e) {
+		handleLoad(e: any): void {
 			console.log('[H5签署] WebView加载成功');
 			this.loading = false;
 			uni.hideLoading();
@@ -143,7 +144,7 @@ export default {
 		/**
 		 * WebView加载失败
 		 */
-		handleError(e) {
+		handleError(e: any): void {
 			console.error('[H5签署] WebView加载失败:', e);
 			
 			this.loading = false;
@@ -151,7 +152,7 @@ export default {
 			
 			// 使用网络工具分析错误类型
 			this.errorType = analyzeWebViewError(e);
-			this.errorMessage = getErrorMessage(this.errorType);
+			this.errorMessage = getErrorMessage(this.errorType as ErrorTypeValue);
 			
 			console.log('[H5签署] WebView加载失败，等待用户操作');
 		},
@@ -159,7 +160,7 @@ export default {
 		/**
 		 * 处理H5页面消息
 		 */
-		handleMessage(e) {
+		handleMessage(e: any): void {
 			console.log('[H5签署] 收到H5消息:', e);
 			
 			const data = e.detail.data[0];
@@ -186,13 +187,16 @@ export default {
 		/**
 		 * 处理签署完成
 		 */
-		async handleSignComplete(data) {
+		async handleSignComplete(data: any) {
 			console.log('[H5签署] 签署完成:', data);
 			
 			try {
 				// 提交签署结果到后端
 				if (data.signData) {
-					await submitSignResult(this.taskId, data.signData);
+					await submitSignResult({
+						taskId: this.taskId,
+						signedFileUrl: data.signData
+					});
 				}
 				
 				// 显示成功提示
@@ -218,7 +222,7 @@ export default {
 		/**
 		 * 处理签署取消
 		 */
-		handleSignCancel() {
+		handleSignCancel(): void {
 			console.log('[H5签署] 用户取消签署');
 			
 			uni.showModal({
@@ -235,7 +239,7 @@ export default {
 		/**
 		 * 处理签署错误
 		 */
-		handleSignError(data) {
+		handleSignError(data: any): void {
 			console.error('[H5签署] 签署错误:', data);
 			
 			uni.showToast({
@@ -248,7 +252,7 @@ export default {
 		/**
 		 * 手动重试
 		 */
-		manualRetry() {
+		manualRetry(): void {
 			console.log('[H5签署] 用户手动重试');
 			this.resetErrorState();
 			this.buildSignUrl();
@@ -257,7 +261,7 @@ export default {
 		/**
 		 * 重置错误状态
 		 */
-		resetErrorState() {
+		resetErrorState(): void {
 			this.errorMessage = '';
 			this.errorType = '';
 			this.loading = true;
@@ -267,14 +271,14 @@ export default {
 		/**
 		 * 返回上一页
 		 */
-		goBack() {
+		goBack(): void {
 			uni.navigateBack();
 		},
 		
 		/**
 		 * 联系客服
 		 */
-		contactSupport() {
+		contactSupport(): void {
 			uni.showModal({
 				title: '联系客服',
 				content: '客服电话：400-xxx-xxxx\n或发送邮件至：support@example.com',

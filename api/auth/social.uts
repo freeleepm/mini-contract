@@ -1,0 +1,144 @@
+/**
+ * 小华同学AI
+ * 社交登录相关 API
+ * 支持微信小程序、微信公众号等社交平台登录
+ */
+
+import { request, get, post } from '../index'
+
+// 社交类型枚举（与后端 SocialTypeEnum 对应）
+export const SocialType = {
+    WECHAT_MP: 31,           // 微信公众号
+    WECHAT_OPEN: 32,         // 微信开放平台(App)
+    WECHAT_MINI_PROGRAM: 34  // 微信小程序
+}
+
+/**
+ * 社交登录请求参数
+ */
+export interface SocialLoginRequest {
+    type: number    // 社交类型：31公众号/32开放平台/34小程序
+    code: string    // 授权码
+    state: string   // 状态码
+}
+
+/**
+ * 微信小程序一键登录请求参数
+ */
+export interface WeixinMiniAppLoginRequest {
+    phoneCode: string   // 手机号授权码（wx.getPhoneNumber 获取）
+    loginCode: string   // 登录授权码（wx.login 获取）
+    state: string       // 状态码
+}
+
+/**
+ * 登录响应数据
+ */
+export interface SocialLoginResponse {
+    accessToken: string      // 访问令牌
+    refreshToken: string     // 刷新令牌
+    userId: number           // 用户ID
+    expiresTime: number      // 过期时间（时间戳）
+    openid?: string          // 微信openid
+}
+
+/**
+ * 微信 JSSDK 签名响应
+ */
+export interface WxJsapiSignatureResponse {
+    appId: string
+    timestamp: number
+    nonceStr: string
+    signature: string
+    url: string
+}
+
+/**
+ * 社交用户信息
+ */
+export interface SocialUserInfo {
+    openid: string
+    nickname?: string
+    avatar?: string
+}
+
+/**
+ * 获取社交授权跳转URL
+ * @param type 社交类型
+ * @param redirectUri 回调地址
+ */
+export function getSocialAuthRedirect(type: number, redirectUri: string): Promise<string> {
+    return get<string>('/api/v1/member/auth/social-auth-redirect', {
+        type: type,
+        redirectUri: redirectUri
+    }, { isAuth: false })
+}
+
+/**
+ * 社交快捷登录（使用 code 授权码）
+ * 适用于：微信小程序静默登录、微信公众号授权登录
+ * @param data 登录参数
+ */
+export function socialLogin(data: SocialLoginRequest): Promise<SocialLoginResponse> {
+    return post<SocialLoginResponse>('/api/v1/member/auth/social-login', data, { isAuth: false })
+}
+
+/**
+ * 微信小程序一键登录（手机号快捷登录）
+ * @param data 登录参数
+ */
+export function weixinMiniAppLogin(data: WeixinMiniAppLoginRequest): Promise<SocialLoginResponse> {
+    return post<SocialLoginResponse>('/api/v1/member/auth/weixin-mini-app-login', data, { isAuth: false })
+}
+
+/**
+ * 创建微信 JSSDK 签名
+ * 用于微信公众号 H5 页面初始化 JSSDK
+ * @param url 当前页面URL
+ */
+export function createWeixinJsapiSignature(url: string): Promise<WxJsapiSignatureResponse> {
+    return post<WxJsapiSignatureResponse>('/api/v1/member/auth/create-weixin-jsapi-signature', null, {
+        isAuth: false,
+        params: { url: url }
+    })
+}
+
+/**
+ * 获取社交用户信息
+ * @param type 社交类型
+ */
+export function getSocialUser(type: number): Promise<SocialUserInfo | null> {
+    return get<SocialUserInfo | null>('/api/v1/member/social-user/get', {
+        type: type
+    })
+}
+
+/**
+ * 绑定社交账号
+ * @param type 社交类型
+ * @param code 授权码
+ * @param state 状态码
+ */
+export function bindSocialUser(type: number, code: string, state: string): Promise<string> {
+    return post<string>('/api/v1/member/social-user/bind', {
+        type: type,
+        code: code,
+        state: state
+    })
+}
+
+/**
+ * 解绑社交账号
+ * @param type 社交类型
+ * @param openid 社交平台openid
+ */
+export function unbindSocialUser(type: number, openid: string): Promise<boolean> {
+    return request<boolean>({
+        url: '/api/v1/member/social-user/unbind',
+        method: 'DELETE',
+        data: {
+            type: type,
+            openid: openid
+        }
+    })
+}

@@ -3,8 +3,45 @@
  * 用于开发阶段模拟后端API响应
  */
 
-import type { ContractSummary, ContractListResponse, ContractDetail, ContractListParams, ContractStatus } from '../contracts/index';
+import type { Contract, ContractListResponse, ContractStatus } from '../contracts/index';
 import type { Draft, DraftListResponse, DraftType } from './templates';
+
+// 定义 Mock 专用类型
+interface ContractListParams {
+    status?: string;
+    keyword?: string;
+    page?: number;
+    pageSize?: number;
+}
+
+interface MockContract {
+    id: string;
+    title: string;
+    status: string;
+    statusColor: string;
+    createTime: string;
+    initiator: {
+        id: string;
+        name: string;
+        company: string;
+        avatar: string;
+    };
+    participants: Array<{
+        id: string;
+        name: string;
+        company: string;
+        status: string;
+        signTime?: string;
+        avatar: string;
+    }>;
+    isUrgent: boolean;
+}
+
+interface MockContractListResponse {
+    list: MockContract[];
+    total: number;
+    hasMore: boolean;
+}
 
 // 模拟网络延迟
 export function delay(ms: number = 500): Promise<void> {
@@ -25,7 +62,7 @@ export function mockResponse<T>(data: T, code: number = 0, message: string = 'su
 }
 
 // 模拟合同状态摘要数据
-export async function getMockContractSummary(): Promise<ContractSummary> {
+export async function getMockContractSummary(): Promise<any> {
     await delay();
     
     return {
@@ -38,7 +75,7 @@ export async function getMockContractSummary(): Promise<ContractSummary> {
 }
 
 // 模拟合同列表数据
-export async function getMockContractList(params: ContractListParams): Promise<ContractListResponse> {
+export async function getMockContractList(params: ContractListParams): Promise<MockContractListResponse> {
     await delay();
     
     const { status, keyword, page = 1, pageSize = 10 } = params;
@@ -72,7 +109,7 @@ export async function getMockContractList(params: ContractListParams): Promise<C
     };
     
     // 生成模拟数据
-    const mockList: Contract[] = [];
+    const mockList: MockContract[] = [];
     const count = page === 1 ? 10 : (page > 3 ? 0 : 10);
     
     for (let i = 0; i < count; i++) {
@@ -121,6 +158,42 @@ export async function getMockContractList(params: ContractListParams): Promise<C
         total: 43,
         hasMore: page < 3 && count > 0
     };
+}
+
+// 合同详情类型（Mock专用）
+interface ContractDetail {
+    id: string;
+    title: string;
+    status: string;
+    createTime: string;
+    expireTime: string;
+    initiator: {
+        id: string;
+        name: string;
+        company: string;
+        avatar: string;
+    };
+    participants: Array<{
+        id: string;
+        name: string;
+        company: string;
+        status: string;
+        signTime?: string;
+        avatar: string;
+    }>;
+    attachments: Array<{
+        name: string;
+        size: string;
+        url: string;
+    }>;
+    previewUrl: string;
+    downloadUrl: string;
+    canSign: boolean;
+    canRevoke: boolean;
+    canUrge: boolean;
+    canDownload: boolean;
+    canCopy: boolean;
+    canDelete: boolean;
 }
 
 // 模拟合同详情数据

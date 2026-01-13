@@ -101,11 +101,19 @@
 <script>
 import { getMessageList, sendMessage, generateContract } from '../../api/ai-draft/index.uts'
 
+// 消息项接口定义
+interface MessageItem {
+  id: number;
+  role: string;
+  content: string;
+  createTime: string;
+}
+
 export default {
   data() {
     return {
       conversationId: 0,
-      messageList: [],
+      messageList: [] as MessageItem[],
       inputText: '',
       sending: false,
       scrollIntoView: '',
@@ -119,7 +127,8 @@ export default {
   },
   onLoad(options) {
     this.conversationId = parseInt(options.conversationId || '0')
-    this.initialPrompt = decodeURIComponent(options.prompt || '')
+    const decoded = decodeURIComponent(options.prompt ?? '');
+    this.initialPrompt = decoded || ''
     
     if (this.conversationId) {
       this.loadMessages()
@@ -136,13 +145,13 @@ export default {
       try {
         const res = await getMessageList(this.conversationId)
         if (res.code === 0) {
-          this.messageList = res.data
+          this.messageList = (res.data || []) as MessageItem[]
           // 延迟滚动确保DOM更新完成
           setTimeout(() => {
             this.scrollToBottom()
           }, 300)
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('加载消息失败:', error)
         uni.showToast({
           title: '加载失败',
@@ -182,7 +191,7 @@ export default {
             icon: 'none'
           })
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('发送消息失败:', error)
         uni.showToast({
           title: '发送失败，请重试',
@@ -193,7 +202,7 @@ export default {
       }
     },
     
-    handleInput(e) {
+    handleInput(e: { detail: { value: string } }) {
       this.inputText = e.detail.value
     },
     
@@ -239,7 +248,7 @@ export default {
                   icon: 'none'
                 })
               }
-            } catch (error) {
+            } catch (error: any) {
               console.error('生成合同异常:', error)
               uni.hideLoading()
               console.error('生成合同失败:', error)
@@ -265,7 +274,7 @@ export default {
       }
     },
     
-    formatTime(time) {
+    formatTime(time: string | undefined) {
       if (!time) return ''
       const date = new Date(time)
       const hours = date.getHours().toString().padStart(2, '0')
@@ -280,7 +289,7 @@ export default {
       return userName.substring(0, 1)
     },
     
-    parseMarkdown(content) {
+    parseMarkdown(content: string | undefined) {
       if (!content) return ''
       
       let html = content

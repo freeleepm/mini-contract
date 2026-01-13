@@ -1,0 +1,262 @@
+/**
+ * Seal Token 缓存管理器（移动端）
+ * 
+ * 参考 PC 端 sealTokenManager.ts 实现，确保移动端和 PC 端行为一致
+ * 
+ * 功能：
+ * 1. 全局共享 Token 缓存（内存 + uni.Storage）
+ * 2. 自动检查有效期（使用后端返回的过期时间）
+ * 3. 过期提前刷新（提前 10 分钟）
+ * 4. 避免重复请求（并发控制）
+ * 
+ * @author 小华同学AI
+ */
+
+import { post } from '../api/index'
+import { getSealTokenConfig, LOG_PREFIX } from '../config/seal.config'
+
+// Token 缓存结构
+interface TokenCache {
+  token: string
+  expireTime: string      // ISO 格式的过期时间
+  expireMinutes: number
+}
+
+// 缓存 key 常量
+const STORAGE_KEY_TOKEN = 'sealToken'
+const STORAGE_KEY_EXPIRE_TIME = 'sealTokenExpireTime'
+const STORAGE_KEY_EXPIRE_MINUTES = 'sealTokenExpireMinutes'
+
+// 内存缓存
+let tokenCache: TokenCache | null = null
+
+// 并发控制
+let isRefreshing = false
+let refreshPromise: Promise<string> | null = null
+
+/**
+ * 检查 Token 是否即将过期（提前 10 分钟刷新）
+ * 使用后端返回的 expireTime 而不是解析 JWT
+ */
+function isTokenExpiringSoon(expireTime: string): boolean {
+  try {
+    const expTime = new Date(expireTime).getTime()
+    const now = Date.now()
+    const tenMinutes = 10 * 60 * 1000 // 提前 10 分钟刷新
+
+    const isExpiring = expTime - now < tenMinutes
+    
+    if (isExpiring) {
+      console.log(`[SealTokenManager] ⏰ Token 即将过期 - 剩余时间: ${Math.round((expTime - now) / 1000 / 60)} 分钟`)
+    }
+    
+    return isExpiring
+  } catch (error) {
+    console.error('[SealTokenManager] 解析过期时间失败:', error)
+    return true // 解析失败则认为需要刷新
+  }
+}
+
+/**
+ * 从缓存或 Storage 获取 Token
+ */
+function getCachedToken(): TokenCache | null {
+  // 优先使用内存缓存
+  if (tokenCache) {
+    return tokenCache
+  }
+
+  // 尝试从 Storage 恢复
+  try {
+    const token = uni.getStorageSync(STORAGE_KEY_TOKEN)
+    const expireTime = uni.getStorageSync(STORAGE_KEY_EXPIRE_TIME)
+    const expireMinutes = uni.getStorageSync(STORAGE_KEY_EXPIRE_MINUTES)
+
+    if (token && expireTime && expireMinutes) {
+      tokenCache = {
+        token,
+        expireTime,
+        expireMinutes: Number(expireMinutes)
+      }
+      console.log(`[SealTokenManager] 📦 从 Storage 恢复 Token（有效期至: ${expireTime}）`)
+      return tokenCache
+    }
+  } catch (error) {
+    console.error('[SealTokenManager] 从 Storage 恢复 Token 失败:', error)
+  }
+
+  return null
+}
+
+/**
+ * 保存 Token 到缓存和 Storage
+ */
+function saveToken(tokenData: TokenCache): void {
+  tokenCache = tokenData
+  
+  try {
+    uni.setStorageSync(STORAGE_KEY_TOKEN, tokenData.token)
+    uni.setStorageSync(STORAGE_KEY_EXPIRE_TIME, tokenData.expireTime)
+    uni.setStorageSync(STORAGE_KEY_EXPIRE_MINUTES, String(tokenData.expireMinutes))
+    console.log(`[SealTokenManager] 💾 Token 已保存（有效期至: ${tokenData.expireTime}）`)
+  } catch (error) {
+    console.error('[SealTokenManager] 保存 Token 到 Storage 失败:', error)
+  }
+}
+
+/**
+ * 清除 Token 缓存
+ */
+export function clearSealToken(): void {
+  tokenCache = null
+  isRefreshing = false
+  refreshPromise = null
+  
+  try {
+    uni.removeStorageSync(STORAGE_KEY_TOKEN)
+    uni.removeStorageSync(STORAGE_KEY_EXPIRE_TIME)
+    uni.removeStorageSync(STORAGE_KEY_EXPIRE_MINUTES)
+    console.log('[SealTokenManager] 🗑️ Token 缓存已清除')
+  } catch (error) {
+    console.error('[SealTokenManager] 清除 Token 失败:', error)
+  }
+}
+
+/**
+ * 调用后端接口获取/刷新 Token
+ */
+async function fetchNewToken(): Promise<TokenCache> {
+  const config = getSealTokenConfig('mobile')
+  
+  console.log(`${LOG_PREFIX} 🔄 调用后端接口获取 Token... expireMinutes: ${config.expireMinutes}`)
+  
+  // 调用兑换接口
+  const response = await post<any>('/api/v1/seal/auth/exchange-token', {
+    expireMinutes: config.expireMinutes
+  })
+  
+  if (!response || !response.token) {
+    throw new Error('Token 响应格式错误')
+  }
+
+  return {
+    token: response.token,
+    expireTime: response.expireTime,
+    expireMinutes: response.expireMinutes
+  }
+}
+
+/**
+ * 刷新 Token（内部方法）
+ */
+async function refreshToken(): Promise<string> {
+  try {
+    const tokenData = await fetchNewToken()
+    saveToken(tokenData)
+    console.log(`${LOG_PREFIX} ✅ Token 获取成功（有效期至: ${tokenData.expireTime}）`)
+    return tokenData.token
+  } catch (error: any) {
+    console.error(`${LOG_PREFIX} ❌ Token 获取失败:`, error)
+    
+    // 区分错误类型
+    const errorMsg = error?.message || error?.toString() || ''
+    const isAuthError = errorMsg.includes('401') || 
+                       errorMsg.includes('登录') || 
+                       errorMsg.includes('过期') ||
+                       errorMsg.includes('未登录')
+    
+    if (!isAuthError) {
+      // 非认证错误，清除缓存
+      clearSealToken()
+    } else {
+      console.log(`${LOG_PREFIX} ⚠️ Member Token 过期，保留缓存，等待用户重新登录`)
+    }
+    
+    throw error
+  }
+}
+
+/**
+ * 获取 Seal Token（带缓存和自动刷新）
+ * 
+ * 逻辑（与 PC 端一致）：
+ * 1. 检查缓存是否存在且有效
+ * 2. 有效则直接返回
+ * 3. 无效或不存在则刷新
+ * 4. 防止并发刷新
+ * 
+ * @returns Promise<string> 有效的 Seal Token
+ */
+export async function getSealToken(): Promise<string> {
+  console.log(`${LOG_PREFIX} 📦 获取 Seal Token...`)
+
+  // 1. 检查 member token 是否存在（前提条件）
+  const memberToken = uni.getStorageSync('token')
+  if (!memberToken) {
+    console.error(`${LOG_PREFIX} ❌ 没有 member token，无法获取 Seal Token`)
+    throw new Error('请先登录')
+  }
+
+  // 2. 检查缓存
+  const cached = getCachedToken()
+  
+  if (cached && cached.expireTime) {
+    // 3. 检查是否即将过期（使用过期时间而非解析JWT）
+    if (!isTokenExpiringSoon(cached.expireTime)) {
+      console.log(`${LOG_PREFIX} ✅ 使用缓存的 Token（有效期至: ${cached.expireTime}）`)
+      return cached.token
+    }
+    
+    console.log(`${LOG_PREFIX} ⏰ Token 即将过期，需要刷新`)
+  } else {
+    console.log(`${LOG_PREFIX} 📭 缓存中没有 Token，需要获取`)
+  }
+
+  // 4. 刷新 Token（防止并发）
+  if (isRefreshing && refreshPromise) {
+    console.log(`${LOG_PREFIX} ⏳ 正在刷新中，等待刷新完成...`)
+    return refreshPromise
+  }
+
+  isRefreshing = true
+  refreshPromise = refreshToken()
+
+  try {
+    const newToken = await refreshPromise
+    return newToken
+  } finally {
+    isRefreshing = false
+    refreshPromise = null
+  }
+}
+
+/**
+ * 强制刷新 Token（忽略缓存）
+ */
+export async function forceRefreshSealToken(): Promise<string> {
+  console.log(`${LOG_PREFIX} 🔄 强制刷新 Token...`)
+  clearSealToken()
+  return getSealToken()
+}
+
+/**
+ * 确保 Seal Token 存在且有效
+ * 
+ * 🆕 统一入口方法（替代之前的 ensureSealToken）
+ * 在页面加载时调用，确保后续 API 请求能正常工作
+ * 
+ * @returns Promise<string> 有效的 Seal Token
+ */
+export async function ensureSealToken(): Promise<string> {
+  return getSealToken()
+}
+
+// 导出管理器对象（兼容 PC 端风格）
+export const sealTokenManager = {
+  getToken: getSealToken,
+  clearToken: clearSealToken,
+  forceRefresh: forceRefreshSealToken,
+  ensureToken: ensureSealToken
+}
+
+export default sealTokenManager

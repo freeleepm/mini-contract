@@ -142,7 +142,26 @@ export default {
   data() {
     return {
       enterpriseId: 0,
-      enterprise: {},
+      enterprise: {
+        id: 0,
+        name: '',
+        creditCode: '',
+        legalName: '',
+        contactName: '',
+        status: 0,
+        createTime: ''
+      } as {
+        id: number;
+        name: string;
+        creditCode?: string;
+        legalName?: string;
+        contactName?: string;
+        status: number;
+        createTime?: string;
+        owner?: boolean;
+        role?: number;
+        memberCount?: number;
+      },
       isOwner: false,
       isAdmin: false,
       memberCount: 0,  // 成员数量
@@ -171,8 +190,8 @@ export default {
     }
   },
   
-  async onLoad({id}) {
-    this.enterpriseId = +id || 0;
+  async onLoad(options: { id?: string }) {
+    this.enterpriseId = +(options.id || 0);
     await this.fetch();
   },
   
@@ -180,13 +199,25 @@ export default {
     async fetch() {
       try {
         const d = await getEnterpriseDetail(this.enterpriseId);
-        this.enterprise = d;
+        // 转换 Enterprise 类型以匹配 data 中的类型定义
+        this.enterprise = {
+          id: d.id,
+          name: d.name,
+          creditCode: d.creditCode,
+          legalName: d.legalName,
+          contactName: (d as any).contactName || '', // 如果后端返回了 contactName，使用它；否则使用空字符串
+          status: d.status !== undefined ? (typeof d.status === 'number' ? d.status : (d.status as any)) : 0,
+          createTime: d.createTime,
+          owner: d.owner,
+          role: d.role,
+          memberCount: d.memberCount
+        };
         this.isOwner = d.owner || d.role === ER.OWNER;
         this.isAdmin = d.role === ER.ADMIN;
         
         // 直接从企业详情获取成员数量（后端已返回）
         this.memberCount = d.memberCount || 0;
-      } catch (error) {
+      } catch (error: any) {
         console.error('获取企业详情失败:', error);
         uni.showToast({
           title: '加载失败，请重试',
@@ -210,14 +241,17 @@ export default {
       }
     },
     
-    go(type) {
-      const map = {
+    go(type: string) {
+      const map: Record<string, [string, Record<string, number>]> = {
         contracts: ['/pages/contract-manage/index', {enterpriseId: this.enterpriseId}],
         members: ['/pages/enterprise/members', {id: this.enterpriseId}],
         seals: ['/pages/enterprise/seals', {id: this.enterpriseId}]
       };
-      const [url, p] = map[type];
-      this.navigate(url, p);
+      const entry = map[type];
+      if (entry) {
+        const [url, p] = entry;
+        this.navigate(url, p);
+      }
     },
     
     navigate(u, p) {
@@ -304,7 +338,7 @@ export default {
           });
         }, 1500);
         
-      } catch (error) {
+      } catch (error: any) {
         uni.hideLoading();
         console.error('删除企业失败:', error);
         uni.showToast({

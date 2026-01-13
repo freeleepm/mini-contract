@@ -107,6 +107,13 @@
 				});
 			},
 			
+			// 跳转到修改密码页面
+			goToChangePassword(): void {
+				uni.navigateTo({
+					url: '/pages/profile/change-password'
+				});
+			},
+			
 			// 显示退出登录确认框
 			showLogoutConfirmation(): void {
 				this.showLogoutConfirm = true;
@@ -164,6 +171,12 @@
 				<view class="setting-section">
 					<view class="section-title">
 						<text class="title-text">安全设置</text>
+					</view>
+					
+					<!-- 修改密码 -->
+					<view class="setting-item" @click="goToChangePassword">
+						<text class="item-label">修改密码</text>
+						<text class="icon icon-chevron-right"></text>
 					</view>
 					
 					<!-- 人脸验证 -->
@@ -435,18 +448,19 @@
 	
 	.logout-button {
 		background-color: #F56C6C;
-		color: #FFFFFF;
-		font-size: 32rpx;
 		height: 90rpx;
-		line-height: 90rpx;
 		border-radius: 12rpx;
 		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
-		transition: opacity 0.3s, transform 0.3s;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
 	}
 	
 	.logout-button .button-text {
 		font-size: 32rpx;
 		color: #FFFFFF;
+		text-align: center;
 	}
 	
 	/* 弹窗 */

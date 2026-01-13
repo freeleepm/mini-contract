@@ -1,0 +1,69 @@
+/**
+ * 小华同学AI
+ * 微信授权统一入口
+ * 根据运行环境自动选择对应的授权实现
+ */
+
+import { getPlatformName } from '../../index'
+
+// 导出微信小程序授权方法
+import * as miniProgram from './miniProgram'
+// 导出微信公众号授权方法
+import * as officialAccount from './officialAccount'
+
+// 授权提供者接口
+export interface WechatProvider {
+    login: (code?: string, state?: string) => Promise<boolean | any>
+    mobileLogin?: (event: any) => Promise<boolean>
+    bind?: (code?: string, state?: string) => Promise<boolean>
+    getOpenid: () => string
+    getWechatUserInfo: () => Promise<any>
+    isWechatBound: () => Promise<boolean>
+}
+
+/**
+ * 获取当前平台的微信授权提供者
+ */
+export function getWechatProvider(): WechatProvider {
+    const platformName = getPlatformName()
+    
+    // #ifdef MP-WEIXIN
+    console.log('[WechatProvider] 使用微信小程序授权')
+    return {
+        login: miniProgram.login,
+        mobileLogin: miniProgram.mobileLogin,
+        bind: miniProgram.bindWechat,
+        getOpenid: miniProgram.getOpenid,
+        getWechatUserInfo: miniProgram.getWechatUserInfo,
+        isWechatBound: miniProgram.isWechatBound
+    }
+    // #endif
+    
+    // #ifdef H5
+    if (platformName === 'WechatOfficialAccount') {
+        console.log('[WechatProvider] 使用微信公众号授权')
+        return {
+            login: officialAccount.login,
+            bind: officialAccount.bind,
+            getOpenid: officialAccount.getOpenid,
+            getWechatUserInfo: officialAccount.getWechatUserInfo,
+            isWechatBound: officialAccount.isWechatBound
+        }
+    }
+    // #endif
+    
+    // 默认返回空实现
+    console.warn('[WechatProvider] 当前平台不支持微信授权')
+    return {
+        login: async () => {
+            uni.showToast({ title: '当前环境不支持微信登录', icon: 'none' })
+            return false
+        },
+        getOpenid: () => '',
+        getWechatUserInfo: async () => null,
+        isWechatBound: async () => false
+    }
+}
+
+// 导出子模块
+export { miniProgram, officialAccount }

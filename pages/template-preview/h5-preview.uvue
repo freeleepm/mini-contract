@@ -1,6 +1,6 @@
 <template>
 	<view class="container">
-		<web-view :src="h5Url" @message="handleMessage"></web-view>
+		<web-view :src="h5Url" @message="handleMessage" @error="handleError"></web-view>
 	</view>
 </template>
 
@@ -25,7 +25,8 @@
 		onLoad(options: any) {
 			// 从路由参数中获取 H5 页面 URL
 			if (options && options.url) {
-				this.h5Url = decodeURIComponent(options.url);
+				const decoded = decodeURIComponent(options.url ?? '');
+				this.h5Url = decoded || '';
 				console.log('[模板预览WebView] 加载H5页面:', this.h5Url);
 			} else {
 				uni.showToast({
@@ -38,6 +39,28 @@
 			}
 		},
 		methods: {
+			handleError(event: any): void {
+				console.error('[模板预览WebView] H5页面加载失败:', event);
+				uni.showModal({
+					title: '预览服务暂时不可用',
+					content: 'H5页面加载失败\n请确认预览服务已启动后重试',
+					showCancel: true,
+					confirmText: '重试',
+					cancelText: '返回',
+					success: (res) => {
+						if (res.confirm) {
+							const current = this.h5Url;
+							this.h5Url = '';
+							setTimeout(() => {
+								this.h5Url = current;
+							}, 50);
+						} else {
+							uni.navigateBack();
+						}
+					}
+				});
+			},
+			
 			/**
 			 * 处理来自 H5 页面的 postMessage 消息
 			 * 

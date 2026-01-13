@@ -137,7 +137,10 @@
 				try {
 					const savedIdentity = uni.getStorageSync('currentIdentity');
 					if (savedIdentity) {
-						this.currentIdentity = JSON.parse(savedIdentity);
+						const parsed = JSON.parse(savedIdentity);
+						if (parsed) {
+							this.currentIdentity = parsed;
+						}
 					}
 				} catch (e) {
 					console.error('加载身份信息失败:', e);
@@ -406,8 +409,8 @@
 			},
 
 			// 获取所有套餐的特性列表
-			getAllFeatures() {
-				const allFeatures = [];
+			getAllFeatures(): string[] {
+				const allFeatures: string[] = [];
 				this.upgradePackages.forEach(pkg => {
 					allFeatures.push(...pkg.features);
 				});

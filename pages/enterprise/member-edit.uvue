@@ -106,8 +106,10 @@
 				try {
 					const data = await getEnterpriseDetail(this.enterpriseId);
 					this.currentEnterprise = {
-						...data,
-						logo: data.logo || this.getLogoByName(data.name)
+						id: data.id,
+						name: data.name,
+						logo: data.logo || this.getLogoByName(data.name),
+						status: data.status ?? 0
 					};
 				} catch (error) {
 					console.error('获取企业信息失败:', error);
@@ -135,7 +137,7 @@
 			async loadMemberInfo() {
 				try {
 					// 获取成员列表，查找指定ID的成员
-					const params = {
+					const params: { enterpriseId: number; pageNo: number; pageSize: number } = {
 						enterpriseId: this.enterpriseId,
 						pageNo: 1,
 						pageSize: 50 // 假设成员不会太多
@@ -246,11 +248,11 @@
 					setTimeout(() => {
 						uni.navigateBack();
 					}, 1500);
-				} catch (error) {
+				} catch (error: any) {
 					uni.hideLoading();
 					console.error('更新成员信息失败:', error);
 					uni.showToast({
-						title: '更新失败: ' + (error.message || '未知错误'),
+						title: '更新失败: ' + (error?.message || '未知错误'),
 						icon: 'none'
 					});
 				} finally {
@@ -263,115 +265,113 @@
 
 <template>
 	<view class="page-container">
-		<!-- 内容滚动区域 -->
-		<scroll-view class="content-scroll" scroll-y="true">
-			<view class="content-wrapper">
-		<!-- 企业信息卡片 -->
-		<view class="enterprise-card">
-			<view class="enterprise-logo">
-				<image :src="currentEnterprise.logo" mode="aspectFill"></image>
+		<!-- 内容区域 -->
+		<view class="content-wrapper">
+			<!-- 企业信息卡片 -->
+			<view class="enterprise-card">
+				<view class="enterprise-logo">
+					<image :src="currentEnterprise.logo" mode="aspectFill"></image>
+				</view>
+				<view class="enterprise-info">
+					<text class="enterprise-name">{{ currentEnterprise.name }}</text>
+					<view class="enterprise-status" v-if="isVerified">
+						<text class="status-icon fa fa-circle-check"></text>
+						<text class="status-text">已认证</text>
+					</view>
+				</view>
 			</view>
-			<view class="enterprise-info">
-				<text class="enterprise-name">{{ currentEnterprise.name }}</text>
-				<view class="enterprise-status" v-if="isVerified">
-					<text class="status-icon fa fa-circle-check"></text>
-					<text class="status-text">已认证</text>
-				</view>
-			</view>
-		</view>
-		
-		<!-- 表单区域 -->
-		<view class="form-container">
-			<!-- 表单内容 -->
-			<view class="form-content">
-				<!-- 姓名输入框 - 只读 -->
-				<view class="form-item">
-					<text class="form-label">姓名</text>
-					<view class="form-readonly">
-						<text class="form-value">{{ formData.name }}</text>
+			
+			<!-- 表单区域 -->
+			<view class="form-container">
+				<!-- 表单内容 -->
+				<view class="form-content">
+					<!-- 姓名输入框 - 只读 -->
+					<view class="form-item">
+						<text class="form-label">姓名</text>
+						<view class="form-readonly">
+							<text class="form-value">{{ formData.name }}</text>
+						</view>
+						<text class="form-note">姓名不可修改</text>
 					</view>
-					<text class="form-note">姓名不可修改</text>
-				</view>
-				
-				<!-- 手机号显示 -->
-				<view class="form-item">
-					<text class="form-label">手机号</text>
-					<view class="form-readonly">
-						<text class="form-value">{{ formData.phone }}</text>
+					
+					<!-- 手机号显示 -->
+					<view class="form-item">
+						<text class="form-label">手机号</text>
+						<view class="form-readonly">
+							<text class="form-value">{{ formData.phone }}</text>
+						</view>
+						<text class="form-note">手机号不可修改</text>
 					</view>
-					<text class="form-note">手机号不可修改</text>
-				</view>
-				
-				<!-- 认证状态 -->
-				<view class="form-item">
-					<text class="form-label">认证状态</text>
-					<view class="status-badge" :class="{ 'verified': formData.isVerified }">
-						<text class="status-text">{{ formData.isVerified ? '已认证' : '未认证' }}</text>
+					
+					<!-- 认证状态 -->
+					<view class="form-item">
+						<text class="form-label">认证状态</text>
+						<view class="status-badge" :class="{ 'verified': formData.isVerified }">
+							<text class="status-text">{{ formData.isVerified ? '已认证' : '未认证' }}</text>
+						</view>
 					</view>
-				</view>
-				
-				<!-- 角色选择 -->
-				<view class="form-item" v-if="formData.originalRole !== EnterpriseRole.OWNER">
-					<text class="form-label">角色</text>
-					<view class="role-selector">
-						<view 
-							class="role-option" 
-							v-for="role in roleOptions" 
-							:key="role.value"
-							:class="{ 'active': formData.role === role.value }"
-							@click="selectRole(role.value)"
-						>
-							<view class="radio-circle" :class="{ 'checked': formData.role === role.value }">
-								<view class="radio-inner" v-if="formData.role === role.value"></view>
+					
+					<!-- 角色选择 -->
+					<view class="form-item" v-if="formData.originalRole !== EnterpriseRole.OWNER">
+						<text class="form-label">角色</text>
+						<view class="role-selector">
+							<view 
+								class="role-option" 
+								v-for="role in roleOptions" 
+								:key="role.value"
+								:class="{ 'active': formData.role === role.value }"
+								@click="selectRole(role.value)"
+							>
+								<view class="radio-circle" :class="{ 'checked': formData.role === role.value }">
+									<view class="radio-inner" v-if="formData.role === role.value"></view>
+								</view>
+								<text class="role-name">{{ role.label }}</text>
 							</view>
-							<text class="role-name">{{ role.label }}</text>
+						</view>
+					</view>
+					
+					<!-- 所有者角色提示 -->
+					<view class="form-item owner-note" v-if="formData.originalRole === EnterpriseRole.OWNER">
+						<text class="form-label">角色</text>
+						<view class="owner-badge">
+							<text class="owner-text">所有者</text>
+						</view>
+						<text class="form-note">企业所有者角色不可修改</text>
+					</view>
+					
+					<!-- 角色说明 -->
+					<view class="role-description">
+						<text class="role-desc-title">角色说明：</text>
+						<view class="role-desc-item">
+							<text class="role-desc-name">所有者：</text>
+							<text class="role-desc-text">企业创建者，拥有所有权限</text>
+						</view>
+						<view class="role-desc-item">
+							<text class="role-desc-name">管理员：</text>
+							<text class="role-desc-text">可以管理企业成员、印章等</text>
+						</view>
+						<view class="role-desc-item">
+							<text class="role-desc-name">成员：</text>
+							<text class="role-desc-text">可以使用被授权的企业印章</text>
 						</view>
 					</view>
 				</view>
-				
-				<!-- 所有者角色提示 -->
-				<view class="form-item owner-note" v-if="formData.originalRole === EnterpriseRole.OWNER">
-					<text class="form-label">角色</text>
-					<view class="owner-badge">
-						<text class="owner-text">所有者</text>
-					</view>
-					<text class="form-note">企业所有者角色不可修改</text>
-				</view>
-				
-				<!-- 角色说明 -->
-				<view class="role-description">
-					<text class="role-desc-title">角色说明：</text>
-					<view class="role-desc-item">
-						<text class="role-desc-name">所有者：</text>
-						<text class="role-desc-text">企业创建者，拥有所有权限</text>
-					</view>
-					<view class="role-desc-item">
-						<text class="role-desc-name">管理员：</text>
-						<text class="role-desc-text">可以管理企业成员、印章等</text>
-					</view>
-					<view class="role-desc-item">
-						<text class="role-desc-name">成员：</text>
-						<text class="role-desc-text">可以使用被授权的企业印章</text>
-					</view>
-				</view>
 			</view>
 		</view>
-		
-				<!-- 底部安全间距 -->
-				<view class="bottom-safe-area"></view>
-			</view>
-		</scroll-view>
 		
 		<!-- 底部按钮区域（固定在底部） -->
 		<view class="bottom-bar">
 			<view class="button-wrapper">
-			<button class="cancel-button" @click="goBack">取消</button>
-			<button class="submit-button" 
-				@click="submitForm" 
-				:disabled="!isFormChanged || isSubmitting || formData.originalRole === EnterpriseRole.OWNER"
-			>
-				保存
-			</button>
+				<view class="cancel-button" @click="goBack">
+					<text class="button-text">取消</text>
+				</view>
+				<view 
+					class="submit-button" 
+					:class="{ 'disabled': !isFormChanged || isSubmitting || formData.originalRole === EnterpriseRole.OWNER }"
+					@click="submitForm"
+				>
+					<text class="button-text">保存</text>
+				</view>
 			</view>
 		</view>
 	</view>
@@ -380,22 +380,16 @@
 <style>
 	/* 页面容器 */
 	.page-container {
-		display: flex;
-		flex-direction: column;
-		height: 100vh;
+		min-height: 100vh;
 		background-color: #F7F9FC;
-	}
-	
-	/* 内容滚动区域 */
-	.content-scroll {
-		flex: 1;
-		height: 0; /* 配合flex使用，确保滚动正常 */
+		/* 底部留白，防止按钮遮挡内容 */
+		padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
+		box-sizing: border-box;
 	}
 	
 	/* 内容包装器 */
 	.content-wrapper {
 		padding: 20rpx;
-		padding-bottom: 0; /* 底部间距由 bottom-safe-area 提供 */
 	}
 	
 	/* 企业信息卡片 */
@@ -653,12 +647,7 @@
 		flex: 1;
 	}
 	
-	/* 底部安全间距 */
-	.bottom-safe-area {
-		height: 40rpx; /* 为底部按钮预留空间 */
-	}
-	
-	/* 底部按钮区域（固定在底部） */
+	/* 底部按钮区域 */
 	.bottom-bar {
 		position: fixed;
 		bottom: 0;
@@ -666,66 +655,76 @@
 		right: 0;
 		background-color: #FFFFFF;
 		box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
-		padding: 30rpx;
-		padding-bottom: calc(30rpx + constant(safe-area-inset-bottom));
+		padding: 30rpx 20rpx;
+		/* 适配底部安全区域 */
 		padding-bottom: calc(30rpx + env(safe-area-inset-bottom));
-		display: flex;
-		flex-direction: row;
-		gap: 20rpx;
-		align-items: center;
+		z-index: 99;
 	}
 	
 	.button-wrapper {
 		display: flex;
 		flex-direction: row;
-		gap: 20rpx;
+		gap: 24rpx;
 		width: 100%;
+	}
+	
+	.button-text {
+		font-size: 32rpx;
+		font-weight: 500;
 	}
 	
 	.cancel-button {
 		flex: 1;
-		height: 88rpx;
-		border-radius: 12rpx;
-		color: #666666;
-		font-size: 30rpx;
-		font-weight: 500;
-		background-color: #F5F7FA;
-		border: 1rpx solid #EBEEF5;
+		height: 96rpx;
+		border-radius: 16rpx;
+		color: #606266;
+		background-color: #FFFFFF;
+		border: 1rpx solid #DCDFE6;
 		display: flex;
 		justify-content: center;
 		align-items: center;
 		transition: all 0.3s ease;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+	}
+	
+	.cancel-button .button-text {
+		color: #606266;
 	}
 	
 	.cancel-button:active {
-		background-color: #EBEEF5;
-		opacity: 0.9;
+		background-color: #F5F7FA;
+		transform: scale(0.98);
 	}
 	
 	.submit-button {
-		flex: 1;
-		height: 88rpx;
-		border-radius: 12rpx;
+		flex: 2;
+		height: 96rpx;
+		border-radius: 16rpx;
 		background-color: #00C28A;
-		color: #FFFFFF;
-		font-size: 30rpx;
-		font-weight: 500;
-		border: none;
+		border: 1rpx solid #00C28A;
 		display: flex;
 		justify-content: center;
 		align-items: center;
 		transition: all 0.3s ease;
+		box-shadow: 0 8rpx 20rpx rgba(0, 194, 138, 0.25);
+	}
+	
+	.submit-button .button-text {
+		color: #FFFFFF;
+		font-weight: 600;
 	}
 	
 	.submit-button:active {
 		background-color: #00B07C;
-		opacity: 0.9;
+		border-color: #00B07C;
+		transform: scale(0.98);
 	}
 	
-	.submit-button[disabled] {
+	.submit-button.disabled {
 		background-color: #A0CFBE;
+		border-color: #A0CFBE;
 		opacity: 0.8;
-		cursor: not-allowed;
+		box-shadow: none;
 	}
 	
 	/* FontAwesome 图标样式 */

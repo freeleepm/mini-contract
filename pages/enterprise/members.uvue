@@ -11,11 +11,26 @@
 		EnterpriseStatus
 	} from '../../api/enterprise/index';
 	
+	// 成员项接口定义
+	interface MemberItem {
+		id: number;
+		userId: number;
+		name: string;
+		phone: string;
+		avatar: string;
+		hasAvatar: boolean;
+		firstChar: string;
+		role: string;
+		roleValue: number;
+		isVerified: boolean;
+		joinTime: string;
+	}
+
 	export default {
 		data() {
 			return {
 				// 成员列表
-				memberList: [],
+				memberList: [] as MemberItem[],
 				
 				// 当前企业信息
 				currentEnterprise: {
@@ -110,8 +125,11 @@
 				try {
 					const data = await getEnterpriseDetail(this.currentEnterprise.id);
 					this.currentEnterprise = {
-						...data,
-						logo: data.logo || this.getLogoByName(data.name)
+						id: data.id,
+						name: data.name,
+						logo: data.logo || this.getLogoByName(data.name),
+						status: data.status ?? 0,
+						creditCode: data.creditCode ?? ''
 					};
 				} catch (error) {
 					console.error('获取企业信息失败:', error);
@@ -157,7 +175,7 @@
 						this.memberList = [];
 					}
 					
-					const params = {
+					const params: { enterpriseId: number; pageNo: number; pageSize: number } = {
 						enterpriseId: this.currentEnterprise.id,
 						pageNo: this.pageInfo.pageNo,
 						pageSize: this.pageInfo.pageSize
@@ -247,7 +265,7 @@
 						- 是否有更多: ${this.pageInfo.hasMore}
 						- 下一页页码: ${this.pageInfo.pageNo}
 					`);
-				} catch (error) {
+				} catch (error: any) {
 					console.error('获取成员列表失败:', error);
 					console.error('错误详情:', error);
 					
@@ -430,7 +448,7 @@
 								this.memberList = this.memberList.filter(item => item.id !== member.id);
 								// 更新总数
 								this.pageInfo.total--;
-							} catch (error) {
+							} catch (error: any) {
 								console.error('移除成员失败:', error);
 								uni.showToast({
 									title: '移除失败: ' + (error.message || '未知错误'),

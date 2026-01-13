@@ -7,6 +7,7 @@ import {
   getTemplateCategories
 } from '../../api/templates/index';
 import type { Template, TemplateCategory, TemplateListParams } from '../../api/templates/index';
+import { getSealToken } from '../../utils/sealTokenManager';
 
 export default {
   data() {
@@ -33,7 +34,21 @@ export default {
       loadingText: '加载中...'
     }
   },
-  onLoad() {
+  async onLoad() {
+    // 🔧 关键修复：先确保 sealToken 存在且有效，再发起API请求
+    // 参考 PC 端 SealTokenManager 实现：检查缓存、验证有效期、自动刷新
+    try {
+      await getSealToken();
+      console.log('[模板市场] ✅ sealToken 已就绪，开始加载数据');
+    } catch (error) {
+      console.error('[模板市场] ❌ sealToken 获取失败:', error);
+      uni.showToast({
+        title: '请先登录',
+        icon: 'none'
+      });
+      return;
+    }
+    
     // 并行加载分类列表、常用、热门、分类模板
     this.loadCategories();
     this.loadFrequentTemplates();
@@ -176,7 +191,7 @@ export default {
       
       try {
         // 构建请求参数
-        const params = {
+        const params: TemplateListParams = {
           category: this.currentCategory,
           keyword: this.searchText,
           page: this.page,

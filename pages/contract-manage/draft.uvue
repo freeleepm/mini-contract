@@ -72,11 +72,23 @@
 
 <script>
 import { getDraftList, getDraftDetail, deleteDraft } from '../../api/drafts/index.uts'
+import { getSealPageUrl } from '../../api/seals/index'
+import { checkNetworkStatus, testH5ServiceAvailability } from '../../utils/network'
+
+// 定义草稿项类型
+interface DraftItem {
+  draft_id: string;
+  id?: string;
+  title: string;
+  type: string;
+  progress: number;
+  update_time: string;
+}
 
 export default {
   data() {
     return {
-      draftList: [],
+      draftList: [] as DraftItem[],
       page: 1,
       size: 10,
       total: 0,
@@ -145,8 +157,8 @@ export default {
       this.loadDraftList(true)
     },
     
-    // 打开草稿
-    openDraft(draft) {
+    // 打开草稿（先检测H5服务，再跳转）
+    async openDraft(draft: DraftItem) {
       console.log('[草稿] 继续编辑草稿:', draft)
       
       // 根据草稿类型跳转到对应的H5创建页面
@@ -161,15 +173,83 @@ export default {
         return
       }
       
-      // 统一跳转到H5创建页面，传递type和draftId
-      const url = `/pages/contract-create/h5-create?type=${type}&draftId=${draftId}`
-      console.log('[草稿] 跳转到H5创建页面:', url)
-      
-      uni.navigateTo({ url })
+      try {
+        uni.showLoading({ title: '正在检测服务...', mask: true })
+        
+        // 步骤 1: 检查网络状态
+        const networkResult = await checkNetworkStatus()
+        if (!networkResult.success) {
+          uni.hideLoading()
+          uni.showModal({
+            title: '网络异常',
+            content: networkResult.errorMessage || '请检查网络连接后重试',
+            showCancel: false
+          })
+          return
+        }
+        
+        // 步骤 2: 获取 H5 创建合同 URL
+        uni.showLoading({ title: '正在连接服务...', mask: true })
+        
+        // 获取当前选择的企业ID
+        let enterpriseId: number | undefined = undefined
+        try {
+          const savedIdentity = uni.getStorageSync('currentIdentity')
+          if (savedIdentity) {
+            const identity = JSON.parse(savedIdentity) as { type?: string; id?: string | number } | null
+            if (identity && identity.type === 'enterprise' && identity.id) {
+              enterpriseId = typeof identity.id === 'number' ? identity.id : parseInt(String(identity.id))
+            }
+          }
+        } catch (e) {
+          console.warn('[草稿] 获取当前身份信息失败:', e)
+        }
+        
+        let createUrl
+        try {
+          createUrl = await getSealPageUrl('create', undefined, { type, draftId, enterpriseId })
+        } catch (error) {
+          uni.hideLoading()
+          uni.showModal({
+            title: '服务异常',
+            content: '无法连接到创建服务\n请稍后重试或联系技术支持',
+            showCancel: false
+          })
+          return
+        }
+        
+        // 步骤 3: 测试 H5 服务器可用性
+        uni.showLoading({ title: '正在检测服务状态...', mask: true })
+        const serviceResult = await testH5ServiceAvailability(createUrl, 8000)
+        
+        uni.hideLoading()
+        
+        if (!serviceResult.available) {
+          uni.showModal({
+            title: '签署服务暂时不可用',
+            content: serviceResult.errorMessage || 'H5签署服务暂时无法访问\n请稍后重试或联系技术支持',
+            showCancel: false
+          })
+          return
+        }
+        
+        // 步骤 4: 所有检测通过，跳转到H5创建页面
+        const url = `/pages/contract-create/h5-create?type=${type}&draftId=${draftId}`
+        console.log('[草稿] 跳转到H5创建页面:', url)
+        uni.navigateTo({ url })
+        
+      } catch (error) {
+        uni.hideLoading()
+        uni.showModal({
+          title: '检测失败',
+          content: '无法完成服务检测\n请稍后重试',
+          showCancel: false
+        })
+      }
     },
     
     // 显示删除确认框
-    showDeleteConfirm(draft) {
+    showDeleteConfirm(draft: DraftItem) {
       uni.showModal({
         title: '删除草稿',
         content: '确定要删除这个草稿吗？删除后将无法恢复。',
@@ -184,7 +264,7 @@ export default {
     },
     
     // 删除草稿
-    async deleteDraft(draftId) {
+    async deleteDraft(draftId: string) {
       try {
         const res = await deleteDraft(draftId)
         
@@ -211,20 +291,20 @@ export default {
     },
     
     // 格式化时间
-    formatTime(timestamp) {
+    formatTime(timestamp: string | number | undefined) {
       if (!timestamp) return ''
       const date = new Date(timestamp)
       return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
     },
     
     // 获取草稿类型文字
-    getDraftTypeText(type) {
-      const typeMap = {
+    getDraftTypeText(type: string | undefined) {
+      const typeMap: Record<string, string> = {
         'file': '文件发起',
         'image': '图片发起',
         'template': '模板发起'
       }
-      return typeMap[type] || '未知类型'
+      return (type && typeMap[type]) || '未知类型'
     }
   }
 }

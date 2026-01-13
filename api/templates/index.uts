@@ -74,7 +74,8 @@ export interface Template {
     thumbnail?: string;          // 小缩略图（可选）
     isOfficial: boolean;         // 是否官方模板
     isHot: boolean;              // 是否热门模板
-    usageCount: number;          // 使用次数
+    useCount?: number;           // 使用次数（兼容后端返回字段名）
+    usageCount?: number;         // 使用次数（兼容旧字段名）
     createTime: string;          // 创建时间
     updateTime: string;          // 更新时间
 }

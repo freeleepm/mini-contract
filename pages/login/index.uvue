@@ -1,5 +1,9 @@
 <script lang="uts">
 	import { post } from '@/api/index'
+	import { getSealToken, clearSealToken } from '@/utils/sealTokenManager'
+	import { getPlatformName, isWechatLoginSupported } from '@/utils/platform/index'
+	import { getWechatProvider } from '@/utils/platform/provider/wechat/index'
+	import { officialAccount } from '@/utils/platform/provider/wechat/index'
 
 	export default {
 		onLoad() {
@@ -24,8 +28,24 @@
 				showPassword: false,
 				rememberPassword: false,
 				currentYear: new Date().getFullYear(),
-				errorMessage: '', // 添加错误信息字段
-				isLoading: false // 添加加载状态字段
+				errorMessage: '',
+				isLoading: false,
+				isWechatLoading: false,  // 微信登录加载状态
+				platformName: '' as string  // 当前平台名称
+			}
+		},
+		onShow() {
+			// 获取平台信息
+			this.platformName = getPlatformName()
+			console.log('[Login] 当前平台:', this.platformName)
+		},
+		computed: {
+			isLoginDisabled() {
+				return !this.phone || !this.password;
+			},
+			// 是否显示微信登录按钮
+			showWechatLogin(): boolean {
+				return isWechatLoginSupported()
 			}
 		},
 		computed: {
@@ -63,10 +83,29 @@
 					// 【重要】打印响应，用于调试确认token字段名
 					console.log('登录成功，后端响应:', JSON.stringify(response))
 					
-					// 保存token和用户信息到本地存储
+					// 保存 member token 和用户信息到本地存储
 					uni.setStorageSync('token', response.accessToken)
 					uni.setStorageSync('refreshToken', response.refreshToken)
 					uni.setStorageSync('userId', response.userId)
+					
+					// 🔧 关键修复：等待较长时间，确保后端的token已完全写入Redis/MySQL
+					// 原因：后端创建token需要写入数据库和Redis，这个过程需要时间
+					console.log('[Login] 等待500ms，确保后端token完全写入...')
+					await new Promise(resolve => setTimeout(resolve, 500))
+					
+					// 🆕 登录成功后，使用 SealTokenManager 兑换 seal token
+					// 参考 PC 端 SealTokenManager 实现：统一管理token缓存、有效期检查、自动刷新
+					console.log('[Login] 开始兑换 Seal-Token（使用 SealTokenManager）...')
+					try {
+						// 先清除旧的缓存，确保获取新token
+						clearSealToken()
+						// 使用 SealTokenManager 获取新 token（会自动保存到缓存）
+						await getSealToken()
+						console.log('[Login] ✅ Seal-Token 兑换成功（已缓存）')
+					} catch (sealTokenError) {
+						console.error('[Login] ⚠️ Seal-Token 兑换失败，但不影响登录:', sealTokenError)
+						// 兑换失败不影响登录，用户可以进入系统，后续会自动重试
+					}
 					
 					// 登录成功，跳转到首页
 					uni.showToast({
@@ -122,11 +161,82 @@
 			},
 			
 			// 处理微信登录
-			handleWechatLogin(): void {
-				uni.showToast({
-					title: '微信登录功能开发中',
-					icon: 'none'
-				})
+			async handleWechatLogin(): Promise<void> {
+				if (this.isWechatLoading) return
+				
+				this.isWechatLoading = true
+				this.errorMessage = ''
+				
+				try {
+					console.log('[Login] 开始微信登录，平台:', this.platformName)
+					
+					const wechatProvider = getWechatProvider()
+					const result = await wechatProvider.login()
+					
+					if (result) {
+						console.log('[Login] 微信登录成功')
+						uni.showToast({
+							title: '登录成功',
+							icon: 'success',
+							duration: 1500
+						})
+						
+						setTimeout(() => {
+							uni.switchTab({
+								url: '/pages/index/index'
+							})
+						}, 1500)
+					} else {
+						// 如果是公众号环境，login 返回 false 表示正在跳转授权页
+						if (this.platformName !== 'WechatOfficialAccount') {
+							console.log('[Login] 微信登录失败或用户取消')
+						}
+					}
+				} catch (error) {
+					console.error('[Login] 微信登录异常:', error)
+					this.errorMessage = (error as any)?.message || '微信登录失败'
+				} finally {
+					this.isWechatLoading = false
+				}
+			},
+			
+			// 处理微信小程序手机号快捷登录
+			async handlePhoneLogin(e: any): Promise<void> {
+				if (this.isWechatLoading) return
+				
+				this.isWechatLoading = true
+				this.errorMessage = ''
+				
+				try {
+					console.log('[Login] 开始手机号快捷登录')
+					
+					const wechatProvider = getWechatProvider()
+					if (wechatProvider.mobileLogin) {
+						const result = await wechatProvider.mobileLogin(e)
+						
+						if (result) {
+							console.log('[Login] 手机号快捷登录成功')
+							uni.showToast({
+								title: '登录成功',
+								icon: 'success',
+								duration: 1500
+							})
+							
+							setTimeout(() => {
+								uni.switchTab({
+									url: '/pages/index/index'
+								})
+							}, 1500)
+						} else {
+							console.log('[Login] 手机号快捷登录失败或用户取消')
+						}
+					}
+				} catch (error) {
+					console.error('[Login] 手机号快捷登录异常:', error)
+					this.errorMessage = (error as any)?.message || '登录失败'
+				} finally {
+					this.isWechatLoading = false
+				}
 			},
 			
 			// 处理支付宝登录
@@ -169,7 +279,7 @@
 			<view class="login-card">
 				<view class="card-header">
 					<text class="card-title">账号登录</text>
-					<text class="card-subtitle">欢迎使用Mini Contract Pro</text>
+					<text class="card-subtitle">Contract.Pro</text>
 				</view>
 				
 		<!-- 错误信息提示 -->
@@ -191,6 +301,9 @@
 					maxlength="11"
 					v-model="phone"
 				/>
+				<view class="input-suffix" v-if="phone" @click="phone = ''">
+					<text class="fa fa-times-circle input-icon clear-icon"></text>
+				</view>
 			</view>
 			
 			<!-- 密码输入框 -->
@@ -200,11 +313,15 @@
 				</view>
 				<input 
 					class="input-field" 
-					:type="showPassword ? 'text' : 'password'" 
+					type="text"
+					:password="!showPassword"
 					placeholder="请输入密码" 
 					placeholder-class="input-placeholder"
 					v-model="password"
 				/>
+				<view class="input-suffix" v-if="password" @click="password = ''">
+					<text class="fa fa-times-circle input-icon clear-icon"></text>
+				</view>
 				<view class="input-suffix" @click="togglePasswordVisibility">
 					<text class="fa input-icon" :class="showPassword ? 'fa-eye' : 'fa-eye-slash'"></text>
 				</view>
@@ -240,14 +357,38 @@
 					</view>
 					
 					<view class="social-login">
-				<view class="social-button wechat-button" @click="handleWechatLogin">
-					<text class="fa-brands fa-weixin social-icon"></text>
-					<text class="social-label">微信</text>
-				</view>
-				<view class="social-button alipay-button" @click="handleAlipayLogin">
-					<text class="fa-brands fa-alipay social-icon"></text>
-					<text class="social-label">支付宝</text>
-				</view>
+						<!-- 社交登录按钮行 -->
+						<view class="social-buttons-row">
+							<!-- 微信登录按钮 -->
+							<!-- #ifdef MP-WEIXIN -->
+							<!-- 小程序环境：使用手机号快捷登录 -->
+							<button 
+								class="social-button wechat-button"
+								open-type="getPhoneNumber"
+								@getphonenumber="handlePhoneLogin"
+							>
+								<text class="fa-brands fa-weixin social-icon"></text>
+								<text class="social-label">微信</text>
+							</button>
+							<!-- #endif -->
+							<!-- #ifndef MP-WEIXIN -->
+							<!-- 非小程序环境：使用普通微信登录 -->
+							<view 
+								class="social-button wechat-button" 
+								@click="handleWechatLogin"
+								v-if="showWechatLogin"
+							>
+								<text class="fa-brands fa-weixin social-icon"></text>
+								<text class="social-label">微信</text>
+							</view>
+							<!-- #endif -->
+							
+							<!-- 支付宝登录按钮 -->
+							<view class="social-button alipay-button" @click="handleAlipayLogin">
+								<text class="fa-brands fa-alipay social-icon"></text>
+								<text class="social-label">支付宝</text>
+							</view>
+						</view>
 					</view>
 				</view>
 				
@@ -267,7 +408,7 @@
 		
 		<!-- 底部版权信息 -->
 		<view class="footer">
-			<text class="copyright">© {{currentYear}} Mini Contract Pro 版权所有</text>
+			<text class="copyright">© {{currentYear}} Contract.Pro 版权所有</text>
 		</view>
 	</view>
 </template>
@@ -293,12 +434,12 @@
 	.login-container {
 		flex: 1;
 		background-color: #F7F9FC;
-		padding-top: 80rpx;
+		padding-top: 40rpx;
 	}
 	
 	/* 顶部背景区域 */
 	.login-header {
-		height: 320rpx;
+		height: 240rpx;
 		position: relative;
 		background: linear-gradient(135deg, #00C28A 0%, #00A876 100%);
 		margin: 0 40rpx;
@@ -317,14 +458,14 @@
 	}
 	
 	.logo {
-		width: 120rpx;
-		height: 120rpx;
-		margin-bottom: 20rpx;
-		border-radius: 20rpx;
+		width: 100rpx;
+		height: 100rpx;
+		margin-bottom: 16rpx;
+		border-radius: 16rpx;
 	}
 	
 	.app-slogan {
-		font-size: 24rpx;
+		font-size: 22rpx;
 		color: rgba(255, 255, 255, 0.95);
 		letter-spacing: 1rpx;
 	}
@@ -339,41 +480,41 @@
 	.login-card {
 		background-color: #FFFFFF;
 		border-radius: 0 0 20rpx 20rpx;
-		padding: 48rpx 40rpx 40rpx;
+		padding: 36rpx 40rpx 32rpx;
 		box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.08);
 	}
 	
 	.card-header {
-		margin-bottom: 40rpx;
+		margin-bottom: 28rpx;
 		align-items: center;
 	}
 	
 	.card-title {
-		font-size: 36rpx;
+		font-size: 34rpx;
 		font-weight: 600;
 		color: #303133;
-		margin-bottom: 12rpx;
+		margin-bottom: 8rpx;
 	}
 	
 	.card-subtitle {
-		font-size: 26rpx;
+		font-size: 24rpx;
 		color: #909399;
 	}
 	
 	/* 错误信息提示 */
 	.error-message {
 		background-color: #FEF0F0;
-		padding: 20rpx 24rpx;
-		border-radius: 12rpx;
+		padding: 16rpx 20rpx;
+		border-radius: 10rpx;
 		flex-direction: row;
 		align-items: center;
-		margin-bottom: 32rpx;
+		margin-bottom: 24rpx;
 		border-left-width: 6rpx;
 		border-left-color: #F56C6C;
 	}
 	
 	.error-message .error-icon {
-		font-size: 30rpx;
+		font-size: 28rpx;
 		color: #F56C6C;
 		margin-right: 12rpx;
 	}
@@ -392,7 +533,7 @@
 		border-radius: 12rpx;
 		flex-direction: row;
 		align-items: center;
-		margin-bottom: 28rpx;
+		margin-bottom: 20rpx;
 		padding: 0 24rpx;
 		background-color: #FAFBFC;
 		transition: all 0.3s ease;
@@ -438,6 +579,10 @@
 		color: #909399;
 	}
 	
+	.input-suffix .clear-icon {
+		color: #C0C4CC;
+	}
+	
 	.input-suffix:active {
 		opacity: 0.6;
 	}
@@ -447,7 +592,7 @@
 		flex-direction: row;
 		justify-content: space-between;
 		align-items: center;
-		margin: 12rpx 0 40rpx 0;
+		margin: 8rpx 0 28rpx 0;
 	}
 	
 	.remember-password {
@@ -498,7 +643,7 @@
 		background: linear-gradient(135deg, #00C28A 0%, #00A876 100%);
 		align-items: center;
 		justify-content: center;
-		margin-bottom: 32rpx;
+		margin-bottom: 24rpx;
 		box-shadow: 0 8rpx 24rpx rgba(0, 194, 138, 0.3);
 		border: none;
 	}
@@ -523,14 +668,14 @@
 	
 	/* 其他登录方式 */
 	.other-login-methods {
-		margin-bottom: 32rpx;
+		margin-bottom: 20rpx;
 	}
 	
 	.divider {
 		flex-direction: row;
 		align-items: center;
 		justify-content: center;
-		margin-bottom: 32rpx;
+		margin-bottom: 24rpx;
 	}
 	
 	.divider-line {
@@ -546,6 +691,13 @@
 	}
 	
 	.social-login {
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+	}
+	
+	/* 社交登录按钮行 */
+	.social-buttons-row {
 		flex-direction: row;
 		justify-content: center;
 		align-items: center;
@@ -662,8 +814,8 @@
 	
 	/* 底部版权信息 */
 	.footer {
-		margin-top: 60rpx;
-		padding-bottom: 40rpx;
+		margin-top: 32rpx;
+		padding-bottom: 24rpx;
 		align-items: center;
 	}
 	

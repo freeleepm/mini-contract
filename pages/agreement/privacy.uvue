@@ -24,7 +24,7 @@
 				</view>
 				
 				<view class="privacy-section">
-					<text class="section-content">Mini Contract Pro（以下简称"我们"或"本平台"）非常重视用户隐私政策并严格遵守相关的法律规定。请您仔细阅读《隐私政策》后再继续使用。如果您继续使用我们的服务，表示您已经仔细阅读并明确同意本政策的所有内容。</text>
+					<text class="section-content">Contract.Pro（以下简称"我们"或"本平台"）非常重视用户隐私政策并严格遵守相关的法律规定。请您仔细阅读《隐私政策》后再继续使用。如果您继续使用我们的服务，表示您已经仔细阅读并明确同意本政策的所有内容。</text>
 				</view>
 				
 				<view class="privacy-section">
@@ -110,7 +110,7 @@
 				</view>
 				
 				<view class="privacy-footer">
-					<text class="footer-text">Mini Contract Pro</text>
+					<text class="footer-text">Contract.Pro</text>
 				</view>
 			</view>
 		</scroll-view>

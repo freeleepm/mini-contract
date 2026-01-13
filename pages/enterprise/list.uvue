@@ -4,14 +4,25 @@
 	 */
 	import { getEnterpriseList, switchEnterprise, EnterpriseStatus, EnterpriseRole } from '../../api/enterprise/index';
 	
+	// 定义企业列表项类型
+	interface EnterpriseListItem {
+		id: number;
+		name: string;
+		verified: boolean;
+		certStatus: string;
+		role: string;
+		memberCount: number;
+		createTime: string;
+	}
+	
 	export default {
 		data() {
 			return {
 				// 企业列表
-				enterprises: [],
+				enterprises: [] as EnterpriseListItem[],
 				
 				// 当前选中的企业ID
-				currentEnterpriseId: '',
+				currentEnterpriseId: '' as string | number,
 				
 				// 加载状态
 				loading: false
@@ -41,8 +52,8 @@
 				try {
 					const savedIdentity = uni.getStorageSync('currentIdentity');
 					if (savedIdentity) {
-						const identity = JSON.parse(savedIdentity);
-						if (identity.type === 'enterprise') {
+						const identity = JSON.parse(savedIdentity) as { type?: string; id?: string | number } | null;
+						if (identity && identity.type === 'enterprise' && identity.id) {
 							this.currentEnterpriseId = identity.id;
 						}
 					}
@@ -194,19 +205,33 @@
 				
 				// 跳转前先更新本地存储的企业列表信息
 				try {
-					let enterprises = uni.getStorageSync('enterpriseList');
-					let enterpriseList = [];
+					const enterprises = uni.getStorageSync('enterpriseList');
+					let enterpriseList: Array<{
+						id: string;
+						name: string;
+						status: EnterpriseStatus;
+						certStatus: string;
+						role: EnterpriseRole;
+						createTime: string;
+					}> = [];
 					
 					if (enterprises) {
-						enterpriseList = JSON.parse(enterprises);
+						enterpriseList = JSON.parse(enterprises) as Array<{
+							id: string;
+							name: string;
+							status: EnterpriseStatus;
+							certStatus: string;
+							role: EnterpriseRole;
+							createTime: string;
+						}>;
 					}
 					
 					// 检查企业是否已在列表中
-					const index = enterpriseList.findIndex(item => item.id === enterpriseId);
+					const index = enterpriseList.findIndex(item => item.id === String(enterpriseId));
 					if (index === -1) {
 						// 如果不在列表中，添加到列表
 						enterpriseList.push({
-							id: enterprise.id,
+							id: String(enterprise.id),
 							name: enterprise.name,
 							status: enterprise.verified ? EnterpriseStatus.VERIFIED : EnterpriseStatus.UNVERIFIED,
 							certStatus: enterprise.certStatus,
@@ -215,12 +240,9 @@
 						});
 					} else {
 						// 如果已在列表中，更新信息
-						enterpriseList[index] = {
-							...enterpriseList[index],
-							name: enterprise.name,
-							status: enterprise.verified ? EnterpriseStatus.VERIFIED : EnterpriseStatus.UNVERIFIED,
-							certStatus: enterprise.certStatus
-						};
+						enterpriseList[index].name = enterprise.name;
+						enterpriseList[index].status = enterprise.verified ? EnterpriseStatus.VERIFIED : EnterpriseStatus.UNVERIFIED;
+						enterpriseList[index].certStatus = enterprise.certStatus;
 					}
 					
 					// 保存回本地存储

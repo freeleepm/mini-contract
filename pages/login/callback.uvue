@@ -1,0 +1,207 @@
+<script lang="uts">
+/**
+ * 小华同学AI
+ * 微信公众号授权回调页面
+ * 处理微信 OAuth2.0 授权后的回调
+ */
+import { officialAccount } from '@/utils/platform/provider/wechat/index'
+
+export default {
+    data() {
+        return {
+            loading: true,
+            message: '正在处理授权...'
+        }
+    },
+    
+    onLoad(options: any) {
+        console.log('[LoginCallback] 页面加载，参数:', JSON.stringify(options))
+        this.handleCallback(options)
+    },
+    
+    methods: {
+        async handleCallback(options: any): Promise<void> {
+            // #ifdef H5
+            try {
+                // 从 URL 中解析参数（H5 环境下 options 可能不完整）
+                const urlParams = new URLSearchParams(window.location.search)
+                const event = options.event || urlParams.get('event') || 'login'
+                const code = options.code || urlParams.get('code') || ''
+                const state = options.state || urlParams.get('state') || ''
+                
+                console.log('[LoginCallback] 解析参数 - event:', event, 'code:', code ? '存在' : '不存在')
+                
+                if (!code) {
+                    this.message = '授权失败：未获取到授权码'
+                    this.loading = false
+                    setTimeout(() => {
+                        this.redirectBack()
+                    }, 2000)
+                    return
+                }
+                
+                let success = false
+                
+                if (event === 'login') {
+                    // 场景一：登录
+                    this.message = '正在登录...'
+                    const result = await officialAccount.login(code, state)
+                    success = result !== false
+                } else if (event === 'bind') {
+                    // 场景二：绑定
+                    this.message = '正在绑定微信账号...'
+                    success = await officialAccount.bind(code, state)
+                }
+                
+                if (success) {
+                    this.message = event === 'login' ? '登录成功' : '绑定成功'
+                    uni.showToast({
+                        title: this.message,
+                        icon: 'success',
+                        duration: 1500
+                    })
+                } else {
+                    this.message = event === 'login' ? '登录失败' : '绑定失败'
+                }
+                
+                this.loading = false
+                
+                // 延迟跳转
+                setTimeout(() => {
+                    this.redirectBack()
+                }, 1500)
+                
+            } catch (error) {
+                console.error('[LoginCallback] 处理回调失败:', error)
+                this.message = '处理失败：' + ((error as any)?.message || '未知错误')
+                this.loading = false
+                
+                setTimeout(() => {
+                    this.redirectBack()
+                }, 2000)
+            }
+            // #endif
+            
+            // #ifndef H5
+            this.message = '当前环境不支持此功能'
+            this.loading = false
+            setTimeout(() => {
+                uni.switchTab({ url: '/pages/index/index' })
+            }, 1500)
+            // #endif
+        },
+        
+        redirectBack(): void {
+            // #ifdef H5
+            // 获取保存的返回URL
+            const returnUrl = officialAccount.getReturnUrl()
+            officialAccount.clearReturnUrl()
+            
+            if (returnUrl) {
+                console.log('[LoginCallback] 跳转回原页面:', returnUrl)
+                window.location.replace(returnUrl)
+            } else {
+                // 默认跳转到首页
+                uni.switchTab({
+                    url: '/pages/index/index'
+                })
+            }
+            // #endif
+            
+            // #ifndef H5
+            uni.switchTab({
+                url: '/pages/index/index'
+            })
+            // #endif
+        }
+    }
+}
+</script>
+
+<template>
+    <view class="callback-container">
+        <view class="callback-content">
+            <!-- 加载动画 -->
+            <view class="loading-wrapper" v-if="loading">
+                <view class="loading-spinner"></view>
+            </view>
+            
+            <!-- 状态图标 -->
+            <view class="status-icon" v-else>
+                <text class="fa fa-check-circle success-icon" v-if="message.includes('成功')"></text>
+                <text class="fa fa-times-circle error-icon" v-else></text>
+            </view>
+            
+            <!-- 提示文字 -->
+            <text class="message">{{ message }}</text>
+        </view>
+    </view>
+</template>
+
+<style>
+@import url("../../static/styles/fontawesome.css");
+
+.fa {
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-style: normal;
+}
+
+.callback-container {
+    flex: 1;
+    background-color: #F7F9FC;
+    align-items: center;
+    justify-content: center;
+}
+
+.callback-content {
+    align-items: center;
+    padding: 60rpx;
+}
+
+.loading-wrapper {
+    width: 120rpx;
+    height: 120rpx;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 40rpx;
+}
+
+.loading-spinner {
+    width: 80rpx;
+    height: 80rpx;
+    border-radius: 50%;
+    border: 6rpx solid #E4E7ED;
+    border-top-color: #00C28A;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.status-icon {
+    margin-bottom: 40rpx;
+}
+
+.success-icon {
+    font-size: 120rpx;
+    color: #00C28A;
+}
+
+.error-icon {
+    font-size: 120rpx;
+    color: #F56C6C;
+}
+
+.message {
+    font-size: 32rpx;
+    color: #606266;
+    text-align: center;
+}
+</style>

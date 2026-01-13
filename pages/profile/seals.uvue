@@ -759,9 +759,6 @@ export default {
 			<image class="empty-image" src="/static/images/empty-signature.png"></image>
 			<text class="empty-text">暂无个人印章</text>
 			<text class="empty-desc">创建个人印章，用于合同签署</text>
-			<view class="empty-btn" @click="createPersonalSeal">
-				<text class="empty-btn-text">添加印章</text>
-			</view>
 		</view>
 		
 		<!-- 个人印章列表 -->
@@ -774,15 +771,22 @@ export default {
 				@click="viewSealDetail(item)">
 				<view class="seal-image-wrapper">
 					<image class="seal-image" :src="getSealImageUrl(item)" mode="aspectFit"></image>
-					<view class="status-badge" :class="getStatusClass(item.status)">
+					<!-- 禁用状态下隐藏右上角的状态标签 -->
+					<view class="status-badge" :class="getStatusClass(item.status)" v-if="item.status !== 0 && item.status !== 1">
 						<text class="status-text">{{ getStatusName(item.status) }}</text>
+					</view>
+					<!-- 🆕 底部禁用封条 -->
+					<view class="disabled-strip" v-if="item.status === 1">
+						<text class="disabled-strip-text">已禁用</text>
 					</view>
 				</view>
 				<view class="seal-info">
 					<view class="seal-name-row">
 						<text class="seal-name">{{ item.name }}</text>
 					</view>
-					<text class="seal-type">{{ getSealTypeName(item.type) }}</text>
+					<view class="seal-type-tag">
+						<text class="seal-type-text">{{ getSealTypeName(item.type) }}</text>
+					</view>
 					<text class="seal-time">创建时间: {{ formatDate(item.createTime) }}</text>
 				</view>
 				<view class="seal-actions">
@@ -840,15 +844,22 @@ export default {
 					@click="viewSealDetail(item)">
 					<view class="seal-image-wrapper">
 						<image class="seal-image" :src="getSealImageUrl(item)" mode="aspectFit"></image>
-						<view class="status-badge" :class="getStatusClass(item.status)">
+						<!-- 禁用状态下隐藏图片上的标签 -->
+						<view class="status-badge" :class="getStatusClass(item.status)" v-if="item.status !== 0 && item.status !== 1">
 							<text class="status-text">{{ getStatusName(item.status) }}</text>
+						</view>
+						<!-- 🆕 底部禁用封条 -->
+						<view class="disabled-strip" v-if="item.status === 1">
+							<text class="disabled-strip-text">已禁用</text>
 						</view>
 					</view>
 					<view class="seal-info">
 						<view class="seal-name-row">
 							<text class="seal-name">{{ item.name }}</text>
 						</view>
-						<text class="seal-type">{{ getSealTypeName(item.type) }}</text>
+						<view class="seal-type-tag">
+							<text class="seal-type-text">{{ getSealTypeName(item.type) }}</text>
+						</view>
 						<text class="seal-time">创建时间: {{ formatDate(item.createTime) }}</text>
 					</view>
 					<!-- 企业印章暂时没有右侧操作 -->
@@ -933,6 +944,7 @@ page {
 	border-bottom-width: 1rpx;
 	border-bottom-color: #EBEEF5;
 	z-index: 100;
+	padding-top: 20rpx; /* 增加顶部间距，避免贴顶 */
 }
 
 /* Tab切换器 */
@@ -1136,47 +1148,63 @@ page {
 	margin-bottom: 20rpx;
 	flex-direction: row;
 	align-items: center;
-	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
-	border: 1rpx solid #EBEEF5;
-	transition: all 0.2s;
-}
-
-.seal-item:active {
-	background-color: #F9FAFB;
-}
-
-/* 禁用状态的印章 */
-.seal-item.disabled {
-	opacity: 0.6;
-	background-color: #F5F7FA;
-}
-
-.seal-item.disabled .seal-image {
-	opacity: 0.5;
-}
-
-.seal-item.disabled .seal-name {
-	color: #909399;
-}
-
-.seal-item.disabled .seal-time {
-	color: #C0C4CC;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.02);
+	position: relative; /* 支持水印定位 */
 }
 
 .seal-info {
-	flex-direction: column;
-	align-items: flex-start;
 	flex: 1;
-	margin-left: 20rpx;
+	margin-left: 24rpx;
 	justify-content: center;
 }
 
-/* 印章图片容器 */
+.seal-item.disabled {
+	/* 保持白色背景，仅弱化文字颜色 */
+	background-color: #FFFFFF !important;
+	border: 1rpx solid #F2F3F5;
+}
+
+.seal-item.disabled .seal-name,
+.seal-item.disabled .seal-type-text,
+.seal-item.disabled .seal-time {
+	color: #999999 !important;
+}
+
+.seal-item.disabled .seal-image {
+	filter: grayscale(100%);
+	opacity: 0.8;
+}
+
+/* 禁用封条样式 */
+.disabled-strip {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 36rpx;
+	background-color: rgba(0, 0, 0, 0.6);
+	border-bottom-left-radius: 8rpx;
+	border-bottom-right-radius: 8rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 10;
+}
+
+.disabled-strip-text {
+	font-size: 20rpx;
+	color: #FFFFFF;
+	font-weight: 500;
+	letter-spacing: 1rpx;
+}
+
 .seal-image-wrapper {
 	position: relative;
 	width: 100rpx;
 	height: 100rpx;
 	flex-shrink: 0;
+	/* 确保水印不会溢出 */
+	overflow: hidden; 
 }
 
 .seal-image {
@@ -1236,12 +1264,27 @@ page {
 	margin-right: 10rpx;
 }
 
-.seal-type {
+/* 优化后的印章类型标签 */
+.seal-type-tag {
+	align-self: flex-start;
+	background-color: #E8FFEA;
+	border: 1rpx solid #00C28A;
+	padding: 2rpx 12rpx;
+	border-radius: 8rpx;
+	margin-bottom: 8rpx;
+	opacity: 0.9;
+}
+
+.seal-type-text {
 	font-size: 22rpx;
-	color: #606266;
-	background-color: #F5F7FA;
-	padding: 4rpx 12rpx;
-	border-radius: 20rpx;
+	color: #00C28A;
+	font-weight: 500;
+}
+
+/* 禁用状态下，标签变灰 */
+.seal-item.disabled .seal-type-tag {
+	background-color: #F5F7FA !important;
+	border-color: #E4E7ED !important;
 }
 
 .seal-time {

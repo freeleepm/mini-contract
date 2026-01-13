@@ -1,0 +1,236 @@
+/**
+ * 小华同学AI
+ * 微信小程序授权实现
+ * 支持静默登录和手机号快捷登录
+ */
+
+import { 
+    SocialType, 
+    socialLogin, 
+    weixinMiniAppLogin,
+    getSocialUser,
+    bindSocialUser,
+    type SocialLoginResponse,
+    type SocialUserInfo
+} from '@/api/auth/social'
+import { getSealToken, clearSealToken } from '@/utils/sealTokenManager'
+
+// 社交类型 - 微信小程序
+const SOCIAL_TYPE = SocialType.WECHAT_MINI_PROGRAM
+
+/**
+ * 存储 openid 到本地
+ */
+function setOpenid(openid: string): void {
+    if (openid) {
+        uni.setStorageSync('wechat_openid', openid)
+        console.log('[WechatMiniProgram] openid 已保存')
+    }
+}
+
+/**
+ * 获取本地存储的 openid
+ */
+export function getOpenid(): string {
+    return uni.getStorageSync('wechat_openid') || ''
+}
+
+/**
+ * 保存登录信息到本地存储
+ */
+async function saveLoginInfo(response: SocialLoginResponse): Promise<void> {
+    // 保存 token
+    uni.setStorageSync('token', response.accessToken)
+    uni.setStorageSync('refreshToken', response.refreshToken)
+    uni.setStorageSync('userId', response.userId)
+    
+    // 保存 openid
+    if (response.openid) {
+        setOpenid(response.openid)
+    }
+    
+    console.log('[WechatMiniProgram] 登录信息已保存')
+    
+    // 兑换 Seal-Token
+    try {
+        console.log('[WechatMiniProgram] 开始兑换 Seal-Token...')
+        clearSealToken()
+        await getSealToken()
+        console.log('[WechatMiniProgram] ✅ Seal-Token 兑换成功')
+    } catch (error) {
+        console.error('[WechatMiniProgram] ⚠️ Seal-Token 兑换失败，但不影响登录:', error)
+    }
+}
+
+/**
+ * 微信小程序静默登录
+ * 使用 wx.login 获取 code 进行登录
+ * @returns 登录是否成功
+ */
+export async function login(): Promise<boolean> {
+    console.log('[WechatMiniProgram] 开始静默登录...')
+    
+    try {
+        // 1. 调用 wx.login 获取 code
+        const loginResult = await new Promise<UniApp.LoginRes>((resolve, reject) => {
+            uni.login({
+                provider: 'weixin',
+                success: (res) => resolve(res),
+                fail: (err) => reject(err)
+            })
+        })
+        
+        if (loginResult.errMsg !== 'login:ok' || !loginResult.code) {
+            console.error('[WechatMiniProgram] wx.login 失败:', loginResult.errMsg)
+            return false
+        }
+        
+        console.log('[WechatMiniProgram] wx.login 成功，code:', loginResult.code.substring(0, 10) + '...')
+        
+        // 2. 调用后端社交登录接口
+        const response = await socialLogin({
+            type: SOCIAL_TYPE,
+            code: loginResult.code,
+            state: 'default'
+        })
+        
+        console.log('[WechatMiniProgram] 社交登录成功')
+        
+        // 3. 保存登录信息
+        await saveLoginInfo(response)
+        
+        return true
+    } catch (error) {
+        console.error('[WechatMiniProgram] 静默登录失败:', error)
+        return false
+    }
+}
+
+/**
+ * 微信小程序手机号快捷登录
+ * 使用 getPhoneNumber 获取手机号进行一键登录
+ * @param phoneNumberEvent getPhoneNumber 事件对象
+ * @returns 登录是否成功
+ */
+export async function mobileLogin(phoneNumberEvent: any): Promise<boolean> {
+    console.log('[WechatMiniProgram] 开始手机号快捷登录...')
+    
+    // 检查用户是否授权
+    if (phoneNumberEvent.errMsg !== 'getPhoneNumber:ok' && 
+        phoneNumberEvent.detail?.errMsg !== 'getPhoneNumber:ok') {
+        console.log('[WechatMiniProgram] 用户拒绝授权手机号')
+        uni.showToast({
+            title: '需要授权手机号才能登录',
+            icon: 'none'
+        })
+        return false
+    }
+    
+    // 获取 phoneCode
+    const phoneCode = phoneNumberEvent.code || phoneNumberEvent.detail?.code
+    if (!phoneCode) {
+        console.error('[WechatMiniProgram] 未获取到 phoneCode')
+        uni.showToast({
+            title: '获取手机号失败',
+            icon: 'none'
+        })
+        return false
+    }
+    
+    try {
+        // 1. 调用 wx.login 获取 loginCode
+        const loginResult = await new Promise<UniApp.LoginRes>((resolve, reject) => {
+            uni.login({
+                provider: 'weixin',
+                success: (res) => resolve(res),
+                fail: (err) => reject(err)
+            })
+        })
+        
+        if (loginResult.errMsg !== 'login:ok' || !loginResult.code) {
+            console.error('[WechatMiniProgram] wx.login 失败:', loginResult.errMsg)
+            return false
+        }
+        
+        console.log('[WechatMiniProgram] wx.login 成功')
+        
+        // 2. 调用后端微信小程序一键登录接口
+        const response = await weixinMiniAppLogin({
+            phoneCode: phoneCode,
+            loginCode: loginResult.code,
+            state: 'default'
+        })
+        
+        console.log('[WechatMiniProgram] 手机号快捷登录成功')
+        
+        // 3. 保存登录信息
+        await saveLoginInfo(response)
+        
+        return true
+    } catch (error) {
+        console.error('[WechatMiniProgram] 手机号快捷登录失败:', error)
+        uni.showToast({
+            title: (error as any)?.message || '登录失败',
+            icon: 'none'
+        })
+        return false
+    }
+}
+
+/**
+ * 绑定微信账号
+ * @returns 绑定是否成功
+ */
+export async function bindWechat(): Promise<boolean> {
+    console.log('[WechatMiniProgram] 开始绑定微信账号...')
+    
+    try {
+        // 1. 调用 wx.login 获取 code
+        const loginResult = await new Promise<UniApp.LoginRes>((resolve, reject) => {
+            uni.login({
+                provider: 'weixin',
+                success: (res) => resolve(res),
+                fail: (err) => reject(err)
+            })
+        })
+        
+        if (loginResult.errMsg !== 'login:ok' || !loginResult.code) {
+            console.error('[WechatMiniProgram] wx.login 失败')
+            return false
+        }
+        
+        // 2. 调用绑定接口
+        const openid = await bindSocialUser(SOCIAL_TYPE, loginResult.code, 'bindWechat')
+        
+        if (openid) {
+            setOpenid(openid)
+            console.log('[WechatMiniProgram] 绑定成功')
+            return true
+        }
+        
+        return false
+    } catch (error) {
+        console.error('[WechatMiniProgram] 绑定失败:', error)
+        return false
+    }
+}
+
+/**
+ * 获取微信用户信息
+ */
+export async function getWechatUserInfo(): Promise<SocialUserInfo | null> {
+    try {
+        return await getSocialUser(SOCIAL_TYPE)
+    } catch (error) {
+        console.error('[WechatMiniProgram] 获取用户信息失败:', error)
+        return null
+    }
+}
+
+/**
+ * 检查是否已绑定微信
+ */
+export async function isWechatBound(): Promise<boolean> {
+    const userInfo = await getWechatUserInfo()
+    return userInfo !== null && !!userInfo.openid
+}

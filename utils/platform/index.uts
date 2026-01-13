@@ -1,0 +1,123 @@
+/**
+ * 小华同学AI
+ * 平台识别模块
+ * 根据运行环境自动识别当前平台，提供统一的平台信息和授权入口
+ */
+
+// 平台类型枚举
+export type PlatformName = 'WechatMiniProgram' | 'WechatOfficialAccount' | 'H5' | 'App'
+export type ProviderType = 'wechat' | 'none'
+export type PlatformType = 'miniProgram' | 'officialAccount' | 'h5' | 'app'
+
+// 平台信息接口
+export interface PlatformInfo {
+    name: PlatformName
+    provider: ProviderType
+    platform: PlatformType
+}
+
+// 全局平台信息
+let platformInfo: PlatformInfo = {
+    name: 'H5',
+    provider: 'none',
+    platform: 'h5'
+}
+
+/**
+ * 检测是否在微信浏览器中
+ */
+function isWxBrowser(): boolean {
+    // #ifdef H5
+    try {
+        const ua = navigator.userAgent.toLowerCase()
+        return ua.indexOf('micromessenger') !== -1
+    } catch (e) {
+        return false
+    }
+    // #endif
+    // #ifndef H5
+    return false
+    // #endif
+}
+
+/**
+ * 初始化平台信息
+ * 根据运行环境自动设置平台类型
+ */
+export function initPlatform(): PlatformInfo {
+    // #ifdef MP-WEIXIN
+    platformInfo = {
+        name: 'WechatMiniProgram',
+        provider: 'wechat',
+        platform: 'miniProgram'
+    }
+    console.log('[Platform] 检测到微信小程序环境')
+    // #endif
+
+    // #ifdef H5
+    if (isWxBrowser()) {
+        platformInfo = {
+            name: 'WechatOfficialAccount',
+            provider: 'wechat',
+            platform: 'officialAccount'
+        }
+        console.log('[Platform] 检测到微信公众号H5环境')
+    } else {
+        platformInfo = {
+            name: 'H5',
+            provider: 'none',
+            platform: 'h5'
+        }
+        console.log('[Platform] 检测到普通H5环境')
+    }
+    // #endif
+
+    // #ifdef APP-PLUS
+    platformInfo = {
+        name: 'App',
+        provider: 'wechat',
+        platform: 'app'
+    }
+    console.log('[Platform] 检测到App环境')
+    // #endif
+
+    return platformInfo
+}
+
+/**
+ * 获取当前平台信息
+ */
+export function getPlatformInfo(): PlatformInfo {
+    return platformInfo
+}
+
+/**
+ * 获取平台名称
+ */
+export function getPlatformName(): PlatformName {
+    return platformInfo.name
+}
+
+/**
+ * 判断是否为微信小程序
+ */
+export function isWechatMiniProgram(): boolean {
+    return platformInfo.name === 'WechatMiniProgram'
+}
+
+/**
+ * 判断是否为微信公众号H5
+ */
+export function isWechatOfficialAccount(): boolean {
+    return platformInfo.name === 'WechatOfficialAccount'
+}
+
+/**
+ * 判断是否支持微信登录
+ */
+export function isWechatLoginSupported(): boolean {
+    return platformInfo.provider === 'wechat'
+}
+
+// 初始化平台信息
+initPlatform()

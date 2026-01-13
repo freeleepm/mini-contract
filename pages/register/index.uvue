@@ -13,6 +13,12 @@
 				timer: 0
 			}
 		},
+		computed: {
+			// 登录按钮是否禁用
+			isLoginDisabled(): boolean {
+				return !this.phone || !this.verificationCode || this.isLoading
+			}
+		},
 		onUnload() {
 			// 清除计时器
 			if (this.timer > 0) {
@@ -255,6 +261,9 @@
 					maxlength="11"
 					v-model="phone"
 				/>
+				<view class="input-suffix" v-if="phone" @click="phone = ''">
+					<text class="fa fa-times-circle input-icon clear-icon"></text>
+				</view>
 			</view>
 			
 		<!-- 验证码输入框 -->
@@ -289,7 +298,7 @@
 				<!-- 登录按钮 -->
 				<button 
 					class="primary-button" 
-					:disabled="isLoading" 
+					:disabled="isLoginDisabled" 
 					:loading="isLoading"
 					@click="handleRegister"
 				>
@@ -318,7 +327,7 @@
 		
 		<!-- 底部版权信息 -->
 		<view class="footer">
-			<text class="copyright">© 2025 Mini Contract Pro 版权所有</text>
+			<text class="copyright">© 2025 Contract.Pro版权所有</text>
 		</view>
 	</view>
 </template>
@@ -471,6 +480,21 @@
 	.input-placeholder {
 		color: #C0C4CC;
 		font-size: 30rpx;
+	}
+	
+	.input-suffix {
+		width: 60rpx;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.input-suffix:active {
+		opacity: 0.6;
+	}
+	
+	.clear-icon {
+		color: #C0C4CC;
+		font-size: 32rpx;
 	}
 	
 	.code-field {

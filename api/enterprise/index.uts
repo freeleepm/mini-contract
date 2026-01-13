@@ -2,7 +2,6 @@
  * 企业相关API接口
  */
 import { request } from '../index';
-import type { ApiResponse } from '../index';
 // ✅ 导入 seal 模块的函数（用于已废弃函数的重定向）
 import { 
     createSeal, 
@@ -43,6 +42,9 @@ export interface Enterprise {
     createTime?: string;         // 创建时间
     updateTime?: string;         // 更新时间
     businessLicenseUrl?: string; // 营业执照URL
+    role?: EnterpriseRole;       // 当前用户在企业中的角色
+    owner?: boolean;             // 是否为所有者
+    memberCount?: number;        // 成员数量
 }
 
 // 企业认证请求参数
@@ -84,6 +86,16 @@ export interface EnterpriseMember {
     mobile: string;
     role: EnterpriseRole;
     joinTime: string;
+    // 兼容字段
+    name?: string;
+    userName?: string;
+    phone?: string;
+    phoneNumber?: string;
+    portrait?: string;
+    image?: string;
+    verified?: boolean;
+    createTime?: string;
+    createDate?: string;
 }
 
 // 企业成员列表分页响应接口
@@ -99,6 +111,17 @@ export interface EnterpriseSeal {
     name: string;
     picture: string;
     createTime: string;
+    // 兼容字段
+    sealData?: string;
+    image?: string;
+    type?: number;
+    code?: string;
+    imageUrl?: string;
+    ownerId?: number;
+    userId?: number;
+    createdBy?: number;
+    status?: number;
+    generationMethod?: string;
 }
 
 // 企业印章分页响应接口
@@ -127,9 +150,10 @@ export interface SealGrantListResponse {
 /**
  * 创建企业
  * @param data 企业信息
- * @returns Promise<ApiResponse<Enterprise>>
+ * @returns Promise<Enterprise>
+ * @note request 函数已经解包了 ApiResponse，所以直接返回 data 部分
  */
-export function createEnterprise(data: any): Promise<ApiResponse<Enterprise>> {
+export function createEnterprise(data: any): Promise<Enterprise> {
     return request({
         url: '/api/v1/member/enterprise/create',
         method: 'POST',
@@ -140,13 +164,14 @@ export function createEnterprise(data: any): Promise<ApiResponse<Enterprise>> {
 /**
  * 获取企业详情
  * @param id 企业ID
- * @returns Promise<ApiResponse<Enterprise>>
+ * @returns Promise<Enterprise>
+ * @note request 函数已经解包了 ApiResponse，所以直接返回 data 部分
  */
-export function getEnterpriseDetail(id: number): Promise<ApiResponse<Enterprise>> {
+export function getEnterpriseDetail(id: number): Promise<Enterprise> {
     return request({
         url: `/api/v1/member/enterprise/get?id=${id}`,
         method: 'GET'
-    });
+    }); 
 }
 
 /**
@@ -166,9 +191,10 @@ export function getEnterpriseList(params?: any): Promise<EnterpriseListResponse>
 /**
  * 企业认证
  * @param data 认证信息
- * @returns Promise<ApiResponse<any>>
+ * @returns Promise<any>
+ * @note request 函数已经解包了 ApiResponse，所以直接返回 data 部分
  */
-export function verifyEnterprise(data: VerifyEnterpriseParams): Promise<ApiResponse<any>> {
+export function verifyEnterprise(data: VerifyEnterpriseParams): Promise<any> {
     console.log('调用企业认证API，参数:', JSON.stringify(data));
     
     // 确保企业ID在请求体中而不是URL中
@@ -273,39 +299,42 @@ export function getEnterpriseMemberPage(params: {
                 total: 0
             };
         } else if (typeof res === 'object') {
+            // 类型断言为更灵活的类型
+            const resAny = res as any;
+            
             if (Array.isArray(res)) {
                 // 如果返回的是数组，将其作为list
                 console.log('API返回数组，将其转换为标准响应格式');
                 standardizedResponse = {
-                    list: res,
+                    list: res as EnterpriseMember[],
                     total: res.length
                 };
-            } else if (res.list === undefined) {
+            } else if (resAny.list === undefined) {
                 // 没有list字段，可能是直接返回了数据对象
                 console.log('API响应缺少list字段，尝试从其他字段提取数据');
                 
                 // 尝试从可能的字段中获取列表数据
-                let extractedList = null;
+                let extractedList: EnterpriseMember[] = [];
                 
                 // 尝试从data字段获取
-                if (res.data && Array.isArray(res.data)) {
+                if (resAny.data && Array.isArray(resAny.data)) {
                     console.log('从data字段提取列表数据');
-                    extractedList = res.data;
+                    extractedList = resAny.data;
                 } 
                 // 尝试从records字段获取
-                else if (res.records && Array.isArray(res.records)) {
+                else if (resAny.records && Array.isArray(resAny.records)) {
                     console.log('从records字段提取列表数据');
-                    extractedList = res.records;
+                    extractedList = resAny.records;
                 }
                 // 尝试从result字段获取
-                else if (res.result && Array.isArray(res.result)) {
+                else if (resAny.result && Array.isArray(resAny.result)) {
                     console.log('从result字段提取列表数据');
-                    extractedList = res.result;
+                    extractedList = resAny.result;
                 }
                 // 尝试从items字段获取
-                else if (res.items && Array.isArray(res.items)) {
+                else if (resAny.items && Array.isArray(resAny.items)) {
                     console.log('从items字段提取列表数据');
-                    extractedList = res.items;
+                    extractedList = resAny.items;
                 }
                 // 如果没有找到合适的列表数据，则使用空数组
                 else {
@@ -314,22 +343,22 @@ export function getEnterpriseMemberPage(params: {
                 }
                 
                 // 尝试从可能的字段中获取总数
-                let extractedTotal = null;
+                let extractedTotal: number = 0;
                 
                 // 尝试从total字段获取
-                if (res.total !== undefined) {
+                if (resAny.total !== undefined) {
                     console.log('从total字段提取总数');
-                    extractedTotal = res.total;
+                    extractedTotal = resAny.total;
                 }
                 // 尝试从count字段获取
-                else if (res.count !== undefined) {
+                else if (resAny.count !== undefined) {
                     console.log('从count字段提取总数');
-                    extractedTotal = res.count;
+                    extractedTotal = resAny.count;
                 }
                 // 尝试从totalCount字段获取
-                else if (res.totalCount !== undefined) {
+                else if (resAny.totalCount !== undefined) {
                     console.log('从totalCount字段提取总数');
-                    extractedTotal = res.totalCount;
+                    extractedTotal = resAny.totalCount;
                 }
                 // 如果没有找到合适的总数数据，则使用列表长度
                 else {
@@ -477,8 +506,10 @@ export function createEnterpriseSeal(data: {
         name: data.name,
         type: 1, // 默认类型：公章
         enterpriseId: data.enterpriseId,
-        sealData: data.picture,
-        generationMethod: 1, // 上传生成
+        sealData: data.picture
+    }).then(res => {
+        // 返回印章ID（转换为number）
+        return res.id ? parseInt(res.id) : 0;
     });
 }
 
@@ -496,10 +527,12 @@ export function updateEnterpriseSeal(data: {
 }): Promise<boolean> {
     console.warn('[API] updateEnterpriseSeal 已废弃，请使用 seal 模块的 updateSeal');
     // ✅ 使用顶部导入的 updateSeal（已在文件顶部导入）
-    return updateSeal(data.id, {
+    return updateSeal({
+        id: String(data.id),
         name: data.name,
-        sealData: data.picture
-    });
+        sealData: data.picture,
+        type: 1 // 默认类型
+    }).then(() => true);
 }
 
 /**
@@ -512,7 +545,7 @@ export function updateEnterpriseSeal(data: {
 export function deleteEnterpriseSeal(id: number): Promise<boolean> {
     console.warn('[API] deleteEnterpriseSeal 已废弃，请使用 seal 模块的 deleteSeal');
     // ✅ 使用顶部导入的 deleteSeal（已在文件顶部导入）
-    return deleteSeal(id);
+    return deleteSeal(String(id)).then(() => true);
 }
 
 /**
@@ -525,7 +558,7 @@ export function deleteEnterpriseSeal(id: number): Promise<boolean> {
 export function getEnterpriseSealDetail(id: number): Promise<EnterpriseSeal> {
     console.warn('[API] getEnterpriseSealDetail 已废弃，请使用 seal 模块的 getSealDetail');
     // ✅ 使用顶部导入的 getSealDetail（已在文件顶部导入）
-    return getSealDetail(id) as Promise<any>;
+    return getSealDetail(String(id)) as Promise<any>;
 }
 
 /**

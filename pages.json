@@ -1,5 +1,5 @@
 {
-	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+	"pages": [
 		{
 			"path": "pages/login/index",
 			"style": {
@@ -18,14 +18,23 @@
 				"navigationBarBackgroundColor": "#FFFFFF",
 				"navigationBarTextStyle": "black",
 				"app-plus": {
-					"titleNView": false  // 禁用原生导航栏，使用自定义导航栏
+					"titleNView": false
 				}
+			}
+		},
+		{
+			"path": "pages/login/callback",
+			"style": {
+				"navigationBarTitleText": "授权中",
+				"navigationBarBackgroundColor": "#FFFFFF",
+				"navigationBarTextStyle": "black"
 			}
 		},
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "Mini Contract Pro",
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "Contract.Pro",
 				"navigationBarBackgroundColor": "#00C28A",
 				"navigationBarTextStyle": "white",
 				"app-plus": {
@@ -37,6 +46,7 @@
 		{
 			"path": "pages/contract-manage/index",
 			"style": {
+				"navigationStyle": "custom",
 				"navigationBarTitleText": "合同管理",
 				"navigationBarBackgroundColor": "#FFFFFF",
 				"navigationBarTextStyle": "black",
@@ -60,6 +70,7 @@
 		{
 			"path": "pages/profile/index",
 			"style": {
+				"navigationStyle": "custom",
 				"navigationBarTitleText": "个人中心",
 				"navigationBarBackgroundColor": "#00C28A",
 				"navigationBarTextStyle": "white",
@@ -116,6 +127,14 @@
 			"path": "pages/profile/settings",
 			"style": {
 				"navigationBarTitleText": "设置",
+				"navigationBarBackgroundColor": "#FFFFFF",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/profile/change-password",
+			"style": {
+				"navigationBarTitleText": "修改密码",
 				"navigationBarBackgroundColor": "#FFFFFF",
 				"navigationBarTextStyle": "black"
 			}
@@ -221,39 +240,6 @@
 			}
 		},
 		{
-			"path": "pages/contract-create/file",
-			"style": {
-				"navigationBarTitleText": "文件发起",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black",
-				"app-plus": {
-					"titleNView": false  // 禁用原生导航栏，使用自定义导航栏
-				}
-			}
-		},
-		{
-			"path": "pages/contract-create/image",
-			"style": {
-				"navigationBarTitleText": "图片发起",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black",
-				"app-plus": {
-					"titleNView": false  // 禁用原生导航栏，使用自定义导航栏
-				}
-			}
-		},
-		{
-			"path": "pages/contract-create/setup",
-			"style": {
-				"navigationBarTitleText": "添加签署区",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black",
-				"app-plus": {
-					"titleNView": false  // 禁用原生导航栏，使用自定义导航栏
-				}
-			}
-		},
-		{
 			"path": "pages/contract-create/h5-create",
 			"style": {
 				"navigationBarTitleText": "创建合同",
@@ -314,10 +300,7 @@
 			"style": {
 				"navigationBarTitleText": "合同预览",
 				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black",
-				"app-plus": {
-					"titleNView": false
-				}
+				"navigationBarTextStyle": "black"
 			}
 		},
 		{
@@ -414,7 +397,7 @@
 				"navigationBarBackgroundColor": "#FFFFFF",
 				"navigationBarTextStyle": "black",
 				"app-plus": {
-					"titleNView": false  // 禁用原生导航栏，H5页面自带标题栏
+					"titleNView": false
 				}
 			}
 		},
@@ -499,7 +482,7 @@
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "Mini Contract Pro",
+		"navigationBarTitleText": "Contract.Pro",
 		"navigationBarBackgroundColor": "#F8F8F8",
 		"backgroundColor": "#F7F9FC"
 	},

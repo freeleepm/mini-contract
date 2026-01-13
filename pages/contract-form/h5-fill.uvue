@@ -73,16 +73,8 @@ export default {
 		 */
 		handleLoad(e) {
 			console.log('[H5表单] 页面加载完成:', e);
-			
 			this.loading = false;
-			
 			uni.hideLoading();
-			
-			uni.showToast({
-				title: '页面加载完成',
-				icon: 'success',
-				duration: 1500
-			});
 		},
 		
 		/**

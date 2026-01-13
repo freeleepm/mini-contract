@@ -253,14 +253,49 @@ export default {
       sealId: 0,
       enterpriseId: 0,
       loading: true,
-      sealInfo: {},
-      grantList: [],
+      sealInfo: {
+        id: 0,
+        name: '',
+        type: 0,
+        sealData: '',
+        code: '',
+        status: 0,
+        userId: 0
+      } as {
+        id: number;
+        name: string;
+        type: number;
+        sealData?: string;
+        code?: string;
+        status?: number;
+        userId?: number;
+      },
+      grantList: [] as Array<{
+        id: number;
+        userId: number;
+        memberAvatar?: string | null;
+        memberName?: string;
+      }>,
       
       // 成员选择相关
-      memberList: [],
-      filteredMembers: [],
+      memberList: [] as Array<{
+        id: number;
+        nickname: string;
+        avatar?: string;
+        mobile?: string;
+        role?: number;
+      }>,
+      filteredMembers: [] as Array<{
+        id: number;
+        nickname: string;
+        avatar?: string;
+        role?: number;
+        isOwner?: boolean;
+        isGranted?: boolean;
+        disabled?: boolean;
+      }>,
       searchText: '',
-      selectedMemberId: null,
+      selectedMemberId: null as number | null,
       
       // 分页参数
       pageNo: 1,
@@ -344,9 +379,12 @@ export default {
         // ✅ 修复：API 返回的是 imageUrl，页面期望的是 sealData
         // ✅ 统一字段映射，确保兼容性
         this.sealInfo = {
-          ...res,
+          id: res?.id || 0,
+          name: res?.name || '',
+          type: res?.type !== undefined ? res.type : 0, // 确保 type 是 number，不是 undefined
           sealData: res?.imageUrl || res?.sealData, // 兼容新旧字段名
-          code: res?.code || res?.id, // code可能不存在，使用id作为备选
+          code: res?.code ? String(res.code) : (res?.id ? String(res.id) : undefined), // code可能不存在，使用id作为备选，确保转换为字符串
+          status: res?.status,
           userId: res?.ownerId || res?.userId || res?.createdBy // ✅ 印章所有者字段映射
         };
       } catch (error) {
@@ -367,19 +405,22 @@ export default {
         console.log('授权列表API原始返回:', JSON.stringify(res));
         
         // ✅ 修正：处理后端可能返回数组或对象的情况
-        let list = [];
+        let list: Array<{ id: number; userId: number; [key: string]: any }> = [];
         if (Array.isArray(res)) {
           // 如果返回的直接是数组
           console.log('授权列表：后端返回的是数组');
-          list = res;
-        } else if (res && res.list) {
+          list = res as Array<{ id: number; userId: number }>;
+        } else if (res && (res as any).list) {
           // 如果返回的是包含list字段的对象
           console.log('授权列表：后端返回的是对象，包含list字段');
-          list = res.list;
+          list = (res as any).list;
         } else if (res && typeof res === 'object') {
           // 如果是其他对象格式，尝试作为数组处理
           console.log('授权列表：后端返回的是对象，尝试作为单个授权记录');
-          list = [res];
+          const grantItem = res as any;
+          if (grantItem.id && grantItem.userId) {
+            list = [{ id: grantItem.id, userId: grantItem.userId }];
+          }
         }
         
         console.log('授权列表处理后的数据:', JSON.stringify(list));
@@ -391,7 +432,8 @@ export default {
           const member = this.memberList.find(m => m.id === item.userId);
           console.log(`授权记录 id=${item.id}: userId=${item.userId}, 找到的成员:`, member?.nickname || '未找到');
           return {
-            ...item,
+            id: item.id,
+            userId: item.userId,
             memberAvatar: member?.avatar || null, // 没有头像时设为null，以便显示文字头像
             memberName: member?.nickname || '未知成员'
           };
@@ -441,7 +483,8 @@ export default {
         // ✅ 修正：后端返回的字段是 userId，不是 enterpriseUserId
         const member = this.memberList.find(m => m.id === item.userId);
         return {
-          ...item,
+          id: item.id,
+          userId: item.userId,
           memberAvatar: member?.avatar || null,
           memberName: member?.nickname || '未知成员'
         };
@@ -462,7 +505,9 @@ export default {
         const isGranted = grantedUserIds.includes(member.id);
         
         return {
-          ...member,
+          id: member.id,
+          nickname: member.nickname,
+          avatar: member.avatar,
           isOwner: isOwner,
           isGranted: isGranted,
           // 所有者或已授权的用户都不可选
@@ -474,7 +519,7 @@ export default {
     },
     
     // ✅ 新增：判断成员是否已授权
-    isMemberGranted(memberId) {
+    isMemberGranted(memberId: number) {
       return this.grantList.some(grant => grant.userId === memberId);
     },
     
@@ -490,7 +535,10 @@ export default {
           const isGranted = grantedUserIds.includes(member.id);
           
           return {
-            ...member,
+            id: member.id,
+            nickname: member.nickname,
+            avatar: member.avatar,
+            role: member.role,
             isOwner: isOwner,
             isGranted: isGranted,
             disabled: isOwner || isGranted
@@ -509,7 +557,10 @@ export default {
           const isGranted = grantedUserIds.includes(member.id);
           
           return {
-            ...member,
+            id: member.id,
+            nickname: member.nickname,
+            avatar: member.avatar,
+            role: member.role,
             isOwner: isOwner,
             isGranted: isGranted,
             disabled: isOwner || isGranted
@@ -523,7 +574,7 @@ export default {
       this.selectedMemberId = null;
       // ✅ 标识已授权的用户
       this.updateFilteredMembersWithGrantStatus();
-      this.$refs.addMemberPopup.open();
+      (this.$refs.addMemberPopup as any).open();
     },
     
     // 处理禁用印章点击
@@ -537,11 +588,11 @@ export default {
     
     // 关闭添加成员弹窗
     closeAddMemberModal() {
-      this.$refs.addMemberPopup.close();
+      (this.$refs.addMemberPopup as any).close();
     },
     
     // 选择成员
-    handleSelectMember(member) {
+    handleSelectMember(member: { id: number; isOwner?: boolean; isGranted?: boolean }) {
       // ✅ 如果是印章所有者，不允许授权
       if (member.isOwner) {
         uni.showToast({
@@ -601,7 +652,7 @@ export default {
     },
     
     // 确认删除授权
-    confirmDeleteGrant(grant) {
+    confirmDeleteGrant(grant: { id: number; memberName?: string }) {
       uni.showModal({
         title: '确认删除',
         content: `确定要删除${grant.memberName || '该成员'}的授权吗？`,
@@ -614,7 +665,7 @@ export default {
     },
     
     // 删除授权
-    async deleteGrant(id) {
+    async deleteGrant(id: number) {
       try {
         uni.showLoading({
           title: '删除中...'
@@ -641,18 +692,18 @@ export default {
     },
     
     // 获取角色名称
-    getRoleName(role) {
-      const roleMap = {
+    getRoleName(role: number | undefined) {
+      const roleMap: Record<number, string> = {
         1: '所有者',
         2: '管理员',
         3: '成员'
       };
-      return roleMap[role] || '未知';
+      return role ? (roleMap[role] || '未知') : '未知';
     },
     
     // 获取印章类型名称
-    getSealTypeName(type) {
-      const typeMap = {
+    getSealTypeName(type: number | undefined) {
+      const typeMap: Record<number, string> = {
         1: '公章',
         2: '合同专用章',
         3: '财务专用章',
@@ -661,18 +712,18 @@ export default {
         6: '部门章',
         7: '业务章'
       };
-      return typeMap[type] || '其他';
+      return type ? (typeMap[type] || '其他') : '其他';
     },
     
     // 格式化日期
-    formatDate(dateStr) {
+    formatDate(dateStr: string | undefined) {
       if (!dateStr) return '';
       const date = new Date(dateStr);
       return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
     },
     
     // 获取用户名首字符（用于个性化头像）
-    getFirstChar(name) {
+    getFirstChar(name: string | undefined) {
       if (!name || name.length === 0) return '?';
       return name.substring(0, 1);
     }
