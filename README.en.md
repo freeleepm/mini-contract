@@ -2,9 +2,9 @@
   ===============
 
 
-Current Latest Version: v3.1.0 (Release Date: January 13, 2026)
+Current Latest Version: v3.2.0 (Release Date: January 20, 2026)
 
-[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.1.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
+[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.2.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
 
 
 
@@ -253,11 +253,11 @@ Technical Architecture
 
 #### Development Environment
 
-- **Application Name**: JieYiQian (捷易签)
+- **Application Name**: Mini Contract.Pro
 
 - **Framework**: uni-app + Vue 3
 - **Language**: UTS (TypeScript)
-- **Version**: 3.0.0
+- **Version**: 3.2.0
 - **Supported Platforms**: iOS, Android, H5, Mini Programs, APP
 - **IDE (Frontend)**: HBuilder
 
@@ -629,6 +629,15 @@ Project Screenshots
 
 
 ### Recent Updates
+
+V 3.2.0
+
+- [x] [New] Word to PDF conversion for contract initiation
+- [x] [New] Secure confirmation signing support (intent-based signing via SMS, email, or login password)
+- [x] [New] OCR recognition support for personal real-name authentication
+- [x] [New] Signature position configuration support
+- [x] [Optimized] Enhanced overall user experience and mobile-specific prompts
+- [x] [Fixed] Resolved bugs reported in various issues
 
 ##### V 3.1.0
 

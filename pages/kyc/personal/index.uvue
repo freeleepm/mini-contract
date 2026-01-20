@@ -19,6 +19,7 @@ interface UserInfo {
 // 导入API工具
 import { post, get, uploadFileAdvanced, simpleUpload } from '../../../api/index';
 import { API_BASE_URL, TENANT_ID, UPLOAD_CONFIG } from '../../../api/config';
+import { recognizeIdCard } from '../../../api/member/verify';
 
 export default {
 	data() {
@@ -32,7 +33,8 @@ export default {
 				realName: '',
 				idCardNumber: '',
 				faceVerified: false,
-                faceImage: '' // 存储照片URL
+                faceImage: '', // 存储照片URL
+				idCardImageUrl: '' // 存储身份证照片URL
 			},
 			
 			// 表单验证状态
@@ -84,7 +86,18 @@ export default {
             
             // 重试计数器，避免无限重试
             retryCount: 0,
-            maxRetries: 3
+            maxRetries: 3,
+			
+			// OCR识别相关
+			ocrProcessing: false,
+			ocrResult: null,
+			showOcrGuidance: false,
+			ocrGuidanceTips: [
+				'请确保光线充足，身份证清晰可见',
+				'将身份证放在平整的表面上',
+				'确保身份证边框完整，无遮挡',
+				'避免反光和阴影'
+			]
 		}
 	},
 	onLoad() {
@@ -115,6 +128,109 @@ export default {
 		// 返回上一页
 		goBack(): void {
 			uni.navigateBack()
+		},
+		
+		// 开始OCR识别
+		startOcrCapture(): void {
+			if (this.ocrProcessing) return;
+			this.showOcrGuidance = true;
+		},
+		
+		// 确认OCR指导并开始拍照
+		confirmOcrGuidanceAndCapture(): void {
+			this.showOcrGuidance = false;
+			
+			uni.showLoading({
+				title: '准备拍照...'
+			});
+			
+			uni.chooseImage({
+				count: 1,
+				sizeType: ['original'],
+				sourceType: ['camera'],
+				success: (res) => {
+					this.handleIdCardImageSelected(res.tempFilePaths[0]);
+				},
+				fail: (error) => {
+					uni.hideLoading();
+					console.error('拍照失败:', error);
+					uni.showToast({
+						title: '拍照失败，请重试',
+						icon: 'none'
+					});
+				}
+			});
+		},
+		
+		// 处理身份证图片选择
+		async handleIdCardImageSelected(filePath: string): Promise<void> {
+			this.ocrProcessing = true;
+			
+			try {
+				// 1. 上传图片
+				uni.showLoading({
+					title: '上传中...'
+				});
+				
+				const imageUrl = await uploadFileAdvanced(filePath, {
+					directory: UPLOAD_CONFIG.DIRECTORIES.VERIFY,
+					onProgress: (percent: number) => {
+						uni.showLoading({
+							title: `上传中 ${percent}%`
+						});
+					}
+				});
+				
+				// 2. OCR识别
+				uni.showLoading({
+					title: '识别中...'
+				});
+				
+				const ocrResult = await recognizeIdCard({
+					imageUrl: imageUrl,
+					side: 'front'
+				});
+				
+				uni.hideLoading();
+				
+				// 3. 处理识别结果
+				if (ocrResult.success) {
+					this.ocrResult = ocrResult;
+					
+					// 自动填充表单
+					if (ocrResult.name) {
+						this.userInfo.realName = ocrResult.name;
+						this.validateName();
+					}
+					if (ocrResult.idCard) {
+						this.userInfo.idCardNumber = ocrResult.idCard;
+						this.validateIdCard();
+					}
+					
+					// 保存身份证图片URL
+					this.userInfo.idCardImageUrl = imageUrl;
+					
+					uni.showToast({
+						title: '识别成功',
+						icon: 'success'
+					});
+				} else {
+					uni.showToast({
+						title: ocrResult.errorMessage || '识别失败，请手动输入',
+						icon: 'none'
+					});
+				}
+				
+			} catch (error) {
+				uni.hideLoading();
+				console.error('OCR识别失败:', error);
+				uni.showToast({
+					title: '识别失败，请手动输入',
+					icon: 'none'
+				});
+			} finally {
+				this.ocrProcessing = false;
+			}
 		},
 		
 		// 检查认证状态
@@ -678,6 +794,26 @@ export default {
 			
 			<!-- 步骤1：填写个人信息 -->
 			<view class="step-content" v-if="currentStep === 1">
+				<!-- OCR识别按钮 -->
+				<view class="ocr-section">
+					<view class="ocr-button" @click="startOcrCapture" :class="{ 'disabled': ocrProcessing }">
+						<view class="ocr-icon-wrapper">
+							<text class="fa fa-id-card ocr-icon"></text>
+						</view>
+						<view class="ocr-content">
+							<text class="ocr-title">拍摄身份证自动识别</text>
+							<text class="ocr-desc">{{ ocrProcessing ? '识别中...' : '点击拍摄并自动填充信息' }}</text>
+						</view>
+						<text class="fa fa-camera ocr-arrow"></text>
+					</view>
+					
+					<!-- OCR识别结果提示 -->
+					<view class="ocr-result-tip" v-if="ocrResult && ocrResult.success">
+						<text class="fa fa-check-circle tip-icon"></text>
+						<text class="tip-text">识别成功，信息已自动填充，请确认</text>
+					</view>
+				</view>
+				
 				<view class="form-group">
 					<text class="form-label">真实姓名</text>
 					<input class="form-input" v-model="userInfo.realName" placeholder="请输入您的真实姓名" 
@@ -697,14 +833,14 @@ export default {
 				</view>
 				
 				<view class="form-tips">
-					<text class="icon icon-info tips-icon"></text>
+					<text class="fa fa-info-circle tips-icon"></text>
 					<text class="tips-text">请确保填写的信息真实有效，认证通过后将无法修改</text>
 				</view>
 				
 				<view class="step-actions">
 					<view class="action-button primary" 
 						  :class="{ 'disabled': !canProceed }" 
-						  @click="nextStep">
+						  @click="canProceed ? nextStep() : null">
 						<text>下一步</text>
 					</view>
 				</view>
@@ -771,7 +907,7 @@ export default {
 					</view>
 					<view class="action-button primary" 
 						  :class="{ 'disabled': !canProceed }" 
-						  @click="submitVerification">
+						  @click="canProceed ? submitVerification() : null">
 						<text>提交认证</text>
 					</view>
 				</view>
@@ -811,6 +947,34 @@ export default {
 					</view>
 					<view class="modal-footer">
 						<view class="modal-button" @click="confirmGuidanceAndStartCamera">
+							<text>知道了，开始拍摄</text>
+						</view>
+					</view>
+				</view>
+			</view>
+			
+			<!-- OCR识别指导弹窗 -->
+			<view class="modal-overlay" v-if="showOcrGuidance" @click="showOcrGuidance = false">
+				<view class="modal-content" @click.stop>
+					<view class="modal-header">
+						<text class="modal-title">身份证拍摄指南</text>
+					</view>
+					<view class="modal-body">
+						<!-- 文字提示 -->
+						<view class="guidance-item" v-for="(tip, index) in ocrGuidanceTips" :key="index">
+							<text class="guidance-number">{{ index + 1 }}.</text>
+							<text class="guidance-text">{{ tip }}</text>
+						</view>
+						
+						<!-- 身份证示意图 -->
+						<view class="idcard-demo-container">
+							<view class="idcard-demo">
+								<text class="demo-text">身份证正面</text>
+							</view>
+						</view>
+					</view>
+					<view class="modal-footer">
+						<view class="modal-button" @click="confirmOcrGuidanceAndCapture">
 							<text>知道了，开始拍摄</text>
 						</view>
 					</view>
@@ -992,8 +1156,90 @@ export default {
 .step-content {
 	margin: 20rpx 40rpx;
 	background-color: #FFFFFF;
-	border-radius: 16rpx;
+	border-radius: 20rpx;
 	padding: 30rpx;
+}
+
+/* OCR识别区域 */
+.ocr-section {
+	margin-bottom: 30rpx;
+}
+
+.ocr-button {
+	background-color: #FFFFFF;
+	border-radius: 20rpx;
+	padding: 30rpx;
+	flex-direction: row;
+	align-items: center;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+	border-width: 2rpx;
+	border-color: #0A2E5C;
+	border-style: dashed;
+}
+
+.ocr-button:active {
+	background-color: #F7F9FC;
+}
+
+.ocr-button.disabled {
+	opacity: 0.6;
+}
+
+.ocr-icon-wrapper {
+	width: 80rpx;
+	height: 80rpx;
+	border-radius: 40rpx;
+	background-color: rgba(10, 46, 92, 0.1);
+	align-items: center;
+	justify-content: center;
+	margin-right: 20rpx;
+}
+
+.ocr-icon {
+	font-size: 40rpx;
+	color: #0A2E5C;
+}
+
+.ocr-content {
+	flex: 1;
+}
+
+.ocr-title {
+	font-size: 30rpx;
+	font-weight: 500;
+	color: #333333;
+	margin-bottom: 8rpx;
+}
+
+.ocr-desc {
+	font-size: 24rpx;
+	color: #999999;
+}
+
+.ocr-arrow {
+	font-size: 28rpx;
+	color: #999999;
+}
+
+.ocr-result-tip {
+	flex-direction: row;
+	align-items: center;
+	background-color: rgba(0, 194, 138, 0.1);
+	padding: 16rpx 20rpx;
+	border-radius: 10rpx;
+	margin-top: 20rpx;
+}
+
+.ocr-result-tip .tip-icon {
+	font-size: 24rpx;
+	color: #00C28A;
+	margin-right: 10rpx;
+}
+
+.ocr-result-tip .tip-text {
+	font-size: 24rpx;
+	color: #00C28A;
+	flex: 1;
 }
 
 .form-group {
@@ -1177,12 +1423,18 @@ export default {
 
 .action-button.secondary {
 	background-color: #FFFFFF;
-	border-width: 1rpx;
-	border-color: #E6E6E6;
+	border-width: 2rpx;
+	border-color: #00C28A;
+	border-style: solid;
 }
 
 .action-button.secondary text {
-	color: #666666;
+	color: #00C28A;
+	font-weight: 500;
+}
+
+.action-button.secondary:active {
+	background-color: rgba(0, 194, 138, 0.05);
 }
 
 .action-button.disabled {
@@ -1376,6 +1628,30 @@ export default {
 	align-items: center;
 	justify-content: center;
 	width: 100%;
+}
+
+/* 身份证示意图 */
+.idcard-demo-container {
+	align-items: center;
+	margin-top: 30rpx;
+}
+
+.idcard-demo {
+	width: 400rpx;
+	height: 250rpx;
+	border-width: 3rpx;
+	border-color: #D4AF37;
+	border-style: dashed;
+	border-radius: 20rpx;
+	align-items: center;
+	justify-content: center;
+	background-color: #FDF9F3;
+}
+
+.demo-text {
+	font-size: 28rpx;
+	color: #0A2E5C;
+	font-weight: 500;
 }
 
 /* 上传状态显示 */

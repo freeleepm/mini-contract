@@ -2,9 +2,9 @@
   ===============
 
 
-当前最新版本：v3.1.0 (发布时间：2026-01-13)
+当前最新版本：v3.2.0 (发布时间：2026-01-20)
 
-[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.1.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
+[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.2.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
 
 
 
@@ -257,7 +257,7 @@ mini-contract-pro/
 
 - **框架**：uni-app + Vue 3
 - **语言**：UTS (TypeScript)
-- **版本**：3.1.0
+- **版本**：3.2.0
 - **支持平台**：iOS、Android、H5、小程序、APP
 - **IDE(前端)**：HBuilder
 
@@ -608,8 +608,8 @@ userSeal.create(sealData)
 ![](.images/pc/pc_04@4x.png)
 ![](.images/pc/pc_16@4x.png)
 ![](.images/pc/pc_23@4x.png)
-![](.images/pc/pc_24@4x.png
-![](.images/pc/pc_25@4x.png))
+![](.images/pc/pc_24@4x.png)
+![](.images/pc/pc_25@4x.png)
 ![](.images/pc/pc_11@4x.png)
 ![](.images/pc/pc_12@4x.png)
 ![](.images/pc/pc_13@4x.png)
@@ -661,6 +661,17 @@ userSeal.create(sealData)
 
 
 ### 最近更新
+
+##### V 3.2.0 
+
+- [x] 【新增】Word转PDF发起合同
+- [x] 【新增】支持安全确认签署（意愿签署：短信、邮箱、登录密码）
+- [x] 【新增】个人实名认证支持 OCR 识别
+- [x] 【新增】支持设置签名位置
+- [x] 【优化】优化整体用户体验和移动端相应的提示
+- [x] 【修复】其它 issues 提出的 bug 问题；
+
+
 
 ##### V 3.1.0 
 

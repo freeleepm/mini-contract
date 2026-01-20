@@ -1,0 +1,479 @@
+<template>
+	<view class="idcard-ocr-container">
+		<!-- OCR识别按钮 -->
+		<view class="ocr-button" @click="startOcrCapture">
+			<view class="button-icon-wrapper">
+				<text class="fa fa-id-card button-icon"></text>
+			</view>
+			<view class="button-content">
+				<text class="button-title">{{ title }}</text>
+				<text class="button-desc">{{ description }}</text>
+			</view>
+			<text class="fa fa-camera button-arrow"></text>
+		</view>
+		
+		<!-- 识别结果预览 -->
+		<view class="ocr-result" v-if="ocrResult && ocrResult.success">
+			<view class="result-header">
+				<text class="fa fa-check-circle result-icon"></text>
+				<text class="result-title">识别成功</text>
+			</view>
+			<view class="result-content">
+				<view class="result-item" v-if="ocrResult.name">
+					<text class="result-label">姓名:</text>
+					<text class="result-value">{{ ocrResult.name }}</text>
+				</view>
+				<view class="result-item" v-if="ocrResult.idCard">
+					<text class="result-label">身份证号:</text>
+					<text class="result-value">{{ ocrResult.idCard }}</text>
+				</view>
+				<view class="result-item" v-if="ocrResult.gender">
+					<text class="result-label">性别:</text>
+					<text class="result-value">{{ ocrResult.gender }}</text>
+				</view>
+				<view class="result-item" v-if="ocrResult.nation">
+					<text class="result-label">民族:</text>
+					<text class="result-value">{{ ocrResult.nation }}</text>
+				</view>
+			</view>
+		</view>
+		
+		<!-- 拍照指导弹窗 -->
+		<view class="modal-overlay" v-if="showGuidance" @click="showGuidance = false">
+			<view class="modal-content" @click.stop>
+				<view class="modal-header">
+					<text class="modal-title">拍摄指南</text>
+				</view>
+				<view class="modal-body">
+					<view class="guidance-item" v-for="(tip, index) in guidanceTips" :key="index">
+						<text class="guidance-number">{{ index + 1 }}.</text>
+						<text class="guidance-text">{{ tip }}</text>
+					</view>
+					
+					<!-- 示意图 -->
+					<view class="idcard-demo">
+						<view class="idcard-frame">
+							<text class="demo-text">身份证{{ side === 'front' ? '正面' : '反面' }}</text>
+						</view>
+					</view>
+				</view>
+				<view class="modal-footer">
+					<view class="modal-button" @click="confirmAndCapture">
+						<text>知道了，开始拍摄</text>
+					</view>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script>
+/**
+ * 身份证OCR识别组件
+ * 
+ * 使用示例：
+ * <idcard-ocr-capture 
+ *   side="front"
+ *   title="拍摄身份证正面"
+ *   @success="handleOcrSuccess"
+ * />
+ * 
+ * @author 小华同学 ai
+ */
+import { recognizeIdCard } from '../../api/member/verify';
+import { uploadFileAdvanced } from '../../api/index';
+import { UPLOAD_CONFIG } from '../../api/config';
+
+export default {
+	name: 'IdCardOcrCapture',
+	props: {
+		// 身份证面: front-正面, back-反面
+		side: {
+			type: String,
+			default: 'front',
+			validator: (value) => ['front', 'back'].includes(value)
+		},
+		// 按钮标题
+		title: {
+			type: String,
+			default: '拍摄身份证'
+		},
+		// 按钮描述
+		description: {
+			type: String,
+			default: '点击拍摄并自动识别'
+		}
+	},
+	data() {
+		return {
+			// 是否显示拍照指导
+			showGuidance: false,
+			// OCR识别结果
+			ocrResult: null,
+			// 拍照指导提示
+			guidanceTips: [
+				'请确保光线充足，身份证清晰可见',
+				'将身份证放在平整的表面上',
+				'确保身份证边框完整，无遮挡',
+				'避免反光和阴影'
+			],
+			// 是否正在处理
+			isProcessing: false
+		}
+	},
+	methods: {
+		// 开始OCR识别流程
+		startOcrCapture() {
+			if (this.isProcessing) return;
+			this.showGuidance = true;
+		},
+		
+		// 确认指导并开始拍照
+		confirmAndCapture() {
+			this.showGuidance = false;
+			
+			uni.showLoading({
+				title: '准备拍照...'
+			});
+			
+			// 配置拍照参数
+			uni.chooseImage({
+				count: 1,
+				sizeType: ['original'],
+				sourceType: ['camera'],
+				success: (res) => {
+					this.handleImageSelected(res.tempFilePaths[0]);
+				},
+				fail: (error) => {
+					uni.hideLoading();
+					console.error('拍照失败:', error);
+					uni.showToast({
+						title: '拍照失败，请重试',
+						icon: 'none'
+					});
+				}
+			});
+		},
+		
+		// 处理选择的图片
+		async handleImageSelected(filePath) {
+			this.isProcessing = true;
+			
+			try {
+				// 1. 验证文件
+				const fileInfo = await this.getFileInfo(filePath);
+				if (!this.validateFile(fileInfo)) {
+					return;
+				}
+				
+				// 2. 上传图片
+				uni.showLoading({
+					title: '上传中...'
+				});
+				
+				const imageUrl = await uploadFileAdvanced(filePath, {
+					directory: UPLOAD_CONFIG.DIRECTORIES.VERIFY,
+					onProgress: (percent) => {
+						uni.showLoading({
+							title: `上传中 ${percent}%`
+						});
+					}
+				});
+				
+				// 3. OCR识别
+				uni.showLoading({
+					title: '识别中...'
+				});
+				
+				const ocrResult = await recognizeIdCard({
+					imageUrl: imageUrl,
+					side: this.side
+				});
+				
+				uni.hideLoading();
+				
+				// 4. 处理识别结果
+				if (ocrResult.success) {
+					this.ocrResult = ocrResult;
+					uni.showToast({
+						title: '识别成功',
+						icon: 'success'
+					});
+					
+					// 触发成功事件
+					this.$emit('success', {
+						imageUrl: imageUrl,
+						ocrResult: ocrResult
+					});
+				} else {
+					uni.showToast({
+						title: ocrResult.errorMessage || '识别失败',
+						icon: 'none'
+					});
+					
+					// 触发失败事件
+					this.$emit('fail', {
+						imageUrl: imageUrl,
+						errorMessage: ocrResult.errorMessage
+					});
+				}
+				
+			} catch (error) {
+				uni.hideLoading();
+				console.error('OCR识别失败:', error);
+				uni.showToast({
+					title: '识别失败: ' + error.message,
+					icon: 'none'
+				});
+				
+				this.$emit('error', error);
+			} finally {
+				this.isProcessing = false;
+			}
+		},
+		
+		// 获取文件信息
+		getFileInfo(filePath) {
+			return new Promise((resolve, reject) => {
+				uni.getFileInfo({
+					filePath: filePath,
+					success: resolve,
+					fail: reject
+				});
+			});
+		},
+		
+		// 验证文件
+		validateFile(fileInfo) {
+			// 验证文件大小（限制5MB）
+			const maxSize = UPLOAD_CONFIG.MAX_SIZE.IMAGE * 1024 * 1024;
+			if (fileInfo.size > maxSize) {
+				uni.showToast({
+					title: `图片大小超过${UPLOAD_CONFIG.MAX_SIZE.IMAGE}MB限制`,
+					icon: 'none'
+				});
+				return false;
+			}
+			return true;
+		},
+		
+		// 重置组件状态
+		reset() {
+			this.ocrResult = null;
+			this.isProcessing = false;
+		}
+	}
+}
+</script>
+
+<style>
+/* 引入FontAwesome样式 */
+@import url("../static/styles/fontawesome.css");
+
+.idcard-ocr-container {
+	width: 100%;
+}
+
+/* OCR识别按钮 */
+.ocr-button {
+	background-color: #FFFFFF;
+	border-radius: 20rpx;
+	padding: 30rpx;
+	flex-direction: row;
+	align-items: center;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+	margin-bottom: 20rpx;
+}
+
+.ocr-button:active {
+	background-color: #F7F9FC;
+}
+
+.button-icon-wrapper {
+	width: 80rpx;
+	height: 80rpx;
+	border-radius: 40rpx;
+	background-color: rgba(10, 46, 92, 0.1);
+	align-items: center;
+	justify-content: center;
+	margin-right: 20rpx;
+}
+
+.button-icon {
+	font-size: 40rpx;
+	color: #0A2E5C;
+}
+
+.button-content {
+	flex: 1;
+}
+
+.button-title {
+	font-size: 30rpx;
+	font-weight: 500;
+	color: #333333;
+	margin-bottom: 8rpx;
+}
+
+.button-desc {
+	font-size: 24rpx;
+	color: #999999;
+}
+
+.button-arrow {
+	font-size: 28rpx;
+	color: #999999;
+}
+
+/* 识别结果 */
+.ocr-result {
+	background-color: #FFFFFF;
+	border-radius: 20rpx;
+	padding: 30rpx;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.result-header {
+	flex-direction: row;
+	align-items: center;
+	margin-bottom: 20rpx;
+	padding-bottom: 20rpx;
+	border-bottom-width: 1rpx;
+	border-bottom-color: #F0F0F0;
+	border-bottom-style: solid;
+}
+
+.result-icon {
+	font-size: 32rpx;
+	color: #00C28A;
+	margin-right: 12rpx;
+}
+
+.result-title {
+	font-size: 28rpx;
+	font-weight: 500;
+	color: #333333;
+}
+
+.result-content {
+	gap: 16rpx;
+}
+
+.result-item {
+	flex-direction: row;
+	align-items: center;
+}
+
+.result-label {
+	font-size: 26rpx;
+	color: #666666;
+	width: 140rpx;
+}
+
+.result-value {
+	font-size: 26rpx;
+	color: #333333;
+	flex: 1;
+}
+
+/* 拍照指导弹窗 */
+.modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0.6);
+	z-index: 999;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+}
+
+.modal-content {
+	width: 85%;
+	max-width: 600rpx;
+	background-color: #FFFFFF;
+	border-radius: 20rpx;
+	overflow: hidden;
+}
+
+.modal-header {
+	padding: 40rpx 30rpx 20rpx;
+	align-items: center;
+}
+
+.modal-title {
+	font-size: 34rpx;
+	font-weight: bold;
+	color: #333333;
+}
+
+.modal-body {
+	padding: 20rpx 30rpx 30rpx;
+}
+
+.guidance-item {
+	flex-direction: row;
+	margin-bottom: 16rpx;
+}
+
+.guidance-number {
+	font-size: 26rpx;
+	color: #0A2E5C;
+	font-weight: 500;
+	margin-right: 12rpx;
+}
+
+.guidance-text {
+	font-size: 26rpx;
+	color: #666666;
+	flex: 1;
+	line-height: 40rpx;
+}
+
+.idcard-demo {
+	margin-top: 30rpx;
+	align-items: center;
+}
+
+.idcard-frame {
+	width: 400rpx;
+	height: 250rpx;
+	border-width: 3rpx;
+	border-color: #D4AF37;
+	border-style: dashed;
+	border-radius: 20rpx;
+	align-items: center;
+	justify-content: center;
+	background-color: #FDF9F3;
+}
+
+.demo-text {
+	font-size: 28rpx;
+	color: #0A2E5C;
+}
+
+.modal-footer {
+	padding: 20rpx 30rpx 30rpx;
+}
+
+.modal-button {
+	background-color: #0A2E5C;
+	height: 88rpx;
+	border-radius: 44rpx;
+	align-items: center;
+	justify-content: center;
+}
+
+.modal-button:active {
+	background-color: #082340;
+	opacity: 0.9;
+}
+
+.modal-button text {
+	color: #FFFFFF;
+	font-size: 30rpx;
+	font-weight: 500;
+}
+</style>

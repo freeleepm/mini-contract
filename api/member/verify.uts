@@ -1,0 +1,74 @@
+/**
+ * 实名认证相关API
+ */
+import { post, get } from '../index';
+
+/**
+ * 身份证OCR识别请求参数
+ */
+export interface IdCardOcrRequest {
+    imageUrl: string;  // 身份证图片URL
+    side: 'front' | 'back';  // front-正面，back-反面
+}
+
+/**
+ * 身份证OCR识别响应
+ */
+export interface IdCardOcrResponse {
+    success: boolean;
+    errorMessage?: string;
+    // 正面信息
+    name?: string;
+    gender?: string;
+    nation?: string;
+    birth?: string;
+    address?: string;
+    idCard?: string;
+    // 反面信息
+    issue?: string;
+    startDate?: string;
+    endDate?: string;
+}
+
+/**
+ * 实名认证提交请求参数
+ */
+export interface VerifySubmitRequest {
+    name: string;
+    idCard: string;
+    faceImage: string;
+}
+
+/**
+ * 实名认证响应
+ */
+export interface VerifyResponse {
+    verifyStatus: number;  // 0: 未认证, 1: 审核中, 2: 认证成功, 3: 认证失败
+    failReason?: string;
+}
+
+/**
+ * 身份证OCR识别
+ * @param params OCR识别参数
+ * @returns OCR识别结果
+ */
+export function recognizeIdCard(params: IdCardOcrRequest): Promise<IdCardOcrResponse> {
+    return post('/api/v1/member/verify/ocr/idcard', params);
+}
+
+/**
+ * 提交实名认证
+ * @param params 认证参数
+ * @returns 认证结果
+ */
+export function submitVerify(params: VerifySubmitRequest): Promise<VerifyResponse> {
+    return post('/api/v1/member/verify/submit', params);
+}
+
+/**
+ * 获取当前用户的认证信息
+ * @returns 认证信息
+ */
+export function getVerifyInfo(): Promise<VerifyResponse> {
+    return get('/api/v1/member/verify/get');
+}

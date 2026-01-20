@@ -29,7 +29,7 @@ export const API_BASE_URL: string = API_BASE_URLS[CURRENT_ENV] || '/app-api';
 export const SEAL_CORE_H5_URLS: Record<string, string> = {
     'development': 'http://localhost:3100',
     'testing': 'https://test-seal.example.com',
-    'production': 'https://prod-seal.example.com'
+    'production': 'https://h5-sign.leepm.com'
 };
 
 export const SEAL_CORE_H5_URL: string = SEAL_CORE_H5_URLS[CURRENT_ENV] || 'https://h5-sign.leepm.com';
