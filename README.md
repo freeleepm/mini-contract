@@ -2,7 +2,7 @@
   ===============
 
 
-当前最新版本：v3.2.0 (发布时间：2026-01-20)
+当前最新版本：v3.2.1 (发布时间：2026-01-27)
 
 [![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.2.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
 
@@ -16,7 +16,7 @@
 
 
 
-🔥🔥🔥作为一款拥有自主知识产权的免费开源产品，Mini Contract.Pro始终坚持“让数字签约开发更简单”，同时Mini Contract.Pro也是一款专为开发者设计的开源电子签解决方案，创新性地采用「双模式引擎」架构，通过模块化设计满足从司法级签约到轻量级协作的全场景需求。首创支持证据链与非证据链双模式的开源电子签平台，我们已帮助 100+企业客户实现合同签署流程的数字化转型。
+🔥🔥🔥作为一款拥有自主知识产权的免费开源产品，Mini Contract.Pro始终坚持“让数字签约开发更简单”，同时Mini Contract.Pro也是一款专为开发者设计的开源电子签解决方案，创新性地采用「双模式引擎」架构，通过模块化设计满足从司法级签约到轻量级协作的全场景需求。首创支持证据链与非证据链双模式的开源电子签平台，我们已帮助 200+企业客户实现合同签署流程的数字化转型。
 
 
 
@@ -30,7 +30,7 @@
 
 **轻量级非证据链模式**
 
-采用自研的分布式存储技术，通过智能路由算法降低60%的接口调用成本。开发者无需对接第三方存证机构即可实现合同全生命周期管理，特别适合内部审批、供应商对账、快速签约等高频次场景，单日可承载千万级签署请求。
+采用完全自研的分布式存储架构与数字签名技术，集成自签CA证书体系实现端到端加密防篡改保护。通过智能路由算法与分层缓存策略，接口调用成本降低60%，响应速度提升3倍。系统内置完整的审计日志与操作追溯机制，自动记录合同创建、修改、签署全流程关键节点，确保每个操作可追溯、可审计。无需对接第三方存证机构即可实现合同全生命周期管理，特别适合内部审批、供应商对账、快速签约等高频次场景，单日可承载千万级签署请求，是追求高性价比企业的理想选择。
 
 
 
@@ -100,36 +100,399 @@
 
 
 
-### 业务场景
+### 核心业务场景
 
-* **人力资源公司：**频繁签署合同，纸质合同成本高，批量签署合同的业务场景
-* **金融公司：**通过线上完成合同签署，留存有及时有效的合同管理合同
+Mini Contract.Pro 已服务 **100+ 企业客户**，覆盖多个行业和场景，以下是典型应用场景：
 
-* **市场销售签单公司：**对一些网络销售的产品进行销售的时候，需要快速达成合作，立刻签署合同的场景
+#### 🏢 人力资源与招聘
 
-* **租赁公司：**需要对一些线下租赁公司进行快速合同签署，线上合同管理，查询和合同到期自动提醒的场景
+**业务痛点**
+- 入职合同、劳动合同、保密协议等文档签署量大
+- 纸质合同打印、邮寄成本高，周期长
+- 异地员工签署不便，影响入职效率
+- 合同归档管理困难，查询不便
+
+**解决方案**
+- ✅ **批量发起**：支持批量上传员工信息，一键发起签署
+- ✅ **模板管理**：预置劳动合同、保密协议等标准模板
+- ✅ **移动签署**：员工手机即可完成签署，无需到场
+- ✅ **自动归档**：签署完成自动归档，支持按部门、日期检索
+- ✅ **到期提醒**：合同到期自动提醒HR续签
+
+**典型客户**：某科技公司月均签署 500+ 份入职合同，效率提升 80%
+
+---
+
+#### 💰 金融与信贷
+
+**业务痛点**
+- 借款协议、担保合同等涉及金额大，风险高
+- 需要严格的法律效力和证据链
+- 客户分布广，线下签署成本高
+- 合同审核流程长，影响放款速度
+
+**解决方案**
+- ✅ **司法存证**：基于蚂蚁司法链的区块链存证，确保法律效力
+- ✅ **多重验证**：人脸识别 + 短信验证 + 意愿签署，三重保障
+- ✅ **审批流程**：支持多级审批，确保合规
+- ✅ **风险审查**：天眼审查功能自动识别风险条款
+- ✅ **电子签章**：企业公章数字化，远程即可签署
+
+**典型客户**：某小贷公司日均处理 200+ 笔借款协议，放款速度提升 60%
+
+---
+
+#### 📊 市场销售与电商
+
+**业务痛点**
+- 销售合同、代理协议签署频繁
+- 客户分散全国各地，线下签约成本高
+- 签约周期长，影响回款速度
+- 合同版本多，管理混乱
+
+**解决方案**
+- ✅ **快速发起**：销售人员手机端 3 分钟完成合同发起
+- ✅ **实时跟进**：签署进度实时推送，及时催签
+- ✅ **AI 起草**：AI 根据客户需求快速生成个性化合同
+- ✅ **电子印章**：客户手机扫码即可完成签署
+- ✅ **数据统计**：签约数据可视化，方便管理层决策
+
+**典型客户**：某 SaaS 公司月均签署 1000+ 份销售合同，签约周期缩短 70%
+
+---
+
+#### 🏠 房产租赁与物业
+
+**业务痛点**
+- 租赁合同数量多，管理复杂
+- 租客频繁更换，合同签署繁琐
+- 合同到期难以及时提醒
+- 押金条款容易产生纠纷
+
+**解决方案**
+- ✅ **模板标准化**：房屋租赁合同、物业服务协议标准模板
+- ✅ **到期预警**：租约到期前自动提醒房东和租客
+- ✅ **在线续签**：到期后一键续签，无需重新填写信息
+- ✅ **图片合同**：支持手写合同拍照上传，快速数字化
+- ✅ **押金管理**：押金条款清晰标注，避免纠纷
+
+**典型客户**：某连锁公寓管理 5000+ 间房源，合同管理效率提升 90%
+
+---
+
+#### 🎓 教育培训
+
+**业务痛点**
+- 培训协议、学员合同签署量大
+- 学员分布广，集中签署不现实
+- 退费协议容易产生争议
+- 合同存档占用大量空间
+
+**解决方案**
+- ✅ **线上报名**：学员报名后自动发起合同签署
+- ✅ **家长签字**：未成年人合同支持家长代签
+- ✅ **分期协议**：支持培训费分期付款协议签署
+- ✅ **退费条款**：清晰标注退费规则，减少纠纷
+- ✅ **证书管理**：培训证书电子化，随时查看下载
+
+**典型客户**：某在线教育平台年签署 50000+ 份培训协议
+
+---
+
+#### 🏥 医疗健康
+
+**业务痛点**
+- 知情同意书、治疗协议等签署紧急
+- 患者或家属可能不在现场
+- 医疗纠纷取证困难
+- 隐私保护要求高
+
+**解决方案**
+- ✅ **紧急签署**：支持远程视频 + 电子签名
+- ✅ **家属授权**：家属可远程授权签署
+- ✅ **区块链存证**：确保证据链完整，便于纠纷处理
+- ✅ **隐私保护**：数据加密存储，符合医疗行业规范
+- ✅ **批量管理**：体检合同、住院协议批量处理
+
+**典型客户**：某民营医院月均签署 300+ 份医疗协议
+
+---
+
+#### 🚚 物流供应链
+
+**业务痛点**
+- 运输合同、货运协议签署频繁
+- 司机、货主分散各地
+- 合同条款复杂，易产生争议
+- 货损赔偿取证困难
+
+**解决方案**
+- ✅ **快速签约**：货主、承运方手机端快速签署
+- ✅ **条款保护**：货损赔偿条款清晰标注
+- ✅ **订单关联**：运输合同与订单系统自动关联
+- ✅ **GPS 定位**：签署时记录位置信息
+- ✅ **电子回单**：货物签收电子化
+
+**典型客户**：某物流公司日均签署 500+ 份运输合同
+
+---
+
+#### 🏭 制造与代工
+
+**业务痛点**
+- 采购合同、代工协议金额大
+- 需要多方会签（采购、财务、法务、管理层）
+- 合同变更频繁，版本管理困难
+- 供应商分布全国，线下签约成本高
+
+**解决方案**
+- ✅ **多方会签**：支持 50+ 方并行或顺序签署
+- ✅ **审批流程**：灵活配置审批流，确保合规
+- ✅ **版本对比**：合同变更自动记录，支持版本对比
+- ✅ **供应商管理**：供应商信息自动关联合同
+- ✅ **骑缝章**：多页合同支持骑缝章，防篡改
+
+**典型客户**：某制造企业年签署 2000+ 份采购合同，审批效率提升 85%
+
+---
+
+#### 💼 企业服务与外包
+
+**业务痛点**
+- 项目外包合同、服务协议签署频繁
+- 客户遍布全国，见面签约不现实
+- 项目变更需要补充协议
+- 合同执行进度难以跟踪
+
+**解决方案**
+- ✅ **在线协商**：合同内容可在线协商修改
+- ✅ **补充协议**：支持快速生成补充协议
+- ✅ **里程碑绑定**：合同与项目里程碑关联
+- ✅ **付款条款**：清晰标注付款节点
+- ✅ **交付确认**：项目交付电子化确认
+
+**典型客户**：某IT外包公司月均签署 300+ 份服务合同
+
+---
+
+#### 🎨 创意与版权
+
+**业务痛点**
+- 版权授权协议、设计合同签署紧迫
+- 创作者、甲方可能在不同城市
+- 版权条款复杂，易产生争议
+- 需要严格的证据链保护原创
+
+**解决方案**
+- ✅ **快速签约**：灵感稍纵即逝，即刻签约保护权益
+- ✅ **版权存证**：区块链存证，确保版权归属
+- ✅ **授权范围**：清晰界定使用范围和期限
+- ✅ **分成条款**：明确收益分配比例
+- ✅ **违约追责**：完整证据链便于维权
+
+**典型客户**：某设计公司年签署 1000+ 份设计合同和版权协议
+
+---
+
+### 行业覆盖
+
+```mermaid
+graph TD
+    A["Mini Contract.Pro<br/>100+ 企业客户"] --> B["👥 人力资源"]
+    A --> C["💰 金融信贷"]
+    A --> D["📊 销售电商"]
+    A --> E["🏠 房产租赁"]
+    A --> F["🎓 教育培训"]
+    A --> G["🏥 医疗健康"]
+    A --> H["🚚 物流供应链"]
+    A --> I["🏭 制造代工"]
+    A --> J["💼 企业服务"]
+    A --> K["🎨 创意版权"]
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style B fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style C fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style D fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style E fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    style F fill:#e0f2f1,stroke:#00796b,stroke-width:2px
+    style G fill:#f1f8e9,stroke:#558b2f,stroke-width:2px
+    style H fill:#ede7f6,stroke:#512da8,stroke-width:2px
+    style I fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style J fill:#e1bee7,stroke:#6a1b9a,stroke-width:2px
+    style K fill:#e0f7fa,stroke:#006064,stroke-width:2px
+```
+
+### 核心价值
+
+| 维度 | 传统方式 | Mini Contract.Pro |
+|------|---------|-------------------|
+| **签署时间** | 3-7 天 | 3-30 分钟 ⚡ |
+| **成本** | 打印+邮寄+人工 | 降低 90% 💰 |
+| **法律效力** | 需公证 | 区块链存证 🔒 |
+| **管理效率** | 人工归档 | 自动归档+智能检索 📊 |
+| **异地签署** | 困难 | 随时随地 📱 |
+| **合同变更** | 重新签署 | 补充协议 ✏️ |
+| **证据保全** | 难以追溯 | 完整操作日志 📝 |
 
 
 
-目录结构
------------------------------------
+## 系统架构
+
+### 整体架构概述
+
+Mini Contract.Pro 采用现代化的跨平台架构设计，基于 **uni-app + Vue 3 + UTS** 技术栈，通过一套代码实现 iOS、Android、H5、小程序、APP 多端运行。系统采用**前后端分离**架构，前端负责用户交互和业务展示，后端提供 RESTful API 服务。
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    用户交互层 (Multi-Platform)            │
+│         iOS   │   Android   │   H5   │   小程序         │
+└─────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────┐
+│                    前端应用层 (uni-app)                   │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │  页面组件层   │  │  业务逻辑层   │  │  数据管理层   │  │
+│  │   (Pages)    │  │  (Services)  │  │   (Pinia)    │  │
+│  └──────────────┘  └──────────────┘  └──────────────┘  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │  公共组件库   │  │   API接口层   │  │  工具函数库   │  │
+│  │ (Components) │  │     (API)    │  │   (Utils)    │  │
+│  └──────────────┘  └──────────────┘  └──────────────┘  │
+└─────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────┐
+│                    网络通信层 (HTTP/HTTPS)                │
+└─────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────┐
+│                    后端服务层 (RESTful API)               │
+│          用户服务 │ 合同服务 │ 签署服务 │ 企业服务        │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 核心技术栈
+
+#### 开发环境
+- **应用名称**：Mini Contract.Pro
+- **框架**：uni-app + Vue 3
+- **语言**：UTS (TypeScript)
+- **版本**：3.2.1
+- **支持平台**：iOS、Android、H5、小程序、APP
+- **IDE**：HBuilder
+
+#### 前端技术
+- **UI框架**：@dcloudio/uni-ui（官方组件库）
+- **状态管理**：Pinia（轻量级、类型安全）
+- **样式系统**：SCSS + uni.scss（全局变量管理）
+- **图标系统**：CSS Mask + SVG（现代简约风格）
+- **构建工具**：@dcloudio/uniapp-cli
+
+#### 核心特性
+- **类型安全**：UTS 提供完整的 TypeScript 类型支持
+- **响应式设计**：自适应不同屏幕尺寸和设备类型
+- **组件化开发**：高度封装、可复用的组件库
+- **模块化架构**：清晰的目录结构和职责分离
+
+### 架构分层设计
+
+#### 1. 页面组件层 (pages/)
+- **职责**：用户界面展示和交互
+- **特点**：按功能模块组织，每个模块独立管理
+- **设计原则**：单一职责、高内聚低耦合
+
+#### 2. 公共组件库 (components/)
+- **职责**：可复用的 UI 组件
+- **特点**：
+  - 业务无关的通用组件
+  - 高度封装、接口统一
+  - 支持插槽和事件通信
+- **核心组件**：
+  - `KycModal`：KYC认证弹窗
+  - `EnterpriseKycModal`：企业KYC认证
+  - `H5LoadingContainer`：H5加载容器
+  - `H5ErrorContainer`：H5错误处理容器
+
+#### 3. API接口层 (api/)
+- **职责**：封装所有后端API调用
+- **特点**：
+  - 按业务模块分类管理
+  - 统一的请求/响应处理
+  - 完整的错误处理机制
+  - 支持 Mock 数据
+- **核心模块**：
+  - `auth/`：用户认证
+  - `contracts/`：合同管理
+  - `enterprise/`：企业管理
+  - `seals/`：印章管理
+  - `templates/`：模板管理
+  - `ai-draft/`：AI起草
+
+#### 4. 工具函数库 (utils/)
+- **职责**：通用工具函数
+- **核心工具**：
+  - `date.uts`：日期处理
+  - `network.uts`：网络请求封装
+  - `kyc-check.uts`：KYC检查逻辑
+  - `download.uts`：文件下载
+
+### 跨端适配策略
+
+#### H5 特殊处理
+由于 H5 环境的特殊性（如页面刷新、返回键行为等），系统提供了专门的适配方案：
+
+```typescript
+// 使用 H5LoadingContainer 包装 H5 页面
+<template>
+  <H5LoadingContainer :loading="isLoading">
+    <!-- 页面内容 -->
+  </H5LoadingContainer>
+</template>
+```
+
+#### 平台差异处理
+```typescript
+// 根据平台执行不同逻辑
+// #ifdef H5
+// H5 特有代码
+// #endif
+
+// #ifdef APP-PLUS
+// APP 特有代码
+// #endif
+```
+
+### 数据流与状态管理
+
+#### 数据流向
+```
+用户操作 → 页面组件 → API调用 → 后端服务
+                ↓
+            状态更新 → 视图更新
+```
+
+#### 状态管理原则
+1. **本地状态**：页面级别的临时状态，使用 `reactive` 或 `ref`
+2. **全局状态**：跨页面共享的状态，使用 Pinia Store
+3. **持久化**：重要数据使用 `uni.setStorage` 持久化
+
+### 目录结构详解
 
 ```json
 mini-contract-pro/
 ├── App.uvue                        // 应用配置，全局样式和生命周期管理
-├── main.uts                        // 应用入口文件
+├── main.uts                        // 应用入口文件，初始化 Vue 实例
 ├── index.html                      // H5开发模板
 ├── manifest.json                   // 应用打包配置（应用名称、appid、版本等）
 ├── pages.json                      // 页面路由配置、导航栏、选项卡等
 ├── package.json                    // 项目依赖管理
 ├── uni.scss                        // SCSS全局变量预置，统一应用风格
-├── vue.config.js                   // 开发配置
+├── vue.config.js                   // Vue 开发配置
 ├── README.md                       // 项目文档
 │
-├── api/                            // 接口管理层，按功能分类
+├── api/                            // 【API接口层】按功能分类的接口管理
 │   ├── index.uts                   // API总入口，导出所有接口
 │   ├── auth.uts                    // 认证相关接口
-│   ├── config.uts                  // 配置管理
+│   ├── config.uts                  // API配置管理（baseURL、超时等）
 │   ├── auth/
 │   │   └── login.uts               // 登录接口
 │   ├── ai-draft/
@@ -144,68 +507,79 @@ mini-contract-pro/
 │   │   └── index.uts               // 印章管理接口
 │   ├── templates/
 │   │   └── index.uts               // 模板管理接口
-│   ├── mock/                       // 模拟数据
+│   ├── mock/                       // 模拟数据（开发测试用）
 │   │   ├── index.uts
 │   │   └── templates.uts
 │   └── utils/
 │       └── download.uts            // 下载工具函数
 │
-├── components/                     // 公共组件库
+├── components/                     // 【公共组件库】可复用的 UI 组件
 │   ├── README.md                   // 组件使用文档
 │   ├── KycModal.uvue               // KYC认证弹窗组件
 │   ├── EnterpriseKycModal.uvue     // 企业KYC认证弹窗
-│   ├── H5LoadingContainer.uvue     // H5加载容器
+│   ├── H5LoadingContainer.uvue     // H5加载容器（处理H5特殊性）
 │   ├── H5ErrorContainer.uvue       // H5错误容器
 │   ├── KYC_GUARD_USAGE.md          // KYC守卫使用指南
 │   ├── ENTERPRISE_KYC_MODAL_USAGE.md
 │   └── H5_SERVICE_CHECK_GUIDE.md
 │
-├── pages/                          // 页面文件（按功能模块组织）
-│   ├── login/
-│   │   └── index.uvue              // 登录页
-│   ├── register/
-│   │   └── index.uvue              // 注册页
-│   ├── index/
-│   │   └── index.uvue              // 首页
-│   ├── contract-manage/            // 合同管理模块
+├── pages/                          // 【页面文件】按功能模块组织
+│   ├── login/                      // 登录模块
+│   │   └── index.uvue
+│   ├── register/                   // 注册模块
+│   │   └── index.uvue
+│   ├── index/                      // 首页
+│   │   └── index.uvue
+│   │
+│   ├── contract-manage/            // 【合同管理模块】
 │   │   ├── index.uvue              // 合同列表
 │   │   └── draft.uvue              // 草稿箱
-│   ├── contract-create/            // 合同创建模块
-│   │   ├── setup.uvue              // 创建设置
-│   │   ├── file.uvue               // 文件上传
-│   │   ├── image.uvue              // 图片上传
-│   │   └── h5-create.uvue          // H5创建页
-│   ├── contract-detail/            // 合同详情
+│   │
+│   ├── contract-create/            // 【合同创建模块】
+│   │   ├── setup.uvue              // 创建设置（配置签署人、流程等）
+│   │   ├── file.uvue               // 文件上传创建
+│   │   ├── image.uvue              // 图片上传创建
+│   │   └── h5-create.uvue          // H5专用创建页
+│   │
+│   ├── contract-detail/            // 【合同详情】
 │   │   └── index.uvue
-│   ├── contract-form/              // 合同表单填写
-│   │   └── h5-fill.uvue
-│   ├── contract-sign/              // 合同签署模块
-│   │   ├── index.uvue              // 签署页
-│   │   └── h5-sign.uvue            // H5签署页
-│   ├── contract-view/              // 合同查看
-│   │   └── h5-view.uvue
-│   ├── contract-review/            // 合同审核
+│   │
+│   ├── contract-form/              // 【合同表单填写】
+│   │   └── h5-fill.uvue            // H5表单填写页
+│   │
+│   ├── contract-sign/              // 【合同签署模块】
+│   │   ├── index.uvue              // 原生签署页
+│   │   └── h5-sign.uvue            // H5专用签署页
+│   │
+│   ├── contract-view/              // 【合同查看】
+│   │   └── h5-view.uvue            // H5查看页
+│   │
+│   ├── contract-review/            // 【合同审核】
 │   │   └── index.uvue
-│   ├── contract-audit/             // 合同审查（天眼审查）
+│   │
+│   ├── contract-audit/             // 【合同审查（天眼审查）】
 │   │   ├── intro.uvue              // 审查介绍
 │   │   ├── progress.uvue           // 审查进度
 │   │   ├── report.uvue             // 审查报告
 │   │   ├── risk-detail.uvue        // 风险详情
 │   │   └── history.uvue            // 审查历史
-│   ├── ai-draft/                   // AI起草模块
+│   │
+│   ├── ai-draft/                   // 【AI起草模块】
 │   │   ├── index.uvue              // AI起草首页
 │   │   ├── chat.uvue               // AI对话页
 │   │   ├── editor.uvue             // 编辑页
 │   │   ├── detail.uvue             // 详情页
 │   │   ├── preview.uvue            // 预览页
 │   │   └── history.uvue            // 历史记录
-│   ├── template-market/            // 模板市场
+│   │
+│   ├── template-market/            // 【模板市场】
 │   │   └── index.uvue
-│   ├── template-detail/            // 模板详情
+│   ├── template-detail/            // 【模板详情】
 │   │   └── index.uvue
-│   ├── template-preview/           // 模板预览
+│   ├── template-preview/           // 【模板预览】
 │   │   └── index.uvue
-│   ├── enterprise/                 // 企业管理模块
+│   │
+│   ├── enterprise/                 // 【企业管理模块】
 │   │   ├── list.uvue               // 企业列表
 │   │   ├── add.uvue                // 添加企业
 │   │   ├── detail.uvue             // 企业详情
@@ -215,7 +589,8 @@ mini-contract-pro/
 │   │   ├── seals.uvue              // 企业印章管理
 │   │   ├── seal-create.uvue        // 创建企业印章
 │   │   └── seal-authorize.uvue     // 印章授权
-│   ├── profile/                    // 个人中心模块
+│   │
+│   ├── profile/                    // 【个人中心模块】
 │   │   ├── index.uvue              // 个人中心首页
 │   │   ├── personal-info.uvue      // 个人信息
 │   │   ├── seals.uvue              // 个人印章管理
@@ -225,217 +600,1034 @@ mini-contract-pro/
 │   │   ├── packages.uvue           // 套餐管理
 │   │   ├── help.uvue               // 帮助中心
 │   │   └── about.uvue              // 关于应用
-│   ├── kyc/                        // KYC认证模块
-│   │   └── index.uvue
-│   ├── agreement/                  // 协议页面
+│   │
+│   ├── kyc/                        // 【KYC认证模块】
+│   │   ├── personal/               // 个人认证
+│   │   │   └── index.uvue
+│   │   └── enterprise/             // 企业认证
+│   │       └── index.uvue
+│   │
+│   ├── agreement/                  // 【协议页面】
 │   │   ├── user.uvue               // 用户协议
 │   │   └── privacy.uvue            // 隐私政策
-│   └── pdf-preview/                // PDF预览
+│   │
+│   └── pdf-preview/                // 【PDF预览】
+│       └── index.uvue
 │
-├── utils/                          // 工具函数库
+├── utils/                          // 【工具函数库】通用工具函数
 │   ├── date.uts                    // 日期处理工具
 │   ├── network.uts                 // 网络请求工具
 │   └── kyc-check.uts               // KYC检查工具
 │
-├── static/                         // 静态资源
-│   └── [图片、字体等资源文件]
+├── static/                         // 【静态资源】图片、字体等
+│   ├── icons/                      // 图标资源
+│   ├── images/                     // 图片资源
+│   └── fonts/                      // 字体资源
 │
-├── scripts/                        // 构建脚本
-│   └── [构建相关脚本]
+├── scripts/                        // 【构建脚本】
+│   └── download-fontawesome.sh     // FontAwesome 字体下载脚本
 │
-└── uni_modules/                    // uni-app插件模块
+└── uni_modules/                    // 【uni-app插件模块】
+    └── [第三方插件]
 ```
 
+### 设计理念
 
+#### 1. 模块化设计
+- **业务模块独立**：每个业务模块（如合同管理、企业管理）都是独立的文件夹
+- **职责单一**：每个文件只负责一个功能
+- **易于维护**：模块之间低耦合，修改一个模块不影响其他模块
 
-技术架构
------------------------------------
+#### 2. 组件化开发
+- **组件复用**：通用组件提取到 `components/` 目录
+- **按需加载**：组件按需引入，减少包体积
+- **接口统一**：组件通过 props 和 events 通信
 
-#### 开发环境
+#### 3. API 分层
+- **接口封装**：所有 API 调用都通过 `api/` 层
+- **统一处理**：统一的错误处理、loading 状态、重试机制
+- **类型安全**：完整的 TypeScript 类型定义
 
-- **应用名称**：Mini Contract.Pro
+#### 4. 跨端适配
+- **平台检测**：根据运行平台执行不同逻辑
+- **特殊处理**：H5 环境特殊处理（loading、error 容器）
+- **样式适配**：使用 rpx 单位自适应不同屏幕
 
-- **框架**：uni-app + Vue 3
-- **语言**：UTS (TypeScript)
-- **版本**：3.2.0
-- **支持平台**：iOS、Android、H5、小程序、APP
-- **IDE(前端)**：HBuilder
+---
 
+## 业务流程总览
 
+### 用户认证流程
 
-## 核心功能模块
+```mermaid
+graph LR
+    A["📱 登录页<br/>Login"] --> B["📝 注册页<br/>Register"]
+    B --> C["✅ 个人KYC认证<br/>Personal KYC"]
+    C --> D["🏢 企业KYC认证<br/>Enterprise KYC<br/>(可选)"]
+    D --> E["🏠 首页<br/>Home"]
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style B fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style C fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style D fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style E fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+```
 
-### 1. 用户系统
-- **登录/注册**：用户账号管理
-- **实名认证**：个人KYC认证
-- **企业认证**：企业级KYC认证
+**关键步骤：**
+1. 用户通过手机号、微信等方式登录或注册
+2. 完成个人实名认证（KYC）
+3. 可选：创建或加入企业，完成企业认证
+4. 进入系统开始使用
 
-### 2. 合同管理
-- **创建合同**：支持文件上传、图片上传、模板创建
-- **合同列表**：查看所有合同，支持筛选和搜索
-- **草稿管理**：保存未完成的合同草稿
-- **合同详情**：查看合同完整信息
-- **合同审核**：审核合同内容
+### 数据流向
 
-### 3. 合同签署
-- **签署流程**：支持多方签署
-- **签名管理**：创建和管理个人签名
-- **印章管理**：创建和管理个人/企业印章
+#### 请求流向
+
+```mermaid
+graph TD
+    A["👤 用户交互<br/>User Action"] --> B["🎨 页面组件<br/>Page Component"]
+    B --> C["💾 状态管理<br/>State Management"]
+    C --> D["🔌 API调用<br/>API Service"]
+    D --> E["🌐 HTTP请求<br/>Network Request"]
+    E --> F["☁️ 后端服务<br/>Backend Service"]
+    F --> G["🗄️ 数据库<br/>Database"]
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style B fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style C fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style D fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style E fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    style F fill:#e0f2f1,stroke:#00796b,stroke-width:2px
+    style G fill:#f1f8e9,stroke:#558b2f,stroke-width:2px
+```
+
+#### 响应流向
+
+```mermaid
+graph TD
+    A["☁️ 后端服务<br/>Backend"] --> B["🌐 HTTP响应<br/>Response"]
+    B --> C["🔌 API处理<br/>API Handler"]
+    C --> D["💾 数据转换<br/>Data Transform"]
+    D --> E["🎨 组件更新<br/>Component Update"]
+    E --> F["🖥️ UI渲染<br/>UI Render"]
+    F --> G["👁️ 用户看到结果<br/>User Sees Result"]
+    
+    style A fill:#e0f2f1,stroke:#00796b,stroke-width:2px
+    style B fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    style C fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style D fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style E fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style F fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style G fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+```
+
+### 典型业务场景：创建合同完整流程
+
+```mermaid
+graph LR
+    A["👤 用户点击<br/>创建合同"] --> B["📄 选择创建方式<br/>Template/AI/File"]
+    B --> C["✏️ 编辑合同<br/>Edit Content"]
+    C --> D["⚙️ 配置签署人<br/>Configure Signers"]
+    D --> E["🔌 API调用<br/>contracts.create()"]
+    E --> F["🌐 HTTP POST<br/>/sign-task/create"]
+    F --> G["☁️ 后端处理<br/>& 保存数据库"]
+    G --> H["✅ 返回合同ID<br/>Contract ID"]
+    H --> I["💾 更新页面状态<br/>Update State"]
+    I --> J["✨ 显示成功提示<br/>Show Success"]
+    J --> K["🔗 跳转合同详情<br/>Navigate to Detail"]
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style B fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style C fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style D fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style E fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    style F fill:#e0f2f1,stroke:#00796b,stroke-width:2px
+    style G fill:#f1f8e9,stroke:#558b2f,stroke-width:2px
+    style H fill:#ede7f6,stroke:#512da8,stroke-width:2px
+    style I fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style J fill:#e1bee7,stroke:#6a1b9a,stroke-width:2px
+    style K fill:#e0f7fa,stroke:#006064,stroke-width:2px
+```
+
+**流程说明：**
+1. **用户操作**：点击创建合同按钮
+2. **选择方式**：选择模板、AI起草、文件上传或图片上传
+3. **编辑内容**：编辑合同内容
+4. **配置签署**：添加签署人、设置签署顺序
+5. **API调用**：调用创建合同接口
+6. **后端处理**：后端验证数据并保存到数据库
+7. **返回结果**：返回新创建的合同ID
+8. **状态更新**：前端更新页面状态
+9. **用户反馈**：显示成功提示
+10. **页面跳转**：自动跳转到合同详情页
+
+---
+
+## 核心业务模块详解
+
+### 1. 用户系统模块
+
+#### 功能概述
+- **登录/注册**：支持手机号验证码、账号密码、微信授权等多种方式
+- **实名认证**：个人KYC认证，支持OCR身份证识别
+- **企业认证**：企业级KYC认证，营业执照识别
+
+#### 技术实现
+```typescript
+// KYC认证组件使用示例
+import KycModal from '@/components/KycModal.uvue';
+
+// 触发KYC认证
+const showKycModal = () => {
+  kycModalRef.value.show();
+};
+```
+
+#### 页面结构
+```
+pages/
+├── login/index.uvue          // 登录页
+├── register/index.uvue       // 注册页
+└── kyc/
+    ├── personal/index.uvue   // 个人认证
+    └── enterprise/index.uvue // 企业认证
+```
+
+### 2. 合同管理模块
+
+#### 功能概述
+- **合同创建**：支持多种方式（模板、文件、图片、AI起草）
+- **合同列表**：分状态展示（全部、待签署、已完成、已拒绝等）
+- **草稿管理**：自动保存草稿，支持继续编辑
+- **合同详情**：查看合同完整信息、签署进度、操作日志
+- **合同审核**：审批流程管理
+
+#### 业务流程
+
+##### 合同创建流程（可视化）
+
+```mermaid
+graph LR
+    A["🏠 首页<br/>Home"] --> B{创建方式}
+    B -->|模板| C["📚 模板市场<br/>Template Market"]
+    B -->|AI| D["🤖 AI起草<br/>AI Draft"]
+    B -->|文件| E["📤 文件上传<br/>File Upload"]
+    B -->|图片| F["📷 图片上传<br/>Image Upload"]
+    
+    C --> G["✏️ 合同编辑<br/>Edit"]
+    D --> G
+    E --> G
+    F --> G
+    
+    G --> H["⚙️ 配置签署人<br/>Configure Signers"]
+    H --> I["👁️ 合同预览<br/>Preview"]
+    I --> J["✍️ 发起签署<br/>Initiate Sign"]
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style B fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style C fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style D fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style E fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    style F fill:#e0f2f1,stroke:#00796b,stroke-width:2px
+    style G fill:#f1f8e9,stroke:#558b2f,stroke-width:2px
+    style H fill:#ede7f6,stroke:#512da8,stroke-width:2px
+    style I fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style J fill:#e1bee7,stroke:#6a1b9a,stroke-width:2px
+```
+
+**流程说明：**
+1. **创建阶段**：支持四种创建方式（模板、AI、文件、图片）
+2. **编辑阶段**：统一进入编辑器进行内容调整
+3. **配置阶段**：设置签署人、签署顺序、表单字段等
+4. **预览阶段**：确认合同内容无误
+5. **发起阶段**：正式发起签署流程
+
+##### 完整签署流程
+
+```
+创建合同 → 配置签署人 → 设置签署顺序 → 发起签署
+    ↓
+签署方接收通知 → 查看合同 → 填写表单（可选）→ 签署
+    ↓
+所有方签署完成 → 合同归档 → 生成证书
+```
+
+#### 页面结构
+```
+pages/
+├── contract-manage/
+│   ├── index.uvue          // 合同列表
+│   └── draft.uvue          // 草稿箱
+├── contract-create/
+│   ├── setup.uvue          // 创建设置
+│   ├── file.uvue           // 文件上传
+│   ├── image.uvue          // 图片上传
+│   └── h5-create.uvue      // H5创建页
+├── contract-detail/
+│   └── index.uvue          // 合同详情
+├── contract-form/
+│   └── h5-fill.uvue        // 表单填写
+└── contract-review/
+    └── index.uvue          // 合同审核
+```
+
+#### API 接口
+```typescript
+// 合同相关API
+import { contracts } from '@/api/contracts/index';
+
+// 创建合同
+contracts.create(contractData);
+
+// 获取合同列表
+contracts.list({ status, pageNo, pageSize });
+
+// 获取合同详情
+contracts.detail(contractId);
+
+// 撤销合同
+contracts.cancel(contractId);
+```
+
+### 3. 合同签署模块
+
+#### 功能概述
+- **多方签署**：支持顺序签署和并行签署
+- **签署方式**：手写签名、印章、骑缝章
+- **安全验证**：支持短信验证码、邮箱验证码、登录密码验证
 - **签署进度**：实时查看签署状态
 
-### 4. 天眼审查（AI审查）
-- **审查介绍**：显示审查功能说明
-- **审查进度**：实时显示审查进度
+#### 签署流程
+
+##### 合同签署流程（可视化）
+
+```mermaid
+graph LR
+    A["📋 合同列表<br/>Contract List"] --> B["📄 合同详情<br/>Contract Detail"]
+    B --> C["🔐 意愿验证<br/>Intent Verification<br/>(可选)"]
+    C --> D["🔏 选择签名/印章<br/>Select Seal"]
+    D --> E{签署类型}
+    E -->|个人| F["👤 个人签名<br/>Personal Seal"]
+    E -->|企业| G["🏢 企业印章<br/>Enterprise Seal"]
+    
+    F --> H["📍 确认签署位置<br/>Confirm Position"]
+    G --> H
+    
+    H --> I["✅ 提交签署<br/>Submit Sign"]
+    I --> J["⏳ 签署进度<br/>Sign Progress"]
+    J --> K["✔️ 签署完成<br/>Sign Complete"]
+    K --> L["📥 下载合同<br/>Download"]
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style B fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style C fill:#ffebee,stroke:#c62828,stroke-width:2px
+    style D fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style E fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style F fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    style G fill:#e0f2f1,stroke:#00796b,stroke-width:2px
+    style H fill:#f1f8e9,stroke:#558b2f,stroke-width:2px
+    style I fill:#ede7f6,stroke:#512da8,stroke-width:2px
+    style J fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style K fill:#e1bee7,stroke:#6a1b9a,stroke-width:2px
+    style L fill:#e0f7fa,stroke:#006064,stroke-width:2px
+```
+
+**关键点：**
+- 支持意愿验证（短信、邮箱、登录密码）
+- 支持个人签名和企业印章
+- 可设置签署位置（包括骑缝章）
+- 实时显示签署进度
+- 签署完成后可下载合同
+
+##### 简化流程
+
+```
+接收签署通知 → 打开合同 → 意愿验证（可选）→ 选择签署方式
+    ↓
+添加签名/印章 → 确认签署位置 → 提交签署 → 完成
+```
+
+#### 页面结构
+```
+pages/
+├── contract-sign/
+│   ├── index.uvue          // 签署页
+│   └── h5-sign.uvue        // H5签署页
+└── contract-view/
+    └── h5-view.uvue        // 合同查看
+```
+
+#### 印章管理API
+```typescript
+// 印章相关API
+import { seals } from '@/api/seals/index';
+
+// 获取印章列表
+seals.getSealList({ identityType, enterpriseId });
+
+// 个人印章操作
+seals.userSeal.create(data);
+seals.userSeal.update(data);
+seals.userSeal.delete(id);
+seals.userSeal.page(params);
+
+// 企业印章操作
+seals.enterpriseSeal.create(data);
+seals.enterpriseSeal.update(data);
+seals.enterpriseSeal.delete(id);
+seals.enterpriseSeal.page(params);
+
+// 企业印章授权
+seals.enterpriseSeal.grantCreate(data);
+seals.enterpriseSeal.grantDelete(id);
+seals.enterpriseSeal.grantList(sealId);
+```
+
+### 4. 天眼审查模块（AI智能审核）
+
+#### 功能概述
+- **风险识别**：自动识别合同中的风险条款
+- **智能分析**：基于AI的合同内容分析
 - **审查报告**：生成详细的风险分析报告
-- **风险详情**：查看具体风险项
-- **审查历史**：查看历史审查记录
+- **历史记录**：保存审查历史
 
-### 5. AI起草
-- **AI对话**：与AI进行对话式合同起草
-- **编辑器**：编辑AI生成的合同
-- **预览**：预览合同内容
-- **历史记录**：查看历史起草记录
+#### 审查流程（可视化）
 
-### 6. 模板系统
-- **模板市场**：浏览可用的合同模板
-- **模板详情**：查看模板详细信息
-- **模板预览**：预览模板内容
-- **模板使用**：基于模板创建合同
+```mermaid
+graph LR
+    A["📄 合同详情<br/>Contract Detail"] --> B["🔍 发起审查<br/>Initiate Audit"]
+    B --> C["📖 审查介绍<br/>Audit Intro"]
+    C --> D["⏳ 审查进度<br/>Audit Progress"]
+    D --> E["📊 审查报告<br/>Audit Report"]
+    E --> F{查看详情}
+    F -->|风险项| G["⚠️ 风险详情<br/>Risk Detail"]
+    F -->|历史| H["📜 审查历史<br/>Audit History"]
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style B fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style C fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style D fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style E fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    style F fill:#e0f2f1,stroke:#00796b,stroke-width:2px
+    style G fill:#ffebee,stroke:#c62828,stroke-width:2px
+    style H fill:#f1f8e9,stroke:#558b2f,stroke-width:2px
+```
 
-### 7. 企业管理
+**关键点：**
+- 基于AI的合同审查服务
+- 自动识别风险条款并标注
+- 生成详细的风险分析报告
+- 支持查看历史审查记录
+- 可重复审查同一合同
+
+#### 页面结构
+```
+pages/contract-audit/
+├── intro.uvue          // 审查介绍
+├── progress.uvue       // 审查进度
+├── report.uvue         // 审查报告
+├── risk-detail.uvue    // 风险详情
+└── history.uvue        // 审查历史
+```
+
+### 5. AI起草模块
+
+#### 功能概述
+- **对话式起草**：通过自然语言描述需求，AI生成合同
+- **智能编辑**：AI辅助修改和优化合同内容
+- **模板推荐**：根据需求推荐合适的模板
+- **历史记录**：保存起草历史
+
+#### AI起草流程（可视化）
+
+```mermaid
+graph LR
+    A["🏠 首页<br/>Home"] --> B["🤖 AI起草首页<br/>AI Draft Home"]
+    B --> C["💬 AI对话页<br/>AI Chat"]
+    C --> D{AI生成}
+    D -->|成功| E["📄 查看草稿<br/>View Draft"]
+    D -->|继续对话| C
+    
+    E --> F["✏️ 编辑器<br/>Editor"]
+    F --> G["👁️ 预览页<br/>Preview"]
+    G --> H{操作}
+    H -->|保存| I["💾 保存为草稿<br/>Save Draft"]
+    H -->|签署| J["✍️ 发起签署<br/>Initiate Sign"]
+    H -->|返回编辑| F
+    
+    B --> K["📜 历史记录<br/>History"]
+    K --> E
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style B fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style C fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style D fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style E fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    style F fill:#e0f2f1,stroke:#00796b,stroke-width:2px
+    style G fill:#f1f8e9,stroke:#558b2f,stroke-width:2px
+    style H fill:#ede7f6,stroke:#512da8,stroke-width:2px
+    style I fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style J fill:#e1bee7,stroke:#6a1b9a,stroke-width:2px
+    style K fill:#e0f7fa,stroke:#006064,stroke-width:2px
+```
+
+**关键点：**
+- 对话式的合同起草体验
+- AI根据对话内容生成合同
+- 支持编辑AI生成的内容
+- 可保存为草稿或直接发起签署
+- 保存历史记录便于后续查看
+
+#### 页面结构
+```
+pages/ai-draft/
+├── index.uvue          // AI起草首页
+├── chat.uvue           // AI对话页
+├── editor.uvue         // 编辑页
+├── detail.uvue         // 详情页
+├── preview.uvue        // 预览页
+└── history.uvue        // 历史记录
+```
+
+### 6. 模板系统模块
+
+#### 功能概述
+- **模板市场**：提供各类合同模板
+- **模板分类**：按行业、用途分类
+- **模板详情**：查看模板内容和填写项
+- **模板使用**：基于模板快速创建合同
+
+#### 模板使用流程（可视化）
+
+```mermaid
+graph LR
+    A["🏠 首页<br/>Home"] --> B["📚 模板市场<br/>Template Market"]
+    B --> C{浏览}
+    C -->|分类筛选| B
+    C -->|选择| D["📄 模板详情<br/>Template Detail"]
+    
+    D --> E["👁️ 模板预览<br/>Template Preview"]
+    E --> F{操作}
+    F -->|使用模板| G["✏️ 填写表单<br/>Fill Form"]
+    F -->|返回| D
+    
+    G --> H["📝 编辑合同<br/>Edit Contract"]
+    H --> I["✍️ 发起签署<br/>Initiate Sign"]
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style B fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style C fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style D fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style E fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    style F fill:#e0f2f1,stroke:#00796b,stroke-width:2px
+    style G fill:#f1f8e9,stroke:#558b2f,stroke-width:2px
+    style H fill:#ede7f6,stroke:#512da8,stroke-width:2px
+    style I fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+```
+
+**关键点：**
+- 浏览丰富的合同模板库
+- 支持按行业和用途分类筛选
+- 预览模板内容和填写项
+- 快速基于模板创建合同
+- 模板包含预设的签署区域
+
+#### 页面结构
+```
+pages/
+├── template-market/
+│   └── index.uvue      // 模板市场
+├── template-detail/
+│   └── index.uvue      // 模板详情
+└── template-preview/
+    └── index.uvue      // 模板预览
+```
+
+#### API 接口
+```typescript
+// 模板相关API
+import { templates } from '@/api/templates/index';
+
+// 获取模板列表
+templates.list({ category, keyword });
+
+// 获取模板详情
+templates.detail(templateId);
+
+// 使用模板创建合同
+templates.createFromTemplate(templateId, formData);
+```
+
+### 7. 企业管理模块
+
+#### 功能概述
 - **企业列表**：管理多个企业账户
-- **企业详情**：查看企业信息
+- **企业切换**：快速切换当前企业
 - **成员管理**：添加、编辑、删除企业成员
-- **成员邀请**：邀请新成员加入企业
-- **企业印章**：创建和管理企业级印章
-- **印章授权**：控制成员对印章的使用权限
+- **成员邀请**：通过手机号/邮箱邀请成员
+- **角色权限**：设置成员角色和权限
+- **企业印章**：创建和管理企业印章
+- **印章授权**：控制成员印章使用权限
 
-### 8. 个人中心
-- **个人信息**：管理用户基本信息
-- **个人印章**：创建和管理个人印章
-- **设置**：应用设置和偏好
-- **通知**：消息和通知管理
-- **套餐管理**：查看和升级用户套餐
+#### 企业管理流程（可视化）
+
+```mermaid
+graph LR
+    A["👤 个人中心<br/>Profile"] --> B["🏢 企业列表<br/>Enterprise List"]
+    B --> C{操作}
+    C -->|添加| D["➕ 添加企业<br/>Add Enterprise"]
+    C -->|选择| E["📋 企业详情<br/>Enterprise Detail"]
+    
+    D --> E
+    E --> F{管理}
+    F -->|成员| G["👥 成员管理<br/>Member Manage"]
+    F -->|印章| H["🔏 印章管理<br/>Seal Manage"]
+    
+    G --> G1["📝 成员列表<br/>Member List"]
+    G --> G2["📧 邀请成员<br/>Invite Member"]
+    G --> G3["✏️ 编辑成员<br/>Edit Member"]
+    
+    H --> H1["📋 印章列表<br/>Seal List"]
+    H --> H2["➕ 创建印章<br/>Create Seal"]
+    H --> H3["🔐 印章授权<br/>Seal Grant"]
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style B fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style C fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style D fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style E fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    style F fill:#e0f2f1,stroke:#00796b,stroke-width:2px
+    style G fill:#f1f8e9,stroke:#558b2f,stroke-width:2px
+    style H fill:#ede7f6,stroke:#512da8,stroke-width:2px
+    style G1 fill:#f1f8e9,stroke:#558b2f,stroke-width:1px
+    style G2 fill:#f1f8e9,stroke:#558b2f,stroke-width:1px
+    style G3 fill:#f1f8e9,stroke:#558b2f,stroke-width:1px
+    style H1 fill:#ede7f6,stroke:#512da8,stroke-width:1px
+    style H2 fill:#ede7f6,stroke:#512da8,stroke-width:1px
+    style H3 fill:#ede7f6,stroke:#512da8,stroke-width:1px
+```
+
+**关键点：**
+- 支持多企业账户管理
+- 成员管理支持邀请和编辑
+- 企业印章支持授权控制
+- 角色权限严格管理（所有者/管理员/成员）
+- 印章授权可设置使用期限和次数限制
+
+#### 页面结构
+```
+pages/enterprise/
+├── list.uvue           // 企业列表
+├── add.uvue            // 添加企业
+├── detail.uvue         // 企业详情
+├── members.uvue        // 成员管理
+├── member-invite.uvue  // 邀请成员
+├── member-edit.uvue    // 编辑成员
+├── seals.uvue          // 企业印章管理
+├── seal-create.uvue    // 创建企业印章
+└── seal-authorize.uvue // 印章授权
+```
+
+#### API 接口
+```typescript
+// 企业相关API
+import { enterprise } from '@/api/enterprise/index';
+
+// 企业操作
+enterprise.list();                    // 企业列表
+enterprise.create(enterpriseData);    // 创建企业
+enterprise.detail(enterpriseId);      // 企业详情
+enterprise.update(enterpriseId, data);// 更新企业
+
+// 成员操作
+enterprise.members.list(enterpriseId);
+enterprise.members.invite(inviteData);
+enterprise.members.update(memberId, data);
+enterprise.members.remove(memberId);
+```
+
+### 8. 个人中心模块
+
+#### 功能概述
+- **个人信息**：查看和编辑用户资料
+- **个人印章**：管理个人签名和印章
+- **安全设置**：修改密码、绑定手机/邮箱
+- **消息通知**：查看系统通知和消息
+- **套餐管理**：查看和升级套餐
 - **帮助中心**：常见问题和帮助文档
 - **关于应用**：应用信息和版本
 
-## 技术栈
-
-### 前端框架
-- **uni-app**：跨平台开发框架，支持iOS、Android、H5、小程序
-- **Vue 3**：渐进式JavaScript框架
-- **UTS**：TypeScript变种，用于uni-app开发
-
-### 开发工具
-- **@dcloudio/uni-ui**：uni-app官方UI组件库
-- **@dcloudio/uniapp-cli**：uni-app CLI工具
-
-### 样式系统
-- **SCSS**：CSS预处理器，通过uni.scss实现全局变量管理
-- **CSS Mask + SVG**：现代简约图标系统
-
-## API接口管理
-
-所有API接口统一管理在`api/`目录下，按功能模块分类：
-
-- **认证接口**：`api/auth.uts`、`api/auth/login.uts`
-- **合同接口**：`api/contracts/index.uts`
-- **草稿接口**：`api/drafts/index.uts`
-- **企业接口**：`api/enterprise/index.uts`
-- **印章接口**：`api/seals/index.uts`
-- **模板接口**：`api/templates/index.uts`
-- **AI起草接口**：`api/ai-draft/index.uts`
-
-### 印章管理API示例
-
-```typescript
-// 获取印章列表
-getSealList(params: { identityType: number; enterpriseId?: number; })
-
-// 个人印章操作
-userSeal.create(data)
-userSeal.update(data)
-userSeal.delete(id)
-userSeal.page(params)
-
-// 企业印章操作
-enterpriseSeal.create(data)
-enterpriseSeal.update(data)
-enterpriseSeal.delete(id)
-enterpriseSeal.page(params)
-
-// 企业印章授权
-enterpriseSeal.grantCreate(data)
-enterpriseSeal.grantDelete(id)
-enterpriseSeal.grantList(sealId)
+#### 页面结构
+```
+pages/profile/
+├── index.uvue          // 个人中心首页
+├── personal-info.uvue  // 个人信息
+├── seals.uvue          // 个人印章管理
+├── seal-create.uvue    // 创建个人印章
+├── settings.uvue       // 设置
+├── notifications.uvue  // 通知
+├── packages.uvue       // 套餐管理
+├── help.uvue           // 帮助中心
+└── about.uvue          // 关于应用
 ```
 
 ## 开发指南
 
-### 环境配置
+### 环境搭建
 
+#### 1. 安装依赖
 ```bash
-# 安装依赖
+# 安装项目依赖
 npm install
 
-# 开发模式
+# 下载 FontAwesome 字体（用于图标）
+./scripts/download-fontawesome.sh
+```
+
+#### 2. 开发模式
+```bash
+# 启动开发服务器
 npm run dev
 
-# 构建生产版本
+# 开发特定平台
+npm run dev:h5          # H5
+npm run dev:mp-weixin   # 微信小程序
+npm run dev:app         # APP
+```
+
+#### 3. 构建生产版本
+```bash
+# 构建所有平台
 npm run build
+
+# 构建特定平台
+npm run build:h5
+npm run build:mp-weixin
+npm run build:app
 ```
 
-### 页面开发
+### 页面开发规范
 
-1. 在`pages/`目录下创建新页面文件（.uvue格式）
-2. 在`pages.json`中配置页面路由
-3. 使用`uni.navigateTo()`进行页面跳转
+#### 1. 页面创建流程
+```bash
+# 1. 在 pages/ 目录下创建页面文件
+pages/new-feature/index.uvue
 
-### 组件开发
+# 2. 在 pages.json 中注册页面
+{
+  "path": "pages/new-feature/index",
+  "style": {
+    "navigationBarTitleText": "新功能"
+  }
+}
 
-1. 在`components/`目录下创建新组件（.uvue格式）
-2. 在需要的页面中导入组件
-3. 参考`components/README.md`了解现有组件
+# 3. 使用 uni.navigateTo() 跳转
+uni.navigateTo({
+  url: '/pages/new-feature/index'
+});
+```
 
-### API调用
+#### 2. 页面模板
+```vue
+<template>
+  <view class="page-container">
+    <!-- 页面内容 -->
+  </view>
+</template>
 
+<script setup lang="uts">
+// 导入依赖
+import { ref, reactive } from 'vue';
+
+// 定义响应式数据
+const data = ref<any>({});
+
+// 页面加载
+onLoad((options: any) => {
+  console.log('页面参数:', options);
+  loadData();
+});
+
+// 加载数据
+const loadData = async () => {
+  // API 调用
+};
+</script>
+
+<style lang="scss" scoped>
+.page-container {
+  padding: 30rpx;
+  background-color: #F7F9FC;
+}
+</style>
+```
+
+### 组件开发规范
+
+#### 1. 组件创建
+```vue
+<!-- components/CustomButton.uvue -->
+<template>
+  <button class="custom-button" @click="handleClick">
+    <slot></slot>
+  </button>
+</template>
+
+<script setup lang="uts">
+// 定义 Props
+interface Props {
+  type?: 'primary' | 'default';
+  disabled?: boolean;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  type: 'default',
+  disabled: false
+});
+
+// 定义 Emits
+const emit = defineEmits<{
+  click: [];
+}>();
+
+// 事件处理
+const handleClick = () => {
+  if (!props.disabled) {
+    emit('click');
+  }
+};
+</script>
+
+<style lang="scss" scoped>
+.custom-button {
+  /* 样式定义 */
+}
+</style>
+```
+
+#### 2. 组件使用
+```vue
+<template>
+  <CustomButton type="primary" @click="handleSubmit">
+    提交
+  </CustomButton>
+</template>
+
+<script setup lang="uts">
+import CustomButton from '@/components/CustomButton.uvue';
+
+const handleSubmit = () => {
+  console.log('提交');
+};
+</script>
+```
+
+### API 调用规范
+
+#### 1. API 定义
 ```typescript
-// 导入API
-import { userSeal } from '../../api/seals/index';
+// api/contracts/index.uts
+import request from '../index';
 
-// 调用API
-userSeal.create(sealData)
-  .then(res => {
-    console.log('成功', res);
-  })
-  .catch(err => {
-    console.error('失败', err);
+// 获取合同列表
+export const getContractList = (params: any) => {
+  return request({
+    url: '/app-api/seal/sign-task/page',
+    method: 'GET',
+    params
   });
+};
+
+// 创建合同
+export const createContract = (data: any) => {
+  return request({
+    url: '/app-api/seal/sign-task/create',
+    method: 'POST',
+    data
+  });
+};
 ```
 
-## 重要文档
+#### 2. API 使用
+```typescript
+// 页面中使用
+import { getContractList, createContract } from '@/api/contracts/index';
 
+// 获取列表
+const loadList = async () => {
+  try {
+    const res = await getContractList({
+      pageNo: 1,
+      pageSize: 10
+    });
+    console.log('列表数据:', res.data);
+  } catch (error) {
+    console.error('获取失败:', error);
+    uni.showToast({
+      title: '加载失败',
+      icon: 'none'
+    });
+  }
+};
+
+// 创建合同
+const createNew = async () => {
+  try {
+    const res = await createContract({
+      title: '合同标题',
+      // ... 其他数据
+    });
+    uni.showToast({
+      title: '创建成功',
+      icon: 'success'
+    });
+  } catch (error) {
+    console.error('创建失败:', error);
+  }
+};
+```
+
+### 状态管理
+
+#### 1. Pinia Store 定义
+```typescript
+// stores/user.ts
+import { defineStore } from 'pinia';
+
+export const useUserStore = defineStore('user', {
+  state: () => ({
+    userInfo: null,
+    token: '',
+    isLogin: false
+  }),
+  
+  getters: {
+    getUserInfo: (state) => state.userInfo,
+    getToken: (state) => state.token
+  },
+  
+  actions: {
+    setUserInfo(info: any) {
+      this.userInfo = info;
+      this.isLogin = true;
+    },
+    
+    logout() {
+      this.userInfo = null;
+      this.token = '';
+      this.isLogin = false;
+    }
+  }
+});
+```
+
+#### 2. Store 使用
+```typescript
+import { useUserStore } from '@/stores/user';
+
+const userStore = useUserStore();
+
+// 获取状态
+const userInfo = userStore.getUserInfo;
+
+// 更新状态
+userStore.setUserInfo({
+  id: 1,
+  name: '张三'
+});
+```
+
+### 跨端适配
+
+#### 1. 平台判断
+```typescript
+// #ifdef H5
+// H5 特有代码
+console.log('这是 H5 平台');
+// #endif
+
+// #ifdef APP-PLUS
+// APP 特有代码
+console.log('这是 APP 平台');
+// #endif
+
+// #ifdef MP-WEIXIN
+// 微信小程序特有代码
+console.log('这是微信小程序');
+// #endif
+```
+
+#### 2. H5 特殊处理
+```vue
+<template>
+  <H5LoadingContainer :loading="isLoading">
+    <H5ErrorContainer :error="error">
+      <!-- 页面内容 -->
+    </H5ErrorContainer>
+  </H5LoadingContainer>
+</template>
+
+<script setup lang="uts">
+import H5LoadingContainer from '@/components/H5LoadingContainer.uvue';
+import H5ErrorContainer from '@/components/H5ErrorContainer.uvue';
+
+const isLoading = ref(false);
+const error = ref(null);
+</script>
+```
+
+### 样式开发
+
+#### 1. 全局样式变量
+```scss
+// uni.scss
+$primary-color: #00C28A;    // 主题色
+$text-color: #303133;       // 主文本色
+$border-color: #DCDFE6;     // 边框色
+$background-color: #F7F9FC; // 背景色
+```
+
+#### 2. 响应式单位
+```scss
+// 使用 rpx 单位自适应屏幕
+.container {
+  padding: 30rpx;
+  font-size: 28rpx;
+  width: 750rpx;  // 设计稿宽度
+}
+```
+
+### 重要文档
+
+- **完整架构文档**：`ARCHITECTURE.md`
 - **组件文档**：`components/README.md`
 - **KYC使用指南**：`components/KYC_GUARD_USAGE.md`
 - **企业KYC文档**：`components/ENTERPRISE_KYC_MODAL_USAGE.md`
 - **H5服务检查**：`components/H5_SERVICE_CHECK_GUIDE.md`
 - **认证API文档**：`API_DOCS_APP_AUTH.md`
 
-## 常见问题
+### 常见问题
 
-### 如何添加新页面？
-1. 在`pages/`目录下创建新文件夹和.uvue文件
-2. 在`pages.json`中添加页面配置
-3. 使用`uni.navigateTo()`导航到新页面
+#### Q1: 如何添加新页面？
+**A:** 
+1. 在 `pages/` 目录下创建 `.uvue` 文件
+2. 在 `pages.json` 中注册页面路由
+3. 使用 `uni.navigateTo()` 进行跳转
 
-### 如何调用后端API？
-所有API调用通过`api/`目录下的接口函数进行，确保统一的请求管理和错误处理。
+#### Q2: 如何调用后端API？
+**A:** 所有 API 调用通过 `api/` 目录下的接口函数进行，确保统一的请求管理和错误处理。
 
-### 如何使用KYC认证？
-参考`components/KYC_GUARD_USAGE.md`和`components/ENTERPRISE_KYC_MODAL_USAGE.md`文档。
+#### Q3: 如何使用KYC认证？
+**A:** 参考 `components/KYC_GUARD_USAGE.md` 和 `components/ENTERPRISE_KYC_MODAL_USAGE.md` 文档。
 
-### 如何处理H5兼容性问题？
-使用`H5LoadingContainer`和`H5ErrorContainer`组件包装H5页面，参考`components/H5_SERVICE_CHECK_GUIDE.md`。
+#### Q4: 如何处理H5兼容性问题？
+**A:** 使用 `H5LoadingContainer` 和 `H5ErrorContainer` 组件包装 H5 页面，参考 `components/H5_SERVICE_CHECK_GUIDE.md`。
+
+#### Q5: 如何进行跨端开发？
+**A:** 使用条件编译指令（如 `#ifdef H5`）处理平台差异，参考 ARCHITECTURE.md 中的跨端适配章节。
+
+#### Q6: 如何管理全局状态？
+**A:** 使用 Pinia 进行状态管理，在 `stores/` 目录下创建 Store 模块。
 
 
 
@@ -514,6 +1706,12 @@ userSeal.create(sealData)
 ![](.images/app/app_07@4x.png)
 
 > 在签署的时候支持骑缝章和自由印章和个人签署的设置；
+
+
+
+![](.images/app/app_18@4x.png)
+> 为了签署安全，用户可以在合同模版里面设置意愿签署，然后用户在真实签署的时候就需要进行二次安全确认之后才能进行提交签署，二次验证目前支持（登录密码、手机验证码、邮箱验证码）
+
 
 
 
