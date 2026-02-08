@@ -7,6 +7,7 @@
 import { getSealPageUrl } from '../../api/seals/index';
 import { getContract, ContractStatus, type Contract } from '../../api/contracts/index';
 import { downloadContractFile } from '../../api/utils/download';
+import { buildViewShareConfig, buildDefaultShareConfig } from '../../utils/share';
 
 export default {
 	data() {
@@ -56,6 +57,26 @@ export default {
 			return result;
 		}
 	},
+	
+	// #ifdef MP-WEIXIN
+	onShareAppMessage() : any {
+		if (this.taskId) {
+			const title = this.contract != null ? (this.contract!.title ?? '合同') : '合同';
+			const config = buildViewShareConfig(this.taskId, title);
+			return {
+				title: config.title,
+				path: config.path,
+				imageUrl: config.imageUrl
+			};
+		}
+		const defaultConfig = buildDefaultShareConfig();
+		return {
+			title: defaultConfig.title,
+			path: defaultConfig.path,
+			imageUrl: defaultConfig.imageUrl
+		};
+	},
+	// #endif
 	
 	onLoad(options: any) {
 		console.log('[H5预览] 页面加载，参数:', options);

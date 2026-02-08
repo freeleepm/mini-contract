@@ -1,0 +1,233 @@
+<template>
+	<view class="modal-overlay" v-if="visible" @click="handleOverlayClick">
+		<view class="modal-container" @click.stop>
+			<!-- 图标 -->
+			<view class="icon-wrapper">
+				<text class="icon icon-alert-triangle warning-icon"></text>
+			</view>
+
+			<!-- 标题 -->
+			<text class="modal-title">配额不足</text>
+
+			<!-- 消息内容 -->
+			<view class="modal-content">
+				<text class="main-text">{{ message }}</text>
+				<view class="balance-row">
+					<text class="sub-text">当前剩余 </text>
+					<text class="balance-text">{{ balance }}</text>
+					<text class="sub-text"> 份</text>
+				</view>
+				<text class="hint-text">请购买套餐后继续操作</text>
+			</view>
+
+			<!-- 按钮区域 -->
+			<view class="modal-actions">
+				<view class="action-btn action-btn-cancel" @click="handleClose">
+					<text class="action-btn-text action-btn-cancel-text">稍后再说</text>
+				</view>
+				<view class="action-btn action-btn-primary" @click="handlePurchase">
+					<text class="icon icon-shopping-cart action-icon"></text>
+					<text class="action-btn-text action-btn-primary-text">立即购买</text>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script lang="uts">
+	export default {
+		props: {
+			/**
+			 * 是否显示弹窗
+			 */
+			visible: {
+				type: Boolean,
+				default: false
+			},
+			/**
+			 * 提示消息
+			 */
+			message: {
+				type: String,
+				default: '您的合同配额不足，无法创建新合同'
+			},
+			/**
+			 * 当前余额
+			 */
+			balance: {
+				type: Number,
+				default: 0
+			},
+			/**
+			 * 企业ID（购买时传递）
+			 */
+			enterpriseId: {
+				type: Number,
+				default: null
+			}
+		},
+
+		methods: {
+			handleOverlayClick() {
+				// 点击遮罩层不关闭
+			},
+
+			handleClose() {
+				this.$emit('close');
+			},
+
+			handlePurchase() {
+				this.$emit('close');
+				// 跳转到购买页面
+				let url = '/pages/quota/purchase';
+				if (this.enterpriseId != null) {
+					url += '?enterpriseId=' + this.enterpriseId;
+				}
+				uni.navigateTo({ url: url });
+			}
+		}
+	}
+</script>
+
+<style>
+	/* 引入FontAwesome图标 */
+	@import url("../static/styles/fontawesome.css");
+	
+	.modal-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+		align-items: center;
+		justify-content: center;
+		z-index: 999;
+	}
+
+	.modal-container {
+		width: 600rpx;
+		background-color: #FFFFFF;
+		border-radius: 24rpx;
+		padding: 48rpx 40rpx;
+		align-items: center;
+	}
+
+	.icon-wrapper {
+		width: 100rpx;
+		height: 100rpx;
+		background-color: rgba(230, 162, 60, 0.1);
+		border-radius: 50rpx;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 24rpx;
+	}
+
+	.warning-icon {
+		font-family: FontAwesome;
+		font-size: 48rpx;
+		color: #e6a23c;
+	}
+
+	.modal-title {
+		font-size: 36rpx;
+		font-weight: 600;
+		color: #303133;
+		margin-bottom: 24rpx;
+	}
+
+	.modal-content {
+		align-items: center;
+		margin-bottom: 40rpx;
+	}
+
+	.main-text {
+		font-size: 28rpx;
+		color: #606266;
+		margin-bottom: 16rpx;
+		text-align: center;
+	}
+
+	.balance-row {
+		flex-direction: row;
+		align-items: baseline;
+		margin-bottom: 8rpx;
+	}
+
+	.sub-text {
+		font-size: 26rpx;
+		color: #909399;
+	}
+
+	.balance-text {
+		font-size: 36rpx;
+		font-weight: 700;
+		color: #f56c6c;
+	}
+
+	.hint-text {
+		font-size: 24rpx;
+		color: #C0C4CC;
+	}
+
+	.modal-actions {
+		flex-direction: row;
+		justify-content: center;
+		width: 100%;
+	}
+
+	.action-btn {
+		flex: 1;
+		height: 80rpx;
+		border-radius: 40rpx;
+		align-items: center;
+		justify-content: center;
+		flex-direction: row;
+		margin: 0 12rpx;
+	}
+
+	.action-btn-cancel {
+		background-color: #F5F7FA;
+		border-width: 1rpx;
+		border-color: #DCDFE6;
+		border-style: solid;
+	}
+
+	.action-btn-primary {
+		background-color: #00C28A;
+	}
+
+	.action-btn-text {
+		font-size: 28rpx;
+	}
+
+	.action-btn-cancel-text {
+		color: #606266;
+	}
+
+	.action-btn-primary-text {
+		color: #FFFFFF;
+	}
+
+	.action-icon {
+		font-family: 'Font Awesome 6 Free';
+		font-weight: 900;
+		font-size: 26rpx;
+		color: #FFFFFF;
+		margin-right: 8rpx;
+	}
+
+	.icon {
+		font-family: 'Font Awesome 6 Free';
+		font-weight: 900;
+		font-style: normal;
+	}
+	
+	.icon-alert-triangle::before {
+		content: "\f071";
+	}
+	
+	.icon-shopping-cart::before {
+		content: "\f07a";
+	}
+</style>

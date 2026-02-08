@@ -1,0 +1,135 @@
+/**
+ * 合同验证 API
+ * 小华同学AI
+ * 
+ * 使用统一的 request 封装，自动处理 tenant-id 等公共请求头
+ * 此接口为公开访问，无需登录认证
+ */
+
+import { get, uploadFile } from '../index.uts';
+import { TIMEOUT } from '../config.uts';
+
+// API 基础路径
+const BASE_PATH = '/api/v1/seal/verification';
+
+/**
+ * 验证结果接口
+ */
+export type VerificationResult = {
+    id: number;
+    verificationStatus: number;
+    verificationStatusText: string;
+    isPlatformSigned: boolean;
+    hashResult: VerificationItemResult;
+    signatureResult: VerificationItemResult;
+    certificateResult: VerificationItemResult;
+    contractInfo: ContractInfo;
+    signers: Signer[];
+    timeline: TimelineEvent[];
+};
+
+/**
+ * 验证项结果
+ */
+export type VerificationItemResult = {
+    status: boolean;
+    message: string;
+};
+
+/**
+ * 合同信息
+ */
+export type ContractInfo = {
+    title: string;
+    createTime: string;
+    completeTime: string;
+    signerCount: number;
+    pageCount: number;
+};
+
+/**
+ * 签署方信息（已脱敏）
+ */
+export type Signer = {
+    name: string;
+    type: string;
+    role: string;
+    signTime: string;
+    phone: string;
+    idCard: string;
+    creditCode: string;
+};
+
+/**
+ * 时间线事件
+ */
+export type TimelineEvent = {
+    event: string;
+    time: string;
+    signer: string;
+};
+
+/**
+ * 验证状态枚举
+ */
+export const VerificationStatus = {
+    PROCESSING: 0,
+    PASSED: 1,
+    FAILED: 2,
+    NO_SIGNATURE: 3
+};
+
+/**
+ * 上传并验证合同
+ * 使用统一的 uploadFile 封装，自动添加 tenant-id
+ * 
+ * @param filePath 本地文件路径
+ * @returns 验证结果
+ */
+export function verifyContract(filePath: string): Promise<VerificationResult> {
+    console.log('[合同验证] 开始验证，文件路径:', filePath);
+    
+    return uploadFile(`${BASE_PATH}/verify`, filePath, {
+        name: 'file',
+        header: {
+            // 公开访问接口，不需要 Authorization，但统一的 uploadFile 会自动添加 tenant-id
+        }
+    }).then((result: any) => {
+        console.log('[合同验证] 验证成功:', result);
+        return result as VerificationResult;
+    }).catch((error: any) => {
+        console.error('[合同验证] 验证失败:', error);
+        throw error;
+    });
+}
+
+/**
+ * 获取验证结果详情
+ * 使用统一的 get 封装，自动添加 tenant-id
+ * 
+ * @param id 验证记录ID
+ * @returns 验证结果详情
+ */
+export function getVerificationDetail(id: number): Promise<VerificationResult> {
+    console.log('[合同验证] 获取详情，ID:', id);
+    
+    return get<VerificationResult>(`${BASE_PATH}/get`, { id }, {
+        isAuth: false,  // 公开访问，无需认证
+        timeout: TIMEOUT
+    });
+}
+
+/**
+ * 获取剩余验证次数
+ * 使用统一的 get 封装，自动添加 tenant-id
+ * 
+ * @returns 剩余验证次数
+ */
+export function getRemainingRequests(): Promise<number> {
+    console.log('[合同验证] 获取剩余验证次数');
+    
+    return get<number>(`${BASE_PATH}/remaining`, null, {
+        isAuth: false,  // 公开访问，无需认证
+        timeout: TIMEOUT
+    });
+}

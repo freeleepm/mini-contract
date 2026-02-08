@@ -1,0 +1,331 @@
+<template>
+	<view class="quota-balance-card" v-if="!loading">
+		<view class="card-header">
+			<view class="title">
+				<text class="icon icon-wallet title-icon"></text>
+				<text class="title-text">{{ accountTypeName }}</text>
+			</view>
+			<view class="enterprise-tag" v-if="enterpriseName">
+				<text class="enterprise-tag-text">{{ enterpriseName }}</text>
+			</view>
+		</view>
+
+		<view class="card-body">
+			<view class="balance-info">
+				<text class="balance-value">{{ balance }}</text>
+				<text class="balance-label">剩余合同份数</text>
+			</view>
+
+			<view class="stats-row">
+				<view class="stat-item">
+					<text class="stat-value stat-success">+{{ totalAcquired }}</text>
+					<text class="stat-label">累计获得</text>
+				</view>
+				<view class="stat-item">
+					<text class="stat-value stat-warning">-{{ totalUsed }}</text>
+					<text class="stat-label">累计使用</text>
+				</view>
+			</view>
+		</view>
+
+		<view class="card-footer" v-if="showActions">
+			<view class="action-btn action-btn-primary" @click="handlePurchase">
+				<text class="icon icon-shopping-cart action-icon"></text>
+				<text class="action-text">购买套餐</text>
+			</view>
+			<view class="action-btn action-btn-default" @click="handleViewLogs">
+				<text class="icon icon-file-text action-icon"></text>
+				<text class="action-text">变动记录</text>
+			</view>
+		</view>
+	</view>
+
+	<view class="loading-container" v-else>
+		<text class="loading-text">加载中...</text>
+	</view>
+</template>
+
+<script lang="uts">
+	import { getQuotaBalance, type QuotaBalanceResponse } from '@/api/quota/index';
+
+	export default {
+		props: {
+			/**
+			 * 企业ID（可选，不传则显示个人账户）
+			 */
+			enterpriseId: {
+				type: Number,
+				default: null
+			},
+			/**
+			 * 是否显示操作按钮
+			 */
+			showActions: {
+				type: Boolean,
+				default: true
+			}
+		},
+
+		data() {
+			return {
+				loading: true,
+				accountTypeName: '个人账户',
+				balance: 0,
+				totalAcquired: 0,
+				totalUsed: 0,
+				enterpriseName: '' as string
+			}
+		},
+
+		watch: {
+			enterpriseId: {
+				handler(newVal: number | null) {
+					this.fetchBalance();
+				},
+				immediate: true
+			}
+		},
+
+		methods: {
+			/**
+			 * 获取配额余额
+			 */
+			async fetchBalance() {
+				this.loading = true;
+				try {
+					const res = await getQuotaBalance(this.enterpriseId);
+					if (res != null) {
+						this.accountTypeName = res.accountTypeName || '个人账户';
+						this.balance = res.balance || 0;
+						this.totalAcquired = res.totalAcquired || 0;
+						this.totalUsed = res.totalUsed || 0;
+						this.enterpriseName = res.enterpriseName || '';
+					}
+				} catch (error) {
+					console.error('获取配额余额失败', error);
+					// 设置默认值
+					this.balance = 0;
+					this.totalAcquired = 0;
+					this.totalUsed = 0;
+				} finally {
+					this.loading = false;
+				}
+			},
+
+			/**
+			 * 刷新余额
+			 */
+			refresh() {
+				this.fetchBalance();
+			},
+
+			/**
+			 * 处理购买操作
+			 */
+			handlePurchase() {
+				this.$emit('purchase');
+			},
+
+			/**
+			 * 处理查看记录操作
+			 */
+			handleViewLogs() {
+				this.$emit('viewLogs');
+			}
+		}
+	}
+</script>
+
+<style>
+	/* 引入FontAwesome图标 */
+	@import url("../static/styles/fontawesome.css");
+	
+	.quota-balance-card {
+		background: linear-gradient(135deg, #00C28A 0%, #00A876 100%);
+		border-radius: 16rpx;
+		padding: 24rpx;
+		margin: 0;
+	}
+
+	.card-header {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 16rpx;
+	}
+
+	.title {
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.title-icon {
+		font-family: FontAwesome;
+		font-size: 28rpx;
+		color: #FFFFFF;
+		margin-right: 10rpx;
+	}
+
+	.title-text {
+		font-size: 28rpx;
+		font-weight: 500;
+		color: #FFFFFF;
+	}
+
+	.enterprise-tag {
+		background-color: rgba(255, 255, 255, 0.2);
+		padding: 4rpx 12rpx;
+		border-radius: 16rpx;
+	}
+
+	.enterprise-tag-text {
+		font-size: 20rpx;
+		color: #FFFFFF;
+	}
+
+	.card-body {
+		align-items: center;
+	}
+
+	.balance-info {
+		align-items: center;
+		margin-bottom: 20rpx;
+	}
+
+	.balance-value {
+		font-size: 72rpx;
+		font-weight: 700;
+		color: #FFFFFF;
+		line-height: 1.2;
+	}
+
+	.balance-label {
+		font-size: 24rpx;
+		color: rgba(255, 255, 255, 0.85);
+		margin-top: 4rpx;
+	}
+
+	.stats-row {
+		flex-direction: row;
+		justify-content: space-around;
+		width: 100%;
+		padding: 16rpx 0;
+		border-top-width: 1rpx;
+		border-top-color: rgba(255, 255, 255, 0.2);
+		border-top-style: solid;
+	}
+
+	.stat-item {
+		align-items: center;
+	}
+
+	.stat-value {
+		font-size: 32rpx;
+		font-weight: 600;
+	}
+
+	.stat-success {
+		color: #67c23a;
+	}
+
+	.stat-warning {
+		color: #e6a23c;
+	}
+
+	.stat-label {
+		font-size: 20rpx;
+		color: rgba(255, 255, 255, 0.75);
+		margin-top: 4rpx;
+	}
+
+	.card-footer {
+		flex-direction: row;
+		justify-content: space-between;
+		margin-top: 16rpx;
+		padding-top: 16rpx;
+		border-top-width: 1rpx;
+		border-top-color: rgba(255, 255, 255, 0.2);
+		border-top-style: solid;
+	}
+
+	.action-btn {
+		flex: 1;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		height: 64rpx;
+		border-radius: 32rpx;
+		margin: 0 8rpx;
+	}
+
+	.action-btn-primary {
+		background-color: #FFFFFF;
+	}
+
+	.action-btn-default {
+		background-color: rgba(255, 255, 255, 0.2);
+		border-width: 1rpx;
+		border-color: rgba(255, 255, 255, 0.5);
+		border-style: solid;
+	}
+
+	.action-icon {
+		font-family: FontAwesome;
+		font-size: 22rpx;
+		margin-right: 6rpx;
+	}
+
+	.action-btn-primary .action-icon {
+		color: #00C28A;
+	}
+
+	.action-btn-default .action-icon {
+		color: #FFFFFF;
+	}
+
+	.action-text {
+		font-size: 24rpx;
+	}
+
+	.action-btn-primary .action-text {
+		color: #00C28A;
+	}
+
+	.action-btn-default .action-text {
+		color: #FFFFFF;
+	}
+
+	.loading-container {
+		align-items: center;
+		justify-content: center;
+		padding: 40rpx;
+		margin: 0;
+		background-color: #F5F7FA;
+		border-radius: 16rpx;
+	}
+
+	.loading-text {
+		font-size: 26rpx;
+		color: #909399;
+	}
+
+	.icon {
+		font-family: 'Font Awesome 6 Free';
+		font-weight: 900;
+		font-style: normal;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+	
+	.icon-wallet::before {
+		content: "\f555";
+	}
+	
+	.icon-shopping-cart::before {
+		content: "\f07a";
+	}
+	
+	.icon-file-text::before {
+		content: "\f15c";
+	}
+</style>

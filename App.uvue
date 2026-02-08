@@ -1,4 +1,6 @@
 <script lang="uts">
+	import { buildDefaultShareConfig } from './utils/share';
+	
 	let firstBackTime = 0
 	export default {
 		onLaunch: function () {
@@ -16,6 +18,21 @@
 		onHide: function () {
 			console.log('App Hide')
 		},
+		// #ifdef MP-WEIXIN
+		/**
+		 * 全局默认分享配置
+		 * 当页面未单独定义 onShareAppMessage 时，使用此全局配置
+		 * 确保用户在任何页面点击右上角「转发」都有合理的分享内容
+		 */
+		onShareAppMessage: function () : any {
+			const config = buildDefaultShareConfig();
+			return {
+				title: config.title,
+				path: config.path,
+				imageUrl: config.imageUrl
+			};
+		},
+		// #endif
 		// #ifdef APP-ANDROID
 		onLastPageBackPress: function () {
 			console.log('App LastPageBackPress')

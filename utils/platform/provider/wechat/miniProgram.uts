@@ -15,8 +15,8 @@ import {
 } from '@/api/auth/social'
 import { getSealToken, clearSealToken } from '@/utils/sealTokenManager'
 
-// 社交类型 - 微信小程序
-const SOCIAL_TYPE = SocialType.WECHAT_MINI_PROGRAM
+// 社交类型 - 微信小程序 (对应 SocialType.WECHAT_MINI_PROGRAM)
+const SOCIAL_TYPE: number = 34
 
 /**
  * 存储 openid 到本地
@@ -72,10 +72,10 @@ export async function login(): Promise<boolean> {
     
     try {
         // 1. 调用 wx.login 获取 code
-        const loginResult = await new Promise<UniApp.LoginRes>((resolve, reject) => {
+        const loginResult = await new Promise<any>((resolve, reject) => {
             uni.login({
                 provider: 'weixin',
-                success: (res) => resolve(res),
+                success: (res: any) => resolve(res),
                 fail: (err) => reject(err)
             })
         })
@@ -85,12 +85,12 @@ export async function login(): Promise<boolean> {
             return false
         }
         
-        console.log('[WechatMiniProgram] wx.login 成功，code:', loginResult.code.substring(0, 10) + '...')
+        console.log('[WechatMiniProgram] wx.login 成功，code:', (loginResult.code as string).substring(0, 10) + '...')
         
         // 2. 调用后端社交登录接口
         const response = await socialLogin({
             type: SOCIAL_TYPE,
-            code: loginResult.code,
+            code: loginResult.code as string,
             state: 'default'
         })
         
@@ -139,10 +139,10 @@ export async function mobileLogin(phoneNumberEvent: any): Promise<boolean> {
     
     try {
         // 1. 调用 wx.login 获取 loginCode
-        const loginResult = await new Promise<UniApp.LoginRes>((resolve, reject) => {
+        const loginResult = await new Promise<any>((resolve, reject) => {
             uni.login({
                 provider: 'weixin',
-                success: (res) => resolve(res),
+                success: (res: any) => resolve(res),
                 fail: (err) => reject(err)
             })
         })
@@ -157,7 +157,7 @@ export async function mobileLogin(phoneNumberEvent: any): Promise<boolean> {
         // 2. 调用后端微信小程序一键登录接口
         const response = await weixinMiniAppLogin({
             phoneCode: phoneCode,
-            loginCode: loginResult.code,
+            loginCode: loginResult.code as string,
             state: 'default'
         })
         
@@ -186,10 +186,10 @@ export async function bindWechat(): Promise<boolean> {
     
     try {
         // 1. 调用 wx.login 获取 code
-        const loginResult = await new Promise<UniApp.LoginRes>((resolve, reject) => {
+        const loginResult = await new Promise<any>((resolve, reject) => {
             uni.login({
                 provider: 'weixin',
-                success: (res) => resolve(res),
+                success: (res: any) => resolve(res),
                 fail: (err) => reject(err)
             })
         })
@@ -200,7 +200,7 @@ export async function bindWechat(): Promise<boolean> {
         }
         
         // 2. 调用绑定接口
-        const openid = await bindSocialUser(SOCIAL_TYPE, loginResult.code, 'bindWechat')
+        const openid = await bindSocialUser(SOCIAL_TYPE, loginResult.code as string, 'bindWechat')
         
         if (openid) {
             setOpenid(openid)

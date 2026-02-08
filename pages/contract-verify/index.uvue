@@ -1,0 +1,826 @@
+<template>
+    <view class="page-container">
+        <scroll-view class="content-scroll" scroll-y="true">
+            <view class="content-wrapper">
+                
+                <!-- 初始状态 -->
+                <view class="verify-init-section" v-if="!verificationResult">
+                    
+                    <!-- 1. 上传区域：精致的虚线卡片 -->
+                    <view class="upload-card" @click="chooseFile" :class="{ 'file-selected': selectedFileName }">
+                        <view class="upload-inner">
+                            <!-- 图标区 -->
+                            <view class="upload-icon-box">
+                                <text class="icon" :class="selectedFileName ? 'icon-file-pdf' : 'icon-cloud-upload'"></text>
+                            </view>
+                            
+                            <!-- 文字区 -->
+                            <view class="upload-text-area">
+                                <text class="upload-title">{{ selectedFileName || '点击上传 PDF 合同' }}</text>
+                                <text class="upload-desc" v-if="!selectedFileName">支持 50MB 以内的 PDF 文件</text>
+                                <text class="upload-desc active" v-else>点击更换文件</text>
+                            </view>
+                        </view>
+                        
+                        <!-- 底部装饰条 -->
+                        <view class="upload-bar"></view>
+                    </view>
+
+                    <!-- 2. 验证能力说明：清爽的列表 -->
+                    <view class="section-container">
+                        <view class="section-header-group">
+                            <text class="section-head">验证内容</text>
+                            <text class="section-desc">支持验证电子签名的有效性与文档完整性</text>
+                        </view>
+                        <view class="feature-list">
+                            <view class="feature-row">
+                                <view class="feature-icon blue">
+                                    <text class="icon icon-file-check"></text>
+                                </view>
+                                <view class="feature-text">
+                                    <text class="f-title">文件完整性</text>
+                                    <text class="f-desc">校验文件 Hash 值，确保内容未被篡改</text>
+                                </view>
+                            </view>
+                            <view class="feature-row">
+                                <view class="feature-icon green">
+                                    <text class="icon icon-signature"></text>
+                                </view>
+                                <view class="feature-text">
+                                    <text class="f-title">数字签名</text>
+                                    <text class="f-desc">验证签名数据的加密有效性</text>
+                                </view>
+                            </view>
+                            <view class="feature-row">
+                                <view class="feature-icon orange">
+                                    <text class="icon icon-certificate"></text>
+                                </view>
+                                <view class="feature-text">
+                                    <text class="f-title">证书校验</text>
+                                    <text class="f-desc">验证 CA 证书的有效期与信任链</text>
+                                </view>
+                            </view>
+                        </view>
+                    </view>
+                    
+                    <!-- 剩余次数 -->
+                    <view class="quota-info" v-if="remainingRequests !== null">
+                        <text class="quota-label">今日剩余验证次数：</text>
+                        <text class="quota-val">{{ remainingRequests }}</text>
+                    </view>
+                    
+                </view>
+
+                <!-- 验证结果状态 -->
+                <view class="verify-result-section" v-else>
+                    <!-- 1. 结果总览卡片 -->
+                    <view class="result-summary-card">
+                        <view class="status-badge" :class="statusClass">
+                            <text class="icon" :class="statusIconClass"></text>
+                        </view>
+                        <text class="summary-title">{{ verificationResult.verificationStatusText }}</text>
+                        <text class="summary-desc">{{ statusDescription }}</text>
+                        <view class="summary-divider"></view>
+                        <view class="verify-meta">
+                            <text class="meta-label">验证时间</text>
+                            <text class="meta-val">{{ getCurrentTime() }}</text>
+                        </view>
+                    </view>
+
+                    <!-- 2. 验证详情 -->
+                    <view class="section-container">
+                        <text class="section-head">验证详情</text>
+                        <view class="detail-list">
+                            <view class="detail-item">
+                                <view class="d-left">
+                                    <text class="icon icon-file d-icon"></text>
+                                    <text class="d-label">文件完整性</text>
+                                </view>
+                                <view class="d-right">
+                                    <text class="status-tag" :class="verificationResult.hashResult.status ? 'tag-success' : 'tag-error'">
+                                        {{ verificationResult.hashResult.status ? '通过' : '失败' }}
+                                    </text>
+                                </view>
+                            </view>
+                            <view class="detail-item">
+                                <view class="d-left">
+                                    <text class="icon icon-signature d-icon"></text>
+                                    <text class="d-label">数字签名</text>
+                                </view>
+                                <view class="d-right">
+                                    <text class="status-tag" :class="verificationResult.signatureResult.status ? 'tag-success' : 'tag-error'">
+                                        {{ verificationResult.signatureResult.status ? '有效' : '无效' }}
+                                    </text>
+                                </view>
+                            </view>
+                            <view class="detail-item">
+                                <view class="d-left">
+                                    <text class="icon icon-certificate d-icon"></text>
+                                    <text class="d-label">证书校验</text>
+                                </view>
+                                <view class="d-right">
+                                    <text class="status-tag" :class="verificationResult.certificateResult.status ? 'tag-success' : 'tag-error'">
+                                        {{ verificationResult.certificateResult.status ? '有效' : '无效' }}
+                                    </text>
+                                </view>
+                            </view>
+                        </view>
+                    </view>
+
+                    <!-- 3. 签署方信息 -->
+                    <view class="section-container" v-if="verificationResult.signers && verificationResult.signers.length > 0">
+                        <view class="section-head-row">
+                            <text class="section-head">签署方</text>
+                            <text class="head-badge">{{ verificationResult.signers.length }}</text>
+                        </view>
+                        
+                        <view class="signer-list">
+                            <view class="signer-block" v-for="(signer, index) in verificationResult.signers" :key="index">
+                                <view class="signer-header">
+                                    <view class="signer-avatar" :style="{ backgroundColor: getAvatarColor(index) }">
+                                        <text class="avatar-text">{{ signer.name.substring(0, 1) }}</text>
+                                    </view>
+                                    <view class="signer-basic">
+                                        <text class="signer-name">{{ signer.name }}</text>
+                                        <view class="role-pill">
+                                            <text class="role-text">{{ signer.role }}</text>
+                                        </view>
+                                    </view>
+                                </view>
+                                <view class="signer-meta">
+                                    <text class="meta-key">签署时间</text>
+                                    <text class="meta-value">{{ formatSignTime(signer.signTime) }}</text>
+                                </view>
+                            </view>
+                        </view>
+                    </view>
+
+                    <!-- 4. 平台认证 -->
+                    <view class="platform-auth" v-if="verificationResult.isPlatformSigned">
+                        <text class="icon icon-shield-check auth-icon"></text>
+                        <text class="auth-text">{{platformAuthText}}</text>
+                    </view>
+                </view>
+
+                <view class="safe-bottom"></view>
+            </view>
+        </scroll-view>
+
+        <!-- 底部固定按钮 -->
+        <view class="fixed-footer">
+            <view 
+                v-if="!verificationResult"
+                class="action-button primary"
+                :class="{ 'disabled': !selectedFilePath || loading }"
+                @click="handleVerify"
+            >
+                <text class="btn-text">{{ loading ? '正在验证...' : '开始验证' }}</text>
+            </view>
+            <view v-else class="action-button secondary" @click="handleReset">
+                <text class="btn-text secondary-text">重新验证</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script>
+import { verifyContract, getRemainingRequests, VerificationResult, VerificationStatus } from '@/api/verification/index.uts';
+import { APP_PLATFORM_AUTH_TEXT } from '@/config/app.config';
+
+export default {
+    data() {
+        return {
+            // 品牌信息（从集中配置获取）
+            platformAuthText: APP_PLATFORM_AUTH_TEXT,
+            loading: false as boolean,
+            selectedFilePath: '' as string,
+            selectedFileName: '' as string,
+            remainingRequests: null as number | null,
+            verificationResult: null as VerificationResult | null,
+            avatarColors: ['#00C28A', '#1890FF', '#FAAD14', '#F56C6C', '#722ED1', '#13C2C2'] as string[]
+        }
+    },
+    computed: {
+        statusClass(): string {
+            if (!this.verificationResult) return '';
+            switch (this.verificationResult.verificationStatus) {
+                case VerificationStatus.PASSED: return 'is-success';
+                case VerificationStatus.FAILED: return 'is-error';
+                case VerificationStatus.NO_SIGNATURE: return 'is-warning';
+                default: return '';
+            }
+        },
+        statusIconClass(): string {
+            if (!this.verificationResult) return 'icon-clock';
+            switch (this.verificationResult.verificationStatus) {
+                case VerificationStatus.PASSED: return 'icon-check';
+                case VerificationStatus.FAILED: return 'icon-close';
+                case VerificationStatus.NO_SIGNATURE: return 'icon-alert-triangle';
+                default: return 'icon-clock';
+            }
+        },
+        statusDescription(): string {
+            if (!this.verificationResult) return '';
+            switch (this.verificationResult.verificationStatus) {
+                case VerificationStatus.PASSED: return '签名真实有效，文件未被篡改';
+                case VerificationStatus.FAILED: return '验证失败，签名无效或文件已损坏';
+                case VerificationStatus.NO_SIGNATURE: return '未检测到有效的数字签名';
+                default: return '正在验证中...';
+            }
+        }
+    },
+    onLoad() {
+        this.loadRemainingRequests();
+    },
+    methods: {
+        async loadRemainingRequests() {
+            try {
+                const result = await getRemainingRequests();
+                console.log('[合同验证] 获取剩余次数成功:', result);
+                this.remainingRequests = result;
+            } catch (e: any) {
+                console.error('[合同验证] 获取剩余次数失败:', e.message || e);
+                // 获取失败时不显示剩余次数
+                this.remainingRequests = null;
+            }
+        },
+        
+        getAvatarColor(index: number): string {
+            return this.avatarColors[index % this.avatarColors.length];
+        },
+        
+        getCurrentTime(): string {
+            const date = new Date();
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day} ${hours}:${minutes}`;
+        },
+        
+        formatSignTime(time: any): string {
+            if (!time) return '--';
+            try {
+                const date = new Date(time);
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day} ${hours}:${minutes}`;
+            } catch (e) {
+                return '--';
+            }
+        },
+        
+        chooseFile() {
+            // #ifdef APP-PLUS
+            uni.chooseFile({
+                count: 1,
+                type: 'file',
+                extension: ['.pdf'],
+                success: (res: UniApp.ChooseFileSuccessCallbackResult) => {
+                    if (res.tempFilePaths && res.tempFilePaths.length > 0) {
+                        this.selectedFilePath = res.tempFilePaths[0];
+                        this.selectedFileName = res.tempFiles[0].name || 'PDF文件';
+                    }
+                },
+                fail: () => {
+                    uni.showToast({ title: '选择文件失败', icon: 'none' });
+                }
+            });
+            // #endif
+            
+            // #ifdef H5
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.pdf,application/pdf';
+            input.onchange = (e: Event) => {
+                const target = e.target as HTMLInputElement;
+                if (target.files && target.files.length > 0) {
+                    const file = target.files[0];
+                    this.selectedFileName = file.name;
+                    this.selectedFilePath = URL.createObjectURL(file);
+                }
+            };
+            input.click();
+            // #endif
+        },
+        
+        async handleVerify() {
+            if (!this.selectedFilePath || this.loading) return;
+            
+            this.loading = true;
+            try {
+                this.verificationResult = await verifyContract(this.selectedFilePath);
+                this.loadRemainingRequests();
+            } catch (e: any) {
+                uni.showToast({ 
+                    title: e.message || '验证失败，请稍后重试', 
+                    icon: 'none' 
+                });
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        handleReset() {
+            this.verificationResult = null;
+            this.selectedFilePath = '';
+            this.selectedFileName = '';
+        }
+    }
+}
+</script>
+
+<style>
+@import url("../../static/styles/fontawesome.css");
+
+/* 字体图标基础类 */
+.icon {
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+}
+
+/* 图标映射 */
+.icon-cloud-upload::before { content: "\f0ee"; }
+.icon-file-pdf::before { content: "\f1c1"; }
+.icon-file-check::before { content: "\f56c"; }
+.icon-signature::before { content: "\f5b7"; }
+.icon-certificate::before { content: "\f0a3"; }
+.icon-check::before { content: "\f00c"; }
+.icon-close::before { content: "\f00d"; }
+.icon-alert-triangle::before { content: "\f071"; }
+.icon-file::before { content: "\f15b"; }
+.icon-shield-check::before { content: "\f3ed"; }
+.icon-info-circle::before { content: "\f05a"; }
+
+/* 全局布局 */
+.page-container {
+    flex: 1;
+    background-color: #F5F7FA;
+}
+
+.content-scroll {
+    flex: 1;
+}
+
+.content-wrapper {
+    padding: 32rpx;
+}
+
+.safe-bottom {
+    height: 180rpx;
+}
+
+/* 1. 页面标题区 */
+.page-header {
+    margin-bottom: 32rpx;
+    padding-left: 8rpx;
+}
+
+.header-title {
+    font-size: 40rpx;
+    font-weight: 700;
+    color: #333333;
+    margin-bottom: 8rpx;
+}
+
+.header-subtitle {
+    font-size: 26rpx;
+    color: #999999;
+}
+
+/* 2. 上传卡片 (精致虚线风格) */
+.upload-card {
+    background-color: #FFFFFF;
+    border-radius: 24rpx;
+    padding: 40rpx;
+    margin-bottom: 32rpx;
+    border: 2rpx dashed #E0E0E0;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+}
+
+.upload-card.file-selected {
+    border-color: #00C28A;
+    background-color: rgba(0, 194, 138, 0.02);
+}
+
+.upload-inner {
+    align-items: center;
+    justify-content: center;
+}
+
+.upload-icon-box {
+    width: 100rpx;
+    height: 100rpx;
+    background-color: #F7F8FA;
+    border-radius: 50rpx;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24rpx;
+}
+
+.file-selected .upload-icon-box {
+    background-color: rgba(0, 194, 138, 0.1);
+}
+
+.upload-icon-box .icon {
+    font-size: 44rpx;
+    color: #909399;
+}
+
+.file-selected .upload-icon-box .icon {
+    color: #00C28A;
+}
+
+.upload-text-area {
+    align-items: center;
+}
+
+.upload-title {
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #333333;
+    margin-bottom: 8rpx;
+}
+
+.upload-desc {
+    font-size: 24rpx;
+    color: #999999;
+}
+
+.upload-desc.active {
+    color: #00C28A;
+}
+
+.upload-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 6rpx;
+    background: linear-gradient(90deg, transparent, #00C28A, transparent);
+    opacity: 0;
+}
+
+.file-selected .upload-bar {
+    opacity: 0.5;
+}
+
+/* 3. 验证内容列表 */
+.section-container {
+    background-color: #FFFFFF;
+    border-radius: 24rpx;
+    padding: 32rpx;
+    margin-bottom: 24rpx;
+    box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+}
+
+.section-header-group {
+    margin-bottom: 24rpx;
+    padding-left: 8rpx;
+}
+
+.section-head {
+    font-size: 32rpx;
+    font-weight: 700;
+    color: #333333;
+    margin-bottom: 8rpx;
+}
+
+.section-desc {
+    font-size: 24rpx;
+    color: #999999;
+}
+
+.feature-list {
+    gap: 24rpx;
+}
+
+.feature-row {
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+.feature-icon {
+    width: 72rpx;
+    height: 72rpx;
+    border-radius: 16rpx;
+    align-items: center;
+    justify-content: center;
+    margin-right: 20rpx;
+    flex-shrink: 0;
+}
+
+.feature-icon.blue { background-color: #E6F7FF; }
+.feature-icon.green { background-color: #E6FFFB; }
+.feature-icon.orange { background-color: #FFF7E6; }
+
+.feature-icon.blue .icon { color: #1890FF; font-size: 32rpx; }
+.feature-icon.green .icon { color: #00C28A; font-size: 32rpx; }
+.feature-icon.orange .icon { color: #FAAD14; font-size: 32rpx; }
+
+.feature-text {
+    flex: 1;
+    justify-content: center;
+}
+
+.f-title {
+    font-size: 28rpx;
+    font-weight: 600;
+    color: #333333;
+    margin-bottom: 6rpx;
+}
+
+.f-desc {
+    font-size: 24rpx;
+    color: #999999;
+}
+
+/* 剩余次数 */
+.quota-info {
+    flex-direction: row;
+    justify-content: center;
+    margin-top: 24rpx;
+}
+
+.quota-label {
+    font-size: 24rpx;
+    color: #999999;
+}
+
+.quota-val {
+    font-size: 24rpx;
+    color: #00C28A;
+    font-weight: 600;
+}
+
+/* 4. 结果总览卡片 */
+.result-summary-card {
+    background-color: #FFFFFF;
+    border-radius: 24rpx;
+    padding: 40rpx;
+    align-items: center;
+    margin-bottom: 24rpx;
+    box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+
+.status-badge {
+    width: 100rpx;
+    height: 100rpx;
+    border-radius: 50rpx;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24rpx;
+}
+
+.status-badge.is-success { background-color: rgba(0, 194, 138, 0.1); }
+.status-badge.is-error { background-color: rgba(245, 108, 108, 0.1); }
+.status-badge.is-warning { background-color: rgba(250, 173, 20, 0.1); }
+
+.status-badge .icon { font-size: 48rpx; }
+.is-success .icon { color: #00C28A; }
+.is-error .icon { color: #F56C6C; }
+.is-warning .icon { color: #FAAD14; }
+
+.summary-title {
+    font-size: 36rpx;
+    font-weight: 700;
+    color: #333333;
+    margin-bottom: 12rpx;
+}
+
+.summary-desc {
+    font-size: 26rpx;
+    color: #666666;
+    text-align: center;
+    margin-bottom: 32rpx;
+}
+
+.summary-divider {
+    width: 100%;
+    height: 1rpx;
+    background-color: #F5F7FA;
+    margin-bottom: 24rpx;
+}
+
+.verify-meta {
+    flex-direction: row;
+    align-items: center;
+}
+
+.meta-label {
+    font-size: 24rpx;
+    color: #999999;
+    margin-right: 12rpx;
+}
+
+.meta-val {
+    font-size: 24rpx;
+    color: #666666;
+}
+
+/* 详情列表 */
+.detail-list {
+    gap: 20rpx;
+}
+
+.detail-item {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20rpx 0;
+    border-bottom: 1rpx solid #F9FAFC;
+}
+
+.detail-item:last-child {
+    border-bottom: none;
+}
+
+.d-left {
+    flex-direction: row;
+    align-items: center;
+}
+
+.d-icon {
+    font-size: 32rpx;
+    color: #909399;
+    margin-right: 16rpx;
+}
+
+.d-label {
+    font-size: 28rpx;
+    color: #333333;
+}
+
+.status-tag {
+    font-size: 24rpx;
+    padding: 4rpx 16rpx;
+    border-radius: 8rpx;
+    font-weight: 500;
+}
+
+.tag-success {
+    color: #00C28A;
+    background-color: rgba(0, 194, 138, 0.1);
+}
+
+.tag-error {
+    color: #F56C6C;
+    background-color: rgba(245, 108, 108, 0.1);
+}
+
+/* 签署方 */
+.section-head-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 24rpx;
+}
+
+.head-badge {
+    background-color: #F5F7FA;
+    font-size: 22rpx;
+    color: #606266;
+    padding: 2rpx 12rpx;
+    border-radius: 20rpx;
+    margin-left: 12rpx;
+}
+
+.signer-list {
+    gap: 20rpx;
+}
+
+.signer-block {
+    background-color: #F9FAFC;
+    border-radius: 16rpx;
+    padding: 24rpx;
+}
+
+.signer-header {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 16rpx;
+}
+
+.signer-avatar {
+    width: 72rpx;
+    height: 72rpx;
+    border-radius: 36rpx;
+    align-items: center;
+    justify-content: center;
+    margin-right: 20rpx;
+}
+
+.avatar-text {
+    font-size: 28rpx;
+    color: #FFFFFF;
+    font-weight: 600;
+}
+
+.signer-basic {
+    flex: 1;
+}
+
+.signer-name {
+    font-size: 28rpx;
+    font-weight: 600;
+    color: #333333;
+    margin-bottom: 4rpx;
+}
+
+.role-pill {
+    align-self: flex-start;
+    background-color: #FFFFFF;
+    padding: 2rpx 10rpx;
+    border-radius: 8rpx;
+    border: 1rpx solid #EBEEF5;
+}
+
+.role-text {
+    font-size: 20rpx;
+    color: #606266;
+}
+
+.signer-meta {
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.meta-key {
+    font-size: 24rpx;
+    color: #999999;
+}
+
+.meta-value {
+    font-size: 24rpx;
+    color: #666666;
+}
+
+/* 平台认证 */
+.platform-auth {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin-top: 32rpx;
+    opacity: 0.8;
+}
+
+.auth-icon {
+    font-size: 28rpx;
+    color: #00C28A;
+    margin-right: 10rpx;
+}
+
+.auth-text {
+    font-size: 24rpx;
+    color: #606266;
+}
+
+/* 底部按钮 */
+.fixed-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #FFFFFF;
+    padding: 20rpx 32rpx;
+    padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+    box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.05);
+}
+
+.action-button {
+    height: 88rpx;
+    border-radius: 44rpx;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-button.primary {
+    background-color: #00C28A;
+    box-shadow: 0 8rpx 20rpx rgba(0, 194, 138, 0.25);
+}
+
+.action-button.disabled {
+    background-color: #A0CFBE;
+    box-shadow: none;
+}
+
+.action-button.secondary {
+    background-color: #F5F7FA;
+    border: 1rpx solid #DCDFE6;
+}
+
+.btn-text {
+    font-size: 30rpx;
+    font-weight: 600;
+    color: #FFFFFF;
+}
+
+.secondary-text {
+    color: #606266;
+}
+</style>

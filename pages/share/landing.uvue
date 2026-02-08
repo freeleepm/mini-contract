@@ -1,0 +1,590 @@
+<script lang="uts">
+	import { getShareSummary } from '../../api/share/index';
+	import type { ShareSummary } from '../../api/share/index';
+	import { 
+		ShareType,
+		getTargetPagePath, 
+		getShareTypeTitle,
+		getShareTypeIcon,
+		buildDefaultShareConfig
+	} from '../../utils/share';
+	import { APP_NAME, APP_SUBTITLE, getCopyrightText } from '../../config/app.config';
+	
+	export default {
+		data() {
+			return {
+				// ==================== 品牌信息 ====================
+				appName: APP_NAME,
+				appSubtitle: APP_SUBTITLE,
+				footerCopyright: `© ${APP_NAME}`,
+				// ==================== 路由参数 ====================
+				/** 分享类型 */
+				shareType: '' as string,
+				/** 目标业务对象ID（合同ID、模板ID 等） */
+				targetId: '' as string,
+				/** 全部 URL 参数（用于构建目标页路径） */
+				allParams: new Map<string, string>(),
+				
+				// ==================== 页面状态 ====================
+				/** 是否正在加载 */
+				loading: true,
+				/** 是否加载失败 */
+				loadError: false,
+				/** 错误信息 */
+				errorMessage: '' as string,
+				
+				// ==================== 分享摘要数据 ====================
+				/** 分享摘要（从 API 获取） */
+				summary: null as ShareSummary | null,
+				
+				// ==================== 用户状态 ====================
+				/** 当前用户是否已登录 */
+				isLoggedIn: false
+			}
+		},
+		
+		computed: {
+			/** 分享类型标题 */
+			typeTitle() : string {
+				return getShareTypeTitle(this.shareType);
+			},
+			
+			/** 分享类型图标 */
+			typeIcon() : string {
+				return getShareTypeIcon(this.shareType);
+			},
+			
+			/** 展示标题 */
+			displayTitle() : string {
+				if (this.summary != null) {
+					return this.summary!.title;
+				}
+				return this.typeTitle;
+			},
+			
+			/** 展示描述 */
+			displayDescription() : string {
+				if (this.summary != null) {
+					return this.summary!.description;
+				}
+				// 默认描述
+				switch (this.shareType) {
+					case ShareType.SIGN:
+						return '你收到一份合同签署邀请，点击下方按钮查看详情';
+					case ShareType.VIEW:
+						return '你收到一份合同分享，点击下方按钮查看详情';
+					case ShareType.TEMPLATE:
+						return '为你推荐一个合同模板，点击下方按钮查看';
+					case ShareType.INVITE:
+						return '你收到一个企业加入邀请，点击下方按钮查看';
+					default:
+						return '专业的电子合同签署平台，让签约更简单';
+				}
+			},
+			
+			/** 发起人名称 */
+			displayCreator() : string {
+				if (this.summary != null && this.summary!.creatorName !== '') {
+					return this.summary!.creatorName;
+				}
+				return '';
+			},
+			
+			/** 状态文本 */
+			displayStatus() : string {
+				if (this.summary != null && this.summary!.statusText !== '') {
+					return this.summary!.statusText;
+				}
+				return '';
+			},
+			
+			/** 截止时间 */
+			displayExpireTime() : string {
+				if (this.summary != null && this.summary!.expireTime !== '') {
+					return this.summary!.expireTime;
+				}
+				return '';
+			},
+			
+			/** 主操作按钮文案 */
+			actionButtonText() : string {
+				switch (this.shareType) {
+					case ShareType.SIGN:
+						return '立即签署';
+					case ShareType.VIEW:
+						return '查看合同';
+					case ShareType.TEMPLATE:
+						return '查看模板';
+					case ShareType.INVITE:
+						return '接受邀请';
+					default:
+						return '进入应用';
+				}
+			},
+			
+			/** 是否为「应用推广」类型 */
+			isAppType() : boolean {
+				return this.shareType === ShareType.APP || this.shareType === '';
+			}
+		},
+		
+		onLoad(options : any) {
+			// 解析 URL 参数
+			this.shareType = (options.type as string | null) ?? ShareType.APP;
+			
+			// 收集所有参数
+			if (options != null) {
+				// 提取关键业务参数
+				if (options.taskId) {
+					this.targetId = options.taskId as string;
+					this.allParams.set('taskId', this.targetId);
+				}
+				if (options.templateId) {
+					this.targetId = options.templateId as string;
+					this.allParams.set('templateId', this.targetId);
+				}
+				if (options.enterpriseId) {
+					this.targetId = options.enterpriseId as string;
+					this.allParams.set('enterpriseId', this.targetId);
+				}
+			}
+			
+			console.log('[分享落地页] 类型:', this.shareType, '目标ID:', this.targetId);
+			
+			// 检查登录状态
+			this.checkLoginStatus();
+			
+			// 加载分享摘要
+			this.loadShareSummary();
+		},
+		
+		// 分享落地页本身也支持二次分享
+		// #ifdef MP-WEIXIN
+		onShareAppMessage() : any {
+			const config = buildDefaultShareConfig();
+			return {
+				title: this.displayTitle || config.title,
+				path: `/pages/share/landing?type=${this.shareType}&taskId=${this.targetId}`,
+				imageUrl: config.imageUrl
+			};
+		},
+		// #endif
+		
+		methods: {
+			/**
+			 * 检查用户登录状态
+			 */
+			checkLoginStatus() : void {
+				const token = uni.getStorageSync('token');
+				this.isLoggedIn = !!token;
+			},
+			
+			/**
+			 * 加载分享摘要信息
+			 */
+			async loadShareSummary() : Promise<void> {
+				// 如果是「应用推广」类型，不需要加载详情
+				if (this.isAppType) {
+					this.loading = false;
+					return;
+				}
+				
+				// 如果没有目标ID，也不加载
+				if (!this.targetId) {
+					this.loading = false;
+					return;
+				}
+				
+				this.loading = true;
+				this.loadError = false;
+				
+				try {
+					const result = await getShareSummary(this.shareType, this.targetId);
+					this.summary = result;
+					console.log('[分享落地页] 获取摘要成功:', result.title);
+				} catch (error : any) {
+					console.error('[分享落地页] 获取摘要失败:', error);
+					// 摘要获取失败不阻塞页面，使用默认信息展示
+					this.loadError = false; // 不显示错误，用默认文案
+				} finally {
+					this.loading = false;
+				}
+			},
+			
+			/**
+			 * 主操作按钮点击
+			 * 根据登录状态跳转到目标页面或登录页
+			 */
+			handleAction() : void {
+				// 检查登录状态
+				this.checkLoginStatus();
+				
+				if (this.isAppType) {
+					// 应用推广：直接跳转首页
+					uni.switchTab({
+						url: '/pages/index/index'
+					});
+					return;
+				}
+				
+				if (!this.isLoggedIn) {
+					// 未登录：跳转登录页，携带回调地址
+					const targetPath = getTargetPagePath(this.shareType, this.allParams);
+					const encodedRedirect = encodeURIComponent(targetPath) ?? '';
+					uni.navigateTo({
+						url: `/pages/login/index?redirect=${encodedRedirect}`
+					});
+					return;
+				}
+				
+				// 已登录：直接跳转到目标业务页面
+				const targetPath = getTargetPagePath(this.shareType, this.allParams);
+				console.log('[分享落地页] 跳转目标页面:', targetPath);
+				
+				uni.redirectTo({
+					url: targetPath,
+					fail: (err : any) => {
+						console.error('[分享落地页] 跳转失败:', err);
+						// 跳转失败尝试 switchTab（可能是 tabBar 页面）
+						uni.switchTab({
+							url: targetPath,
+							fail: () => {
+								uni.showToast({
+									title: '页面跳转失败',
+									icon: 'none'
+								});
+							}
+						});
+					}
+				});
+			},
+			
+			/**
+			 * 返回首页
+			 */
+			goHome() : void {
+				uni.switchTab({
+					url: '/pages/index/index'
+				});
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="page-container">
+		<scroll-view class="content-scroll" scroll-y="true">
+			<view class="content-wrapper">
+				
+				<!-- 品牌区域 -->
+				<view class="brand-section">
+					<image class="brand-logo" src="/static/logo.png" mode="aspectFit"></image>
+					<text class="brand-name">{{appName}}</text>
+					<text class="brand-slogan">{{appSubtitle}}</text>
+				</view>
+				
+				<!-- 加载状态 -->
+				<view v-if="loading" class="loading-section">
+					<view class="loading-spinner"></view>
+					<text class="loading-text">正在加载分享内容...</text>
+				</view>
+				
+				<!-- 分享内容卡片 -->
+				<view v-else class="share-card">
+					<!-- 类型标签 -->
+					<view class="type-badge">
+						<text class="fa type-badge-icon" :class="typeIcon"></text>
+						<text class="type-badge-text">{{ typeTitle }}</text>
+					</view>
+					
+					<!-- 主要内容 -->
+					<view class="card-content">
+						<text class="card-title">{{ displayTitle }}</text>
+						<text class="card-description">{{ displayDescription }}</text>
+						
+						<!-- 信息项 -->
+						<view class="info-list" v-if="!isAppType">
+							<!-- 发起人 -->
+							<view class="info-item" v-if="displayCreator !== ''">
+								<text class="fa fa-user info-icon"></text>
+								<text class="info-label">发起人</text>
+								<text class="info-value">{{ displayCreator }}</text>
+							</view>
+							
+							<!-- 状态 -->
+							<view class="info-item" v-if="displayStatus !== ''">
+								<text class="fa fa-info-circle info-icon"></text>
+								<text class="info-label">状态</text>
+								<text class="info-value">{{ displayStatus }}</text>
+							</view>
+							
+							<!-- 截止时间 -->
+							<view class="info-item" v-if="displayExpireTime !== ''">
+								<text class="fa fa-clock-o info-icon"></text>
+								<text class="info-label">截止时间</text>
+								<text class="info-value">{{ displayExpireTime }}</text>
+							</view>
+						</view>
+					</view>
+					
+					<!-- 操作按钮 -->
+					<view class="action-section">
+						<view class="action-btn" @click="handleAction">
+							<text class="action-btn-text">{{ actionButtonText }}</text>
+						</view>
+					</view>
+				</view>
+				
+				<!-- 安全提示 -->
+				<view class="security-tips">
+					<text class="fa fa-shield security-icon"></text>
+					<text class="security-text">所有合同内容经过加密传输，签署过程安全可靠</text>
+				</view>
+				
+				<!-- 底部返回首页 -->
+				<view class="footer-section">
+					<text class="footer-link" @click="goHome">返回首页</text>
+					<text class="footer-divider">|</text>
+					<text class="footer-copyright">{{footerCopyright}}</text>
+				</view>
+				
+			</view>
+		</scroll-view>
+	</view>
+</template>
+
+<style>
+	.page-container {
+		flex: 1;
+		background-color: #F7F9FC;
+	}
+	
+	.content-scroll {
+		flex: 1;
+	}
+	
+	.content-wrapper {
+		padding: 40rpx 30rpx;
+		align-items: center;
+	}
+	
+	/* ==================== 品牌区域 ==================== */
+	
+	.brand-section {
+		align-items: center;
+		margin-bottom: 50rpx;
+		margin-top: 40rpx;
+	}
+	
+	.brand-logo {
+		width: 120rpx;
+		height: 120rpx;
+		margin-bottom: 16rpx;
+	}
+	
+	.brand-name {
+		font-size: 40rpx;
+		font-weight: 700;
+		color: #303133;
+		margin-bottom: 8rpx;
+	}
+	
+	.brand-slogan {
+		font-size: 24rpx;
+		color: #909399;
+	}
+	
+	/* ==================== 加载状态 ==================== */
+	
+	.loading-section {
+		align-items: center;
+		padding: 80rpx 0;
+	}
+	
+	.loading-spinner {
+		width: 60rpx;
+		height: 60rpx;
+		border-radius: 30rpx;
+		border: 4rpx solid #EBEEF5;
+		border-top-color: #00C28A;
+		margin-bottom: 20rpx;
+	}
+	
+	.loading-text {
+		font-size: 26rpx;
+		color: #909399;
+	}
+	
+	/* ==================== 分享内容卡片 ==================== */
+	
+	.share-card {
+		width: 100%;
+		background-color: #FFFFFF;
+		border-radius: 24rpx;
+		padding: 0;
+		box-shadow: 0 8rpx 30rpx rgba(0, 0, 0, 0.08);
+		overflow: hidden;
+		margin-bottom: 30rpx;
+	}
+	
+	/* 类型标签 */
+	.type-badge {
+		flex-direction: row;
+		align-items: center;
+		padding: 20rpx 30rpx;
+		background-color: rgba(0, 194, 138, 0.06);
+		border-bottom-width: 1rpx;
+		border-bottom-color: #F0F2F5;
+		border-bottom-style: solid;
+	}
+	
+	.type-badge-icon {
+		font-family: FontAwesome;
+		font-size: 24rpx;
+		color: #00C28A;
+		margin-right: 10rpx;
+		font-style: normal;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+	
+	.type-badge-text {
+		font-size: 24rpx;
+		color: #00C28A;
+		font-weight: 500;
+	}
+	
+	/* 卡片内容 */
+	.card-content {
+		padding: 36rpx 30rpx;
+	}
+	
+	.card-title {
+		font-size: 36rpx;
+		font-weight: 600;
+		color: #303133;
+		margin-bottom: 16rpx;
+		line-height: 1.4;
+	}
+	
+	.card-description {
+		font-size: 28rpx;
+		color: #606266;
+		line-height: 1.6;
+		margin-bottom: 30rpx;
+	}
+	
+	/* 信息列表 */
+	.info-list {
+		padding: 20rpx 24rpx;
+		background-color: #FAFBFC;
+		border-radius: 12rpx;
+	}
+	
+	.info-item {
+		flex-direction: row;
+		align-items: center;
+		padding: 14rpx 0;
+	}
+	
+	.info-icon {
+		font-family: FontAwesome;
+		font-size: 24rpx;
+		color: #909399;
+		width: 40rpx;
+		font-style: normal;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+	
+	.info-label {
+		font-size: 26rpx;
+		color: #909399;
+		width: 130rpx;
+	}
+	
+	.info-value {
+		font-size: 26rpx;
+		color: #303133;
+		flex: 1;
+	}
+	
+	/* 操作按钮区 */
+	.action-section {
+		padding: 20rpx 30rpx 36rpx 30rpx;
+	}
+	
+	.action-btn {
+		background-color: #00C28A;
+		border-radius: 44rpx;
+		height: 88rpx;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.action-btn-text {
+		font-size: 32rpx;
+		font-weight: 500;
+		color: #FFFFFF;
+	}
+	
+	/* ==================== 安全提示 ==================== */
+	
+	.security-tips {
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		padding: 20rpx 0;
+		margin-bottom: 20rpx;
+	}
+	
+	.security-icon {
+		font-family: FontAwesome;
+		font-size: 24rpx;
+		color: #C0C4CC;
+		margin-right: 8rpx;
+		font-style: normal;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+	
+	.security-text {
+		font-size: 22rpx;
+		color: #C0C4CC;
+	}
+	
+	/* ==================== 底部区域 ==================== */
+	
+	.footer-section {
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		padding: 30rpx 0 60rpx 0;
+	}
+	
+	.footer-link {
+		font-size: 24rpx;
+		color: #1890FF;
+	}
+	
+	.footer-divider {
+		font-size: 24rpx;
+		color: #DCDFE6;
+		margin: 0 16rpx;
+	}
+	
+	.footer-copyright {
+		font-size: 24rpx;
+		color: #C0C4CC;
+	}
+	
+	/* ==================== FontAwesome 基础样式 ==================== */
+	
+	.fa {
+		font-family: FontAwesome;
+		font-size: 26rpx;
+		font-style: normal;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+</style>

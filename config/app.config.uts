@@ -1,0 +1,78 @@
+/**
+ * 应用品牌配置（唯一修改入口）
+ * 
+ * 集中管理产品名称、版本号、口号等品牌信息。
+ * 所有页面中的品牌文案均从此文件引用，修改后运行时代码自动生效。
+ * 
+ * ⚠️ 修改 APP_NAME 后，需同步 JSON 配置文件（manifest / pages / package）：
+ * 
+ *   npm run sync-name
+ * 
+ * 说明：CLI 构建（npm run dev / build）会自动同步，无需手动执行。
+ *       HBuilderX 编译不会触发 npm 钩子，需手动执行一次上述命令。
+ */
+
+// ==================== 产品基础信息 ====================
+
+/** 产品名称 */
+export const APP_NAME = 'Contract.Pro';
+
+/** 产品版本号 */
+export const APP_VERSION = 'v1.0.0';
+
+/** 版本构建号 */
+export const APP_BUILD_NUMBER = '20230615';
+
+/** 产品口号 */
+export const APP_SLOGAN = '让签约更简单';
+
+/** 产品简短描述 */
+export const APP_SUBTITLE = '专业电子合同签署平台';
+
+/** 产品完整描述 */
+export const APP_DESCRIPTION = `${APP_NAME}是一款专业的电子合同签署工具，提供安全、高效、合法的电子签约服务。支持多种合同模板，实现快速创建、签署、管理电子合同。`;
+
+// ==================== 版权信息 ====================
+
+/** 版权所有者 */
+export const APP_COPYRIGHT_OWNER = '小华同学 AI';
+
+/**
+ * 获取版权文本
+ * @param year 年份，默认为当前年份
+ * @returns 版权文本，例如 "© 2025 Contract.Pro 版权所有"
+ */
+export function getCopyrightText(year : string = '') : string {
+	const y = year != '' ? year : new Date().getFullYear().toString();
+	return `© ${y} ${APP_NAME} 版权所有`;
+}
+
+/** 首页底部版权口号 */
+export const APP_COPYRIGHT_SLOGAN = `${APP_NAME} ${APP_SLOGAN}`;
+
+/** 首页底部版权所有者文本 */
+export const APP_COPYRIGHT_OWNER_TEXT = `©️ ${APP_COPYRIGHT_OWNER} 版权所有`;
+
+// ==================== 分享相关 ====================
+
+/** 默认分享标题 */
+export const APP_SHARE_TITLE = `${APP_NAME} - ${APP_SUBTITLE}`;
+
+/**
+ * 构建带产品名称后缀的分享标题
+ * @param title 原始标题
+ * @returns 带后缀的标题，例如 "查看合同详情 - Contract.Pro"
+ */
+export function buildShareTitle(title : string) : string {
+	return `${title} - ${APP_NAME}`;
+}
+
+// ==================== 平台认证 ====================
+
+/** 平台认证签署文案 */
+export const APP_PLATFORM_AUTH_TEXT = `${APP_NAME} 平台认证签署`;
+
+// ==================== 版本显示 ====================
+
+/** 版本显示文本，例如 "Contract.Pro v1.0.0" */
+export const APP_VERSION_TEXT = `${APP_NAME} ${APP_VERSION}`;

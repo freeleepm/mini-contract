@@ -4,13 +4,29 @@
 	import { getPlatformName, isWechatLoginSupported } from '@/utils/platform/index'
 	import { getWechatProvider } from '@/utils/platform/provider/wechat/index'
 	import { officialAccount } from '@/utils/platform/provider/wechat/index'
+	import { APP_NAME, getCopyrightText } from '@/config/app.config'
 
 	export default {
-		onLoad() {
+		onLoad(options: any) {
+			// 读取登录后回跳参数（用于签署链接的登录签署模式）
+			// redirect: 登录成功后需要跳转的完整 URL（跨域回跳到 seal-core 签署页）
+			// signMode: 签署模式标识 (secure = 登录签署)
+			if (options && options.redirect) {
+				this.redirectUrl = decodeURIComponent(options.redirect) ?? ''
+				this.signMode = (options.signMode as string | null) ?? ''
+				console.log('[Login] 检测到回跳参数:', this.redirectUrl, 'signMode:', this.signMode)
+			}
+			
 			// 检查是否已登录
 			try {
 				const token = uni.getStorageSync('token');
 				if (token) {
+					// 已登录：如果有 redirect 参数，直接获取 seal-token 后回跳
+					if (this.redirectUrl) {
+						console.log('[Login] 已登录且有回跳参数，直接获取 seal-token 后回跳')
+						this.handleRedirectAfterLogin()
+						return
+					}
 					console.log('检测到用户已登录，自动跳转到首页');
 					// 已登录，直接跳转到首页
 					uni.switchTab({
@@ -23,6 +39,9 @@
 		},
 		data() {
 			return {
+				// 品牌信息（从集中配置获取）
+				appName: APP_NAME,
+				copyrightText: getCopyrightText(),
 				phone: '',
 				password: '',
 				showPassword: false,
@@ -31,7 +50,9 @@
 				errorMessage: '',
 				isLoading: false,
 				isWechatLoading: false,  // 微信登录加载状态
-				platformName: '' as string  // 当前平台名称
+				platformName: '' as string,  // 当前平台名称
+				redirectUrl: '' as string,  // 登录后回跳 URL（跨域回到 seal-core）
+				signMode: '' as string      // 签署模式标识
 			}
 		},
 		onShow() {
@@ -39,20 +60,15 @@
 			this.platformName = getPlatformName()
 			console.log('[Login] 当前平台:', this.platformName)
 		},
-		computed: {
-			isLoginDisabled() {
-				return !this.phone || !this.password;
-			},
-			// 是否显示微信登录按钮
-			showWechatLogin(): boolean {
-				return isWechatLoginSupported()
-			}
+	computed: {
+		isLoginDisabled() {
+			return !this.phone || !this.password;
 		},
-		computed: {
-			isLoginDisabled() {
-				return !this.phone || !this.password;
-			}
-		},
+		// 是否显示微信登录按钮
+		showWechatLogin(): boolean {
+			return isWechatLoginSupported()
+		}
+	},
 		methods: {
 			// 处理登录
 			async handleLogin(): Promise<void> {
@@ -96,15 +112,24 @@
 					// 🆕 登录成功后，使用 SealTokenManager 兑换 seal token
 					// 参考 PC 端 SealTokenManager 实现：统一管理token缓存、有效期检查、自动刷新
 					console.log('[Login] 开始兑换 Seal-Token（使用 SealTokenManager）...')
+					let sealToken = ''
 					try {
 						// 先清除旧的缓存，确保获取新token
 						clearSealToken()
 						// 使用 SealTokenManager 获取新 token（会自动保存到缓存）
-						await getSealToken()
+						sealToken = await getSealToken()
 						console.log('[Login] ✅ Seal-Token 兑换成功（已缓存）')
 					} catch (sealTokenError) {
 						console.error('[Login] ⚠️ Seal-Token 兑换失败，但不影响登录:', sealTokenError)
 						// 兑换失败不影响登录，用户可以进入系统，后续会自动重试
+					}
+					
+					// 检查是否有回跳参数（签署链接登录签署模式）
+					// 如果有 redirect URL，携带 seal-token 跳转回 seal-core 签署页
+					if (this.redirectUrl && sealToken) {
+						console.log('[Login] 🔄 检测到回跳参数，携带 seal-token 跳转回签署页')
+						this.doRedirectWithToken(sealToken)
+						return
 					}
 					
 					// 登录成功，跳转到首页
@@ -175,6 +200,13 @@
 					
 					if (result) {
 						console.log('[Login] 微信登录成功')
+						
+						// 微信登录成功后也需要处理回跳逻辑
+						if (this.redirectUrl) {
+							await this.handleRedirectAfterLogin()
+							return
+						}
+						
 						uni.showToast({
 							title: '登录成功',
 							icon: 'success',
@@ -216,6 +248,13 @@
 						
 						if (result) {
 							console.log('[Login] 手机号快捷登录成功')
+							
+							// 手机号登录成功后也需要处理回跳逻辑
+							if (this.redirectUrl) {
+								await this.handleRedirectAfterLogin()
+								return
+							}
+							
 							uni.showToast({
 								title: '登录成功',
 								icon: 'success',
@@ -245,6 +284,82 @@
 					title: '支付宝登录功能开发中',
 					icon: 'none'
 				})
+			},
+			
+			/**
+			 * 已登录状态下处理回跳逻辑
+			 * 
+			 * 支持两种回跳场景：
+			 * 1. 跨域回跳（H5 模式）：redirect 是完整 URL（如 https://seal.example.com/h5/sign/document?...）
+			 *    → 获取 seal-token → 携带 token 跳转回 seal-core 签署页
+			 * 2. 应用内回跳（小程序/APP 模式）：redirect 是应用内页面路径（如 /pages/contract-sign/index?ref=xxx）
+			 *    → 直接 navigateTo 到对应页面
+			 */
+			async handleRedirectAfterLogin(): Promise<void> {
+				try {
+					const isExternalUrl = this.redirectUrl.startsWith('http://') || this.redirectUrl.startsWith('https://')
+					
+					if (isExternalUrl) {
+						// 跨域回跳：需要获取 seal-token 附加到 URL
+						console.log('[Login] 已登录，获取 seal-token 用于跨域回跳...')
+						const sealToken = await getSealToken()
+						if (sealToken) {
+							this.doRedirectWithToken(sealToken)
+						} else {
+							console.error('[Login] 获取 seal-token 失败，回退到首页')
+							uni.switchTab({ url: '/pages/index/index' })
+						}
+					} else {
+						// 应用内回跳：直接跳转到对应页面
+						console.log('[Login] 应用内回跳:', this.redirectUrl)
+						uni.redirectTo({ url: this.redirectUrl })
+					}
+				} catch (error) {
+					console.error('[Login] 回跳处理失败:', error)
+					uni.switchTab({ url: '/pages/index/index' })
+				}
+			},
+			
+			/**
+			 * 携带 seal-token 跳转回外部 URL（跨域回跳到 seal-core）
+			 * 
+			 * 仅在 H5 环境下生效：使用 window.location.href 实现跨域跳转
+			 * 原生 APP / 小程序环境下尝试应用内跳转，实在不行则回退到首页
+			 * 
+			 * @param sealToken 已获取的 seal-token
+			 */
+			doRedirectWithToken(sealToken: string): void {
+				if (!this.redirectUrl) {
+					uni.switchTab({ url: '/pages/index/index' })
+					return
+				}
+				
+				// 构建回跳 URL：在 redirect URL 上附加 token 参数
+				const separator = this.redirectUrl.includes('?') ? '&' : '?'
+				const redirectWithToken = `${this.redirectUrl}${separator}token=${encodeURIComponent(sealToken)}`
+				
+				console.log('[Login] 🚀 携带 seal-token 回跳到:', redirectWithToken)
+				
+				uni.showToast({
+					title: '登录成功，正在跳转签署页...',
+					icon: 'none',
+					duration: 1500
+				})
+				
+				// #ifdef H5
+				// H5 环境：使用 window.location.href 跨域跳转回 seal-core
+				setTimeout(() => {
+					window.location.href = redirectWithToken
+				}, 800)
+				// #endif
+				
+				// #ifndef H5
+				// 非 H5 环境（原生APP/小程序）：不支持跨域跳转，回退到首页
+				console.warn('[Login] 非 H5 环境，不支持跨域回跳，跳转到首页')
+				setTimeout(() => {
+					uni.switchTab({ url: '/pages/index/index' })
+				}, 1500)
+				// #endif
 			},
 			
 			// 跳转到用户协议页面
@@ -279,7 +394,7 @@
 			<view class="login-card">
 				<view class="card-header">
 					<text class="card-title">账号登录</text>
-					<text class="card-subtitle">Contract.Pro</text>
+					<text class="card-subtitle">{{appName}}</text>
 				</view>
 				
 		<!-- 错误信息提示 -->
@@ -408,7 +523,7 @@
 		
 		<!-- 底部版权信息 -->
 		<view class="footer">
-			<text class="copyright">© {{currentYear}} Contract.Pro 版权所有</text>
+			<text class="copyright">{{copyrightText}}</text>
 		</view>
 	</view>
 </template>

@@ -6,8 +6,11 @@
 	import { checkNetworkStatus, testH5ServiceAvailability } from '../../utils/network';
 	import { getSealToken } from '../../utils/sealTokenManager';
 	import { getEnterpriseList, EnterpriseStatus } from '../../api/enterprise/index';
+	import { getQuotaBalance } from '@/api/quota/index';
 	import { get } from '@/api/index';
 	import PrivacyGuideModal from '../../components/PrivacyGuideModal.uvue';
+	import { buildDefaultShareConfig } from '../../utils/share';
+	import { APP_NAME, APP_COPYRIGHT_SLOGAN, APP_COPYRIGHT_OWNER_TEXT } from '../../config/app.config';
 	
 	export default {
 		components: {
@@ -60,8 +63,29 @@
 			// 下拉刷新
 			this.loadContractSummary(true);
 		},
+		// #ifdef MP-WEIXIN
+		onShareAppMessage() : any {
+			const config = buildDefaultShareConfig();
+			return {
+				title: config.title,
+				path: config.path,
+				imageUrl: config.imageUrl
+			};
+		},
+		onShareTimeline() : any {
+			const config = buildDefaultShareConfig();
+			return {
+				title: config.title,
+				query: 'type=app'
+			};
+		},
+		// #endif
 		data() {
 			return {
+				// 品牌信息（从集中配置获取）
+				appName: APP_NAME,
+				copyrightSlogan: APP_COPYRIGHT_SLOGAN,
+				copyrightOwnerText: APP_COPYRIGHT_OWNER_TEXT,
 				safeTop: 0,
 				// 隐私协议引导弹窗
 				showPrivacyModal: false,  // 是否显示隐私协议引导弹窗
@@ -82,6 +106,12 @@
 					name: '',
 					isVerified: false
 				},
+				// 配额功能是否启用
+				quotaEnabled: true,
+				// 个人配额（用于身份切换弹窗显示）
+				personalQuota: 0,
+				// 企业配额 Map (enterpriseId -> quota)
+				enterpriseQuotaMap: {} as Record<string, number>,
 				// 状态摘要数据
 				statusData: [
 					{ label: '签署中', count: 0, color: '#1890FF' },
@@ -119,19 +149,26 @@
 				],
 				// 特色服务数据
 				features: [
-			{
-				name: '天眼审查',
-				description: 'AI一键审查合同内容，全局把控法律风险',
-				icon: '/static/icons/blue-icon.png',
-				iconColor: '#00C28A',
-				path: '/pages/contract-audit/intro' // 跳转到天眼审查宣传页
-			},
+					{
+						name: '天眼审查',
+						description: 'AI一键审查合同内容，全局把控法律风险',
+						faIcon: 'fa-eye',
+						iconColor: '#00C28A',
+						path: '/pages/contract-audit/intro' // 跳转到天眼审查宣传页
+					},
 					{
 						name: 'AI起草',
 						description: '与AI对话，快速起草专业合同',
-						icon: '/static/icons/green-icon.png',
-						iconColor: '#00C28A',
+						faIcon: 'fa-robot',
+						iconColor: '#1890FF',
 						path: '/pages/ai-draft/index' // 跳转到AI起草页面
+					},
+					{
+						name: '合同验真',
+						description: '上传PDF验证签名真实性与文件完整性',
+						faIcon: 'fa-shield-halved',
+						iconColor: '#667eea',
+						path: '/pages/contract-verify/index' // 跳转到合同验真页面
 					}
 				]
 			}
@@ -287,6 +324,42 @@
 						title: '该功能暂未开放，敬请期待',
 						icon: 'none',
 						duration: 2000
+					});
+					return;
+				}
+				
+				// 检查当前身份的认证状态
+				// 如果是个人身份且未实名认证，则提示用户先完成实名认证
+				if (this.currentIdentity.type === 'personal' && !this.currentIdentity.verified) {
+					uni.showModal({
+						title: '请先实名认证',
+						content: '为保障合同的法律效力，发起合同前需要完成实名认证。',
+						confirmText: '去认证',
+						cancelText: '取消',
+						success: (res) => {
+							if (res.confirm) {
+								uni.navigateTo({ url: '/pages/kyc/personal/index' });
+							}
+						}
+					});
+					return;
+				}
+				
+				// 如果是企业身份且企业未认证，则提示用户先完成企业认证
+				if (this.currentIdentity.type === 'enterprise' && !this.currentIdentity.verified) {
+					uni.showModal({
+						title: '企业未认证',
+						content: '当前企业尚未完成认证，无法发起合同。是否前往认证？',
+						confirmText: '去认证',
+						cancelText: '取消',
+						success: (res) => {
+							if (res.confirm) {
+								// 跳转到企业认证页面
+								uni.navigateTo({
+									url: `/pages/kyc/enterprise/index?id=${this.currentIdentity.id}&name=${encodeURIComponent(this.currentIdentity.name)}`
+								});
+							}
+						}
 					});
 					return;
 				}
@@ -494,6 +567,10 @@
 					return;
 				}
 				this.showIdentityDropdown = !this.showIdentityDropdown;
+				// 打开弹窗时加载所有身份的配额
+				if (this.showIdentityDropdown) {
+					this.loadAllQuotas();
+				}
 			},
 			
 			// 关闭身份下拉菜单
@@ -575,6 +652,58 @@
 				});
 			},
 			
+			// ========== 配额相关方法 ==========
+			
+			// 加载所有身份的配额（用于身份切换弹窗显示）
+			async loadAllQuotas(): Promise<void> {
+				// 先加载个人配额
+				await this.loadPersonalQuota();
+				
+				// 如果配额功能已关闭，跳过加载企业配额
+				if (!this.quotaEnabled) {
+					return;
+				}
+				
+				// 加载所有企业配额
+				for (const enterprise of this.enterprises) {
+					await this.loadEnterpriseQuota(enterprise.id);
+				}
+			},
+			
+			// 加载个人配额
+			async loadPersonalQuota(): Promise<void> {
+				try {
+					const res = await getQuotaBalance();
+					if (res != null) {
+						// 检查配额功能是否启用
+						if (res.enabled === false) {
+							this.quotaEnabled = false;
+							return;
+						}
+						this.personalQuota = res.balance || 0;
+					}
+				} catch (error) {
+					console.warn('[首页] 加载个人配额失败', error);
+				}
+			},
+			
+			// 加载企业配额
+			async loadEnterpriseQuota(enterpriseId: number): Promise<void> {
+				try {
+					const res = await getQuotaBalance(enterpriseId);
+					if (res != null) {
+						this.enterpriseQuotaMap[enterpriseId.toString()] = res.balance || 0;
+					}
+				} catch (error) {
+					console.warn(`[首页] 加载企业${enterpriseId}配额失败`, error);
+				}
+			},
+			
+			// 获取企业配额
+			getEnterpriseQuota(enterpriseId: number): number {
+				return this.enterpriseQuotaMap[enterpriseId.toString()] || 0;
+			},
+			
 			/**
 			 * 加载合同统计数据（真实API）
 			 */
@@ -631,7 +760,7 @@
 					</view>
 				</view>
 				
-				<text class="header-title">Contract.Pro</text>
+				<text class="header-title">{{appName}}</text>
 			</view>
 			
 			<!-- 身份切换弹窗遮罩 -->
@@ -652,19 +781,28 @@
 						<view class="option-left">
 							<view class="option-info">
 								<view class="option-name-row">
-									<text class="option-name">个人</text>
+									<text class="option-name">个人身份</text>
 								</view>
 								<view class="option-status-row">
 									<view class="option-verified" v-if="userInfo.isVerified">
+										<text class="fa fa-check-circle verified-icon"></text>
 										<text class="verified-text-small">已认证</text>
 									</view>
 									<view class="option-unverified" v-else>
+										<text class="fa fa-exclamation-circle unverified-icon"></text>
 										<text class="unverified-text">未认证</text>
+									</view>
+									<!-- 配额显示 -->
+									<view v-if="quotaEnabled" class="quota-badge" :class="{ 'quota-low': personalQuota <= 5 }">
+										<text class="fa fa-file-text quota-icon"></text>
+										<text class="quota-text">{{ personalQuota }}份</text>
 									</view>
 								</view>
 							</view>
 						</view>
-						<text v-if="currentIdentity.type === 'personal'" class="option-check">✓</text>
+						<view class="option-right">
+							<text v-if="currentIdentity.type === 'personal'" class="option-check">✓</text>
+						</view>
 					</view>
 					
 					<!-- 企业身份 -->
@@ -683,15 +821,24 @@
 									</view>
 									<view class="option-status-row">
 										<view v-if="enterprise.verified" class="option-verified">
+											<text class="fa fa-check-circle verified-icon"></text>
 											<text class="verified-text-small">已认证</text>
 										</view>
 										<view v-else class="option-unverified">
-											<text class="unverified-text">未认证</text>
+											<text class="fa fa-exclamation-circle unverified-icon"></text>
+											<text class="unverified-text">立即认证</text>
+										</view>
+										<!-- 配额显示 -->
+										<view v-if="quotaEnabled" class="quota-badge" :class="{ 'quota-low': getEnterpriseQuota(enterprise.id) <= 5 }">
+											<text class="fa fa-file-text quota-icon"></text>
+											<text class="quota-text">{{ getEnterpriseQuota(enterprise.id) }}份</text>
 										</view>
 									</view>
 								</view>
 							</view>
-							<text v-if="currentIdentity.type === 'enterprise' && currentIdentity.id === enterprise.id" class="option-check">✓</text>
+							<view class="option-right">
+								<text v-if="currentIdentity.type === 'enterprise' && currentIdentity.id === enterprise.id" class="option-check">✓</text>
+							</view>
 						</view>
 					</view>
 					
@@ -770,7 +917,7 @@
 						@click="handleFeatureClick(feature)"
 					>
 						<view class="feature-icon-container" :style="{ backgroundColor: feature.iconColor + '10' }">
-							<image class="feature-icon" :src="feature.icon" mode="aspectFit"></image>
+							<text class="fa feature-fa-icon" :class="feature.faIcon" :style="{ color: feature.iconColor }"></text>
 						</view>
 						<view class="feature-content">
 							<text class="feature-name">{{ feature.name }}</text>
@@ -785,8 +932,8 @@
 			
 			<!-- 版权信息 -->
 			<view class="copyright-section">
-				<text class="copyright-title">Contract.Pro 让签约更简单</text>
-				<text class="copyright-text">©️ 小华同学 AI 版权所有</text>
+				<text class="copyright-title">{{copyrightSlogan}}</text>
+				<text class="copyright-text">{{copyrightOwnerText}}</text>
 			</view>
 			
 			<!-- 底部占位，防止内容被TabBar遮挡 -->
@@ -803,6 +950,9 @@
 </template>
 
 <style>
+	/* 引入FontAwesome - 确保图标正确显示 */
+	@import url("../../static/styles/fontawesome.css");
+	
 	/* 全局样式变量 */
 	.contract-app {
 		flex: 1;
@@ -888,10 +1038,10 @@
 	/* 弹窗主体 */
 	.identity-dropdown {
 		background-color: #FFFFFF;
-		border-top-left-radius: 24rpx;
-		border-top-right-radius: 24rpx;
-		padding: 32rpx;
-		max-height: 70vh;
+		border-top-left-radius: 40rpx;
+		border-top-right-radius: 40rpx;
+		padding: 40rpx 32rpx;
+		max-height: 80vh;
 	}
 	
 	/* 弹窗标题 */
@@ -900,40 +1050,44 @@
 		margin-bottom: 24rpx;
 		padding-bottom: 24rpx;
 		border-bottom-width: 1rpx;
-		border-bottom-color: #F0F0F0;
+		border-bottom-color: #F8F8F8;
 	}
 	
 	.dropdown-title {
 		font-size: 32rpx;
-		font-weight: 600;
+		font-weight: bold;
 		color: #333333;
 	}
 	
 	/* 分组标题 */
 	.dropdown-section {
-		margin-top: 16rpx;
-		margin-bottom: 12rpx;
+		margin-top: 32rpx;
+		margin-bottom: 16rpx;
+		padding-left: 12rpx;
 	}
 	
 	.section-label {
-		font-size: 24rpx;
+		font-size: 26rpx;
 		color: #999999;
+		font-weight: 500;
 	}
 	
 	/* 身份选项 */
 	.identity-option {
 		flex-direction: row;
 		align-items: center;
-		justify-content: space-between;
-		padding: 24rpx 16rpx;
-		background-color: #F8F9FA;
-		border-radius: 12rpx;
-		margin-bottom: 12rpx;
+		padding: 32rpx 28rpx;
+		background-color: #FFFFFF;
+		border-radius: 20rpx;
+		margin-bottom: 20rpx;
+		border-width: 1rpx;
+		border-color: #EEEEEE;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.02);
 	}
 	
 	.identity-option.active {
-		background-color: #E8F8F3;
-		border-width: 1rpx;
+		background-color: rgba(0, 194, 138, 0.04);
+		border-width: 2rpx;
 		border-color: #00C28A;
 	}
 	
@@ -941,10 +1095,13 @@
 		flex: 1;
 		flex-direction: row;
 		align-items: center;
+		min-width: 0;
+		margin-right: 20rpx;
 	}
 	
 	.option-info {
 		flex: 1;
+		min-width: 0;
 	}
 	
 	.option-name-row {
@@ -954,52 +1111,128 @@
 	}
 	
 	.option-name {
-		font-size: 28rpx;
-		font-weight: 500;
+		font-size: 30rpx;
+		font-weight: 600;
 		color: #333333;
 		margin-right: 12rpx;
+		lines: 1;
+		text-overflow: ellipsis;
+		flex: 1;
+		min-width: 0;
 	}
 	
+	/* 角色标签 - 蓝色系，与认证状态区分 */
 	.option-role {
-		background-color: #E8F8F3;
+		background-color: rgba(24, 144, 255, 0.1);
 		padding: 4rpx 12rpx;
-		border-radius: 16rpx;
+		border-radius: 6rpx;
+		flex-shrink: 0;
+		margin-left: 12rpx;
 	}
 	
 	.role-text-small {
 		font-size: 20rpx;
-		color: #00C28A;
+		color: #1890FF;
+		font-weight: 500;
 	}
 	
 	.option-status-row {
 		flex-direction: row;
 		align-items: center;
+		flex-wrap: wrap;
+		margin-top: 6rpx;
 	}
 	
+	/* 已认证 - 绿色成功样式 */
 	.option-verified {
 		flex-direction: row;
 		align-items: center;
+		background-color: rgba(0, 194, 138, 0.08);
+		border-width: 1rpx;
+		border-color: rgba(0, 194, 138, 0.2);
+		border-radius: 6rpx;
+		padding: 4rpx 12rpx;
+		margin-right: 12rpx;
+	}
+	
+	.verified-icon {
+		font-size: 18rpx;
+		color: #00C28A;
+		margin-right: 4rpx;
 	}
 	
 	.verified-text-small {
-		font-size: 22rpx;
+		font-size: 20rpx;
 		color: #00C28A;
+		font-weight: 500;
 	}
 	
+	/* 未认证/立即认证 - 橙色警告样式 */
 	.option-unverified {
 		flex-direction: row;
 		align-items: center;
+		background-color: rgba(250, 140, 22, 0.1);
+		border-width: 1rpx;
+		border-color: rgba(250, 140, 22, 0.3);
+		border-radius: 6rpx;
+		padding: 4rpx 12rpx;
+		margin-right: 12rpx;
+	}
+	
+	.unverified-icon {
+		font-size: 18rpx;
+		color: #FA8C16;
+		margin-right: 4rpx;
 	}
 	
 	.unverified-text {
-		font-size: 22rpx;
-		color: #FF9800;
+		font-size: 20rpx;
+		color: #FA8C16;
+		font-weight: 500;
+	}
+	
+	.option-right {
+		flex-direction: row;
+		align-items: center;
+		flex-shrink: 0;
 	}
 	
 	.option-check {
 		font-size: 32rpx;
 		color: #00C28A;
 		font-weight: bold;
+		margin-left: 12rpx;
+	}
+	
+	.option-right {
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	/* 身份切换弹窗 - 配额徽章样式 */
+	.identity-dropdown .quota-badge {
+		flex-direction: row;
+		align-items: center;
+		padding: 6rpx 14rpx;
+		border-radius: 20rpx;
+		background: linear-gradient(135deg, #00C28A 0%, #00A876 100%);
+		margin-right: 12rpx;
+	}
+	
+	.identity-dropdown .quota-badge.quota-low {
+		background: linear-gradient(135deg, #FF6B6B 0%, #E55555 100%);
+	}
+	
+	.identity-dropdown .quota-icon {
+		font-size: 18rpx;
+		color: #FFFFFF;
+		margin-right: 6rpx;
+	}
+	
+	.identity-dropdown .quota-text {
+		font-size: 22rpx;
+		font-weight: 600;
+		color: #FFFFFF;
 	}
 	
 	/* 添加新企业 */
@@ -1008,22 +1241,24 @@
 		align-items: center;
 		justify-content: center;
 		padding: 24rpx;
-		margin-top: 16rpx;
+		margin-top: 24rpx;
 		border-width: 1rpx;
-		border-color: #E0E0E0;
+		border-color: #EEEEEE;
 		border-style: dashed;
-		border-radius: 12rpx;
+		border-radius: 16rpx;
+		background-color: #FAFAFA;
 	}
 	
 	.add-icon {
 		font-size: 32rpx;
 		color: #00C28A;
-		margin-right: 8rpx;
+		margin-right: 10rpx;
 	}
 	
 	.add-text {
 		font-size: 28rpx;
 		color: #00C28A;
+		font-weight: 500;
 	}
 	
 	/* 卡片通用样式 */
@@ -1258,6 +1493,11 @@
 	.feature-icon {
 		width: 48rpx;
 		height: 48rpx;
+	}
+	
+	/* 特色服务 FontAwesome 图标样式 */
+	.feature-fa-icon {
+		font-size: 40rpx;
 	}
 	
 	.feature-content {

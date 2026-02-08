@@ -1,9 +1,15 @@
 <script lang="uts">
+	import { get } from '@/api/index'
+	import { getSealToken, clearSealToken } from '@/utils/sealTokenManager'
+	import { buildSignShareConfig, buildDefaultShareConfig } from '../../utils/share'
+	
 	export default {
 		data() {
 			return {
 				// 合同ID
 				contractId: '',
+				// 签署链接引用码（从 URL Scheme 或签署链接传入）
+				refCode: '',
 				// 合同标题
 				contractTitle: '房屋租赁合同',
 				// 签名区域数据
@@ -44,11 +50,19 @@
 			}
 		},
 		onLoad(options: any) {
-			// 从路由参数中获取合同ID
+			// 场景 1: 从签署链接打开（URL Scheme 或小程序码）
+			// 参数格式: ref=xxx
+			if (options && options.ref) {
+				this.refCode = options.ref
+				console.log('[合同签署] 检测到签署链接 ref:', this.refCode)
+				this.handleSignLinkEntry()
+				return
+			}
+			
+			// 场景 2: 从应用内跳转（传统方式，传入合同ID）
 			if (options && options.id) {
 				this.contractId = options.id
 				console.log('加载合同签署页面，ID:', this.contractId)
-				// TODO: 根据合同ID获取合同详情
 				this.getContractDetail()
 			} else {
 				uni.showToast({
@@ -61,7 +75,109 @@
 				}, 1500)
 			}
 		},
+		// #ifdef MP-WEIXIN
+		onShareAppMessage() : any {
+			if (this.contractId) {
+				const config = buildSignShareConfig(
+					this.contractId,
+					this.contractTitle,
+					''
+				);
+				return {
+					title: config.title,
+					path: config.path,
+					imageUrl: config.imageUrl
+				};
+			}
+			const defaultConfig = buildDefaultShareConfig();
+			return {
+				title: defaultConfig.title,
+				path: defaultConfig.path,
+				imageUrl: defaultConfig.imageUrl
+			};
+		},
+		// #endif
 		methods: {
+			/**
+			 * 处理签署链接入口（从 URL Scheme 或短链接进入）
+			 * 
+			 * 流程：
+			 * 1. 检查登录状态
+			 * 2. 未登录 → 跳转登录页（登录后回到本页）
+			 * 3. 已登录 → 调用 /auth/by-ref 验证链接
+			 * 4. 根据返回的链接类型跳转到对应的签署/预览页面
+			 */
+			async handleSignLinkEntry(): Promise<void> {
+				// 检查是否已登录
+				const token = uni.getStorageSync('token')
+				if (!token) {
+					console.log('[合同签署] 未登录，跳转到登录页')
+					uni.navigateTo({
+						url: `/pages/login/index?redirect=${encodeURIComponent('/pages/contract-sign/index?ref=' + this.refCode)}`
+					})
+					return
+				}
+				
+				// 已登录，验证签署链接
+				uni.showLoading({ title: '正在验证链接...' })
+				
+				try {
+					const data = await get<any>(`/api/v1/seal/auth/by-ref?ref=${this.refCode}`)
+					uni.hideLoading()
+					
+					console.log('[合同签署] 链接验证结果:', JSON.stringify(data))
+					
+					if (!data.success && data.linkType !== 'SECURE_SIGN') {
+						uni.showModal({
+							title: '链接无效',
+							content: data.errorMsg || '签署链接已过期或无效',
+							showCancel: false,
+							success: () => { uni.navigateBack() }
+						})
+						return
+					}
+					
+					// 获取 seal-token 用于签署
+					let sealToken = ''
+					if (data.sealToken) {
+						// 快捷签署模式：使用返回的 seal-token
+						sealToken = data.sealToken
+					} else {
+						// 登录签署模式：用 member-token 兑换 seal-token
+						try {
+							clearSealToken()
+							sealToken = await getSealToken()
+						} catch (e) {
+							console.error('[合同签署] 获取 seal-token 失败:', e)
+						}
+					}
+					
+					const taskId = data.taskId || ''
+					
+					// 根据链接类型跳转
+					if (data.linkType === 'PREVIEW_LINK') {
+						// 预览模式：跳转到预览页面
+						uni.redirectTo({
+							url: `/pages/contract-detail/index?id=${taskId}`
+						})
+					} else {
+						// 签署模式：跳转到 H5 签署页面（WebView）
+						console.log('[合同签署] 跳转到 H5 签署页面, taskId:', taskId)
+						uni.redirectTo({
+							url: `/pages/contract-sign/h5-sign?taskId=${taskId}`
+						})
+					}
+				} catch (error) {
+					uni.hideLoading()
+					console.error('[合同签署] 链接验证失败:', error)
+					uni.showModal({
+						title: '验证失败',
+						content: '网络异常，请稍后重试',
+						showCancel: false,
+						success: () => { uni.navigateBack() }
+					})
+				}
+			},
 			// 获取合同详情
 			getContractDetail(): void {
 				// TODO: 调用API获取合同详情

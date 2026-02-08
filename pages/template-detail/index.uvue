@@ -6,6 +6,7 @@
 	import { checkNetworkStatus, testH5ServiceAvailability } from '../../utils/network';
 	import { getKycStatus, KycStatus } from '../../utils/kyc-check';
 	import KycModal from '../../components/KycModal.uvue';
+	import { buildTemplateShareConfig, buildDefaultShareConfig } from '../../utils/share';
 	
 	export default {
 		components: {
@@ -50,6 +51,28 @@
 				}, 1500);
 			}
 		},
+		// #ifdef MP-WEIXIN
+		onShareAppMessage() : any {
+			if (this.templateDetail != null) {
+				const detail = this.templateDetail!;
+				const config = buildTemplateShareConfig(
+					this.templateId,
+					detail.name ?? '合同模板'
+				);
+				return {
+					title: config.title,
+					path: config.path,
+					imageUrl: config.imageUrl
+				};
+			}
+			const defaultConfig = buildDefaultShareConfig();
+			return {
+				title: defaultConfig.title,
+				path: defaultConfig.path,
+				imageUrl: defaultConfig.imageUrl
+			};
+		},
+		// #endif
 		methods: {
 			// 检查实名认证状态
 			async checkKycStatus(): Promise<void> {
@@ -209,6 +232,33 @@
 		if (!this.checkCanProceed()) {
 			console.log('[模板详情] 未完成实名认证，显示提示弹窗');
 			return;
+		}
+		
+		// 检查企业认证状态（如果当前是企业身份）
+		try {
+			const savedIdentity = uni.getStorageSync('currentIdentity');
+			if (savedIdentity && typeof savedIdentity === 'string') {
+				const identity = JSON.parse(savedIdentity) as { type?: string; id?: string | number; name?: string; verified?: boolean };
+				if (identity && identity.type === 'enterprise' && !identity.verified) {
+					console.log('[模板详情] 企业未认证，显示提示弹窗');
+					uni.showModal({
+						title: '企业未认证',
+						content: '当前企业尚未完成认证，无法发起合同。是否前往认证？',
+						confirmText: '去认证',
+						cancelText: '取消',
+						success: (res) => {
+							if (res.confirm) {
+								uni.navigateTo({
+									url: `/pages/kyc/enterprise/index?id=${identity.id}&name=${encodeURIComponent(identity.name || '')}`
+								});
+							}
+						}
+					});
+					return;
+				}
+			}
+		} catch (e) {
+			console.warn('[模板详情] 检查企业认证状态失败:', e);
 		}
 			
 			console.log('[模板详情] 使用模板创建合同:', this.templateId);

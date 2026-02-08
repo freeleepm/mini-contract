@@ -90,7 +90,7 @@ export default {
 			
 			// OCR识别相关
 			ocrProcessing: false,
-			ocrResult: null,
+			ocrResult: null as any,
 			showOcrGuidance: false,
 			ocrGuidanceTips: [
 				'请确保光线充足，身份证清晰可见',

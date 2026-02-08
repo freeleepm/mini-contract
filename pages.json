@@ -449,6 +449,46 @@
 					"titleNView": false
 				}
 			}
+		},
+		{
+			"path": "pages/contract-verify/index",
+			"style": {
+				"navigationBarTitleText": "合同验真",
+				"navigationBarBackgroundColor": "#FFFFFF",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/quota/purchase",
+			"style": {
+				"navigationBarTitleText": "购买套餐",
+				"navigationBarBackgroundColor": "#FFFFFF",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/quota/logs",
+			"style": {
+				"navigationBarTitleText": "变动记录",
+				"navigationBarBackgroundColor": "#FFFFFF",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/quota/pay",
+			"style": {
+				"navigationBarTitleText": "订单支付",
+				"navigationBarBackgroundColor": "#FFFFFF",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/share/landing",
+			"style": {
+				"navigationBarTitleText": "Contract.Pro",
+				"navigationBarBackgroundColor": "#FFFFFF",
+				"navigationBarTextStyle": "black"
+			}
 		}
 	],
 	"subpackages": [

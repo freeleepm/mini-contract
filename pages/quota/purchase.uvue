@@ -1,0 +1,354 @@
+<template>
+	<view class="page-container">
+		<scroll-view class="content-scroll" scroll-y="true">
+			<view class="content-wrapper">
+				<!-- 当前余额 -->
+				<view class="balance-section">
+					<QuotaBalanceCard :enterpriseId="enterpriseId" :showActions="false" ref="balanceCardRef" />
+				</view>
+
+				<!-- 套餐列表 -->
+				<view class="section-title">
+					<text class="section-title-text">选择套餐</text>
+				</view>
+
+				<view class="package-list" v-if="!loading">
+					<view class="package-card" v-for="pkg in packageList" :key="pkg.id"
+						:class="{ 'selected': selectedPackageId === pkg.id }" @click="selectPackage(pkg.id)">
+						<view class="package-info">
+							<text class="package-name">{{ pkg.name }}</text>
+							<view class="package-quota">
+								<text class="quota-count">{{ pkg.quotaCount }}</text>
+								<text class="quota-unit">份合同</text>
+							</view>
+							<view class="package-price">
+								<text class="price-current">¥{{ formatPrice(pkg.price) }}</text>
+								<text class="price-original" v-if="pkg.originalPrice && pkg.originalPrice > pkg.price">
+									¥{{ formatPrice(pkg.originalPrice) }}
+								</text>
+							</view>
+							<text class="package-desc" v-if="pkg.description">{{ pkg.description }}</text>
+						</view>
+						<view class="package-check" v-if="selectedPackageId === pkg.id">
+							<text class="icon icon-check check-icon"></text>
+						</view>
+					</view>
+				</view>
+
+				<view class="loading-container" v-else>
+					<text class="loading-text">加载中...</text>
+				</view>
+			</view>
+		</scroll-view>
+
+		<!-- 底部购买按钮 -->
+		<view class="bottom-bar">
+			<view class="purchase-btn" :class="{ 'disabled': !selectedPackageId || purchasing }"
+				@click="handlePurchase">
+				<text class="purchase-btn-text">{{ purchasing ? '提交中...' : '立即购买' }}</text>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script lang="uts">
+	import QuotaBalanceCard from '@/components/QuotaBalanceCard.uvue';
+	import { getPackageList, createQuotaOrder, getQuotaBalance, type QuotaPackageItem } from '@/api/quota/index';
+
+	export default {
+		components: {
+			QuotaBalanceCard
+		},
+
+		data() {
+			return {
+				loading: true,
+				purchasing: false,
+				packageList: [] as QuotaPackageItem[],
+				selectedPackageId: null as number | null,
+				enterpriseId: null as number | null
+			}
+		},
+
+		async onLoad(options : OnLoadOptions) {
+			// 从参数获取企业ID
+			if (options['enterpriseId'] != null) {
+				this.enterpriseId = parseInt(options['enterpriseId'] as string);
+			}
+			
+			// 检查配额功能是否启用
+			try {
+				const balanceRes = await getQuotaBalance(this.enterpriseId != null ? this.enterpriseId : undefined);
+				if (balanceRes != null && balanceRes.enabled === false) {
+					uni.showToast({
+						title: '配额功能已关闭',
+						icon: 'none'
+					});
+					setTimeout(() => {
+						uni.navigateBack();
+					}, 1500);
+					return;
+				}
+			} catch (e) {
+				console.warn('检查配额开关状态失败', e);
+			}
+			
+			this.loadPackageList();
+		},
+
+		methods: {
+			formatPrice(price : number) : string {
+				return (price / 100).toFixed(2);
+			},
+
+			async loadPackageList() {
+				this.loading = true;
+				try {
+					const list = await getPackageList();
+					this.packageList = list;
+				} catch (error) {
+					console.error('加载套餐列表失败', error);
+					uni.showToast({
+						title: '加载套餐列表失败',
+						icon: 'none'
+					});
+				} finally {
+					this.loading = false;
+				}
+			},
+
+			selectPackage(pkgId : number) {
+				this.selectedPackageId = pkgId;
+			},
+
+			async handlePurchase() {
+				if (this.selectedPackageId == null || this.purchasing) {
+					return;
+				}
+
+				const pkg = this.packageList.find((p : QuotaPackageItem) : boolean => p.id === this.selectedPackageId);
+				if (pkg == null) {
+					return;
+				}
+
+				uni.showModal({
+					title: '确认购买',
+					content: `确认购买「${pkg.name}」套餐？\n包含 ${pkg.quotaCount} 份合同，支付金额 ¥${this.formatPrice(pkg.price)}`,
+					confirmText: '确认购买',
+					success: async (res) => {
+						if (res.confirm) {
+							this.purchasing = true;
+							try {
+								const result = await createQuotaOrder({
+									packageId: this.selectedPackageId as number,
+									enterpriseId: this.enterpriseId != null ? this.enterpriseId : undefined
+								});
+
+								// 如果价格为0（免费套餐），直接提示成功
+								if (pkg.price === 0) {
+									uni.showToast({
+										title: '配额已成功添加！',
+										icon: 'success'
+									});
+									// 刷新余额
+									// this.$refs.balanceCardRef.refresh();
+									this.selectedPackageId = null;
+									// 返回上一页
+									setTimeout(() => {
+										uni.navigateBack();
+									}, 1500);
+								} else {
+									// 跳转到支付页面
+									uni.navigateTo({
+										url: `/pages/quota/pay?orderId=${result.orderId}&payOrderId=${result.payOrderId}`
+									});
+								}
+							} catch (error : any) {
+								console.error('购买失败', error);
+								uni.showToast({
+									title: error.message || '购买失败，请重试',
+									icon: 'none'
+								});
+							} finally {
+								this.purchasing = false;
+							}
+						}
+					}
+				});
+			}
+		}
+	}
+</script>
+
+<style>
+	/* 引入FontAwesome图标 */
+	@import url("../../static/styles/fontawesome.css");
+	
+	.page-container {
+		flex: 1;
+		background-color: #F7F9FC;
+	}
+
+	.content-scroll {
+		flex: 1;
+	}
+
+	.content-wrapper {
+		padding: 20rpx;
+		padding-bottom: 140rpx;
+	}
+
+	.balance-section {
+		margin-bottom: 24rpx;
+	}
+
+	.section-title {
+		margin-bottom: 16rpx;
+	}
+
+	.section-title-text {
+		font-size: 30rpx;
+		font-weight: 600;
+		color: #303133;
+	}
+
+	.package-list {
+		margin-bottom: 20rpx;
+	}
+
+	.package-card {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 24rpx;
+		margin-bottom: 12rpx;
+		border-width: 2rpx;
+		border-color: #E4E7ED;
+		border-style: solid;
+	}
+
+	.package-card.selected {
+		border-color: #00C28A;
+		background: linear-gradient(135deg, rgba(0, 194, 138, 0.08) 0%, rgba(0, 168, 118, 0.08) 100%);
+	}
+
+	.package-info {
+		flex: 1;
+	}
+
+	.package-name {
+		font-size: 30rpx;
+		font-weight: 600;
+		color: #303133;
+		margin-bottom: 8rpx;
+	}
+
+	.package-quota {
+		flex-direction: row;
+		align-items: baseline;
+		margin-bottom: 8rpx;
+	}
+
+	.quota-count {
+		font-size: 44rpx;
+		font-weight: 700;
+		color: #00C28A;
+	}
+
+	.quota-unit {
+		font-size: 24rpx;
+		color: #606266;
+		margin-left: 6rpx;
+	}
+
+	.package-price {
+		flex-direction: row;
+		align-items: baseline;
+		margin-bottom: 6rpx;
+	}
+
+	.price-current {
+		font-size: 34rpx;
+		font-weight: 600;
+		color: #f56c6c;
+	}
+
+	.price-original {
+		font-size: 24rpx;
+		color: #C0C4CC;
+		text-decoration: line-through;
+		margin-left: 8rpx;
+	}
+
+	.package-desc {
+		font-size: 22rpx;
+		color: #909399;
+	}
+
+	.package-check {
+		width: 40rpx;
+		height: 40rpx;
+		background-color: #00C28A;
+		border-radius: 20rpx;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.check-icon {
+		font-family: FontAwesome;
+		font-size: 20rpx;
+		color: #FFFFFF;
+	}
+
+	.loading-container {
+		align-items: center;
+		padding: 40rpx;
+	}
+
+	.loading-text {
+		font-size: 28rpx;
+		color: #909399;
+	}
+
+	.bottom-bar {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		background-color: #FFFFFF;
+		padding: 16rpx 20rpx;
+		padding-bottom: 32rpx;
+		box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.04);
+	}
+
+	.purchase-btn {
+		background-color: #00C28A;
+		height: 88rpx;
+		border-radius: 44rpx;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.purchase-btn.disabled {
+		background-color: #A0CFBE;
+		opacity: 0.8;
+	}
+
+	.purchase-btn-text {
+		font-size: 30rpx;
+		font-weight: 500;
+		color: #FFFFFF;
+	}
+
+	.icon {
+		font-family: 'Font Awesome 6 Free';
+		font-weight: 900;
+		font-style: normal;
+	}
+	
+	.icon-check::before {
+		content: "\f00c";
+	}
+</style>

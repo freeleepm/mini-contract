@@ -617,6 +617,32 @@ function executeRequest<T>(options: RequestOptions, isSealAuthApi: boolean, isSe
 								console.log('已在跳转登录页，跳过重复操作');
 							}
 						}
+                    } else if (apiResponse.code === 403) {
+                        // License 授权错误处理
+                        console.error('API授权错误:', apiResponse.code, apiResponse.msg);
+                        
+                        // 检查是否为 Seal 模块授权错误（后端返回的 data 中包含 contact 信息）
+                        const responseData = apiResponse as any;
+                        if (responseData.data && responseData.data.contact) {
+                            const licenseInfo = responseData.data;
+                            const contact = licenseInfo.contact || {};
+                            
+                            // 显示友好的授权提示弹窗
+                            uni.showModal({
+                                title: '授权提示',
+                                content: `【${licenseInfo.statusDesc || '授权验证失败'}】\n\n如需获取授权，请联系：\n· 邮箱：${contact.email || 'shawn@leepm.com'}\n· 公众号：${contact.wechat || '小华同学ai'}（微信搜索关注）\n\n${licenseInfo.tip || '获取授权后，请将 License 文件放置于项目根目录并重启服务'}`,
+                                showCancel: false,
+                                confirmText: '我知道了'
+                            });
+                        } else {
+                            // 普通 403 权限错误
+                            uni.showToast({
+                                title: apiResponse.msg || '当前操作没有权限',
+                                icon: 'none',
+                                duration: 2500
+                            });
+                        }
+                        reject(new Error(apiResponse.msg || '授权验证失败'));
                     } else {
                         // 其他业务错误
                         console.error('API业务错误:', apiResponse.code, apiResponse.msg);

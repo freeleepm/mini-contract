@@ -634,6 +634,52 @@ onShow() {
 		
 		console.log('[合同列表] 准备填写表单:', contract.id);
 		
+		// 检查认证状态（根据身份类型）
+		try {
+			const savedIdentity = uni.getStorageSync('currentIdentity');
+			if (savedIdentity) {
+				const identity = JSON.parse(savedIdentity) as { type?: string; id?: string | number; name?: string; verified?: boolean };
+				if (identity) {
+					// 个人身份需要检查个人实名认证
+					if (identity.type === 'personal' && !identity.verified) {
+						console.log('[合同列表] 个人未实名认证，显示提示弹窗');
+						uni.showModal({
+							title: '请先实名认证',
+							content: '为保障合同的法律效力，填写表单前需要完成实名认证。',
+							confirmText: '去认证',
+							cancelText: '取消',
+							success: (res) => {
+								if (res.confirm) {
+									uni.navigateTo({ url: '/pages/kyc/personal/index' });
+								}
+							}
+						});
+						return;
+					}
+					// 企业身份需要检查企业认证
+					if (identity.type === 'enterprise' && !identity.verified) {
+						console.log('[合同列表] 企业未认证，显示提示弹窗');
+						uni.showModal({
+							title: '企业未认证',
+							content: '当前企业尚未完成认证，无法填写表单。是否前往认证？',
+							confirmText: '去认证',
+							cancelText: '取消',
+							success: (res) => {
+								if (res.confirm) {
+									uni.navigateTo({
+										url: `/pages/kyc/enterprise/index?id=${identity.id}&name=${encodeURIComponent(identity.name || '')}`
+									});
+								}
+							}
+						});
+						return;
+					}
+				}
+			}
+		} catch (e) {
+			console.warn('[合同列表] 检查认证状态失败:', e);
+		}
+		
 		try {
 			// 显示检测进度
 			uni.showLoading({ 
@@ -733,6 +779,52 @@ onShow() {
 		event.stopPropagation();
 		
 		console.log('[合同列表] 准备签署合同:', contract.id);
+		
+		// 检查认证状态（根据身份类型）
+		try {
+			const savedIdentity = uni.getStorageSync('currentIdentity');
+			if (savedIdentity) {
+				const identity = JSON.parse(savedIdentity) as { type?: string; id?: string | number; name?: string; verified?: boolean };
+				if (identity) {
+					// 个人身份需要检查个人实名认证
+					if (identity.type === 'personal' && !identity.verified) {
+						console.log('[合同列表] 个人未实名认证，显示提示弹窗');
+						uni.showModal({
+							title: '请先实名认证',
+							content: '为保障合同的法律效力，签署合同前需要完成实名认证。',
+							confirmText: '去认证',
+							cancelText: '取消',
+							success: (res) => {
+								if (res.confirm) {
+									uni.navigateTo({ url: '/pages/kyc/personal/index' });
+								}
+							}
+						});
+						return;
+					}
+					// 企业身份需要检查企业认证
+					if (identity.type === 'enterprise' && !identity.verified) {
+						console.log('[合同列表] 企业未认证，显示提示弹窗');
+						uni.showModal({
+							title: '企业未认证',
+							content: '当前企业尚未完成认证，无法签署合同。是否前往认证？',
+							confirmText: '去认证',
+							cancelText: '取消',
+							success: (res) => {
+								if (res.confirm) {
+									uni.navigateTo({
+										url: `/pages/kyc/enterprise/index?id=${identity.id}&name=${encodeURIComponent(identity.name || '')}`
+									});
+								}
+							}
+						});
+						return;
+					}
+				}
+			}
+		} catch (e) {
+			console.warn('[合同列表] 检查认证状态失败:', e);
+		}
 		
 		try {
 			// 显示检测进度
@@ -947,6 +1039,33 @@ onShow() {
 				return
 			}
 			
+			// 检查企业认证状态（如果当前是企业身份）
+			try {
+				const savedIdentity = uni.getStorageSync('currentIdentity');
+				if (savedIdentity) {
+					const identity = JSON.parse(savedIdentity) as { type?: string; id?: string | number; name?: string; verified?: boolean };
+					if (identity && identity.type === 'enterprise' && !identity.verified) {
+						console.log('[合同管理] 企业未认证，显示提示弹窗');
+						uni.showModal({
+							title: '企业未认证',
+							content: '当前企业尚未完成认证，无法发起合同。是否前往认证？',
+							confirmText: '去认证',
+							cancelText: '取消',
+							success: (res) => {
+								if (res.confirm) {
+									uni.navigateTo({
+										url: `/pages/kyc/enterprise/index?id=${identity.id}&name=${encodeURIComponent(identity.name || '')}`
+									});
+								}
+							}
+						});
+						return;
+					}
+				}
+			} catch (e) {
+				console.warn('[合同管理] 检查企业认证状态失败:', e);
+			}
+			
 			try {
 				uni.showLoading({ title: '正在检测服务...', mask: true });
 				
@@ -1040,10 +1159,74 @@ onShow() {
 			},
 			
 		/**
-		 * 获取状态显示名称
+		 * 获取状态显示名称（基础版本）
 		 */
 		getStatusName(status: ContractStatus): string {
 			return getContractStatusName(status);
+		},
+		
+		/**
+		 * 🆕 获取智能状态名称（根据当前用户角色显示不同文本）
+		 * 
+		 * 核心原则：让用户清楚知道是"待我操作"还是"等待他人操作"
+		 * - 表单填写：待填写 / 他人填写中
+		 * - 签署：待签署 / 他人签署中
+		 */
+		getSmartStatusName(contract: Contract): string {
+			// 表单填写中状态
+			if (contract.status === this.STATUS_FORM_FILLING) {
+				// 只有明确需要自己填写表单时才显示"待填写"
+				if (this.canFillForm(contract)) {
+					return '待填写';
+				}
+				// 🔧 其他所有情况（发起人/已填完/DIRECT模式等）都显示"他人填写中"
+				return '他人填写中';
+			}
+			
+			// 签署中状态
+			if (contract.status === this.STATUS_SIGNING) {
+				// 只有明确需要自己签署时才显示"待签署"
+				if (this.canSign(contract)) {
+					return '待签署';
+				}
+				// 🔧 其他所有情况（发起人/已签署等）都显示"他人签署中"
+				return '他人签署中';
+			}
+			
+			// 其他状态使用默认名称
+			return getContractStatusName(contract.status);
+		},
+		
+		/**
+		 * 🆕 判断当前用户是否在等待他人签署
+		 */
+		isWaitingForOthersToSign(contract: Contract): boolean {
+			// 状态检查：必须是签署中
+			if (contract.status !== this.STATUS_SIGNING) {
+				return false;
+			}
+			
+			let p: any = null;
+			
+			// 优先使用后端已处理好的 currentUserParticipant 字段
+			if (contract.currentUserParticipant) {
+				p = contract.currentUserParticipant;
+			} else {
+				// 降级方案：查找当前用户
+				if (!contract.participants || contract.participants.length === 0) {
+					return false;
+				}
+				p = contract.participants.find(
+					(item: any) => item.isCurrentUser === true
+				);
+			}
+			
+			if (!p) {
+				return false;
+			}
+			
+			// 当前用户已签署，等待他人
+			return p.status === this.PARTICIPANT_SIGNED;
 		},
 		
 		/**
@@ -1205,9 +1388,9 @@ onShow() {
 					hover-class="contract-item-hover"
 					@click="viewContractDetail(contract)"
 				>
-					<!-- 合同状态标签 -->
+					<!-- 合同状态标签（智能显示：区分"待我操作"和"等待他人操作"） -->
 					<view class="status-badge" :style="{ backgroundColor: getStatusColor(contract.status) }">
-						<text class="status-text">{{ getStatusName(contract.status) }}</text>
+						<text class="status-text">{{ getSmartStatusName(contract) }}</text>
 					</view>
 					
 					<!-- 合同标题 -->
@@ -1290,7 +1473,7 @@ onShow() {
 					class="action-button waiting"
 				>
 					<text class="fa fa-hourglass-half action-icon"></text>
-					<text class="action-text">等待他人填表</text>
+					<text class="action-text">待他人</text>
 				</view>
 					
 					<!-- 🔧 催签按钮：只有创建者才能催签 -->

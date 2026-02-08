@@ -66,7 +66,7 @@
       </view>
       <view class="card-content">
         <view class="functions-grid">
-          <view class="function-item" @click="navigate('/pages/contract-create/index',{enterpriseId})">
+          <view class="function-item" @click="handleCreateContract">
             <view class="function-icon-wrapper bg-blue">
               <text class="fa fa-plus icon-blue"></text>
             </view>
@@ -239,6 +239,27 @@ export default {
         console.error('日期格式化失败:', error);
         return '未知';
       }
+    },
+    
+    // 处理创建合同点击（先检查企业认证状态）
+    handleCreateContract() {
+      // 检查企业是否已认证（status === 2 表示已认证）
+      if (this.enterprise.status !== 2) {
+        uni.showModal({
+          title: '企业未认证',
+          content: '当前企业尚未完成认证，无法发起合同。是否前往认证？',
+          confirmText: '去认证',
+          cancelText: '取消',
+          success: (res) => {
+            if (res.confirm) {
+              this.verify();
+            }
+          }
+        });
+        return;
+      }
+      // 企业已认证，跳转到合同创建页面
+      this.navigate('/pages/contract-create/index', {enterpriseId: this.enterpriseId});
     },
     
     go(type: string) {

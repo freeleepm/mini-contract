@@ -2,8 +2,10 @@
 	import { get } from '@/api/index'
 	import { getEnterpriseList, EnterpriseStatus } from '../../api/enterprise/index';
 	import { checkAuthAndRedirect } from '../../api/auth';
+	import { getQuotaBalance } from '../../api/quota/index';
 	import EnterpriseKycModal from '../../components/EnterpriseKycModal.uvue';
 	import KycModal from '../../components/KycModal.uvue';
+	import { APP_VERSION_TEXT } from '../../config/app.config';
 
 	// 定义企业列表项类型
 	interface EnterpriseItem {
@@ -44,6 +46,8 @@
 		},
 		data() {
 			return {
+				// 品牌信息（从集中配置获取）
+				versionText: APP_VERSION_TEXT,
 				safeTop: 0,
 				// 用户信息
 				userInfo: {
@@ -82,7 +86,19 @@
 			isDestroyed: false,
 				
 				// 上次加载时间，用于避免重复请求
-				lastLoadTime: 0
+				lastLoadTime: 0,
+				
+				// 配额余额
+				quotaBalance: 0,
+				
+				// 配额功能是否启用
+				quotaEnabled: true,
+				
+				// 个人配额（用于身份切换弹窗显示）
+				personalQuota: 0,
+				
+				// 企业配额 Map (enterpriseId -> quota)
+				enterpriseQuotaMap: {} as Record<string, number>
 			}
 		},
 		
@@ -143,6 +159,9 @@
 			if (this.userInfo.isVerified && shouldReload) {
 				this.loadEnterpriseList();
 			}
+			
+			// 配额余额始终刷新（用户可能刚刚完成购买）
+			this.loadQuotaBalance();
 		} catch (error) {
 			console.error('onShow 执行出错:', error);
 		}
@@ -383,6 +402,10 @@
 					return;
 				}
 				this.showIdentityDropdown = !this.showIdentityDropdown;
+				// 打开弹窗时加载所有身份的配额
+				if (this.showIdentityDropdown) {
+					this.loadAllQuotas();
+				}
 			},
 			
 			// 关闭身份下拉菜单
@@ -470,6 +493,9 @@
 				}
 				// 如果是企业身份，可以在这里获取企业相关信息
 				// TODO: 获取企业信息的API
+				
+				// 切换身份后刷新配额余额
+				this.loadQuotaBalance();
 			},
 			
 			// 前往企业认证
@@ -766,6 +792,84 @@
 				});
 			},
 			
+			// 导航到配额管理页
+			goToQuota() {
+				// 根据当前身份跳转
+				const enterpriseId = this.currentIdentity.type === 'enterprise' ? this.currentIdentity.id : null;
+				let url = '/pages/quota/purchase';
+				if (enterpriseId != null) {
+					url += `?enterpriseId=${enterpriseId}`;
+				}
+				uni.navigateTo({
+					url: url
+				});
+			},
+			
+			// 加载配额余额
+			async loadQuotaBalance() {
+				try {
+					const enterpriseId = this.currentIdentity.type === 'enterprise' ? parseInt(this.currentIdentity.id.toString()) : null;
+					const res = await getQuotaBalance(enterpriseId != null ? enterpriseId : undefined);
+					if (res != null && !this.isDestroyed) {
+						this.quotaBalance = res.balance || 0;
+						// 更新配额功能开关状态
+						this.quotaEnabled = res.enabled !== false; // 默认启用，只有明确返回 false 才关闭
+					}
+				} catch (error) {
+					console.warn('加载配额余额失败', error);
+				}
+			},
+			
+			// 加载所有身份的配额（用于身份切换弹窗显示）
+			async loadAllQuotas() {
+				// 先加载个人配额
+				await this.loadPersonalQuota();
+				
+				// 如果配额功能已关闭，跳过加载企业配额
+				if (!this.quotaEnabled) {
+					return;
+				}
+				
+				// 加载所有企业配额
+				for (const enterprise of this.enterprises) {
+					await this.loadEnterpriseQuota(enterprise.id);
+				}
+			},
+			
+			// 加载个人配额
+			async loadPersonalQuota() {
+				try {
+					const res = await getQuotaBalance();
+					if (res != null && !this.isDestroyed) {
+						// 检查配额功能是否启用
+						if (res.enabled === false) {
+							this.quotaEnabled = false;
+							return;
+						}
+						this.personalQuota = res.balance || 0;
+					}
+				} catch (error) {
+					console.warn('加载个人配额失败', error);
+				}
+			},
+			
+			// 加载企业配额
+			async loadEnterpriseQuota(enterpriseId: number) {
+				try {
+					const res = await getQuotaBalance(enterpriseId);
+					if (res != null && !this.isDestroyed) {
+						this.enterpriseQuotaMap[enterpriseId.toString()] = res.balance || 0;
+					}
+				} catch (error) {
+					console.warn(`加载企业${enterpriseId}配额失败`, error);
+				}
+			},
+			
+			// 获取企业配额
+			getEnterpriseQuota(enterpriseId: number): number {
+				return this.enterpriseQuotaMap[enterpriseId.toString()] || 0;
+			},
+			
 			// 导航到企业印章管理页
 			goToEnterpriseSeals() {
 				// 如果当前不是企业身份，先提示切换
@@ -806,14 +910,7 @@
 				}
 			},
 			
-			// 导航到我的套餐页
-			goToPackages() {
-				uni.navigateTo({
-					url: '/pages/profile/packages'
-				});
-			},
-			
-			// 导航到帮助中心页
+			// 导航到帮助中心
 			goToHelp() {
 				uni.navigateTo({
 					url: '/pages/profile/help'
@@ -1031,7 +1128,7 @@
 			
 			<!-- 下方的功能菜单列表 -->
 			<view class="menu-container">
-				<!-- 账户管理 - 移除了group-title -->
+				<!-- 账户管理 -->
 				<view class="menu-list">
 					<view class="menu-item" hover-class="menu-item-hover" @click="goToPersonalInfo">
 						<view class="menu-icon">
@@ -1040,23 +1137,39 @@
 						<view class="menu-content">
 							<text class="menu-title">个人信息</text>
 						</view>
-						<view class="menu-right">
+						<view class="menu-arrow">
 							<text class="icon icon-chevron-right"></text>
 						</view>
 					</view>
-				<!-- 印章管理入口 -->
-				<view v-if="isPersonal" class="menu-item" hover-class="menu-item-hover" @click="goToPersonalSeals">
-					<view class="menu-icon">
-						<text class="icon icon-stamp"></text>
+					<!-- 印章管理入口 -->
+					<view v-if="isPersonal" class="menu-item" hover-class="menu-item-hover" @click="goToPersonalSeals">
+						<view class="menu-icon">
+							<text class="icon icon-stamp"></text>
+						</view>
+						<view class="menu-content">
+							<text class="menu-title">印章管理</text>
+							<text class="menu-desc">管理个人和企业印章</text>
+						</view>
+						<view class="menu-arrow">
+							<text class="icon icon-chevron-right"></text>
+						</view>
 					</view>
-					<view class="menu-content">
-						<text class="menu-title">印章管理</text>
-						<text class="menu-desc">管理个人和企业印章</text>
+					<!-- 配额管理入口（仅在配额功能启用时显示） -->
+					<view v-if="quotaEnabled" class="menu-item" hover-class="menu-item-hover" @click="goToQuota">
+						<view class="menu-icon quota-icon">
+							<text class="icon icon-file-text"></text>
+						</view>
+						<view class="menu-content">
+							<text class="menu-title">配额管理</text>
+							<text class="menu-desc">查看剩余份数，购买套餐</text>
+						</view>
+						<view class="menu-arrow">
+							<view class="quota-badge">
+								<text class="quota-badge-text">{{ quotaBalance }}份</text>
+							</view>
+							<text class="icon icon-chevron-right"></text>
+						</view>
 					</view>
-					<view class="menu-arrow">
-						<text class="icon icon-chevron-right"></text>
-					</view>
-				</view>
 					<view class="menu-item" hover-class="menu-item-hover" @click="goToNotifications">
 						<view class="menu-icon">
 							<text class="icon icon-bell"></text>
@@ -1064,7 +1177,7 @@
 						<view class="menu-content">
 							<text class="menu-title">通知设置</text>
 						</view>
-						<view class="menu-right">
+						<view class="menu-arrow">
 							<text class="icon icon-chevron-right"></text>
 						</view>
 					</view>
@@ -1114,20 +1227,8 @@
 					</view>
 				</view>
 				
-				<!-- 服务与支持 - 移除了group-title -->
+				<!-- 服务与支持 -->
 				<view class="menu-list">
-					<view class="menu-item" hover-class="menu-item-hover" @click="goToPackages">
-						<view class="menu-icon">
-							<text class="icon icon-package"></text>
-						</view>
-						<view class="menu-content">
-							<text class="menu-title">{{ isPersonal ? '个人套餐' : '企业套餐' }}</text>
-							<text class="menu-desc">查看套餐余量和购买服务</text>
-						</view>
-						<view class="menu-arrow">
-							<text class="icon icon-chevron-right"></text>
-						</view>
-					</view>
 					<view class="menu-item" hover-class="menu-item-hover" @click="goToHelp">
 						<view class="menu-icon">
 							<text class="icon icon-help-circle"></text>
@@ -1155,7 +1256,7 @@
 				
 				<!-- 应用版本 -->
 				<view class="app-version">
-					<text class="version-text">Contract.Pro v1.0.0</text>
+					<text class="version-text">{{versionText}}</text>
 				</view>
 			</view>
 		</scroll-view>
@@ -1170,37 +1271,49 @@
 				
 				<!-- 个人身份 -->
 				<view class="dropdown-section">
-					<text class="section-title">个人</text>
+					<text class="section-title">个人身份</text>
 				</view>
 				<view class="identity-option" :class="{ active: currentIdentity.type === 'personal' }" @click="switchIdentity('personal')">
 					<view class="option-left">
+						<view class="option-avatar personal-avatar">
+							<text class="icon icon-user"></text>
+						</view>
 						<view class="option-info">
 							<view class="option-name-row">
-								<!-- 直接显示"个人身份"，不再拼接用户名 -->
-								<text class="option-name">个人</text>
+								<text class="option-name">个人身份</text>
 							</view>
 							<view class="option-status-row">
 								<view class="option-verified" v-if="userInfo.isVerified">
+									<text class="fa fa-check-circle verified-icon"></text>
 									<text class="verified-text-small">已认证</text>
 								</view>
-								<!-- 未认证的入口在主页已经足够强，此处简化显示 -->
 								<view class="option-unverified" v-else>
+									<text class="fa fa-exclamation-circle unverified-icon"></text>
 									<text class="unverified-text">未认证</text>
+								</view>
+								<!-- 配额显示 -->
+								<view v-if="quotaEnabled" class="quota-badge" :class="{ 'quota-low': personalQuota <= 5 }">
+									<text class="fa fa-file-text quota-icon"></text>
+									<text class="quota-text">{{ personalQuota }}份</text>
 								</view>
 							</view>
 						</view>
 					</view>
-					<text v-if="currentIdentity.type === 'personal'" class="option-check icon icon-check"></text>
+					<view class="option-right">
+						<text v-if="currentIdentity.type === 'personal'" class="option-check">✓</text>
+					</view>
 				</view>
 				
 				<!-- 企业身份 -->
-				<!-- 在个人未认证时，禁用企业身份切换 -->
-				<view class="dropdown-section" v-if="userInfo.isVerified">
-					<text class="section-title">企业身份</text>
-				</view>
 				<view v-if="userInfo.isVerified">
+					<view class="dropdown-section">
+						<text class="section-title">企业身份</text>
+					</view>
 					<view v-for="(enterprise, index) in enterprises" :key="index" class="identity-option" :class="{ active: currentIdentity.type === 'enterprise' && currentIdentity.id === enterprise.id }" @click="switchIdentity('enterprise', enterprise)">
 						<view class="option-left">
+							<view class="option-avatar" :class="enterprise.verified ? 'enterprise-verified' : 'enterprise-unverified'">
+								<text class="icon icon-building"></text>
+							</view>
 							<view class="option-info">
 								<view class="option-name-row">
 									<text class="option-name">{{ enterprise.name }}</text>
@@ -1210,25 +1323,34 @@
 								</view>
 								<view class="option-status-row">
 									<view v-if="!enterprise.verified" class="option-unverified" @click.stop="navigateToEnterpriseCertification(enterprise)">
-										<text class="unverified-text">未认证</text>
-										<text class="verify-now-text">立即认证</text>
+										<text class="fa fa-exclamation-circle unverified-icon"></text>
+										<text class="unverified-text">立即认证</text>
 									</view>
 									<view v-else class="option-verified">
+										<text class="fa fa-check-circle verified-icon"></text>
 										<text class="verified-text-small">已认证</text>
+									</view>
+									<!-- 配额显示 -->
+									<view v-if="quotaEnabled" class="quota-badge" :class="{ 'quota-low': getEnterpriseQuota(enterprise.id) <= 5 }">
+										<text class="fa fa-file-text quota-icon"></text>
+										<text class="quota-text">{{ getEnterpriseQuota(enterprise.id) }}份</text>
 									</view>
 								</view>
 							</view>
 						</view>
-						<text v-if="currentIdentity.type === 'enterprise' && currentIdentity.id === enterprise.id" class="option-check icon icon-check"></text>
+						<view class="option-right">
+							<text v-if="currentIdentity.type === 'enterprise' && currentIdentity.id === enterprise.id" class="option-check">✓</text>
+						</view>
+					</view>
+				</view>
+				
+				<!-- 未认证提示 -->
+				<view class="dropdown-section" v-else>
+					<view class="unverified-enterprise-tip">
+						<text class="tip-text">完成个人实名认证后，可创建或加入企业</text>
 					</view>
 				</view>
 
-				<!-- 未认证时的提示 -->
-				<view class="unverified-enterprise-tip" v-else>
-					<text class="tip-text">完成个人实名认证后，可创建或加入企业</text>
-				</view>
-
-				
 				<!-- 添加新企业 -->
 				<view v-if="userInfo.isVerified" class="add-enterprise" @click="addEnterprise">
 					<text class="add-icon icon icon-plus"></text>
@@ -1311,6 +1433,7 @@
 	.icon-user:before { content: "\f007"; }
 	.icon-clock:before { content: "\f017"; }
 	.icon-x-circle:before { content: "\f057"; }
+	.icon-file-contract:before { content: "\f56c"; }
 	
 	/* 用户信息卡片 */
 	.user-info-card {
@@ -1776,21 +1899,21 @@
 	
 	/* 菜单区域 */
 	.menu-container {
-		padding: 16rpx 24rpx;
+		padding: 12rpx 20rpx;
 	}
 	
 	.menu-list {
 		background-color: #FFFFFF;
 		border-radius: 16rpx;
 		overflow: hidden;
-		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
-		margin-bottom: 16rpx;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+		margin-bottom: 12rpx;
 	}
 	
 	.menu-item {
 		flex-direction: row;
 		align-items: center;
-		padding: 28rpx 24rpx;
+		padding: 24rpx 20rpx;
 		border-bottom-width: 1rpx;
 		border-bottom-color: #F0F0F0;
 		transition: background-color 0.3s;
@@ -1821,6 +1944,15 @@
 	
 	.menu-icon .icon {
 		font-size: 38rpx;
+		color: #00C28A;
+	}
+	
+	/* 配额图标特殊样式 */
+	.menu-icon.quota-icon {
+		background: linear-gradient(135deg, rgba(0, 194, 138, 0.15) 0%, rgba(0, 194, 138, 0.08) 100%);
+	}
+	
+	.menu-icon.quota-icon .icon {
 		color: #00C28A;
 	}
 	
@@ -1856,6 +1988,20 @@
 	.menu-arrow .icon {
 		font-size: 26rpx;
 		color: #BBBBBB;
+	}
+	
+	/* 配额徽章 */
+	.quota-badge {
+		background: linear-gradient(135deg, #00C28A 0%, #00A876 100%);
+		padding: 4rpx 12rpx;
+		border-radius: 16rpx;
+		margin-right: 8rpx;
+	}
+	
+	.quota-badge-text {
+		font-size: 20rpx;
+		font-weight: 500;
+		color: #FFFFFF;
 	}
 	
 	/* 应用版本 */
@@ -1896,11 +2042,13 @@
 		left: 0;
 		right: 0;
 		background-color: #FFFFFF;
-		border-radius: 24rpx 24rpx 0 0;
-		padding: 32rpx 24rpx;
-		max-height: 70%;
+		border-top-left-radius: 40rpx;
+		border-top-right-radius: 40rpx;
+		padding: 40rpx 32rpx;
+		padding-bottom: 140rpx; /* 预留底部 tabbar 空间 */
+		max-height: 85%;
 		overflow-y: auto;
-		box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.1);
+		box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.08);
 	}
 	
 	.dropdown-header {
@@ -1908,38 +2056,44 @@
 		align-items: center;
 		justify-content: center;
 		margin-bottom: 24rpx;
-		padding-bottom: 16rpx;
+		padding-bottom: 24rpx;
 		border-bottom-width: 1rpx;
-		border-bottom-color: #F0F0F0;
+		border-bottom-color: #F8F8F8;
 	}
 	
 	.dropdown-title {
 		font-size: 32rpx;
 		color: #333333;
-		font-weight: 600;
+		font-weight: bold;
 	}
 	
 	.dropdown-section {
-		padding: 16rpx 0 8rpx 0;
+		padding: 32rpx 0 16rpx 0;
 	}
 	
 	.section-title {
 		font-size: 26rpx;
 		color: #999999;
-		margin-left: 8rpx;
+		margin-left: 12rpx;
+		font-weight: 500;
 	}
 	
 	.identity-option {
 		flex-direction: row;
 		align-items: center;
-		justify-content: space-between;
-		padding: 20rpx 16rpx;
-		border-radius: 12rpx;
-		margin-bottom: 12rpx;
+		padding: 32rpx 28rpx;
+		background-color: #FFFFFF;
+		border-radius: 20rpx;
+		margin-bottom: 20rpx;
+		border-width: 1rpx;
+		border-color: #EEEEEE;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.02);
 	}
 	
 	.identity-option.active {
-		background-color: rgba(0, 194, 138, 0.1);
+		background-color: rgba(0, 194, 138, 0.04);
+		border-width: 2rpx;
+		border-color: #00C28A;
 	}
 	
 	.option-left {
@@ -1952,11 +2106,14 @@
 		width: 80rpx;
 		height: 80rpx;
 		border-radius: 16rpx;
-		background-color: #F5F7FA;
+		background-color: #F8F8F8;
 		align-items: center;
 		justify-content: center;
-		margin-right: 16rpx;
+		margin-right: 20rpx;
 		overflow: hidden;
+		border-width: 1rpx;
+		border-color: #EEEEEE;
+		flex-shrink: 0;
 	}
 	
 	.option-avatar-img {
@@ -1965,7 +2122,7 @@
 	}
 	
 	.personal-avatar {
-		background: linear-gradient(135deg, rgba(0, 194, 138, 0.1) 0%, rgba(0, 194, 138, 0.05) 100%);
+		background-color: rgba(0, 194, 138, 0.06);
 	}
 	
 	.personal-avatar .icon {
@@ -1974,7 +2131,7 @@
 	}
 	
 	.option-avatar.enterprise-verified {
-		background-color: rgba(0, 194, 138, 0.1);
+		background-color: rgba(0, 194, 138, 0.06);
 	}
 	
 	.option-avatar.enterprise-verified .icon {
@@ -1983,100 +2140,153 @@
 	}
 	
 	.option-avatar.enterprise-unverified {
-		background-color: rgba(255, 107, 0, 0.1);
+		background-color: #F5F5F5;
 	}
 	
 	.option-avatar.enterprise-unverified .icon {
 		font-size: 40rpx;
-		color: #E68A00;
+		color: #BBBBBB;
 	}
 	
 	.option-info {
-		margin-left: 16rpx;
+		margin-left: 8rpx;
 		flex: 1;
-		padding-left: 10rpx; /* 添加左侧内边距 */
+		min-width: 0;
 	}
 	
 	.option-name {
 		font-size: 30rpx;
 		color: #333333;
-		font-weight: 500;
+		font-weight: 600;
+		lines: 1;
+		text-overflow: ellipsis;
 	}
 	
 	.option-name-row {
 		flex-direction: row;
 		align-items: center;
+		margin-bottom: 8rpx;
 	}
 	
+	/* 角色标签 - 蓝色系，与认证状态区分 */
 	.option-role {
-		background-color: #f0f2f5;
-		border-radius: 30rpx;
-		padding: 2rpx 10rpx;
+		background-color: rgba(24, 144, 255, 0.1);
+		border-radius: 6rpx;
+		padding: 4rpx 12rpx;
 		margin-left: 12rpx;
+		flex-shrink: 0;
 	}
 	
 	.role-text-small {
-		color: #5a6a7f;
+		color: #1890FF;
 		font-size: 20rpx;
+		font-weight: 500;
 	}
 	
 	.option-status-row {
 		flex-direction: row;
 		align-items: center;
-		margin-top: 4rpx;
+		margin-top: 6rpx;
 	}
 	
+	/* 未认证/立即认证 - 橙色警告样式 */
 	.option-unverified {
-		background-color: #FFF8E6;
-		border-radius: 20rpx;
-		padding: 4rpx 12rpx;
-	}
-	
-	/* 未认证时的提示 */
-	.unverified-enterprise-tip {
 		flex-direction: row;
 		align-items: center;
-		justify-content: center;
+		background-color: rgba(250, 140, 22, 0.1);
+		border-width: 1rpx;
+		border-color: rgba(250, 140, 22, 0.3);
+		border-radius: 6rpx;
+		padding: 4rpx 12rpx;
+		margin-right: 12rpx;
+	}
+	
+	.option-unverified .unverified-text {
+		color: #FA8C16;
+		font-size: 20rpx;
+		font-weight: 500;
+	}
+	
+	/* 已认证 - 绿色成功样式 */
+	.option-verified {
+		flex-direction: row;
+		align-items: center;
+		background-color: rgba(0, 194, 138, 0.08);
+		border-width: 1rpx;
+		border-color: rgba(0, 194, 138, 0.2);
+		border-radius: 6rpx;
+		padding: 4rpx 12rpx;
+		margin-right: 12rpx;
+	}
+	
+	.verified-icon {
+		font-size: 18rpx;
+		color: #00C28A;
+		margin-right: 4rpx;
+	}
+	
+	.verified-text-small {
+		color: #00C28A;
+		font-size: 20rpx;
+		font-weight: 500;
+	}
+	
+	.unverified-icon {
+		font-size: 18rpx;
+		color: #FA8C16;
+		margin-right: 4rpx;
+	}
+	
+	.unverified-enterprise-tip {
 		padding: 24rpx;
-		background-color: #F5F7FA;
+		background-color: #F8F9FB;
 		border-radius: 12rpx;
-		margin: 12rpx 0;
+		border-width: 1rpx;
+		border-color: #EEEEEE;
 	}
 	
 	.tip-text {
-		font-size: 26rpx;
-		color: #909399;
-	}
-	
-	/* 移除重复的样式定义 */
-	.option-unverified .unverified-text {
-		color: #E68A00;
-		font-size: 20rpx;
-	}
-	
-	.option-verified .verified-text-small {
-		/* 使用.verified-text-small即可 */
-	}
-	
-	.verified-text-small {
-		color: #00C28A;
-		font-size: 20rpx;
-	}
-	
-	.option-verified {
-		background-color: #E8F7F1;
-		border-radius: 30rpx;
-		padding: 2rpx 10rpx;
-	}
-	
-	.verified-text-small {
-		color: #00C28A;
-		font-size: 20rpx;
+		font-size: 24rpx;
+		color: #999999;
+		text-align: center;
 	}
 	
 	.option-check {
 		color: #00C28A;
-		font-size: 28rpx;
+		font-size: 32rpx;
+		font-weight: bold;
+		margin-left: 12rpx;
+	}
+	
+	.option-right {
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	/* 身份切换弹窗 - 配额徽章样式 */
+	.identity-dropdown .quota-badge {
+		flex-direction: row;
+		align-items: center;
+		padding: 6rpx 14rpx;
+		border-radius: 20rpx;
+		background: linear-gradient(135deg, #00C28A 0%, #00A876 100%);
+		margin-right: 12rpx;
+	}
+	
+	.identity-dropdown .quota-badge.quota-low {
+		background: linear-gradient(135deg, #FF6B6B 0%, #E55555 100%);
+	}
+	
+	.identity-dropdown .quota-icon {
+		font-size: 18rpx;
+		color: #FFFFFF;
+		margin-right: 6rpx;
+	}
+	
+	.identity-dropdown .quota-text {
+		font-size: 22rpx;
+		font-weight: 600;
+		color: #FFFFFF;
 	}
 	
 	.add-enterprise {
@@ -2086,19 +2296,24 @@
 		padding: 24rpx;
 		border-top-width: 1rpx;
 		border-top-color: #F0F0F0;
-		margin-top: 16rpx;
+		margin-top: 24rpx;
+		background-color: #FAFAFA;
+		border-radius: 16rpx;
+		border-style: dashed;
+		border-width: 1rpx;
+		border-color: #EEEEEE;
 	}
 	
 	.add-icon {
 		font-size: 24rpx;
 		color: #00C28A;
-		margin-right: 8rpx;
+		margin-right: 10rpx;
 	}
 	
 	.add-text {
 		font-size: 28rpx;
 		color: #00C28A;
-		font-weight: 500;
+		font-weight: 600;
 	}
 
 	/* 未认证状态下的"去认证"按钮样式 */

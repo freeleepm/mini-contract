@@ -229,6 +229,7 @@
 .icon-users::before { content: "\f0c0"; }
 .icon-key::before { content: "\f084"; }
 .icon-stamp::before { content: "\f5bf"; }
+.icon-file-text::before { content: "\f15c"; } /* fa-file-text-o 配额管理 */
 .icon-plus::before { content: "\f067"; }
 .icon-user::before { content: "\f007"; }
 .icon-clock::before { content: "\f017"; }

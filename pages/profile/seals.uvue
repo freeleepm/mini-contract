@@ -513,6 +513,46 @@ export default {
 		
 		// 创建个人印章
 		createPersonalSeal() {
+			// 🔐 检查个人实名认证状态
+			let isVerified = false;
+			let verifyStatus = 0;
+			try {
+				const savedIdentity = uni.getStorageSync('currentIdentity');
+				if (savedIdentity) {
+					const identity = JSON.parse(savedIdentity) as UTSJSONObject | null;
+					if (identity != null) {
+						isVerified = identity['verified'] === true;
+						verifyStatus = (identity['verifyStatus'] as number | null) ?? 0;
+					}
+				}
+			} catch (e) {
+				console.warn('[个人印章] 获取认证状态失败:', e);
+			}
+			
+			if (!isVerified) {
+				let content = '创建个人印章需要先完成实名认证，请先完成认证后再创建印章。';
+				if (verifyStatus === 1) {
+					content = '实名认证正在审核中，请耐心等待审核通过后再创建印章。';
+				} else if (verifyStatus === 3) {
+					content = '实名认证被拒绝，请重新提交认证后再创建印章。';
+				}
+				
+				uni.showModal({
+					title: '需要实名认证',
+					content: content,
+					confirmText: verifyStatus === 1 ? '我知道了' : '去认证',
+					cancelText: '取消',
+					success: (res) => {
+						if (res.confirm && verifyStatus !== 1) {
+							uni.navigateTo({
+								url: '/pages/kyc/personal/index'
+							});
+						}
+					}
+				});
+				return;
+			}
+			
 			// 检查是否已达上限
 			if (this.isPersonalSealLimitReached) {
 				uni.showModal({

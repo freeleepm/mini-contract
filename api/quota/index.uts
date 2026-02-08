@@ -1,0 +1,255 @@
+/**
+ * 配额相关 API
+ * 
+ * @author 小华同学 ai
+ */
+import { get, post, put } from '../index';
+
+// ========== 配额余额 ==========
+
+/**
+ * 配额余额响应
+ */
+export interface QuotaBalanceResponse {
+    id: number;
+    accountType: number;
+    accountTypeName: string;
+    balance: number;
+    totalAcquired: number;
+    totalUsed: number;
+    enterpriseName?: string;
+    /** 配额功能是否启用，前端根据此字段控制配额 UI 显示/隐藏 */
+    enabled: boolean;
+}
+
+/**
+ * 配额变动记录
+ */
+export interface QuotaLogItem {
+    id: number;
+    changeType: number;
+    changeTypeName: string;
+    changeAmount: number;
+    balanceBefore: number;
+    balanceAfter: number;
+    remark?: string;
+    createTime: string;
+}
+
+/**
+ * 配额变动记录分页响应
+ */
+export interface QuotaLogPageResponse {
+    total: number;
+    list: QuotaLogItem[];
+}
+
+/**
+ * 配额变动记录分页请求参数
+ */
+export interface QuotaLogPageRequest {
+    pageNo?: number;
+    pageSize?: number;
+    changeType?: number | null;
+    beginTime?: string;
+    endTime?: string;
+    enterpriseId?: number | null;
+}
+
+/**
+ * 获取配额余额
+ * @param enterpriseId 企业ID（可选，不传则获取个人账户）
+ * @returns 配额余额信息
+ */
+export function getQuotaBalance(enterpriseId?: number): Promise<QuotaBalanceResponse> {
+    const params = enterpriseId != null ? { enterpriseId: enterpriseId } : {};
+    return get('/member/quota/balance', params);
+}
+
+/**
+ * 获取配额变动记录分页
+ * @param params 分页参数
+ * @returns 配额变动记录分页
+ */
+export function getQuotaLogPage(params: QuotaLogPageRequest): Promise<QuotaLogPageResponse> {
+    return get('/member/quota/log/page', params);
+}
+
+// ========== 配额套餐 ==========
+
+/**
+ * 配额套餐信息
+ */
+export interface QuotaPackageItem {
+    id: number;
+    name: string;
+    quotaCount: number;
+    price: number;
+    originalPrice?: number;
+    description?: string;
+    sort: number;
+    status: number;
+}
+
+/**
+ * 获取上架的套餐列表
+ * @returns 套餐列表
+ */
+export function getPackageList(): Promise<QuotaPackageItem[]> {
+    return get('/member/quota/package/list');
+}
+
+// ========== 配额订单 ==========
+
+/**
+ * 配额订单信息
+ */
+export interface QuotaOrderItem {
+    id: number;
+    orderNo: string;
+    accountId: number;
+    userId: number;
+    packageId: number;
+    packageName: string;
+    quotaCount: number;
+    payAmount: number;
+    payStatus: number;
+    payTime?: string;
+    payChannel?: string;
+    createTime: string;
+}
+
+/**
+ * 创建订单请求参数
+ */
+export interface CreateOrderRequest {
+    packageId: number;
+    enterpriseId?: number;
+}
+
+/**
+ * 创建订单响应
+ */
+export interface CreateOrderResponse {
+    orderId: number;
+    orderNo: string;
+    payOrderId?: number;
+}
+
+/**
+ * 创建配额订单
+ * @param data 创建订单参数
+ * @returns 订单信息
+ */
+export function createQuotaOrder(data: CreateOrderRequest): Promise<CreateOrderResponse> {
+    return post('/member/quota/order/create', data);
+}
+
+/**
+ * 取消配额订单
+ * @param id 订单ID
+ * @returns 是否成功
+ */
+export function cancelQuotaOrder(id: number): Promise<boolean> {
+    return put('/member/quota/order/cancel', { id: id });
+}
+
+/**
+ * 获取订单详情
+ * @param id 订单ID
+ * @returns 订单详情
+ */
+export function getQuotaOrder(id: number): Promise<QuotaOrderItem> {
+    return get('/member/quota/order/get', { id: id });
+}
+
+/**
+ * 获取我的订单列表
+ * @param pageNo 页码
+ * @param pageSize 每页数量
+ * @returns 订单分页列表
+ */
+export function getMyOrderPage(pageNo: number = 1, pageSize: number = 10): Promise<{ total: number; list: QuotaOrderItem[] }> {
+    return get('/member/quota/order/my-page', { pageNo: pageNo, pageSize: pageSize });
+}
+
+/**
+ * 同步订单支付状态
+ * 前端支付成功后主动调用，用于 local 环境下 Quartz 未启用的情况
+ * @param orderId 订单ID
+ * @returns 是否成功
+ */
+export function syncOrderPayStatus(orderId: number): Promise<boolean> {
+    return post('/member/quota/order/sync-pay-status?orderId=' + orderId, null);
+}
+
+// ========== 支付相关 ==========
+
+/**
+ * 支付订单信息
+ */
+export interface PayOrderInfo {
+    id: number;
+    appId: number;
+    channelId: number | null;
+    channelCode: string | null;
+    merchantOrderId: string;
+    subject: string;
+    body: string;
+    price: number;
+    channelFeeRate: number;
+    channelFeePrice: number;
+    status: number;
+    userIp: string;
+    expireTime: string;
+    successTime: string | null;
+    notifyTime: string | null;
+    extension: any | null;
+    no: string;
+    refundPrice: number;
+    channelUserId: string | null;
+    channelOrderNo: string | null;
+    createTime: string;
+    updateTime: string;
+}
+
+/**
+ * 支付提交响应
+ */
+export interface PaySubmitResponse {
+    status: number;
+    displayMode: string;
+    displayContent: string;
+}
+
+/**
+ * 获取支付订单信息
+ * @param id 支付订单ID
+ * @param sync 是否同步渠道状态
+ * @returns 支付订单信息
+ */
+export function getPayOrder(id: number, sync: boolean = false): Promise<PayOrderInfo> {
+    return get('/pay/order/get', { id: id, sync: sync });
+}
+
+/**
+ * 提交支付订单
+ * @param id 支付订单ID
+ * @param channelCode 支付渠道代码
+ * @returns 支付提交结果
+ */
+export function submitPayOrder(id: number, channelCode: string): Promise<PaySubmitResponse> {
+    return post('/pay/order/submit', {
+        id: id,
+        channelCode: channelCode
+    });
+}
+
+/**
+ * 获取可用支付渠道列表
+ * @param appId 支付应用ID
+ * @returns 可用渠道代码列表
+ */
+export function getEnableChannelCodeList(appId: number): Promise<string[]> {
+    return get('/pay/channel/get-enable-code-list', { appId: appId });
+}

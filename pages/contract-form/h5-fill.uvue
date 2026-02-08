@@ -49,6 +49,58 @@ export default {
 		 * 构建H5表单页面URL
 		 */
 	async buildFillUrl() {
+		// 双重保障：检查认证状态（根据身份类型）
+		try {
+			const savedIdentity = uni.getStorageSync('currentIdentity');
+			if (savedIdentity) {
+				const identity = JSON.parse(savedIdentity) as { type?: string; id?: string | number; name?: string; verified?: boolean };
+				if (identity) {
+					// 个人身份需要检查个人实名认证
+					if (identity.type === 'personal' && !identity.verified) {
+						console.log('[H5表单] ❌ 个人未实名认证，阻止填写');
+						this.loading = false;
+						uni.showModal({
+							title: '请先实名认证',
+							content: '为保障合同的法律效力，填写表单前需要完成实名认证。',
+							confirmText: '去认证',
+							cancelText: '返回',
+							success: (res) => {
+								if (res.confirm) {
+									uni.redirectTo({ url: '/pages/kyc/personal/index' });
+								} else {
+									uni.navigateBack();
+								}
+							}
+						});
+						return;
+					}
+					// 企业身份需要检查企业认证
+					if (identity.type === 'enterprise' && !identity.verified) {
+						console.log('[H5表单] ❌ 企业未认证，阻止填写');
+						this.loading = false;
+						uni.showModal({
+							title: '企业未认证',
+							content: '当前企业尚未完成认证，无法填写表单。是否前往认证？',
+							confirmText: '去认证',
+							cancelText: '返回',
+							success: (res) => {
+								if (res.confirm) {
+									uni.redirectTo({
+										url: `/pages/kyc/enterprise/index?id=${identity.id}&name=${encodeURIComponent(identity.name || '')}`
+									});
+								} else {
+									uni.navigateBack();
+								}
+							}
+						});
+						return;
+					}
+				}
+			}
+		} catch (e) {
+			console.warn('[H5表单] 检查认证状态失败:', e);
+		}
+		
 		try {
 			// 使用统一印章应用，mode=form
 			// ✅ getSealPageUrl 现在是异步函数，需要 await

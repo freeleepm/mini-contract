@@ -1,0 +1,713 @@
+<template>
+	<view class="page-container">
+		<scroll-view class="content-scroll" scroll-y="true">
+			<view class="content-wrapper">
+				<!-- 支付订单信息 -->
+				<view class="order-card" v-if="!loading">
+					<view class="order-header">
+						<text class="order-title">{{ payOrder.subject }}</text>
+						<view class="order-status" :class="getStatusClass(payOrder.status)">
+							<text class="status-text">{{ getStatusText(payOrder.status) }}</text>
+						</view>
+					</view>
+					<view class="order-divider"></view>
+					<view class="order-body">
+						<view class="order-info-item">
+							<text class="info-label">订单号</text>
+							<text class="info-value">{{ payOrder.no }}</text>
+						</view>
+						<view class="order-info-item">
+							<text class="info-label">商品说明</text>
+							<text class="info-value">{{ payOrder.body }}</text>
+						</view>
+						<view class="order-info-item">
+							<text class="info-label">创建时间</text>
+							<text class="info-value">{{ payOrder.createTime }}</text>
+						</view>
+					</view>
+					<view class="order-divider"></view>
+					<view class="order-footer">
+						<text class="price-label">支付金额</text>
+						<text class="price-value">¥{{ formatPrice(payOrder.price) }}</text>
+					</view>
+				</view>
+
+				<!-- 加载中 -->
+				<view class="loading-card" v-else>
+					<text class="loading-text">加载中...</text>
+				</view>
+
+				<!-- 支付方式选择 -->
+				<view class="pay-methods" v-if="payOrder.status === 0">
+					<view class="section-title">
+						<text class="section-title-text">选择支付方式</text>
+					</view>
+					
+					<!-- 加载中提示 -->
+					<view class="loading-tip" v-if="channelLoading">
+						<text class="loading-text">加载支付渠道中...</text>
+					</view>
+					
+					<!-- 无可用渠道提示 -->
+					<view class="no-channel-tip" v-else-if="getAvailableChannels().length === 0">
+						<text class="no-channel-text">暂无可用支付渠道</text>
+					</view>
+					
+					<!-- 动态渠道列表 -->
+					<view class="method-list" v-else>
+						<view class="method-item" 
+							v-for="(channel, index) in getAvailableChannels()"
+							:key="channel.code"
+							:class="{ 'selected': selectedChannel === channel.code }"
+							@click="selectChannel(channel.code)">
+							<view class="method-icon">
+								<text class="icon" :class="channel.icon"></text>
+							</view>
+							<view class="method-info">
+								<text class="method-name">{{ channel.name }}</text>
+								<text class="method-desc">{{ channel.desc }}</text>
+							</view>
+							<view class="method-check" v-if="selectedChannel === channel.code">
+								<text class="icon icon-check"></text>
+							</view>
+						</view>
+					</view>
+				</view>
+
+				<!-- 支付成功提示 -->
+				<view class="success-card" v-if="payOrder.status === 10">
+					<view class="success-icon-container">
+						<text class="icon icon-check-circle success-icon"></text>
+					</view>
+					<text class="success-title">支付成功</text>
+					<text class="success-desc">配额已添加到您的账户</text>
+				</view>
+			</view>
+		</scroll-view>
+
+		<!-- 底部操作栏 -->
+		<view class="bottom-bar" v-if="payOrder.status === 0">
+			<view class="pay-btn" :class="{ 'disabled': !selectedChannel || submitting }"
+				@click="handlePay">
+				<text class="pay-btn-text">{{ submitting ? '支付中...' : '立即支付' }}</text>
+			</view>
+		</view>
+		
+		<view class="bottom-bar" v-else-if="payOrder.status === 10">
+			<view class="pay-btn success-btn" @click="goBack">
+				<text class="pay-btn-text">返回</text>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script lang="uts">
+	import { 
+		getPayOrder, 
+		submitPayOrder, 
+		syncOrderPayStatus,
+		getEnableChannelCodeList,
+		getQuotaBalance,
+		type PayOrderInfo 
+	} from '@/api/quota/index';
+
+	// 支付状态枚举
+	const PayOrderStatusEnum = {
+		WAITING: 0,   // 待支付
+		SUCCESS: 10,  // 支付成功
+		REFUND: 20,   // 已退款
+		CLOSED: 30,   // 支付关闭
+		EXPIRED: 40   // 已过期
+	};
+	
+	// 所有支付渠道配置
+	type ChannelConfig = {
+		name: string;
+		code: string;
+		desc: string;
+		icon: string;
+	};
+	
+	const allChannelsConfig: ChannelConfig[] = [
+		{ name: '模拟支付', code: 'mock', desc: '用于测试，立即到账', icon: 'icon-credit-card' },
+		{ name: '支付宝扫码', code: 'alipay_qr', desc: '使用支付宝扫码支付', icon: 'icon-credit-card' },
+		{ name: '支付宝H5', code: 'alipay_wap', desc: '跳转支付宝网页支付', icon: 'icon-credit-card' },
+		{ name: '微信扫码', code: 'wx_native', desc: '使用微信扫码支付', icon: 'icon-credit-card' },
+		{ name: '微信H5', code: 'wx_h5', desc: '跳转微信网页支付', icon: 'icon-credit-card' },
+		{ name: '微信小程序', code: 'wx_lite', desc: '微信小程序内支付', icon: 'icon-credit-card' }
+	];
+
+	export default {
+		data() {
+			return {
+				loading: true,
+				submitting: false,
+				orderId: null as number | null,
+				payOrderId: null as number | null,
+				payOrder: {} as PayOrderInfo,
+				selectedChannel: '',
+				pollingTimer: null as number | null,
+				enabledChannelCodes: [] as string[],
+				channelLoading: false
+			}
+		},
+
+		async onLoad(options: OnLoadOptions) {
+			if (options['orderId'] != null) {
+				this.orderId = parseInt(options['orderId'] as string);
+			}
+			if (options['payOrderId'] != null) {
+				this.payOrderId = parseInt(options['payOrderId'] as string);
+			}
+			
+			// 检查配额功能是否启用
+			try {
+				const balanceRes = await getQuotaBalance();
+				if (balanceRes != null && balanceRes.enabled === false) {
+					uni.showToast({
+						title: '配额功能已关闭',
+						icon: 'none'
+					});
+					setTimeout(() => {
+						uni.navigateBack();
+					}, 1500);
+					return;
+				}
+			} catch (e) {
+				console.warn('检查配额开关状态失败', e);
+			}
+			
+			if (this.payOrderId != null) {
+				this.loadPayOrder();
+			} else {
+				uni.showToast({
+					title: '订单参数错误',
+					icon: 'none'
+				});
+				setTimeout(() => {
+					uni.navigateBack();
+				}, 1500);
+			}
+		},
+
+		onUnload() {
+			this.stopPolling();
+		},
+
+		methods: {
+			formatPrice(price: number): string {
+				return (price / 100).toFixed(2);
+			},
+
+			getStatusClass(status: number): string {
+				if (status === PayOrderStatusEnum.SUCCESS) {
+					return 'status-success';
+				} else if (status === PayOrderStatusEnum.WAITING) {
+					return 'status-waiting';
+				} else {
+					return 'status-closed';
+				}
+			},
+
+			getStatusText(status: number): string {
+				switch (status) {
+					case PayOrderStatusEnum.WAITING:
+						return '待支付';
+					case PayOrderStatusEnum.SUCCESS:
+						return '支付成功';
+					case PayOrderStatusEnum.REFUND:
+						return '已退款';
+					case PayOrderStatusEnum.CLOSED:
+						return '已关闭';
+					case PayOrderStatusEnum.EXPIRED:
+						return '已过期';
+					default:
+						return '未知状态';
+				}
+			},
+
+			async loadPayOrder() {
+				this.loading = true;
+				try {
+					const res = await getPayOrder(this.payOrderId as number, true);
+					this.payOrder = res;
+					
+					// 如果已支付成功，同步订单状态
+					if (res.status === PayOrderStatusEnum.SUCCESS && this.orderId != null) {
+						await this.syncPayStatus();
+					}
+					
+					// 🔧 动态加载可用支付渠道
+					if (res.appId != null) {
+						await this.loadEnabledChannels(res.appId as number);
+					}
+				} catch (error: any) {
+					console.error('加载支付订单失败', error);
+					uni.showToast({
+						title: error.message || '加载失败',
+						icon: 'none'
+					});
+				} finally {
+					this.loading = false;
+				}
+			},
+			
+			// 加载可用支付渠道
+			async loadEnabledChannels(appId: number) {
+				this.channelLoading = true;
+				try {
+					const codes = await getEnableChannelCodeList(appId);
+					this.enabledChannelCodes = codes || [];
+					console.log('[Pay] 可用支付渠道:', this.enabledChannelCodes);
+					
+					// 默认选中第一个可用渠道
+					if (this.enabledChannelCodes.length > 0) {
+						this.selectedChannel = this.enabledChannelCodes[0];
+					}
+				} catch (error: any) {
+					console.error('加载支付渠道失败', error);
+					// 加载失败时使用默认的模拟支付
+					this.enabledChannelCodes = ['mock'];
+					this.selectedChannel = 'mock';
+				} finally {
+					this.channelLoading = false;
+				}
+			},
+			
+			// 获取可用的渠道配置列表
+			getAvailableChannels(): ChannelConfig[] {
+				return allChannelsConfig.filter((c: ChannelConfig): boolean => 
+					this.enabledChannelCodes.indexOf(c.code) !== -1
+				);
+			},
+
+			selectChannel(channel: string) {
+				this.selectedChannel = channel;
+			},
+
+			handlePay() {
+				if (!this.selectedChannel || this.submitting) {
+					return;
+				}
+
+				// 🔐 二次确认弹窗
+				const priceText = '¥' + this.formatPrice(this.payOrder.price);
+				const that = this; // 保存 this 引用
+				uni.showModal({
+					title: '支付确认',
+					content: '您即将支付 ' + priceText + '，确认继续？',
+					confirmText: '确认支付',
+					cancelText: '取消',
+					success: (res) => {
+						if (res.confirm) {
+							that.doSubmitPay();
+						}
+					}
+				});
+			},
+			
+			// 实际提交支付逻辑
+			async doSubmitPay() {
+				this.submitting = true;
+				try {
+					const res = await submitPayOrder(
+						this.payOrderId as number, 
+						this.selectedChannel
+					);
+					
+					// 模拟支付直接成功
+					if (res.status === PayOrderStatusEnum.SUCCESS) {
+						this.payOrder.status = PayOrderStatusEnum.SUCCESS;
+						await this.syncPayStatus();
+						uni.showToast({
+							title: '支付成功！',
+							icon: 'success'
+						});
+					} else {
+						// 其他支付方式，开始轮询
+						this.startPolling();
+					}
+				} catch (error: any) {
+					console.error('支付失败', error);
+					uni.showToast({
+						title: error.message || '支付失败',
+						icon: 'none'
+					});
+				} finally {
+					this.submitting = false;
+				}
+			},
+
+			async syncPayStatus() {
+				if (this.orderId == null) return;
+				
+				try {
+					await syncOrderPayStatus(this.orderId as number);
+					console.log('同步支付状态成功');
+				} catch (error) {
+					console.warn('同步支付状态失败', error);
+				}
+			},
+
+			startPolling() {
+				this.stopPolling();
+				this.pollingTimer = setInterval(() => {
+					this.checkPayStatus();
+				}, 3000) as number;
+			},
+
+			stopPolling() {
+				if (this.pollingTimer != null) {
+					clearInterval(this.pollingTimer);
+					this.pollingTimer = null;
+				}
+			},
+
+			async checkPayStatus() {
+				try {
+					const res = await getPayOrder(this.payOrderId as number, true);
+					if (res.status === PayOrderStatusEnum.SUCCESS) {
+						this.stopPolling();
+						this.payOrder.status = PayOrderStatusEnum.SUCCESS;
+						await this.syncPayStatus();
+						uni.showToast({
+							title: '支付成功！',
+							icon: 'success'
+						});
+					} else if (res.status !== PayOrderStatusEnum.WAITING) {
+						this.stopPolling();
+						this.payOrder.status = res.status;
+					}
+				} catch (error) {
+					console.error('检查支付状态失败', error);
+				}
+			},
+
+			goBack() {
+				uni.navigateBack({
+					delta: 2
+				});
+			}
+		}
+	}
+</script>
+
+<style>
+	/* 引入FontAwesome图标 */
+	@import url("../../static/styles/fontawesome.css");
+	
+	.page-container {
+		flex: 1;
+		background-color: #F7F9FC;
+	}
+
+	.content-scroll {
+		flex: 1;
+	}
+
+	.content-wrapper {
+		padding: 30rpx;
+		padding-bottom: 180rpx;
+	}
+
+	/* 订单卡片 */
+	.order-card {
+		background-color: #FFFFFF;
+		border-radius: 20rpx;
+		padding: 32rpx;
+		margin-bottom: 30rpx;
+	}
+
+	.order-header {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.order-title {
+		font-size: 32rpx;
+		font-weight: 600;
+		color: #303133;
+		flex: 1;
+	}
+
+	.order-status {
+		padding: 8rpx 20rpx;
+		border-radius: 20rpx;
+	}
+
+	.status-waiting {
+		background-color: #FFF3CD;
+	}
+
+	.status-waiting .status-text {
+		color: #856404;
+	}
+
+	.status-success {
+		background-color: #D4EDDA;
+	}
+
+	.status-success .status-text {
+		color: #155724;
+	}
+
+	.status-closed {
+		background-color: #F5F5F5;
+	}
+
+	.status-closed .status-text {
+		color: #909399;
+	}
+
+	.status-text {
+		font-size: 24rpx;
+		font-weight: 500;
+	}
+
+	.order-divider {
+		height: 1rpx;
+		background-color: #EBEEF5;
+		margin: 24rpx 0;
+	}
+
+	.order-body {
+		margin-bottom: 8rpx;
+	}
+
+	.order-info-item {
+		flex-direction: row;
+		justify-content: space-between;
+		margin-bottom: 16rpx;
+	}
+
+	.info-label {
+		font-size: 26rpx;
+		color: #909399;
+	}
+
+	.info-value {
+		font-size: 26rpx;
+		color: #606266;
+	}
+
+	.order-footer {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.price-label {
+		font-size: 28rpx;
+		color: #606266;
+	}
+
+	.price-value {
+		font-size: 48rpx;
+		font-weight: 700;
+		color: #f56c6c;
+	}
+
+	/* 加载中 */
+	.loading-card {
+		background-color: #FFFFFF;
+		border-radius: 20rpx;
+		padding: 60rpx;
+		align-items: center;
+		margin-bottom: 30rpx;
+	}
+
+	.loading-text {
+		font-size: 28rpx;
+		color: #909399;
+	}
+
+	/* 支付方式 */
+	.section-title {
+		margin-bottom: 24rpx;
+	}
+
+	.section-title-text {
+		font-size: 32rpx;
+		font-weight: 600;
+		color: #303133;
+	}
+
+	.method-list {
+		margin-bottom: 30rpx;
+	}
+	
+	.loading-tip {
+		padding: 40rpx;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.loading-text {
+		font-size: 28rpx;
+		color: #909399;
+	}
+	
+	.no-channel-tip {
+		padding: 60rpx;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.no-channel-text {
+		font-size: 28rpx;
+		color: #909399;
+	}
+
+	.method-item {
+		flex-direction: row;
+		align-items: center;
+		background-color: #FFFFFF;
+		border-radius: 20rpx;
+		padding: 32rpx;
+		margin-bottom: 16rpx;
+		border-width: 3rpx;
+		border-color: #E4E7ED;
+		border-style: solid;
+	}
+
+	.method-item.selected {
+		border-color: #00C28A;
+		background: linear-gradient(135deg, rgba(0, 194, 138, 0.08) 0%, rgba(0, 168, 118, 0.08) 100%);
+	}
+
+	.method-icon {
+		width: 80rpx;
+		height: 80rpx;
+		background-color: rgba(0, 194, 138, 0.1);
+		border-radius: 40rpx;
+		align-items: center;
+		justify-content: center;
+		margin-right: 24rpx;
+	}
+
+	.method-icon .icon {
+		font-family: 'Font Awesome 6 Free';
+		font-weight: 900;
+		font-size: 36rpx;
+		color: #00C28A;
+	}
+
+	.method-info {
+		flex: 1;
+	}
+
+	.method-name {
+		font-size: 30rpx;
+		font-weight: 500;
+		color: #303133;
+		margin-bottom: 8rpx;
+	}
+
+	.method-desc {
+		font-size: 24rpx;
+		color: #909399;
+	}
+
+	.method-check {
+		width: 48rpx;
+		height: 48rpx;
+		background-color: #00C28A;
+		border-radius: 24rpx;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.method-check .icon {
+		font-family: 'Font Awesome 6 Free';
+		font-weight: 900;
+		font-size: 24rpx;
+		color: #FFFFFF;
+	}
+
+	/* 成功提示 */
+	.success-card {
+		background-color: #FFFFFF;
+		border-radius: 20rpx;
+		padding: 60rpx;
+		align-items: center;
+		margin-bottom: 30rpx;
+	}
+
+	.success-icon-container {
+		width: 120rpx;
+		height: 120rpx;
+		background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
+		border-radius: 60rpx;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 24rpx;
+	}
+
+	.success-icon {
+		font-family: FontAwesome;
+		font-size: 60rpx;
+		color: #FFFFFF;
+	}
+
+	.success-title {
+		font-size: 36rpx;
+		font-weight: 600;
+		color: #303133;
+		margin-bottom: 12rpx;
+	}
+
+	.success-desc {
+		font-size: 28rpx;
+		color: #909399;
+	}
+
+	/* 底部操作栏 */
+	.bottom-bar {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		background-color: #FFFFFF;
+		padding: 20rpx 30rpx;
+		padding-bottom: 40rpx;
+		box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+	}
+
+	.pay-btn {
+		background-color: #00C28A;
+		height: 88rpx;
+		border-radius: 44rpx;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.pay-btn.disabled {
+		background-color: #A0CFBE;
+		opacity: 0.8;
+	}
+
+	.pay-btn-text {
+		font-size: 30rpx;
+		font-weight: 500;
+		color: #FFFFFF;
+	}
+
+	.icon {
+		font-family: 'Font Awesome 6 Free';
+		font-weight: 900;
+		font-style: normal;
+	}
+	
+	.icon-credit-card::before {
+		content: "\f09d";
+	}
+	
+	.icon-check::before {
+		content: "\f00c";
+	}
+	
+	.icon-check-circle::before {
+		content: "\f058";
+	}
+</style>

@@ -4,7 +4,11 @@
   "description": "Contract.Pro电子合同应用",
   "main": "main.uts",
   "scripts": {
-    "dev": "npx @dcloudio/uniapp-cli dev"
+    "predev": "node scripts/sync-app-name.js",
+    "dev": "npx @dcloudio/uniapp-cli dev",
+    "prebuild": "node scripts/sync-app-name.js",
+    "build": "npx @dcloudio/uniapp-cli build",
+    "sync-name": "node scripts/sync-app-name.js"
   },
   "dependencies": {
     "@dcloudio/uni-ui": "^1.5.8"

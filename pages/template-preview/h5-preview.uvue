@@ -16,6 +16,9 @@
 	 * 2. 监听 H5 页面的 postMessage 事件
 	 * 3. 处理 H5 页面的关闭、成功等消息
 	 */
+	import { buildTemplateShareConfig, buildDefaultShareConfig } from '../../utils/share';
+	import { buildShareTitle } from '../../config/app.config';
+	
 	export default {
 		data() {
 			return {
@@ -38,6 +41,17 @@
 				}, 1500);
 			}
 		},
+		// #ifdef MP-WEIXIN
+		onShareAppMessage() : any {
+			// 模板预览页 URL 中可能包含模板信息，使用默认分享
+			const defaultConfig = buildDefaultShareConfig();
+			return {
+				title: buildShareTitle('查看合同模板'),
+				path: defaultConfig.path,
+				imageUrl: defaultConfig.imageUrl
+			};
+		},
+		// #endif
 		methods: {
 			handleError(event: any): void {
 				console.error('[模板预览WebView] H5页面加载失败:', event);

@@ -160,7 +160,7 @@ export default {
       isVerified: false, // 企业认证状态
       searchText: '',
       loading: true,
-      sealList: [],
+      sealList: [] as any[],
       pageNo: 1,
       pageSize: 20,
       hasMore: false,
@@ -173,7 +173,7 @@ export default {
     console.log('[企业印章] onLoad options:', JSON.stringify(options));
     
     // 🔧 兼容多种参数名：id、enterpriseId
-    let enterpriseIdFromOptions = null;
+    let enterpriseIdFromOptions: number = 0;
     
     if (options) {
       // 优先使用 id 参数（主要跳转方式）
@@ -188,7 +188,7 @@ export default {
       }
     }
     
-    if (enterpriseIdFromOptions && enterpriseIdFromOptions > 0) {
+    if (enterpriseIdFromOptions > 0) {
       this.enterpriseId = enterpriseIdFromOptions;
       console.log('[企业印章] ✅ 使用URL参数的企业ID:', this.enterpriseId);
       // 加载企业详情
@@ -331,7 +331,7 @@ export default {
       this.loading = true;
       
       try {
-        const params = {
+        const params: { enterpriseId: number; pageNo: number; pageSize: number; name?: string } = {
           enterpriseId: this.enterpriseId,
           pageNo: this.pageNo,
           pageSize: this.pageSize
@@ -409,6 +409,45 @@ export default {
     
     // 创建印章
     createSeal() {
+      // 🔐 检查企业认证状态
+      if (!this.isVerified) {
+        // 从缓存获取认证状态详情
+        let verifyStatus = 0;
+        try {
+          const currentEnterprise = uni.getStorageSync('currentEnterprise');
+          if (currentEnterprise) {
+            const enterpriseData = (typeof currentEnterprise === 'string' 
+              ? JSON.parse(currentEnterprise) 
+              : currentEnterprise) as UTSJSONObject | null;
+            verifyStatus = enterpriseData != null ? ((enterpriseData['status'] as number | null) ?? 0) : 0;
+          }
+        } catch (e) {
+          console.warn('[企业印章] 获取认证状态失败:', e);
+        }
+        
+        let content = '创建企业印章需要先完成企业认证，请先完成认证后再创建印章。';
+        if (verifyStatus === 1) {
+          content = '企业认证正在审核中，请耐心等待审核通过后再创建印章。';
+        } else if (verifyStatus === 3) {
+          content = '企业认证被拒绝，请重新提交认证后再创建印章。';
+        }
+        
+        uni.showModal({
+          title: '需要企业认证',
+          content: content,
+          confirmText: verifyStatus === 1 ? '我知道了' : '去认证',
+          cancelText: '取消',
+          success: (res) => {
+            if (res.confirm && verifyStatus !== 1) {
+              uni.navigateTo({
+                url: '/pages/kyc/enterprise/index'
+              });
+            }
+          }
+        });
+        return;
+      }
+      
       uni.navigateTo({
         url: `/pages/enterprise/seal-create?enterpriseId=${this.enterpriseId}&enterpriseName=${encodeURIComponent(this.enterpriseName)}`
       });

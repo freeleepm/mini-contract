@@ -1,0 +1,228 @@
+/**
+ * 小程序分享工具类
+ * 提供统一的分享配置和路径构建能力
+ */
+
+import { APP_SHARE_TITLE } from '../config/app.config';
+
+// ==================== 分享类型常量 ====================
+
+/** 分享类型枚举 */
+export const ShareType = {
+	/** 邀请签署合同 */
+	SIGN: 'sign',
+	/** 查看合同详情 */
+	VIEW: 'view',
+	/** 推荐模板 */
+	TEMPLATE: 'template',
+	/** 企业邀请加入 */
+	INVITE: 'invite',
+	/** 应用推广（默认分享） */
+	APP: 'app'
+} as const;
+
+// ==================== 分享封面图路径 ====================
+
+/** 各场景的分享封面图 */
+export const ShareImages = {
+	[ShareType.SIGN]: '/static/share/sign-cover.png',
+	[ShareType.VIEW]: '/static/share/view-cover.png',
+	[ShareType.TEMPLATE]: '/static/share/template-cover.png',
+	[ShareType.INVITE]: '/static/share/invite-cover.png',
+	[ShareType.APP]: '/static/share/default-cover.png'
+} as Record<string, string>;
+
+// ==================== 分享路径构建 ====================
+
+/**
+ * 构建分享落地页路径
+ * 所有分享统一指向 /pages/share/landing 页面，通过参数区分场景
+ * 
+ * @param type 分享类型（sign/view/template/invite/app）
+ * @param params 业务参数（如 taskId、templateId 等）
+ * @returns 分享落地页完整路径
+ */
+export function buildSharePath(type : string, params : Map<string, string> = new Map<string, string>()) : string {
+	let query = `type=${type}`;
+	params.forEach((value : string, key : string) => {
+		query += `&${key}=${encodeURIComponent(value) ?? ''}`;
+	});
+	return `/pages/share/landing?${query}`;
+}
+
+// ==================== 分享配置构建 ====================
+
+/**
+ * 分享配置接口
+ */
+export type ShareConfig = {
+	title : string;
+	path : string;
+	imageUrl : string;
+};
+
+/**
+ * 构建「邀请签署」分享配置
+ * 
+ * @param taskId 签署任务ID
+ * @param contractTitle 合同标题
+ * @param inviterName 邀请人姓名
+ * @returns 微信小程序 onShareAppMessage 所需的配置对象
+ */
+export function buildSignShareConfig(taskId : string, contractTitle : string, inviterName : string) : ShareConfig {
+	const params = new Map<string, string>();
+	params.set('taskId', taskId);
+
+	return {
+		title: `${inviterName}邀请你签署「${contractTitle}」`,
+		path: buildSharePath(ShareType.SIGN, params),
+		imageUrl: ShareImages[ShareType.SIGN] ?? '/static/share/default-cover.png'
+	};
+}
+
+/**
+ * 构建「查看合同」分享配置
+ * 
+ * @param taskId 签署任务ID
+ * @param contractTitle 合同标题
+ * @returns 微信小程序 onShareAppMessage 所需的配置对象
+ */
+export function buildViewShareConfig(taskId : string, contractTitle : string) : ShareConfig {
+	const params = new Map<string, string>();
+	params.set('taskId', taskId);
+
+	return {
+		title: `查看合同「${contractTitle}」`,
+		path: buildSharePath(ShareType.VIEW, params),
+		imageUrl: ShareImages[ShareType.VIEW] ?? '/static/share/default-cover.png'
+	};
+}
+
+/**
+ * 构建「模板推荐」分享配置
+ * 
+ * @param templateId 模板ID
+ * @param templateName 模板名称
+ * @returns 微信小程序 onShareAppMessage 所需的配置对象
+ */
+export function buildTemplateShareConfig(templateId : string, templateName : string) : ShareConfig {
+	const params = new Map<string, string>();
+	params.set('templateId', templateId);
+
+	return {
+		title: `推荐合同模板「${templateName}」`,
+		path: buildSharePath(ShareType.TEMPLATE, params),
+		imageUrl: ShareImages[ShareType.TEMPLATE] ?? '/static/share/default-cover.png'
+	};
+}
+
+/**
+ * 构建「企业邀请」分享配置
+ * 
+ * @param enterpriseId 企业ID
+ * @param enterpriseName 企业名称
+ * @param inviterName 邀请人姓名
+ * @returns 微信小程序 onShareAppMessage 所需的配置对象
+ */
+export function buildInviteShareConfig(enterpriseId : string, enterpriseName : string, inviterName : string) : ShareConfig {
+	const params = new Map<string, string>();
+	params.set('enterpriseId', enterpriseId);
+
+	return {
+		title: `${inviterName}邀请你加入「${enterpriseName}」`,
+		path: buildSharePath(ShareType.INVITE, params),
+		imageUrl: ShareImages[ShareType.INVITE] ?? '/static/share/default-cover.png'
+	};
+}
+
+/**
+ * 构建默认（应用推广）分享配置
+ * 用于未单独配置分享的页面
+ * 
+ * @returns 微信小程序 onShareAppMessage 所需的配置对象
+ */
+export function buildDefaultShareConfig() : ShareConfig {
+	return {
+		title: APP_SHARE_TITLE,
+		path: buildSharePath(ShareType.APP),
+		imageUrl: ShareImages[ShareType.APP] ?? '/static/share/default-cover.png'
+	};
+}
+
+// ==================== 分享落地页辅助 ====================
+
+/**
+ * 根据分享类型获取目标页面路径
+ * 在分享落地页中使用，将用户路由到对应的业务页面
+ * 
+ * @param type 分享类型
+ * @param params 业务参数
+ * @returns 目标业务页面的路径
+ */
+export function getTargetPagePath(type : string, params : Map<string, string>) : string {
+	switch (type) {
+		case ShareType.SIGN: {
+			const taskId = params.get('taskId') ?? '';
+			return `/pages/contract-sign/index?id=${taskId}`;
+		}
+		case ShareType.VIEW: {
+			const taskId = params.get('taskId') ?? '';
+			return `/pages/contract-detail/index?id=${taskId}`;
+		}
+		case ShareType.TEMPLATE: {
+			const templateId = params.get('templateId') ?? '';
+			return `/pages/template-detail/index?id=${templateId}`;
+		}
+		case ShareType.INVITE: {
+			const enterpriseId = params.get('enterpriseId') ?? '';
+			return `/pages/enterprise/detail?id=${enterpriseId}`;
+		}
+		case ShareType.APP:
+		default:
+			return '/pages/index/index';
+	}
+}
+
+/**
+ * 根据分享类型获取显示标题
+ * 
+ * @param type 分享类型
+ * @returns 分享类型的中文描述
+ */
+export function getShareTypeTitle(type : string) : string {
+	switch (type) {
+		case ShareType.SIGN:
+			return '合同签署邀请';
+		case ShareType.VIEW:
+			return '合同查看';
+		case ShareType.TEMPLATE:
+			return '模板推荐';
+		case ShareType.INVITE:
+			return '企业邀请';
+		case ShareType.APP:
+		default:
+			return '应用推荐';
+	}
+}
+
+/**
+ * 根据分享类型获取图标名称（FontAwesome）
+ * 
+ * @param type 分享类型
+ * @returns FontAwesome 图标 class 名
+ */
+export function getShareTypeIcon(type : string) : string {
+	switch (type) {
+		case ShareType.SIGN:
+			return 'fa-pencil';
+		case ShareType.VIEW:
+			return 'fa-file-text-o';
+		case ShareType.TEMPLATE:
+			return 'fa-clone';
+		case ShareType.INVITE:
+			return 'fa-building-o';
+		case ShareType.APP:
+		default:
+			return 'fa-share-alt';
+	}
+}

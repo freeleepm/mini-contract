@@ -62,6 +62,8 @@
 
 <script>
 import { exportPdf } from '../../api/ai-draft/index.uts'
+import { buildDefaultShareConfig } from '../../utils/share'
+import { buildShareTitle } from '../../config/app.config'
 
 export default {
   data() {
@@ -89,6 +91,23 @@ export default {
       this.error = '合同ID缺失'
     }
   },
+  // #ifdef MP-WEIXIN
+  onShareAppMessage() {
+    const defaultConfig = buildDefaultShareConfig();
+    if (this.contractTitle) {
+      return {
+        title: buildShareTitle(`AI起草合同「${this.contractTitle}」`),
+        path: defaultConfig.path,
+        imageUrl: defaultConfig.imageUrl
+      };
+    }
+    return {
+      title: defaultConfig.title,
+      path: defaultConfig.path,
+      imageUrl: defaultConfig.imageUrl
+    };
+  },
+  // #endif
   methods: {
 
     /**

@@ -2,9 +2,9 @@
   ===============
 
 
-当前最新版本：v3.2.1 (发布时间：2026-01-27)
+当前最新版本：v3.3.0 (发布时间：2026-02-07)
 
-[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.2.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
+[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.3.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
 
 
 
@@ -16,7 +16,7 @@
 
 
 
-🔥🔥🔥作为一款拥有自主知识产权的免费开源产品，Mini Contract.Pro始终坚持“让数字签约开发更简单”，同时Mini Contract.Pro也是一款专为开发者设计的开源电子签解决方案，创新性地采用「双模式引擎」架构，通过模块化设计满足从司法级签约到轻量级协作的全场景需求。首创支持证据链与非证据链双模式的开源电子签平台，我们已帮助 200+企业客户实现合同签署流程的数字化转型。
+🔥🔥🔥作为一款拥有自主知识产权的免费开源产品，Mini Contract.Pro始终坚持“让数字签约开发更简单”，同时Mini Contract.Pro也是一款专为开发者设计的开源电子签解决方案，创新性地采用「双模式引擎」+「双签署模式」架构，通过模块化设计满足从司法级签约到轻量级协作的全场景需求。首创支持证据链与非证据链双模式的开源电子签平台，同时首创「快捷签署」与「安全签署」双签署模式，让签署方无需注册即可完成签约。我们已帮助 200+企业客户实现合同签署流程的数字化转型。
 
 
 
@@ -31,6 +31,35 @@
 **轻量级非证据链模式**
 
 采用完全自研的分布式存储架构与数字签名技术，集成自签CA证书体系实现端到端加密防篡改保护。通过智能路由算法与分层缓存策略，接口调用成本降低60%，响应速度提升3倍。系统内置完整的审计日志与操作追溯机制，自动记录合同创建、修改、签署全流程关键节点，确保每个操作可追溯、可审计。无需对接第三方存证机构即可实现合同全生命周期管理，特别适合内部审批、供应商对账、快速签约等高频次场景，单日可承载千万级签署请求，是追求高性价比企业的理想选择。
+
+
+
+####  双签署模式（首创灵活签署体验）
+
+在「双模式引擎」之上，Mini Contract.Pro 还首创了**双签署模式**，从签署方的身份认证维度提供两种灵活选择：
+
+**快捷签署（Quick Sign）**
+
+无需注册登录，签署方通过签署链接直接进入签署页面。系统为每次签署生成临时安全令牌，签署方仅需验证手机号即可完成签名，全程最快 30 秒内完成。特别适合外部合作方、客户、供应商等非平台用户的签署场景——对方无需下载 APP 或注册账号，点击链接即签，极大降低签署门槛，显著提升签约转化率。
+
+> ⚠️ 快捷签署仅支持**个人身份签署**，不支持以企业身份签署。需要企业签章的场景请使用「安全签署」模式。
+
+**安全签署（Secure Sign）**
+
+签署方需先登录平台并完成实名认证（KYC），通过身份证 + 人脸识别双重验证后方可签署。签署过程与用户账号体系深度绑定，所有操作均关联至已认证的真实身份，确保签署行为具有完整的法律效力。支持个人签署与企业签章，适用于金融合同、劳动合同、股权协议等对身份真实性和法律效力有严格要求的高价值场景。
+
+> 两种签署模式可在同一份合同中混合使用——例如发起方使用「安全签署」（企业签章），而外部签署方使用「快捷签署」（个人签名），兼顾安全性与便捷性。
+
+**两种模式对比：**
+
+| 特性 | 快捷签署 Quick Sign | 安全签署 Secure Sign |
+|------|:---:|:---:|
+| 需要注册登录 | ✘ | ✔ |
+| 需要实名认证（KYC） | ✘ | ✔ |
+| 个人签署 | ✔ | ✔ |
+| 企业签章 | ✘ | ✔ |
+| 适用签署方 | 外部人员、客户、供应商 | 内部员工、企业法人代表 |
+| 签署耗时 | 最快 30 秒 | 首次需完成认证 |
 
 
 
@@ -376,7 +405,7 @@ Mini Contract.Pro 采用现代化的跨平台架构设计，基于 **uni-app + V
 - **应用名称**：Mini Contract.Pro
 - **框架**：uni-app + Vue 3
 - **语言**：UTS (TypeScript)
-- **版本**：3.2.1
+- **版本**：3.3.0
 - **支持平台**：iOS、Android、H5、小程序、APP
 - **IDE**：HBuilder
 
@@ -614,8 +643,13 @@ mini-contract-pro/
 │   └── pdf-preview/                // 【PDF预览】
 │       └── index.uvue
 │
+├── config/                         // 【应用配置】集中管理的全局配置
+│   ├── app.config.uts              // 品牌配置（产品名称、版本、版权等）
+│   └── seal.config.uts             // 签章业务配置（Token有效期、平台类型等）
+│
 ├── utils/                          // 【工具函数库】通用工具函数
 │   ├── date.uts                    // 日期处理工具
+│   ├── share.uts                   // 分享工具（小程序分享配置）
 │   ├── network.uts                 // 网络请求工具
 │   └── kyc-check.uts               // KYC检查工具
 │
@@ -625,7 +659,8 @@ mini-contract-pro/
 │   └── fonts/                      // 字体资源
 │
 ├── scripts/                        // 【构建脚本】
-│   └── download-fontawesome.sh     // FontAwesome 字体下载脚本
+│   ├── download-fontawesome.sh     // FontAwesome 字体下载脚本
+│   └── sync-app-name.js            // 产品名称同步脚本（同步到 JSON 配置）
 │
 └── uni_modules/                    // 【uni-app插件模块】
     └── [第三方插件]
@@ -1306,6 +1341,29 @@ npm run build:mp-weixin
 npm run build:app
 ```
 
+#### 4. 品牌配置（产品名称修改）
+
+项目的产品名称、版本号、口号等品牌信息统一在 `config/app.config.uts` 中管理，所有页面均从此文件引用。
+
+**修改产品名称：**
+
+```bash
+# 1. 编辑 config/app.config.uts，修改 APP_NAME 等常量
+# 2. 运行同步脚本，将名称同步到 manifest.json / pages.json / package.json
+npm run sync-name
+```
+
+> **说明：** 通过 CLI 构建（`npm run dev` / `npm run build`）时会自动同步，无需手动执行。
+> HBuilderX 编译不会触发 npm 钩子，修改名称后需手动执行一次 `npm run sync-name`。
+
+**配置文件说明：**
+
+| 文件 | 用途 |
+|------|------|
+| `config/app.config.uts` | 品牌信息唯一入口（名称、版本、口号、版权等） |
+| `config/seal.config.uts` | 签章业务配置（Token 有效期、平台类型） |
+| `api/config.uts` | API 接口配置（环境地址、超时时间等） |
+
 ### 页面开发规范
 
 #### 1. 页面创建流程
@@ -1780,6 +1838,11 @@ $background-color: #F7F9FC; // 背景色
 
 
 
+![](.images/app/app_19@4x.png)
+
+> 移动端合同配额购买：支持查看当前剩余合同份数，在线选择套餐并完成支付（微信支付/支付宝等），支付成功后配额即时到账，随时随地管理合同额度
+
+
 
 
 
@@ -1807,14 +1870,18 @@ $background-color: #F7F9FC; // 背景色
 ![](.images/pc/pc_16@4x.png)
 ![](.images/pc/pc_23@4x.png)
 ![](.images/pc/pc_24@4x.png)
-![](.images/pc/pc_25@4x.png)
 ![](.images/pc/pc_11@4x.png)
 ![](.images/pc/pc_12@4x.png)
 ![](.images/pc/pc_13@4x.png)
 ![](.images/pc/pc_14@4x.png)
 
+> 查看所有的合同信息，支持在线签署和查看合同进度情况
 
-> 查看 所有的合同信息，支持在线签署和查看合同进度情况
+
+
+![](.images/pc/pc_25@4x.png)
+
+> 创建合同时支持从历史签署记录中快速选择签署方，自动填充姓名、手机号、企业等信息，免去重复录入，提升创建效率
 
 
 
@@ -1846,6 +1913,12 @@ $background-color: #F7F9FC; // 背景色
 > 管理人员支持创建合同模版
 
 
+
+![](.images/pc/pc_26@4x.png)
+
+> 合同模板支持可视化设计签名位置，管理员可在模板中为每位签署方预设固定的签名落章区域，签署时系统自动定位，签署方无需手动选择位置，确保签名位置精准统一
+
+
 ![](.images/pc/pc_09@4x.png)
 ![](.images/pc/pc_21@4x.png)
 
@@ -1858,7 +1931,31 @@ $background-color: #F7F9FC; // 背景色
 
 
 
+![](.images/pc/pc_27@4x.png)
+![](.images/pc/pc_28@4x.png)
+![](.images/pc/pc_29@4x.png)
+
+> 合同验真功能：上传已签署的 PDF 合同文件，系统自动验证文件完整性、数字签名有效性和签署证书状态。若合同未包含数字签名或签名无效，系统将给出明确的异常提示；若签名真实有效且文件未被篡改，则显示「验证通过」并展示签署方信息和签署时间，确保合同的真实性和法律效力可追溯
+
+
+![](.images/pc/pc_31@4x.png)
+![](.images/pc/pc_30@4x.png)
+![](.images/pc/pc_32@4x.png)
+
+> 合同配额管理：支持在线购买合同份数，提供从个人体验到大型企业的多档套餐选择。支持微信支付、支付宝等主流支付渠道，也支持管理员手动分配配额，满足不同规模的商业化运营需求
+
+
+
 ### 最近更新
+
+##### V 3.3.0
+
+- [x] 【新增】合同验真功能，支持验证已签署 PDF 的文件完整性、数字签名和签署证书
+- [x] 【新增】合同配额管理，支持在线购买合同份数（微信支付/支付宝/手动分配）
+- [x] 【新增】创建合同时支持从历史记录快速选择签署方
+- [x] 【新增】合同模板支持可视化设计签名位置
+- [x] 【新增】「快捷签署」与「安全签署」双签署模式
+- [x] 【优化】产品名称集中配置管理，支持一键修改全局品牌信息
 
 ##### V 3.2.0 
 
@@ -1892,7 +1989,13 @@ $background-color: #F7F9FC; // 背景色
 
 ### 技术文档
 
-* 在线演示： https://m-sign.leepm.com (移动端) ，https://pc-sign.leepm.com (PC 端)
+* 在线演示：
+
+   https://m-sign.leepm.com (移动端) ，https://pc-sign.leepm.com (PC 端)
+
+* 官方网站：
+
+  https://s.leepm.com
 
 
 
@@ -1910,12 +2013,11 @@ $background-color: #F7F9FC; // 背景色
 
 > 从产品对外开源之后，得到了特别多朋友们的关注和认可最终我们也达成了一些深度的合作，目前我们已经合作超过300+以上的合作伙伴，这当中有“企业”的朋友也有一些“个人独立开发者”
 
-
-![输入图片说明](.images/img/hp_001.png)
-![输入图片说明](.images/img/hp_002.png)
-![输入图片说明](.images/img/hp_003.png)
-![输入图片说明](.images/img/hp_004.png)
-![输入图片说明](.images/img/hp_005.png)
+![输入图片说明](.images/img/hp_01@4x.png)
+![输入图片说明](.images/img/hp_02@4x.png)
+![输入图片说明](.images/img/hp_03@4x.png)
+![输入图片说明](.images/img/hp_04@4x.png)
+![输入图片说明](.images/img/hp_05@4x.png)
 
 
 

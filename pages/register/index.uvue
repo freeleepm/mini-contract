@@ -1,10 +1,13 @@
 <script lang="uts">
 	import { smsLogin, sendLoginCode, type LoginResponse } from '../../api/auth/login'
 	import { type ApiResponse } from '../../api/index'
+	import { getCopyrightText } from '../../config/app.config'
 	
 	export default {
 		data() {
 			return {
+				// 品牌信息（从集中配置获取）
+				copyrightText: getCopyrightText(),
 				phone: '',
 				verificationCode: '',
 				isLoading: false,
@@ -327,7 +330,7 @@
 		
 		<!-- 底部版权信息 -->
 		<view class="footer">
-			<text class="copyright">© 2025 Contract.Pro版权所有</text>
+			<text class="copyright">{{copyrightText}}</text>
 		</view>
 	</view>
 </template>

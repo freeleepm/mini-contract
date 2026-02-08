@@ -1,0 +1,50 @@
+/**
+ * 分享相关 API
+ * 提供分享摘要信息的获取接口
+ * 落地页可以在无登录状态下获取基本的分享摘要信息
+ */
+
+import { get } from '../index';
+
+// ==================== 数据类型 ====================
+
+/**
+ * 分享摘要信息（无需登录即可获取）
+ */
+export type ShareSummary = {
+	/** 分享类型：sign / view / template / invite / app */
+	type : string;
+	/** 展示标题 */
+	title : string;
+	/** 展示描述 */
+	description : string;
+	/** 发起人/创建人名称 */
+	creatorName : string;
+	/** 状态文本（如：待签署、已完成） */
+	statusText : string;
+	/** 截止时间（ISO格式字符串，可能为空） */
+	expireTime : string;
+	/** 是否需要登录才能查看详情 */
+	requireLogin : boolean;
+	/** 目标业务对象ID */
+	targetId : string;
+};
+
+// ==================== API 接口 ====================
+
+/**
+ * 获取分享摘要信息
+ * 此接口无需登录即可调用，用于分享落地页展示基本信息
+ * 
+ * @param type 分享类型
+ * @param targetId 目标对象ID（合同ID、模板ID、企业ID等）
+ * @returns 分享摘要信息
+ */
+export function getShareSummary(type : string, targetId : string) : Promise<ShareSummary> {
+	return get<ShareSummary>('/api/v1/share/summary', {
+		type: type,
+		targetId: targetId
+	}, {
+		isAuth: false // 不需要登录认证
+	});
+}

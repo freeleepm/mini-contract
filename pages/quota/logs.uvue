@@ -1,0 +1,392 @@
+<template>
+	<view class="page-container">
+		<!-- 筛选区域 -->
+		<view class="filter-section">
+			<scroll-view scroll-x="true" class="filter-scroll">
+				<view class="filter-tabs">
+					<view 
+						v-for="(tab, index) in filterTabs" 
+						:key="index"
+						class="filter-tab"
+						:class="{ active: currentFilter === tab.value }"
+						@click="onFilterChange(tab.value)"
+					>
+						<text class="filter-tab-text" :class="{ active: currentFilter === tab.value }">{{ tab.label }}</text>
+					</view>
+				</view>
+			</scroll-view>
+		</view>
+
+		<!-- 列表区域 -->
+		<scroll-view 
+			class="logs-scroll" 
+			scroll-y="true"
+			@scrolltolower="loadMore"
+		>
+			<view class="logs-list">
+				<!-- 加载中 -->
+				<view v-if="loading && logs.length === 0" class="loading-container">
+					<text class="loading-text">加载中...</text>
+				</view>
+
+				<!-- 空状态 -->
+				<view v-else-if="!loading && logs.length === 0" class="empty-container">
+					<text class="icon icon-inbox empty-icon"></text>
+					<text class="empty-text">暂无变动记录</text>
+				</view>
+
+				<!-- 日志列表 -->
+				<view v-else>
+					<view 
+						v-for="(log, index) in logs" 
+						:key="index" 
+						class="log-item"
+					>
+						<view class="log-left">
+							<view class="log-icon" :class="log.changeAmount >= 0 ? 'income' : 'expense'">
+								<text class="icon" :class="log.changeAmount >= 0 ? 'icon-plus' : 'icon-minus'"></text>
+							</view>
+						</view>
+						<view class="log-center">
+							<text class="log-type">{{ log.changeTypeName }}</text>
+							<text class="log-time">{{ formatTime(log.createTime) }}</text>
+							<text v-if="log.remark" class="log-remark">{{ log.remark }}</text>
+						</view>
+						<view class="log-right">
+							<text class="log-amount" :class="log.changeAmount >= 0 ? 'income' : 'expense'">
+								{{ log.changeAmount >= 0 ? '+' : '' }}{{ log.changeAmount }}
+							</text>
+							<text class="log-balance">余额: {{ log.balanceAfter }}</text>
+						</view>
+					</view>
+
+					<!-- 加载更多 -->
+					<view v-if="hasMore" class="load-more">
+						<text class="load-more-text">{{ loading ? '加载中...' : '上拉加载更多' }}</text>
+					</view>
+					<view v-else-if="logs.length > 0" class="no-more">
+						<text class="no-more-text">没有更多了</text>
+					</view>
+				</view>
+			</view>
+		</scroll-view>
+	</view>
+</template>
+
+<script lang="uts">
+	import { getQuotaLogPage, getQuotaBalance, type QuotaLogItem } from '@/api/quota/index'
+
+	type FilterTab = {
+		label: string
+		value: number | null
+	}
+
+	export default {
+		data() {
+			return {
+				loading: false,
+				logs: [] as QuotaLogItem[],
+				currentFilter: null as number | null,
+				pageNo: 1,
+				pageSize: 20,
+				total: 0,
+				enterpriseId: null as number | null,
+				filterTabs: [
+					{ label: '全部', value: null },
+					{ label: '购买', value: 1 },
+					{ label: '使用', value: 2 },
+					{ label: '赠送', value: 3 },
+					{ label: '调整', value: 4 }
+				] as FilterTab[]
+			}
+		},
+		computed: {
+			hasMore(): boolean {
+				return this.logs.length < this.total
+			}
+		},
+		async onLoad(options: OnLoadOptions) {
+			if (options['enterpriseId'] != null) {
+				this.enterpriseId = parseInt(options['enterpriseId'] as string)
+			}
+			
+			// 检查配额功能是否启用
+			try {
+				const balanceRes = await getQuotaBalance(this.enterpriseId != null ? this.enterpriseId : undefined)
+				if (balanceRes != null && balanceRes.enabled === false) {
+					uni.showToast({
+						title: '配额功能已关闭',
+						icon: 'none'
+					})
+					setTimeout(() => {
+						uni.navigateBack()
+					}, 1500)
+					return
+				}
+			} catch (e) {
+				console.warn('检查配额开关状态失败', e)
+			}
+			
+			this.loadLogs()
+		},
+		methods: {
+			async loadLogs() {
+				if (this.loading) return
+				
+				this.loading = true
+				try {
+				const res = await getQuotaLogPage({
+					pageNo: this.pageNo,
+					pageSize: this.pageSize,
+					changeType: this.currentFilter,
+					enterpriseId: this.enterpriseId
+				})
+				
+				if (res != null) {
+					if (this.pageNo === 1) {
+						this.logs = res.list
+					} else {
+						this.logs = this.logs.concat(res.list)
+					}
+					this.total = res.total
+				}
+				} catch (e) {
+					console.error('获取变动记录失败:', e)
+					uni.showToast({
+						title: '获取记录失败',
+						icon: 'none'
+					})
+				} finally {
+					this.loading = false
+				}
+			},
+			onFilterChange(value: number | null) {
+				this.currentFilter = value
+				this.pageNo = 1
+				this.logs = []
+				this.loadLogs()
+			},
+			loadMore() {
+				if (this.hasMore && !this.loading) {
+					this.pageNo++
+					this.loadLogs()
+				}
+			},
+			formatTime(time: string): string {
+				if (!time) return ''
+				// 简单格式化，显示 MM-DD HH:mm
+				const date = new Date(time)
+				const month = (date.getMonth() + 1).toString().padStart(2, '0')
+				const day = date.getDate().toString().padStart(2, '0')
+				const hours = date.getHours().toString().padStart(2, '0')
+				const minutes = date.getMinutes().toString().padStart(2, '0')
+				return `${month}-${day} ${hours}:${minutes}`
+			}
+		}
+	}
+</script>
+
+<style>
+	/* 引入FontAwesome图标 */
+	@import url("../../static/styles/fontawesome.css");
+	
+	.page-container {
+		flex: 1;
+		background-color: #F7F9FC;
+	}
+
+	/* 筛选区域 */
+	.filter-section {
+		background-color: #FFFFFF;
+		padding: 20rpx 0;
+		border-bottom: 1rpx solid #EBEEF5;
+	}
+
+	.filter-scroll {
+		width: 100%;
+	}
+
+	.filter-tabs {
+		flex-direction: row;
+		padding: 0 20rpx;
+	}
+
+	.filter-tab {
+		padding: 12rpx 24rpx;
+		margin-right: 16rpx;
+		border-radius: 30rpx;
+		background-color: #F5F7FA;
+	}
+
+	.filter-tab.active {
+		background-color: rgba(0, 194, 138, 0.1);
+	}
+
+	.filter-tab-text {
+		font-size: 26rpx;
+		color: #606266;
+	}
+
+	.filter-tab-text.active {
+		color: #00C28A;
+		font-weight: 500;
+	}
+
+	/* 列表区域 */
+	.logs-scroll {
+		flex: 1;
+	}
+
+	.logs-list {
+		padding: 20rpx;
+	}
+
+	/* 加载中 */
+	.loading-container {
+		padding: 100rpx 0;
+		align-items: center;
+	}
+
+	.loading-text {
+		font-size: 28rpx;
+		color: #909399;
+	}
+
+	/* 空状态 */
+	.empty-container {
+		padding: 150rpx 0;
+		align-items: center;
+	}
+
+	.empty-icon {
+		font-family: FontAwesome;
+		font-size: 80rpx;
+		color: #C0C4CC;
+		margin-bottom: 20rpx;
+	}
+
+	.empty-text {
+		font-size: 28rpx;
+		color: #909399;
+	}
+
+	/* 日志项 */
+	.log-item {
+		flex-direction: row;
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 24rpx;
+		margin-bottom: 16rpx;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+	}
+
+	.log-left {
+		margin-right: 20rpx;
+	}
+
+	.log-icon {
+		width: 60rpx;
+		height: 60rpx;
+		border-radius: 30rpx;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.log-icon.income {
+		background-color: rgba(0, 194, 138, 0.1);
+	}
+
+	.log-icon.expense {
+		background-color: rgba(245, 108, 108, 0.1);
+	}
+
+	.log-icon .fa {
+		font-family: FontAwesome;
+		font-size: 24rpx;
+	}
+
+	.log-icon.income .fa {
+		color: #00C28A;
+	}
+
+	.log-icon.expense .fa {
+		color: #F56C6C;
+	}
+
+	.log-center {
+		flex: 1;
+	}
+
+	.log-type {
+		font-size: 28rpx;
+		color: #303133;
+		font-weight: 500;
+		margin-bottom: 8rpx;
+	}
+
+	.log-time {
+		font-size: 24rpx;
+		color: #909399;
+		margin-bottom: 4rpx;
+	}
+
+	.log-remark {
+		font-size: 24rpx;
+		color: #909399;
+	}
+
+	.log-right {
+		align-items: flex-end;
+	}
+
+	.log-amount {
+		font-size: 32rpx;
+		font-weight: 600;
+		margin-bottom: 8rpx;
+	}
+
+	.log-amount.income {
+		color: #00C28A;
+	}
+
+	.log-amount.expense {
+		color: #F56C6C;
+	}
+
+	.log-balance {
+		font-size: 22rpx;
+		color: #909399;
+	}
+
+	/* 加载更多 */
+	.load-more, .no-more {
+		padding: 30rpx 0;
+		align-items: center;
+	}
+
+	.load-more-text, .no-more-text {
+		font-size: 24rpx;
+		color: #909399;
+	}
+
+	/* 图标基础样式 */
+	.icon {
+		font-family: 'Font Awesome 6 Free';
+		font-weight: 900;
+		font-size: 26rpx;
+		font-style: normal;
+		-webkit-font-smoothing: antialiased;
+	}
+	
+	.icon-inbox::before {
+		content: "\f01c";
+	}
+	
+	.icon-plus::before {
+		content: "\f067";
+	}
+	
+	.icon-minus::before {
+		content: "\f068";
+	}
+</style>

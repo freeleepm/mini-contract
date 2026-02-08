@@ -3,6 +3,8 @@
  * 用户隐私协议引导弹窗组件
  * 作者：小华同学AI
  */
+import { APP_NAME } from '../config/app.config';
+
 export default {
 	name: 'PrivacyGuideModal',
 	props: {
@@ -13,6 +15,12 @@ export default {
 		}
 	},
 	emits: ['agree', 'disagree'],
+	data() {
+		return {
+			// 品牌信息（从集中配置获取）
+			appName: APP_NAME
+		}
+	},
 	methods: {
 		// 同意并继续
 		handleAgree(): void {
@@ -63,7 +71,7 @@ export default {
 			
 			<!-- 内容 -->
 			<view class="modal-content">
-				<text class="content-text">欢迎使用 Contract.Pro，我们将通过</text>
+				<text class="content-text">欢迎使用 {{appName}}，我们将通过</text>
 				<text class="link-text" @click="goToPrivacy">《签隐私政策》</text>
 				<text class="content-text">帮助您了解我们收集、使用、存储和共享您的个人信息的情况。</text>
 				

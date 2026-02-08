@@ -17,6 +17,7 @@
  */
 import { getSealPageUrl } from '../../api/seals/index';
 import { API_BASE_URL } from '../../api/config';
+import { getQuotaBalance } from '../../api/quota/index';
 
 export default {
 	data() {
@@ -89,8 +90,8 @@ export default {
 		// 初始化JSBridge
 		this.initBridge();
 		
-		// 构建H5创建页面URL
-		this.buildCreateUrl();
+		// 先检查配额，再构建H5创建页面URL
+		this.checkQuotaAndBuild();
 	},
 	
 	onUnload() {
@@ -217,6 +218,107 @@ export default {
 	},
 		
 	/**
+	 * 检查配额并构建URL
+	 * 如果配额不足，显示提示并引导用户购买
+	 * 如果企业未认证，显示提示并引导用户去认证
+	 */
+	async checkQuotaAndBuild() {
+		try {
+			console.log('[H5容器] 检查配额与认证状态...');
+			
+			// 获取当前身份信息
+			let enterpriseId: number | undefined = undefined;
+			let isEnterprise = false;
+			let enterpriseVerified = true;
+			let verifyStatus = 0;
+			
+			try {
+				const savedIdentity = uni.getStorageSync('currentIdentity');
+				if (savedIdentity) {
+					const identity = JSON.parse(savedIdentity) as UTSJSONObject | null;
+					if (identity != null && identity['type'] === 'enterprise' && identity['id'] != null) {
+						enterpriseId = parseInt(identity['id']!.toString());
+						isEnterprise = true;
+						enterpriseVerified = identity['verified'] === true;
+						verifyStatus = (identity['verifyStatus'] as number | null) ?? 0;
+					}
+				}
+			} catch (e) {
+				console.warn('[H5容器] 获取身份信息失败:', e);
+			}
+			
+			// 如果是企业身份，检查认证状态
+			if (isEnterprise && !enterpriseVerified) {
+				console.log('[H5容器] 企业未认证，verifyStatus:', verifyStatus);
+				this.loading = false;
+				
+				let content = '请先完成企业认证后再发起合同。';
+				if (verifyStatus === 1) {
+					content = '企业认证正在审核中，请耐心等待审核通过后再发起合同。';
+				} else if (verifyStatus === 3) {
+					content = '企业认证被拒绝，请重新提交认证后再发起合同。';
+				}
+				
+				uni.showModal({
+					title: '企业未认证',
+					content: content,
+					confirmText: verifyStatus === 1 ? '我知道了' : '去认证',
+					cancelText: '返回',
+					success: (res) => {
+						if (res.confirm && verifyStatus !== 1) {
+							// 跳转到企业认证页面
+							uni.navigateTo({ url: '/pages/kyc/enterprise/index' });
+						} else {
+							// 返回上一页
+							uni.navigateBack();
+						}
+					}
+				});
+				return;
+			}
+			
+			// 调用API检查配额
+			const quotaInfo = await getQuotaBalance(enterpriseId);
+			const balance = quotaInfo?.balance || 0;
+			
+			console.log('[H5容器] 当前配额余额:', balance);
+			
+			if (balance <= 0) {
+				// 配额不足，显示提示
+				this.loading = false;
+				uni.showModal({
+					title: '配额不足',
+					content: '您的合同配额已用完，请先购买配额后再创建合同。',
+					confirmText: '去购买',
+					cancelText: '返回',
+					success: (res) => {
+						if (res.confirm) {
+							// 跳转到购买页面
+							let url = '/pages/quota/purchase';
+							if (enterpriseId != null) {
+								url += `?enterpriseId=${enterpriseId}`;
+							}
+							uni.navigateTo({ url: url });
+						} else {
+							// 返回上一页
+							uni.navigateBack();
+						}
+					}
+				});
+				return;
+			}
+			
+			// 配额充足且认证通过，继续构建URL
+			this.buildCreateUrl();
+			
+		} catch (error) {
+			console.error('[H5容器] 配额检查失败:', error);
+			// 检查失败时仍然尝试构建URL（让后端做最终校验）
+			this.buildCreateUrl();
+		}
+	},
+	
+	/**
 	 * 构建H5创建页面URL（使用统一应用）
 	 */
 	async buildCreateUrl() {
@@ -254,9 +356,31 @@ export default {
 					const savedIdentity = uni.getStorageSync('currentIdentity');
 					console.log('[H5容器] 读取到的身份信息:', savedIdentity);
 					if (savedIdentity) {
-						const identity = JSON.parse(savedIdentity) as { type?: string; id?: string | number } | null;
+						const identity = JSON.parse(savedIdentity) as { type?: string; id?: string | number; name?: string; verified?: boolean } | null;
 						console.log('[H5容器] 解析后的身份信息:', JSON.stringify(identity));
 						if (identity && identity.type === 'enterprise' && identity.id) {
+							// 检查企业认证状态
+							if (!identity.verified) {
+								console.log('[H5容器] ❌ 企业未认证，阻止创建合同');
+								this.loading = false;
+								uni.showModal({
+									title: '企业未认证',
+									content: '当前企业尚未完成认证，无法发起合同。是否前往认证？',
+									confirmText: '去认证',
+									cancelText: '返回',
+									success: (res) => {
+										if (res.confirm) {
+											// 跳转到企业认证页面
+											uni.redirectTo({
+												url: `/pages/kyc/enterprise/index?id=${identity.id}&name=${encodeURIComponent(identity.name || '')}`
+											});
+										} else {
+											uni.navigateBack();
+										}
+									}
+								});
+								return;
+							}
 							enterpriseId = Number(identity.id);  // 确保是数字类型
 							console.log('[H5容器] ✅ 携带企业ID参数:', enterpriseId);
 						} else {
@@ -728,20 +852,22 @@ export default {
 		handleCreateCompleted(taskId: string | number | undefined) {
 			console.log('[H5创建] 创建完成，任务ID:', taskId);
 			
+			// 通知列表页刷新
+			uni.$emit('contract-created', { taskId });
+			
 			// 显示成功提示
-			uni.showModal({
-				title: '创建成功',
-				content: '合同已成功创建',
-				showCancel: false,
-				success: () => {
-					// 返回并刷新列表
-					// 通过事件总线或其他方式通知列表页刷新
-					uni.$emit('contract-created', { taskId });
-					
-					// 返回上一页
-					uni.navigateBack();
-				}
+			uni.showToast({
+				title: '合同创建成功',
+				icon: 'success',
+				duration: 1500
 			});
+			
+			// H5 页面已通过 JSSDK 调用 navigateBack 关闭了 WebView
+			// 如果消息是在页面关闭时才送达，此时页面可能已经在返回中
+			// 为保险起见，延迟后也尝试返回（防止 H5 端 navigateBack 未生效）
+			setTimeout(() => {
+				uni.navigateBack();
+			}, 500);
 		},
 		
 		/**

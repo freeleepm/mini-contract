@@ -16,6 +16,8 @@ import type { Contract } from '../../api/contracts/index';
 import { downloadContractFile } from '../../api/utils/download.uts';
 import { post } from '../../api/index';
 import { getSealPageUrl } from '../../api/seals/index';
+import { buildViewShareConfig, buildSignShareConfig } from '../../utils/share';
+import { buildShareTitle } from '../../config/app.config';
 import { 
 	checkNetworkStatus, 
 	testH5ServiceAvailability
@@ -37,6 +39,7 @@ import {
 			STATUS_CANCELLED: 4,
 			STATUS_REJECTED: 5,
 			STATUS_EXPIRED: 6,
+			STATUS_FORM_FILLING: 7,      // 表单填写中
 			
 		// 🔧 参与人状态常量（与后端 SealSignTaskParticipantStatusEnum 保持一致）
 		PARTICIPANT_PENDING: 0,         // 待处理
@@ -104,6 +107,42 @@ import {
 			}
 		},
 	
+// #ifdef MP-WEIXIN
+onShareAppMessage() : any {
+	// 根据合同状态决定分享类型：签署中的合同用「邀请签署」，其他用「查看合同」
+	if (this.contract != null) {
+		const contract = this.contract!;
+		const title = (contract as any).title ?? '合同';
+		const id = this.contractId;
+		const creatorName = (contract as any).creatorName ?? '';
+		
+		// 签署中的合同使用签署邀请分享
+		const status = (contract as any).status;
+		if (status === this.STATUS_SIGNING || status === this.STATUS_FORM_FILLING) {
+			const config = buildSignShareConfig(id, title, creatorName);
+			return {
+				title: config.title,
+				path: config.path,
+				imageUrl: config.imageUrl
+			};
+		}
+		
+		// 其他状态使用查看分享
+		const config = buildViewShareConfig(id, title);
+		return {
+			title: config.title,
+			path: config.path,
+			imageUrl: config.imageUrl
+		};
+	}
+	// 合同未加载时的默认分享
+	return {
+		title: buildShareTitle('查看合同详情'),
+		path: '/pages/share/landing?type=app'
+	};
+},
+// #endif
+
 onShow() {
 	// 🔧 页面显示时刷新数据（仅在非首次加载时，即从其他页面返回时）
 	if (this.isFirstLoad) {
@@ -217,6 +256,52 @@ onShow() {
 		
 		console.log('[合同详情] 准备填写表单:', this.contract.id);
 		
+		// 检查认证状态（根据身份类型）
+		try {
+			const savedIdentity = uni.getStorageSync('currentIdentity');
+			if (savedIdentity) {
+				const identity = JSON.parse(savedIdentity) as { type?: string; id?: string | number; name?: string; verified?: boolean };
+				if (identity) {
+					// 个人身份需要检查个人实名认证
+					if (identity.type === 'personal' && !identity.verified) {
+						console.log('[合同详情] 个人未实名认证，显示提示弹窗');
+						uni.showModal({
+							title: '请先实名认证',
+							content: '为保障合同的法律效力，填写表单前需要完成实名认证。',
+							confirmText: '去认证',
+							cancelText: '取消',
+							success: (res) => {
+								if (res.confirm) {
+									uni.navigateTo({ url: '/pages/kyc/personal/index' });
+								}
+							}
+						});
+						return;
+					}
+					// 企业身份需要检查企业认证
+					if (identity.type === 'enterprise' && !identity.verified) {
+						console.log('[合同详情] 企业未认证，显示提示弹窗');
+						uni.showModal({
+							title: '企业未认证',
+							content: '当前企业尚未完成认证，无法填写表单。是否前往认证？',
+							confirmText: '去认证',
+							cancelText: '取消',
+							success: (res) => {
+								if (res.confirm) {
+									uni.navigateTo({
+										url: `/pages/kyc/enterprise/index?id=${identity.id}&name=${encodeURIComponent(identity.name || '')}`
+									});
+								}
+							}
+						});
+						return;
+					}
+				}
+			}
+		} catch (e) {
+			console.warn('[合同详情] 检查认证状态失败:', e);
+		}
+		
 		try {
 			// 显示检测进度
 			uni.showLoading({ 
@@ -302,6 +387,52 @@ async handleSign(): Promise<void> {
 	if (!this.contract) return;
 	
 	console.log('[合同详情] 准备签署合同:', this.contract.id);
+	
+	// 检查认证状态（根据身份类型）
+	try {
+		const savedIdentity = uni.getStorageSync('currentIdentity');
+		if (savedIdentity) {
+			const identity = JSON.parse(savedIdentity) as { type?: string; id?: string | number; name?: string; verified?: boolean };
+			if (identity) {
+				// 个人身份需要检查个人实名认证
+				if (identity.type === 'personal' && !identity.verified) {
+					console.log('[合同详情] 个人未实名认证，显示提示弹窗');
+					uni.showModal({
+						title: '请先实名认证',
+						content: '为保障合同的法律效力，签署合同前需要完成实名认证。',
+						confirmText: '去认证',
+						cancelText: '取消',
+						success: (res) => {
+							if (res.confirm) {
+								uni.navigateTo({ url: '/pages/kyc/personal/index' });
+							}
+						}
+					});
+					return;
+				}
+				// 企业身份需要检查企业认证
+				if (identity.type === 'enterprise' && !identity.verified) {
+					console.log('[合同详情] 企业未认证，显示提示弹窗');
+					uni.showModal({
+						title: '企业未认证',
+						content: '当前企业尚未完成认证，无法签署合同。是否前往认证？',
+						confirmText: '去认证',
+						cancelText: '取消',
+						success: (res) => {
+							if (res.confirm) {
+								uni.navigateTo({
+									url: `/pages/kyc/enterprise/index?id=${identity.id}&name=${encodeURIComponent(identity.name || '')}`
+								});
+							}
+						}
+					});
+					return;
+				}
+			}
+		}
+	} catch (e) {
+		console.warn('[合同详情] 检查认证状态失败:', e);
+	}
 	
 	try {
 		// 显示检测进度
@@ -639,10 +770,81 @@ async handleSign(): Promise<void> {
 		},
 		
 		/**
-		 * 获取状态名称
+		 * 获取状态名称（基础版本）
 		 */
 		getStatusName(status: ContractStatus): string {
 			return getContractStatusName(status);
+		},
+		
+		/**
+		 * 🆕 获取智能状态名称（根据当前用户角色显示不同文本）
+		 */
+		getSmartStatusName(): string {
+			if (!this.contract) return '';
+			
+			// 表单填写中状态
+			if (this.contract.status === this.STATUS_FORM_FILLING) {
+				// 只有明确需要自己填写表单时才显示"待填写"
+				if (this.canFillForm()) {
+					return '待填写';
+				}
+				// 🔧 其他所有情况（发起人/已填完/DIRECT模式等）都显示"他人填写中"
+				return '他人填写中';
+			}
+			
+			// 签署中状态
+			if (this.contract.status === this.STATUS_SIGNING) {
+				// 只有明确需要自己签署时才显示"待签署"
+				if (this.canSign()) {
+					return '待签署';
+				}
+				// 🔧 其他所有情况（发起人/已签署等）都显示"他人签署中"
+				return '他人签署中';
+			}
+			
+			// 其他状态使用默认名称
+			return getContractStatusName(this.contract.status);
+		},
+		
+		/**
+		 * 🆕 判断当前用户是否在等待他人填写表单
+		 */
+		isWaitingForOthersToFillForm(): boolean {
+			if (!this.contract) return false;
+			if (this.contract.status !== this.STATUS_FORM_FILLING) return false;
+			
+			const myParticipant = this.contract.participants?.find(
+				(p: any) => p.isCurrentUser === true
+			);
+			
+			if (!myParticipant) return false;
+			
+			// DIRECT模式的用户在表单填写阶段等待他人
+			if (myParticipant.flowMode === 'DIRECT' && myParticipant.status === this.PARTICIPANT_PENDING) {
+				return true;
+			}
+			// TWO_STAGE模式用户已填写表单，但在等待他人填写
+			if (myParticipant.flowMode === 'TWO_STAGE' && myParticipant.status === this.PARTICIPANT_FORM_FILLED) {
+				return true;
+			}
+			return false;
+		},
+		
+		/**
+		 * 🆕 判断当前用户是否在等待他人签署
+		 */
+		isWaitingForOthersToSign(): boolean {
+			if (!this.contract) return false;
+			if (this.contract.status !== this.STATUS_SIGNING) return false;
+			
+			const myParticipant = this.contract.participants?.find(
+				(p: any) => p.isCurrentUser === true
+			);
+			
+			if (!myParticipant) return false;
+			
+			// 当前用户已签署，等待他人
+			return myParticipant.status === this.PARTICIPANT_SIGNED;
 		},
 		
 		/**
@@ -860,9 +1062,9 @@ async handleSign(): Promise<void> {
 			
 			<!-- 合同基本信息卡片 -->
 			<view class="info-card">
-				<!-- 状态标签 -->
+				<!-- 状态标签（智能显示：区分"待我操作"和"等待他人操作"） -->
 				<view class="status-badge" :style="{ backgroundColor: getStatusColor(contract.status) }">
-					<text class="status-text">{{ getStatusName(contract.status) }}</text>
+					<text class="status-text">{{ getSmartStatusName() }}</text>
 				</view>
 					
 					<!-- 合同标题 -->

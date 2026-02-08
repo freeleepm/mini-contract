@@ -2,9 +2,9 @@
   ===============
 
 
-Current Latest Version: v3.2.1 (Release Date: January 27, 2026)
+Current Latest Version: v3.3.0 (Release Date: February 7, 2026)
 
-[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.2.1&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
+[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.3.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
 
 
 
@@ -16,7 +16,7 @@ Current Latest Version: v3.2.1 (Release Date: January 27, 2026)
 
 
 
-🔥🔥🔥  As a free open-source product with independent intellectual property rights, Mini Contract Pro has always adhered to the principle of "making digital contract development simpler". Mini Contract.Pro is also an open-source electronic signature solution designed specifically for developers, innovatively adopting a "dual-mode engine" architecture. Through modular design, it meets the full-scenario requirements from judicial-level signing to lightweight collaboration. The first open-source electronic signature platform to support both evidence chain and non-evidence chain dual modes, we have helped 100+ enterprise customers achieve digital transformation of contract signing processes.
+🔥🔥🔥  As a free open-source product with independent intellectual property rights, Mini Contract Pro has always adhered to the principle of "making digital contract development simpler". Mini Contract.Pro is also an open-source electronic signature solution designed specifically for developers, innovatively adopting a "Dual-Mode Engine" + "Dual Signing Modes" architecture. Through modular design, it meets the full-scenario requirements from judicial-level signing to lightweight collaboration. The first open-source electronic signature platform to support both evidence chain and non-evidence chain dual modes, while also pioneering "Quick Sign" and "Secure Sign" dual signing modes that allow signers to complete contracts without registration. We have helped 100+ enterprise customers achieve digital transformation of contract signing processes.
 
 
 
@@ -31,6 +31,35 @@ Based on the Ant Judicial Chain blockchain evidence storage system, it generates
 **Lightweight Non-Evidence Chain Mode**
 
 Built on fully self-developed distributed storage architecture and digital signature technology, integrating self-signed CA certificate system for end-to-end encryption and tamper-proof protection. Through intelligent routing algorithms and layered caching strategies, interface call costs are reduced by 60% while response speed increased by 3x. The system features comprehensive audit logs and operation traceability mechanisms, automatically recording key nodes throughout the contract lifecycle including creation, modification, and signing, ensuring every operation is traceable and auditable. Developers can implement full lifecycle contract management without connecting to third-party evidence storage institutions. It is particularly suitable for high-frequency scenarios such as internal approvals, supplier reconciliations, and quick signing, with a capacity to handle tens of millions of signing requests per day. An ideal choice for enterprises seeking high cost-effectiveness.
+
+
+
+####  Dual Signing Modes (Pioneering Flexible Signing Experience)
+
+On top of the "Dual-Mode Engine", Mini Contract.Pro also pioneers **Dual Signing Modes**, offering two flexible options from the signer's identity authentication perspective:
+
+**Quick Sign**
+
+No registration or login required. Signers access the signing page directly via a signing link. The system generates a temporary secure token for each signing session — signers only need to verify their phone number to complete the signature, with the entire process taking as little as 30 seconds. Ideal for external partners, clients, and suppliers who are not platform users — no app download or account registration needed. Just click the link and sign, significantly lowering the signing barrier and boosting conversion rates.
+
+> ⚠️ Quick Sign only supports **individual (personal) signing** and does not support signing with an enterprise seal. For enterprise seal scenarios, please use "Secure Sign" mode.
+
+**Secure Sign**
+
+Signers must first log in to the platform and complete real-name verification (KYC) through dual verification of ID card + facial recognition before signing. The signing process is deeply integrated with the user account system, with all operations linked to the authenticated real identity, ensuring the signing has full legal validity. Supports both personal signing and enterprise seals. Suitable for high-value scenarios such as financial contracts, employment agreements, and equity agreements that have strict requirements for identity authenticity and legal enforceability.
+
+> Both signing modes can be mixed within the same contract — for example, the initiator uses "Secure Sign" (enterprise seal) while external signers use "Quick Sign" (personal signature), balancing security and convenience.
+
+**Mode Comparison:**
+
+| Feature | Quick Sign | Secure Sign |
+|---------|:---:|:---:|
+| Registration & Login | ✘ | ✔ |
+| KYC Verification | ✘ | ✔ |
+| Personal Signing | ✔ | ✔ |
+| Enterprise Seal | ✘ | ✔ |
+| Target Signers | External partners, clients, suppliers | Internal staff, legal representatives |
+| Signing Time | As fast as 30s | First-time KYC required |
 
 
 
@@ -376,7 +405,7 @@ Mini Contract.Pro adopts a modern cross-platform architecture design based on **
 - **Application Name**: Mini Contract.Pro
 - **Framework**: uni-app + Vue 3
 - **Language**: UTS (TypeScript)
-- **Version**: 3.2.1
+- **Version**: 3.3.0
 - **Supported Platforms**: iOS, Android, H5, Mini Programs, APP
 - **IDE**: HBuilder
 
@@ -614,8 +643,13 @@ mini-contract-pro/
 │   └── pdf-preview/                // 【PDF Preview】
 │       └── index.uvue
 │
+├── config/                         // 【App Configuration】Centralized global configs
+│   ├── app.config.uts              // Brand config (product name, version, copyright, etc.)
+│   └── seal.config.uts             // Seal service config (token TTL, platform type, etc.)
+│
 ├── utils/                          // 【Utility Function Library】Common utilities
 │   ├── date.uts                    // Date processing utilities
+│   ├── share.uts                   // Share utilities (mini program share config)
 │   ├── network.uts                 // Network request utilities
 │   └── kyc-check.uts               // KYC check utilities
 │
@@ -625,7 +659,8 @@ mini-contract-pro/
 │   └── fonts/                      // Font resources
 │
 ├── scripts/                        // 【Build Scripts】
-│   └── download-fontawesome.sh     // FontAwesome font download script
+│   ├── download-fontawesome.sh     // FontAwesome font download script
+│   └── sync-app-name.js            // Sync product name to JSON configs
 │
 └── uni_modules/                    // 【uni-app Plugin Modules】
     └── [Third-party plugins]
@@ -1306,6 +1341,29 @@ npm run build:mp-weixin
 npm run build:app
 ```
 
+#### 4. Brand Configuration (Changing Product Name)
+
+The product name, version, slogan, and other brand information are centrally managed in `config/app.config.uts`. All pages reference this file.
+
+**To change the product name:**
+
+```bash
+# 1. Edit config/app.config.uts, modify APP_NAME and other constants
+# 2. Run the sync script to update manifest.json / pages.json / package.json
+npm run sync-name
+```
+
+> **Note:** CLI builds (`npm run dev` / `npm run build`) will auto-sync via npm pre-hooks.
+> HBuilderX compilation does not trigger npm hooks — run `npm run sync-name` manually after changing the name.
+
+**Configuration files overview:**
+
+| File | Purpose |
+|------|---------|
+| `config/app.config.uts` | Single source of truth for brand info (name, version, slogan, copyright) |
+| `config/seal.config.uts` | Seal service config (token TTL, platform type) |
+| `api/config.uts` | API config (environment URLs, timeouts, etc.) |
+
 ### Page Development Guidelines
 
 #### 1. Page Creation Process
@@ -1752,6 +1810,11 @@ Project Screenshots
 
 
 
+![](.images/app/app_19@4x.png)
+
+> Mobile contract quota purchase: View remaining contract quotas, select packages and complete payment online (WeChat Pay / Alipay, etc.). Quotas are credited instantly after payment, allowing you to manage contract allowances anytime, anywhere
+
+
 
 
 #### User(PC)
@@ -1776,13 +1839,20 @@ Project Screenshots
 
 ![](.images/pc/pc_04@4x.png)
 ![](.images/pc/pc_16@4x.png)
+![](.images/pc/pc_23@4x.png)
+![](.images/pc/pc_24@4x.png)
 ![](.images/pc/pc_11@4x.png)
 ![](.images/pc/pc_12@4x.png)
 ![](.images/pc/pc_13@4x.png)
 ![](.images/pc/pc_14@4x.png)
 
-
 > View all contract information, supports online signing and viewing contract progress status
+
+
+
+![](.images/pc/pc_25@4x.png)
+
+> Quickly select signers from historical signing records when creating contracts — auto-fills name, phone number, enterprise info, eliminating repetitive input and improving creation efficiency
 
 
 
@@ -1802,7 +1872,7 @@ Project Screenshots
 
 
 
-![](.images/pc/pc07@4x.png)
+![](.images/pc/pc_07@4x.png)
 
 
 ![](.images/pc/pc_08@4x.png)
@@ -1811,6 +1881,12 @@ Project Screenshots
  ![](.images/pc/pc_21@4x.png)
 
 > Administrators support creating contract templates
+
+
+
+![](.images/pc/pc_26@4x.png)
+
+> Contract templates support visual signing position design — administrators can preset fixed signature areas for each signer in the template, with automatic positioning during signing so signers don't need to manually select positions, ensuring precise and consistent placement
 
 
 ![](.images/pc/pc_09@4x.png)
@@ -1825,7 +1901,30 @@ Project Screenshots
 
 
 
+![](.images/pc/pc_27@4x.png)
+![](.images/pc/pc_28@4x.png)
+![](.images/pc/pc_29@4x.png)
+
+> Contract Verification: Upload a signed PDF contract file, and the system automatically verifies file integrity, digital signature validity, and signing certificate status. If the contract does not contain a digital signature or the signature is invalid, the system provides clear anomaly alerts; if the signature is authentic and the file has not been tampered with, it displays "Verification Passed" along with signer information and signing time, ensuring contract authenticity and legal traceability
+
+
+
+![](.images/pc/pc_30@4x.png)
+
+> Contract Quota Management: Supports online purchase of contract quotas with multiple tier packages from individual to large enterprise. Accepts mainstream payment channels including WeChat Pay and Alipay, and also supports manual quota allocation by administrators to meet commercial operation needs at different scales
+
+
+
 ### Recent Updates
+
+##### V 3.3.0
+
+- [x] [New] Contract verification — verify file integrity, digital signatures, and signing certificates of signed PDFs
+- [x] [New] Contract quota management — purchase contract quotas online (WeChat Pay / Alipay / manual allocation)
+- [x] [New] Quickly select signers from historical records when creating contracts
+- [x] [New] Visual signing position design for contract templates
+- [x] [New] "Quick Sign" and "Secure Sign" dual signing modes
+- [x] [Optimize] Centralized brand configuration for one-click global product name management
 
 ##### V 3.2.0
 
@@ -1858,6 +1957,10 @@ Project Screenshots
 
 * Online Demo:
  https://m-sign.leepm.com (moblie) ，https://pc-sign.leepm.com (PC)
+ 
+* official website：
+
+   Https://s.leepm.com
 
 
 
@@ -1875,12 +1978,11 @@ If you have any ideas, opinions, or suggestions about the Mini Contract Pro prod
 
 > Since the product was open-sourced, it has received attention and recognition from many friends, and we have ultimately reached some in-depth cooperation. Currently, we have cooperated with over 300+ partners, including both "enterprise" friends and some "individual independent developers"
 
-
-![Recognition](.images/img/hp_001.png)
-![Recognition](.images/img/hp_002.png)
-![Recognition](.images/img/hp_003.png)
-![Recognition](.images/img/hp_004.png)
-![Recognition](.images/img/hp_005.png)
+![Recognition](.images/img/hp_01@4x.png)
+![Recognition](.images/img/hp_02@4x.png)
+![Recognition](.images/img/hp_03@4x.png)
+![Recognition](.images/img/hp_04@4x.png)
+![Recognition](.images/img/hp_05@4x.png)
 
 
 
