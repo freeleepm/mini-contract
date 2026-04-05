@@ -78,6 +78,8 @@ export interface Template {
     usageCount?: number;         // 使用次数（兼容旧字段名）
     createTime: string;          // 创建时间
     updateTime: string;          // 更新时间
+    baseTemplateId?: string;     // 基础模板ID（版本分组）
+    qrcodeEnabled?: boolean;     // 是否启用二维码
 }
 
 // 模板详情

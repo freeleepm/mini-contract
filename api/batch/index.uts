@@ -1,0 +1,73 @@
+/**
+ * 批量任务相关 API
+ * 
+ * @author 小华同学AI
+ */
+
+import { get, post } from '../index';
+
+// ==================== 类型定义 ====================
+
+/**
+ * 批量发起子项
+ */
+export type BatchLaunchItem = {
+	contractName : string | null;
+	formData : UTSJSONObject | null;
+	participants : BatchParticipant[];
+}
+
+/**
+ * 批量参与方
+ */
+export type BatchParticipant = {
+	signatoryId : number | null;
+	signatoryName : string | null;
+	type : string | null;
+	companyName : string | null;
+	userName : string | null;
+	userMobile : string | null;
+}
+
+/**
+ * 批量发起请求
+ */
+export type BatchLaunchCreateReq = {
+	templateId : number;
+	inputMode : string;
+	items : BatchLaunchItem[];
+}
+
+// ==================== API 函数 ====================
+
+/**
+ * 创建批量发起任务（移动端仅支持手动填写模式）
+ */
+export function createBatchLaunch(data : BatchLaunchCreateReq) : Promise<UTSJSONObject> {
+	return post('/api/v1/seal/batch-tasks/create-launch', data) as Promise<UTSJSONObject>;
+}
+
+/**
+ * 获取批量任务详情
+ */
+export function getBatchTaskDetail(id : number) : Promise<UTSJSONObject> {
+	return get('/api/v1/seal/batch-tasks/get', { id: id }) as Promise<UTSJSONObject>;
+}
+
+/**
+ * 获取批量任务分页列表
+ */
+export function getBatchTaskPage(params : UTSJSONObject) : Promise<UTSJSONObject> {
+	return get('/api/v1/seal/batch-tasks/page', params) as Promise<UTSJSONObject>;
+}
+
+/**
+ * 重试失败子项
+ */
+export function retryFailedItems(batchId : number, itemIds : number[] | null) : Promise<UTSJSONObject> {
+	const data = {
+		batchId: batchId,
+		itemIds: itemIds
+	} as UTSJSONObject;
+	return post('/api/v1/seal/batch-tasks/retry', data) as Promise<UTSJSONObject>;
+}

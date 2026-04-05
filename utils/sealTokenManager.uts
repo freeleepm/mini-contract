@@ -8,6 +8,8 @@
  * 2. 自动检查有效期（使用后端返回的过期时间）
  * 3. 过期提前刷新（提前 10 分钟）
  * 4. 避免重复请求（并发控制）
+ * 5. 🆕 身份上下文感知：根据当前身份（个人/企业）传递 enterpriseId
+ * 6. 🆕 身份不匹配检测：切换身份后自动刷新 Token
  * 
  * @author 小华同学AI
  */
@@ -20,12 +22,20 @@ interface TokenCache {
   token: string
   expireTime: string      // ISO 格式的过期时间
   expireMinutes: number
+  enterpriseId: number | null  // 🆕 Token 对应的企业ID（null 表示个人模式）
+}
+
+// 身份信息结构（与 localStorage 中 currentIdentity 一致）
+interface IdentityInfo {
+  type: string          // 'personal' | 'enterprise'
+  id: number | string   // 企业ID 或 用户ID
 }
 
 // 缓存 key 常量
 const STORAGE_KEY_TOKEN = 'sealToken'
 const STORAGE_KEY_EXPIRE_TIME = 'sealTokenExpireTime'
 const STORAGE_KEY_EXPIRE_MINUTES = 'sealTokenExpireMinutes'
+const STORAGE_KEY_ENTERPRISE_ID = 'sealTokenEnterpriseId'
 
 // 内存缓存
 let tokenCache: TokenCache | null = null
@@ -33,6 +43,30 @@ let tokenCache: TokenCache | null = null
 // 并发控制
 let isRefreshing = false
 let refreshPromise: Promise<string> | null = null
+
+/**
+ * 获取当前身份的企业ID
+ * 从 localStorage 的 currentIdentity 中读取
+ * 
+ * @returns 企业ID（企业模式）或 null（个人模式）
+ */
+function getCurrentEnterpriseId(): number | null {
+  try {
+    const savedIdentity = uni.getStorageSync('currentIdentity') as string | null
+    if (savedIdentity) {
+      const identity = JSON.parse(savedIdentity ?? '') as IdentityInfo | null
+      if (identity != null && identity.type === 'enterprise' && identity.id) {
+        const id = Number(identity.id)
+        if (!isNaN(id) && id > 0) {
+          return id
+        }
+      }
+    }
+  } catch (error) {
+    console.error('[SealTokenManager] 读取当前身份失败:', error)
+  }
+  return null
+}
 
 /**
  * 检查 Token 是否即将过期（提前 10 分钟刷新）
@@ -58,6 +92,38 @@ function isTokenExpiringSoon(expireTime: string): boolean {
 }
 
 /**
+ * 🆕 检查缓存的 Token 中的企业上下文是否与当前身份一致
+ * 
+ * 防止以下场景：
+ * - 用户从企业身份切换到个人身份，但旧 Token（含企业ID）仍在缓存中
+ * - 用户从个人身份切换到企业身份，但旧 Token（无企业ID）仍在缓存中
+ * - 用户切换到另一个企业，但旧 Token 含之前企业的ID
+ */
+function isTokenIdentityMismatch(cached: TokenCache): boolean {
+  const currentEnterpriseId = getCurrentEnterpriseId()
+  const tokenEnterpriseId = cached.enterpriseId
+  
+  // 个人身份但 Token 含企业ID → 不匹配
+  if (currentEnterpriseId == null && tokenEnterpriseId != null) {
+    console.warn(`${LOG_PREFIX} ⚠️ 身份不匹配: 当前=个人, Token含企业ID=${tokenEnterpriseId}`)
+    return true
+  }
+  // 企业身份但 Token 不含企业ID → 不匹配
+  if (currentEnterpriseId != null && tokenEnterpriseId == null) {
+    console.warn(`${LOG_PREFIX} ⚠️ 身份不匹配: 当前=企业(${currentEnterpriseId}), Token无企业ID`)
+    return true
+  }
+  // 企业身份但 Token 的企业ID与当前不同 → 不匹配
+  if (currentEnterpriseId != null && tokenEnterpriseId != null
+      && currentEnterpriseId !== tokenEnterpriseId) {
+    console.warn(`${LOG_PREFIX} ⚠️ 身份不匹配: 当前企业=${currentEnterpriseId}, Token企业=${tokenEnterpriseId}`)
+    return true
+  }
+  
+  return false
+}
+
+/**
  * 从缓存或 Storage 获取 Token
  */
 function getCachedToken(): TokenCache | null {
@@ -73,12 +139,23 @@ function getCachedToken(): TokenCache | null {
     const expireMinutes = uni.getStorageSync(STORAGE_KEY_EXPIRE_MINUTES)
 
     if (token && expireTime && expireMinutes) {
+      // 恢复企业ID
+      const enterpriseIdStr = uni.getStorageSync(STORAGE_KEY_ENTERPRISE_ID) as string | null
+      let enterpriseId: number | null = null
+      if (enterpriseIdStr) {
+        const parsed = Number(enterpriseIdStr)
+        if (!isNaN(parsed) && parsed > 0) {
+          enterpriseId = parsed
+        }
+      }
+      
       tokenCache = {
         token,
         expireTime,
-        expireMinutes: Number(expireMinutes)
+        expireMinutes: Number(expireMinutes),
+        enterpriseId
       }
-      console.log(`[SealTokenManager] 📦 从 Storage 恢复 Token（有效期至: ${expireTime}）`)
+      console.log(`[SealTokenManager] 📦 从 Storage 恢复 Token（有效期至: ${expireTime}, 企业ID: ${enterpriseId ?? '无(个人)'}）`)
       return tokenCache
     }
   } catch (error) {
@@ -98,7 +175,13 @@ function saveToken(tokenData: TokenCache): void {
     uni.setStorageSync(STORAGE_KEY_TOKEN, tokenData.token)
     uni.setStorageSync(STORAGE_KEY_EXPIRE_TIME, tokenData.expireTime)
     uni.setStorageSync(STORAGE_KEY_EXPIRE_MINUTES, String(tokenData.expireMinutes))
-    console.log(`[SealTokenManager] 💾 Token 已保存（有效期至: ${tokenData.expireTime}）`)
+    // 保存企业ID（个人模式时清除）
+    if (tokenData.enterpriseId != null) {
+      uni.setStorageSync(STORAGE_KEY_ENTERPRISE_ID, String(tokenData.enterpriseId))
+    } else {
+      uni.removeStorageSync(STORAGE_KEY_ENTERPRISE_ID)
+    }
+    console.log(`[SealTokenManager] 💾 Token 已保存（有效期至: ${tokenData.expireTime}, 企业ID: ${tokenData.enterpriseId ?? '无(个人)'}）`)
   } catch (error) {
     console.error('[SealTokenManager] 保存 Token 到 Storage 失败:', error)
   }
@@ -116,6 +199,7 @@ export function clearSealToken(): void {
     uni.removeStorageSync(STORAGE_KEY_TOKEN)
     uni.removeStorageSync(STORAGE_KEY_EXPIRE_TIME)
     uni.removeStorageSync(STORAGE_KEY_EXPIRE_MINUTES)
+    uni.removeStorageSync(STORAGE_KEY_ENTERPRISE_ID)
     console.log('[SealTokenManager] 🗑️ Token 缓存已清除')
   } catch (error) {
     console.error('[SealTokenManager] 清除 Token 失败:', error)
@@ -124,16 +208,23 @@ export function clearSealToken(): void {
 
 /**
  * 调用后端接口获取/刷新 Token
+ * 🆕 根据当前身份传递 enterpriseId
  */
 async function fetchNewToken(): Promise<TokenCache> {
   const config = getSealTokenConfig('mobile')
+  const currentEnterpriseId = getCurrentEnterpriseId()
   
-  console.log(`${LOG_PREFIX} 🔄 调用后端接口获取 Token... expireMinutes: ${config.expireMinutes}`)
+  const identityDesc = currentEnterpriseId != null ? `企业(${currentEnterpriseId})` : '个人'
+  console.log(`${LOG_PREFIX} 🔄 调用后端接口获取 Token... 身份: ${identityDesc}, expireMinutes: ${config.expireMinutes}`)
+  
+  // 🔧 关键修复：后端使用 @RequestParam 注解，必须通过 URL 查询参数传递（不能用 JSON body）
+  let exchangeUrl = `/api/v1/seal/auth/exchange-token?expireMinutes=${config.expireMinutes}`
+  if (currentEnterpriseId != null) {
+    exchangeUrl += `&enterpriseId=${currentEnterpriseId}`
+  }
   
   // 调用兑换接口
-  const response = await post<any>('/api/v1/seal/auth/exchange-token', {
-    expireMinutes: config.expireMinutes
-  })
+  const response = await post<any>(exchangeUrl, {})
   
   if (!response || !response.token) {
     throw new Error('Token 响应格式错误')
@@ -142,7 +233,8 @@ async function fetchNewToken(): Promise<TokenCache> {
   return {
     token: response.token,
     expireTime: response.expireTime,
-    expireMinutes: response.expireMinutes
+    expireMinutes: response.expireMinutes,
+    enterpriseId: currentEnterpriseId
   }
 }
 
@@ -153,7 +245,7 @@ async function refreshToken(): Promise<string> {
   try {
     const tokenData = await fetchNewToken()
     saveToken(tokenData)
-    console.log(`${LOG_PREFIX} ✅ Token 获取成功（有效期至: ${tokenData.expireTime}）`)
+    console.log(`${LOG_PREFIX} ✅ Token 获取成功（有效期至: ${tokenData.expireTime}, 企业ID: ${tokenData.enterpriseId ?? '无(个人)'}）`)
     return tokenData.token
   } catch (error: any) {
     console.error(`${LOG_PREFIX} ❌ Token 获取失败:`, error)
@@ -181,9 +273,10 @@ async function refreshToken(): Promise<string> {
  * 
  * 逻辑（与 PC 端一致）：
  * 1. 检查缓存是否存在且有效
- * 2. 有效则直接返回
- * 3. 无效或不存在则刷新
- * 4. 防止并发刷新
+ * 2. 🆕 校验 Token 中的企业上下文与当前身份是否一致
+ * 3. 有效且一致则直接返回
+ * 4. 无效、不一致或不存在则刷新
+ * 5. 防止并发刷新
  * 
  * @returns Promise<string> 有效的 Seal Token
  */
@@ -201,18 +294,22 @@ export async function getSealToken(): Promise<string> {
   const cached = getCachedToken()
   
   if (cached && cached.expireTime) {
-    // 3. 检查是否即将过期（使用过期时间而非解析JWT）
-    if (!isTokenExpiringSoon(cached.expireTime)) {
+    // 🆕 3. 检查 Token 中的身份是否与当前身份一致
+    if (isTokenIdentityMismatch(cached)) {
+      console.log(`${LOG_PREFIX} 🔄 Token 身份上下文不匹配，清除缓存并重新获取`)
+      clearSealToken()
+    // 4. 检查是否即将过期
+    } else if (!isTokenExpiringSoon(cached.expireTime)) {
       console.log(`${LOG_PREFIX} ✅ 使用缓存的 Token（有效期至: ${cached.expireTime}）`)
       return cached.token
+    } else {
+      console.log(`${LOG_PREFIX} ⏰ Token 即将过期，需要刷新`)
     }
-    
-    console.log(`${LOG_PREFIX} ⏰ Token 即将过期，需要刷新`)
   } else {
     console.log(`${LOG_PREFIX} 📭 缓存中没有 Token，需要获取`)
   }
 
-  // 4. 刷新 Token（防止并发）
+  // 5. 刷新 Token（防止并发）
   if (isRefreshing && refreshPromise) {
     console.log(`${LOG_PREFIX} ⏳ 正在刷新中，等待刷新完成...`)
     return refreshPromise

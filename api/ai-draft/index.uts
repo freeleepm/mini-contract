@@ -6,7 +6,7 @@
  */
 
 import { request } from '../index'
-import { AI_GENERATION_TIMEOUT } from '../config'
+import { AI_GENERATION_TIMEOUT } from '../../config/app.config'
 
 // ========== 推荐话术 ==========
 

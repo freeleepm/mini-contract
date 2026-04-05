@@ -31,7 +31,11 @@ export default {
       pageSize: 10,
       hasMore: true,
       // 提示文本
-      loadingText: '加载中...'
+      loadingText: '加载中...',
+      // 二维码弹窗
+      showQrcodeModal: false,
+      qrcodeTemplateName: '' as string,
+      qrcodeBaseTemplateId: '' as string
     }
   },
   async onLoad() {
@@ -228,6 +232,13 @@ export default {
           uni.hideLoading();
         }
       }
+    },
+    
+    // 打开二维码弹窗
+    openQrcodeModal(template: Template): void {
+      this.qrcodeTemplateName = template.name;
+      this.qrcodeBaseTemplateId = (template.baseTemplateId ?? template.id) as string;
+      this.showQrcodeModal = true;
     },
     
     // 查看模板详情
@@ -443,7 +454,13 @@ export default {
                 <text class="icon icon-eye meta-icon"></text>
                 <text class="meta-text">{{ formatNumber(template.useCount || 0) }}</text>
               </view>
-              <text class="template-time">{{ formatDate(template.updateTime) }}</text>
+              <view class="template-footer-right">
+                <view v-if="template.qrcodeEnabled" class="qr-tag-btn" @click.stop="openQrcodeModal(template)">
+                  <text class="fa fa-qrcode qr-tag-icon"></text>
+                  <text class="qr-tag-text">二维码</text>
+                </view>
+                <text class="template-time">{{ formatDate(template.updateTime) }}</text>
+              </view>
             </view>
           </view>
         </view>
@@ -467,6 +484,15 @@ export default {
         </view>
       </view>
     </scroll-view>
+    
+    <!-- 二维码弹窗 -->
+    <TemplateQrcodeModal 
+      :visible="showQrcodeModal"
+      :templateName="qrcodeTemplateName"
+      :baseTemplateId="qrcodeBaseTemplateId"
+      @update:visible="(val: boolean) => { showQrcodeModal = val }"
+      @close="showQrcodeModal = false"
+    />
   </view>
 </template>
   
@@ -866,9 +892,38 @@ export default {
   color: #999999;
 }
 
+.template-footer-right {
+  flex-direction: row;
+  align-items: center;
+}
+
 .template-time {
   font-size: 22rpx;
   color: #CCCCCC;
+}
+
+.qr-tag-btn {
+  flex-direction: row;
+  align-items: center;
+  padding: 6rpx 16rpx;
+  background-color: rgba(24, 144, 255, 0.08);
+  border-radius: 20rpx;
+  margin-right: 12rpx;
+}
+
+.qr-tag-icon {
+  font-family: FontAwesome;
+  font-size: 22rpx;
+  color: #1890FF;
+  margin-right: 6rpx;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.qr-tag-text {
+  font-size: 22rpx;
+  color: #1890FF;
 }
 
 /* ========== 空状态 ========== */

@@ -75,6 +75,22 @@ export default {
 	},
 	
 	computed: {
+		// 是否为企业模式（非个人身份时才显示企业印章标签）
+		isEnterpriseMode(): boolean {
+			try {
+				const savedIdentity = uni.getStorageSync('currentIdentity') as string | null;
+				if (savedIdentity) {
+					const identity = JSON.parse(savedIdentity ?? '') as UTSJSONObject | null;
+					if (identity != null) {
+						return identity['type'] === 'enterprise';
+					}
+				}
+			} catch (e) {
+				console.warn('[印章管理] 获取身份信息失败:', e);
+			}
+			return false;
+		},
+		
 		// 是否已达个人印章上限
 		isPersonalSealLimitReached(): boolean {
 			return this.personalTotal >= this.MAX_PERSONAL_SEALS;
@@ -136,10 +152,7 @@ export default {
 	// 页面滚动到底部
 	onReachBottom() {
 		console.log('[印章管理] onReachBottom: 页面触底');
-		// 只有个人印章Tab支持分页加载
-		if (this.activeTab === 'personal') {
-			this.loadMore();
-		}
+		this.loadMore();
 	},
 	
 	methods: {
@@ -222,12 +235,18 @@ export default {
 						this.personalSealList.push(...response.list);
 					}
 					
-					// 更新分页信息
-					this.personalTotal = response.total;
+					// 更新分页信息（当前筛选结果）
 					this.personalHasMore = this.personalSealList.length < response.total;
-					
 					if (this.personalHasMore) {
 						this.personalPageNo++;
+					}
+					
+					// 🔧 上限校验必须用「全部」状态的总数，否则切换筛选（如仅启用）时 total 变小会绕过 10 个上限
+					if (this.statusFilter !== null) {
+						const fullRes = await getSealPage({ pageNo: 1, pageSize: 1 });
+						this.personalTotal = fullRes.total;
+					} else {
+						this.personalTotal = response.total;
 					}
 					
 					console.log('个人印章列表加载成功:', {
@@ -725,30 +744,10 @@ export default {
 
 <template>
 	<view class="seal-list-container">
-		<!-- 固定头部 -->
+		<!-- 固定头部（入口已区分：个人中心→个人印章，企业印章→enterprise/seals） -->
 		<view class="fixed-header">
-			<!-- Tab切换器 -->
-			<view class="tab-switcher">
-				<view 
-					class="tab-item" 
-					:class="{ active: activeTab === 'personal' }"
-					@click="switchTab('personal')"
-				>
-					<text class="tab-text">个人印章</text>
-					<view class="tab-indicator" v-if="activeTab === 'personal'"></view>
-				</view>
-				<view 
-					class="tab-item" 
-					:class="{ active: activeTab === 'enterprise' }"
-					@click="switchTab('enterprise')"
-				>
-					<text class="tab-text">企业印章</text>
-					<view class="tab-indicator" v-if="activeTab === 'enterprise'"></view>
-				</view>
-			</view>
-			
-			<!-- 状态筛选器（仅个人印章显示） -->
-			<view class="status-filter" v-if="activeTab === 'personal'">
+			<!-- 状态筛选器 -->
+			<view class="status-filter">
 				<view 
 					class="filter-item" 
 					:class="{ active: statusFilter === null }"
@@ -783,10 +782,9 @@ export default {
 		</view>
 	</view>
 	
-	<!-- 可滚动区域：个人印章Tab内容 -->
+	<!-- 可滚动区域：个人印章列表 -->
 	<scroll-view
 		class="tab-content personal-content"
-		v-if="activeTab === 'personal'"
 		scroll-y
 		@scrolltolower="loadMore"
 		lower-threshold="50"
@@ -848,69 +846,8 @@ export default {
 			class="float-btn" 
 			:class="{ disabled: isPersonalSealLimitReached }"
 			@click="createPersonalSeal"
-			v-if="activeTab === 'personal'"
 		>
 			<text class="float-btn-icon icon icon-plus"></text>
-		</view>
-	</scroll-view>
-
-	<!-- 可滚动区域：企业印章Tab内容 -->
-	<scroll-view
-		class="tab-content enterprise-content" 
-		v-if="activeTab === 'enterprise'"
-		scroll-y
-		refresher-enabled="true"
-		:refresher-triggered="isRefreshing"
-		@refresherrefresh="handleRefresherRefresh"
-	>
-		<!-- 企业印章列表为空时显示 -->
-		<view class="empty-state" v-if="!loading && (!enterpriseSealGroups || enterpriseSealGroups.length === 0)">
-			<image class="empty-image" src="/static/images/empty-signature.png"></image>
-			<text class="empty-text">暂无企业印章</text>
-			<text class="empty-desc">企业印章由企业管理员创建和管理</text>
-		</view>
-		
-		<!-- 企业印章列表 -->
-		<view class="enterprise-seal-section" v-if="!loading && enterpriseSealGroups && enterpriseSealGroups.length > 0">
-			<view class="enterprise-group" v-for="group in enterpriseSealGroups" :key="group.enterpriseId">
-				<view class="enterprise-name-bar">
-					<text class="enterprise-name">{{ group.enterpriseName }}</text>
-				</view>
-				<view 
-					class="seal-item" 
-					v-for="item in group.seals" 
-					:key="item.id"
-					:class="{ disabled: item.status !== 0 }"
-					@click="viewSealDetail(item)">
-					<view class="seal-image-wrapper">
-						<image class="seal-image" :src="getSealImageUrl(item)" mode="aspectFit"></image>
-						<!-- 禁用状态下隐藏图片上的标签 -->
-						<view class="status-badge" :class="getStatusClass(item.status)" v-if="item.status !== 0 && item.status !== 1">
-							<text class="status-text">{{ getStatusName(item.status) }}</text>
-						</view>
-						<!-- 🆕 底部禁用封条 -->
-						<view class="disabled-strip" v-if="item.status === 1">
-							<text class="disabled-strip-text">已禁用</text>
-						</view>
-					</view>
-					<view class="seal-info">
-						<view class="seal-name-row">
-							<text class="seal-name">{{ item.name }}</text>
-						</view>
-						<view class="seal-type-tag">
-							<text class="seal-type-text">{{ getSealTypeName(item.type) }}</text>
-						</view>
-						<text class="seal-time">创建时间: {{ formatDate(item.createTime) }}</text>
-					</view>
-					<!-- 企业印章暂时没有右侧操作 -->
-				</view>
-			</view>
-		</view>
-		
-		<!-- 加载中 -->
-		<view class="loading-container" v-if="loading">
-			<view class="loading-spinner"></view>
-			<text class="loading-text">加载中...</text>
 		</view>
 	</scroll-view>
 
@@ -976,7 +913,7 @@ page {
 	flex-direction: column;
 }
 
-/* 固定头部区域（包含Tab和筛选器） */
+/* 固定头部区域（状态筛选器） */
 .fixed-header {
 	/* 固定大小，不收缩也不放大 */
 	flex-shrink: 0;
@@ -984,45 +921,7 @@ page {
 	border-bottom-width: 1rpx;
 	border-bottom-color: #EBEEF5;
 	z-index: 100;
-	padding-top: 20rpx; /* 增加顶部间距，避免贴顶 */
-}
-
-/* Tab切换器 */
-.tab-switcher {
-	height: 88rpx;
-	background-color: #FFFFFF;
-	flex-direction: row;
-	align-items: center;
-}
-
-.tab-item {
-	flex: 1;
-	height: 100%;
-	align-items: center;
-	justify-content: center;
-	position: relative;
-}
-
-.tab-text {
-	font-size: 30rpx;
-	color: #606266;
-	font-weight: 500;
-}
-
-.tab-item.active .tab-text {
-	color: #00C28A;
-	font-weight: 600;
-}
-
-.tab-indicator {
-	position: absolute;
-	bottom: 0;
-	left: 50%;
-	transform: translateX(-50%);
-	width: 60rpx;
-	height: 4rpx;
-	background-color: #00C28A;
-	border-radius: 2rpx;
+	padding-top: 20rpx;
 }
 
 /* 状态筛选器 */
@@ -1431,14 +1330,14 @@ page {
 	text-align: center;
 }
 
-/* 浮动按钮 */
+/* 浮动按钮（与合同管理页圆角一致） */
 .float-btn {
 	position: fixed;
 	right: 40rpx;
 	bottom: 100rpx;
 	width: 100rpx;
 	height: 100rpx;
-	border-radius: 12rpx;
+	border-radius: 50rpx;
 	background-color: #00C28A;
 	align-items: center;
 	justify-content: center;

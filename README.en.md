@@ -2,9 +2,9 @@
   ===============
 
 
-Current Latest Version: v3.3.0 (Release Date: February 7, 2026)
+Current Latest Version: v3.4.0 (Release Date: April 5, 2026)
 
-[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.3.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
+[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.4.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
 
 
 
@@ -61,7 +61,23 @@ Signers must first log in to the platform and complete real-name verification (K
 | Target Signers | External partners, clients, suppliers | Internal staff, legal representatives |
 | Signing Time | As fast as 30s | First-time KYC required |
 
+#### `sign_security_level` Design Analysis
 
+**Original Design Intent**
+The system implements a **two-layer security level control**:
+- **Global Config**: `infra_config` table, key `seal.sign.default-security-level` (configurable via Admin Panel).
+- **Task Level**: `seal_sign_task.sign_security_level` field (snapshotted during task creation).
+
+**Design Concept (Snapshot Strategy)**:
+Captures a snapshot of the global configuration at the time of task creation. Subsequent processes (link generation/verification) rely on the task's own security level, remaining independent of future global configuration changes.
+
+**Current Challenge**:
+If the system is initially set to "Quick Sign" and many tasks are created, and later the administrator changes the global setting to "Secure Sign" to enhance security, the "Snapshot Strategy" would allow old tasks to maintain the lower security level. This contradicts the administrator's expectation of "immediate privilege tightening."
+
+**Improved Strategy: Global Baseline Principle**
+This project adopts: `Final Security Level = max(Global Config, Task Level)`
+- **Global Config as Baseline**: If the global setting is changed to "Secure Sign," all historical tasks and links immediately require login.
+- **Task-Level Hardening**: If the global setting is "Quick Sign," but a specific important task is set to "Secure Sign," that task will still enforce mandatory login.
 
 #### Developer-Friendly
 
@@ -405,7 +421,7 @@ Mini Contract.Pro adopts a modern cross-platform architecture design based on **
 - **Application Name**: Mini Contract.Pro
 - **Framework**: uni-app + Vue 3
 - **Language**: UTS (TypeScript)
-- **Version**: 3.3.0
+- **Version**: 3.4.0
 - **Supported Platforms**: iOS, Android, H5, Mini Programs, APP
 - **IDE**: HBuilder
 
@@ -1916,6 +1932,15 @@ Project Screenshots
 
 
 ### Recent Updates
+
+##### V 3.4.0 (2026-04-05)
+
+- [x] [New] Contract details: initiators can generate and copy signing links for pending participants while status is *Signing* or *Form Filling* (one-tap copy when only one pending signer; picker when multiple)
+- [x] [New] Contracts API: signing-link helpers (e.g. `generateSignLink`)
+- [x] [Optimize] HTTP layer: unified login-expiry cleanup and navigation; clearer handling for business codes such as *login required to view* and *current account is not a signer* (with switch-account / go-back guidance)
+- [x] [Fix] Personal seal list: pagination and quota/limit counting when a status filter is applied (avoid under-counting when filtered `total` is smaller than the full list)
+- [x] [Optimize] Profile seals page: clearer separation of personal vs enterprise seal entry flows; simpler list and reach-bottom loading
+- [x] [Optimize] KYC (personal / enterprise), KYC modal prompts, help center, home, and enterprise entry flows for smoother UX and messaging
 
 ##### V 3.3.0
 

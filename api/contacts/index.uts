@@ -1,0 +1,54 @@
+/**
+ * 签署方联系人相关 API
+ * 
+ * @author 小华同学 ai
+ */
+
+import { get } from '../index';
+
+// ==================== 类型定义 ====================
+
+/**
+ * 签署方联系人
+ */
+export type SignatoryContact = {
+	id : number;
+	name : string;
+	mobile : string | null;
+	email : string | null;
+	type : string; // personal / enterprise
+	companyName : string | null;
+	useCount : number;
+	lastUsedTime : string | null;
+}
+
+/**
+ * 分页结果
+ */
+export type ContactPageResult = {
+	list : SignatoryContact[];
+	total : number;
+}
+
+// ==================== API 函数 ====================
+
+/**
+ * 获取签署方联系人列表（分页）
+ * @param keyword 搜索关键词（姓名/手机号/企业名）
+ * @param type 类型筛选：personal / enterprise
+ * @param pageNo 页码
+ * @param pageSize 每页条数
+ */
+export function getContactList(keyword : string | null, type : string | null, pageNo : number, pageSize : number) : Promise<ContactPageResult> {
+	const params : UTSJSONObject = {
+		pageNo: pageNo,
+		pageSize: pageSize
+	};
+	if (keyword != null && keyword.length > 0) {
+		params['keyword'] = keyword;
+	}
+	if (type != null && type.length > 0) {
+		params['type'] = type;
+	}
+	return get('/api/v1/seal/contacts/list', params) as Promise<ContactPageResult>;
+}

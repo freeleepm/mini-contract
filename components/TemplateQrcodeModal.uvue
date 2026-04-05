@@ -1,0 +1,554 @@
+<script lang="uts">
+/**
+ * 模板二维码弹窗组件
+ * 
+ * 功能：
+ * - 展示模板二维码（canvas绘制）
+ * - 支持保存到相册
+ * - 支持分享
+ * 
+ * @author 小华同学AI
+ */
+import UQRCode from 'uqrcodejs';
+import { SEAL_CORE_H5_URL } from '../config/app.config';
+
+export default {
+	props: {
+		/** 是否显示弹窗 */
+		visible: {
+			type: Boolean,
+			default: false
+		},
+		/** 模板名称 */
+		templateName: {
+			type: String,
+			default: ''
+		},
+		/** 基础模板ID（用于生成QR URL） */
+		baseTemplateId: {
+			type: String,
+			default: ''
+		}
+	},
+	
+	emits: ['update:visible', 'close'],
+	
+	data() {
+		return {
+			/** QR码是否已生成 */
+			qrReady: false,
+			/** 生成中状态 */
+			generating: false,
+			/** 错误信息 */
+			errorMsg: '' as string,
+			/** CanvasContext 实例（新版 uni-app x API） */
+			canvasCtx: null as CanvasContext | null,
+			/** 2D 渲染上下文 */
+			renderingCtx: null as CanvasRenderingContext2D | null
+		}
+	},
+	
+	computed: {
+		/** 
+		 * 二维码目标URL
+		 * 直接指向 seal-core 的创建合同页（/h5/sign/create），通过 query string 传递 templateId
+		 * seal-core 使用 history mode 路由 + CreateContract.vue 已支持从 route.query.templateId 自动选中模板
+		 */
+		qrCodeUrl() : string {
+			if (!this.baseTemplateId) return '';
+			return `${SEAL_CORE_H5_URL}/h5/sign/create?templateId=${this.baseTemplateId}`;
+		}
+	},
+	
+	watch: {
+		visible(newVal : boolean) {
+			if (newVal && this.baseTemplateId) {
+				this.$nextTick(() => {
+					// 延迟确保 canvas 元素完成布局渲染
+					setTimeout(() => {
+						this.generateQRCode();
+					}, 200);
+				});
+			}
+			if (!newVal) {
+				this.qrReady = false;
+				this.errorMsg = '';
+			}
+		}
+	},
+	
+	methods: {
+		/**
+		 * 生成二维码
+		 * 使用 uni-app x 新版 Canvas API（uni.createCanvasContextAsync）
+		 */
+		generateQRCode() : void {
+			if (!this.qrCodeUrl) {
+				this.errorMsg = '无法生成二维码：缺少模板信息';
+				return;
+			}
+			
+			this.generating = true;
+			this.errorMsg = '';
+			
+			console.log('[QR Modal] 开始生成二维码:', this.qrCodeUrl);
+			
+			// 超时保护：如果 8 秒内未完成，显示错误
+			const timeoutId = setTimeout(() => {
+				if (this.generating) {
+					console.error('[QR Modal] 生成超时');
+					this.errorMsg = '二维码生成超时，请重试';
+					this.generating = false;
+				}
+			}, 8000);
+			
+			// 获取当前组件实例的 proxy，避免 this 类型与 ComponentPublicInstance 不兼容
+			const instance = getCurrentInstance();
+			const componentProxy = instance != null ? instance.proxy : null;
+			
+			// 使用 uni-app x 推荐的 createCanvasContextAsync API (HBuilderX 4.25+)
+			uni.createCanvasContextAsync({
+				id: 'qrCanvas',
+				component: componentProxy,
+				success: (context : CanvasContext) => {
+					clearTimeout(timeoutId);
+					try {
+						this.canvasCtx = context;
+						const ctx = context.getContext('2d')!;
+						this.renderingCtx = ctx;
+						const canvas = ctx.canvas;
+						
+						// 重要：先保存 CSS 布局尺寸，再修改 canvas buffer 尺寸
+						// 否则修改 canvas.width 后 offsetWidth 可能返回不同值
+						const displayWidth = canvas.offsetWidth;
+						const displayHeight = canvas.offsetHeight;
+						
+						// 处理高清屏
+						const dpr = uni.getDeviceInfo().devicePixelRatio ?? 1;
+						canvas.width = displayWidth * dpr;
+						canvas.height = displayHeight * dpr;
+						ctx.scale(dpr, dpr);
+						
+						// 使用预先保存的尺寸
+						const drawSize = displayWidth;
+						
+						console.log('[QR Modal] Canvas drawSize:', drawSize, 'dpr:', dpr);
+						
+						if (drawSize <= 0) {
+							console.error('[QR Modal] Canvas 尺寸为 0');
+							this.errorMsg = '二维码生成失败：画布尺寸异常';
+							this.generating = false;
+							return;
+						}
+						
+						// 生成 QR 码数据
+						const qr = new UQRCode();
+						qr.data = this.qrCodeUrl;
+						qr.size = drawSize;
+						qr.make();
+						
+						// 使用库的 getDrawModules() 获取结构化绘制指令
+						// uqrcodejs v4 在 make() 后，modules 变成含 color/isBlack 等属性的对象
+						// 直接使用库提供的绘制数据，避免 UTS 环境下 JS 对象类型判断问题
+						const drawModulesList = qr.getDrawModules() as any[];
+						
+						console.log('[QR Modal] drawModules count:', drawModulesList.length);
+						
+						// 清空画布
+						ctx.clearRect(0, 0, drawSize, drawSize);
+						
+						// 按照库的绘制指令逐个绘制
+						for (let i = 0; i < drawModulesList.length; i++) {
+							const m = drawModulesList[i] as any;
+							const mType = String(m.type);
+							
+							if (mType == 'area' || mType == 'tile') {
+								ctx.fillStyle = String(m.color);
+								ctx.fillRect(
+									Number(m.x),
+									Number(m.y),
+									Number(m.width),
+									Number(m.height)
+								);
+							}
+						}
+						
+						console.log('[QR Modal] 二维码绘制完成');
+						this.qrReady = true;
+						this.generating = false;
+					} catch (error : any) {
+						console.error('[QR Modal] 绘制二维码失败:', error);
+						this.errorMsg = '二维码生成失败，请重试';
+						this.generating = false;
+					}
+				}
+			});
+		},
+		
+		/**
+		 * 保存到相册
+		 * 使用 canvas.toDataURL 获取图片数据（W3C 标准 Canvas API）
+		 * H5端：浏览器下载；App端：保存到系统相册
+		 */
+		saveToAlbum() : void {
+			if (!this.qrReady || this.renderingCtx == null) {
+				uni.showToast({ title: '二维码正在生成中', icon: 'none' });
+				return;
+			}
+			
+			try {
+				const canvas = this.renderingCtx!.canvas;
+				const dataURL = canvas.toDataURL('image/png');
+				
+				console.log('[QR Modal] toDataURL 获取成功, 长度:', dataURL.length);
+				
+				if (dataURL.length < 100) {
+					console.error('[QR Modal] toDataURL 返回无效数据');
+					this.fallbackCopyLink();
+					return;
+				}
+				
+				// #ifdef H5
+				// H5端：使用浏览器下载（与 api/utils/download.uts 中 downloadFileInBrowser 一致的模式）
+				const link = document.createElement('a');
+				link.href = dataURL;
+				link.download = '模板二维码_' + this.templateName + '.png';
+				link.style.display = 'none';
+				document.body.appendChild(link);
+				link.click();
+				setTimeout(() => {
+					document.body.removeChild(link);
+				}, 100);
+				uni.showToast({ title: '图片已下载', icon: 'success' });
+				return;
+				// #endif
+				
+				// #ifndef H5
+				// App端：保存到系统相册
+				uni.saveImageToPhotosAlbum({
+					filePath: dataURL,
+					success: () => {
+						uni.showToast({ title: '已保存到相册', icon: 'success' });
+					},
+					fail: (err : any) => {
+						console.error('[QR Modal] 保存到相册失败:', err);
+						const errMsg = String(err.errMsg ?? '');
+						if (errMsg.indexOf('auth') >= 0) {
+							uni.showModal({
+								title: '权限提示',
+								content: '需要相册权限才能保存图片，请在设置中开启',
+								confirmText: '去设置',
+								success: (modalRes) => {
+									if (modalRes.confirm) {
+										uni.openSetting({});
+									}
+								}
+							});
+						} else {
+							this.fallbackCopyLink();
+						}
+					}
+				});
+				// #endif
+			} catch (e : any) {
+				console.error('[QR Modal] 保存异常:', e);
+				this.fallbackCopyLink();
+			}
+		},
+		
+		/**
+		 * 保存失败时的降级方案：复制链接到剪贴板
+		 */
+		fallbackCopyLink() : void {
+			uni.setClipboardData({
+				data: this.qrCodeUrl,
+				success: () => {
+					uni.showToast({ title: '保存失败，链接已复制到剪贴板', icon: 'none' });
+				}
+			});
+		},
+		
+		/**
+		 * 分享二维码链接
+		 */
+		shareQrcode() : void {
+			if (!this.qrCodeUrl) {
+				uni.showToast({ title: '二维码尚未生成', icon: 'none' });
+				return;
+			}
+			
+			// #ifdef H5
+			// H5端：复制链接到剪贴板
+			uni.setClipboardData({
+				data: this.qrCodeUrl,
+				success: () => {
+					uni.showToast({ title: '链接已复制', icon: 'success' });
+				}
+			});
+			// #endif
+			
+			// #ifndef H5
+			// 非H5端：使用系统分享
+			uni.share({
+				provider: 'weixin',
+				type: 0,
+				title: this.templateName + ' - 合同模版',
+				summary: '扫描二维码使用此模板创建合同',
+				href: this.qrCodeUrl,
+				success: () => {
+					console.log('[QR Modal] 分享成功');
+				},
+				fail: (err : any) => {
+					console.error('[QR Modal] 分享失败:', err);
+					// fallback: 复制链接
+					uni.setClipboardData({
+						data: this.qrCodeUrl,
+						success: () => {
+							uni.showToast({ title: '链接已复制', icon: 'success' });
+						}
+					});
+				}
+			});
+			// #endif
+		},
+		
+		/**
+		 * 关闭弹窗
+		 */
+		handleClose() : void {
+			this.$emit('update:visible', false);
+			this.$emit('close');
+		},
+		
+		/**
+		 * 阻止遮罩层穿透
+		 */
+		preventClose() : void {
+			// 空方法，阻止事件冒泡
+		}
+	}
+}
+</script>
+
+<template>
+	<view class="modal-mask" v-if="visible" @click="handleClose">
+		<view class="modal-container" @click.stop="preventClose">
+			<!-- 标题栏 -->
+			<view class="modal-header">
+				<text class="modal-title">模板二维码</text>
+				<view class="close-btn" @click="handleClose">
+					<text class="close-icon-text">✕</text>
+				</view>
+			</view>
+			
+			<!-- 内容区 -->
+			<view class="modal-body">
+				<!-- 模板名称 -->
+				<text class="template-name">{{ templateName }}</text>
+				
+				<!-- QR码区域 -->
+				<view class="qr-wrapper">
+					<view v-if="generating" class="qr-loading">
+						<text class="loading-text">正在生成二维码...</text>
+					</view>
+					<view v-else-if="errorMsg !== ''" class="qr-error">
+						<text class="error-text">{{ errorMsg }}</text>
+						<view class="retry-btn" @click="generateQRCode">
+							<text class="retry-text">点击重试</text>
+						</view>
+					</view>
+					<canvas id="qrCanvas" class="qr-canvas"></canvas>
+				</view>
+				
+				<!-- 提示文字 -->
+				<text class="qr-tip">扫描二维码使用此模板创建合同</text>
+			</view>
+			
+			<!-- 操作按钮 -->
+			<view class="modal-footer">
+				<view class="footer-btn-row">
+					<view class="share-btn" @click="shareQrcode">
+						<text class="share-btn-text">分享链接</text>
+					</view>
+					<view class="save-btn" @click="saveToAlbum">
+						<text class="save-text">保存到相册</text>
+					</view>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<style>
+	.modal-mask {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+		align-items: center;
+		justify-content: center;
+		z-index: 999;
+	}
+	
+	.modal-container {
+		width: 600rpx;
+		background-color: #FFFFFF;
+		border-radius: 24rpx;
+		overflow: hidden;
+		box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.15);
+	}
+	
+	/* 标题栏 */
+	.modal-header {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 30rpx;
+		border-bottom-width: 1rpx;
+		border-bottom-color: #EBEEF5;
+		border-bottom-style: solid;
+	}
+	
+	.modal-title {
+		font-size: 32rpx;
+		font-weight: 600;
+		color: #303133;
+	}
+	
+	.close-btn {
+		width: 50rpx;
+		height: 50rpx;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.close-icon-text {
+		font-size: 36rpx;
+		color: #909399;
+	}
+	
+	/* 内容区 */
+	.modal-body {
+		align-items: center;
+		padding: 40rpx 30rpx 20rpx 30rpx;
+	}
+	
+	.template-name {
+		font-size: 28rpx;
+		font-weight: 500;
+		color: #303133;
+		margin-bottom: 30rpx;
+		text-align: center;
+	}
+	
+	/* QR码区域 */
+	.qr-wrapper {
+		width: 440rpx;
+		height: 440rpx;
+		align-items: center;
+		justify-content: center;
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		border-width: 1rpx;
+		border-color: #EBEEF5;
+		border-style: solid;
+		padding: 20rpx;
+		margin-bottom: 20rpx;
+		position: relative;
+	}
+	
+	.qr-canvas {
+		width: 400rpx;
+		height: 400rpx;
+	}
+	
+	.qr-loading {
+		position: absolute;
+		align-items: center;
+		justify-content: center;
+		z-index: 1;
+	}
+	
+	.loading-text {
+		font-size: 24rpx;
+		color: #909399;
+	}
+	
+	.qr-error {
+		position: absolute;
+		align-items: center;
+		justify-content: center;
+		z-index: 1;
+	}
+	
+	.error-text {
+		font-size: 24rpx;
+		color: #F56C6C;
+		margin-bottom: 16rpx;
+		text-align: center;
+	}
+	
+	.retry-btn {
+		padding: 8rpx 24rpx;
+		background-color: rgba(245, 108, 108, 0.08);
+		border-radius: 20rpx;
+	}
+	
+	.retry-text {
+		font-size: 24rpx;
+		color: #F56C6C;
+	}
+	
+	.qr-tip {
+		font-size: 24rpx;
+		color: #909399;
+		margin-bottom: 10rpx;
+	}
+	
+	/* 操作按钮区 */
+	.modal-footer {
+		padding: 20rpx 30rpx 30rpx 30rpx;
+	}
+	
+	.footer-btn-row {
+		flex-direction: row;
+		gap: 16rpx;
+	}
+	
+	.share-btn {
+		flex: 1;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		height: 80rpx;
+		background-color: #F5F7FA;
+		border-radius: 40rpx;
+		border-width: 1rpx;
+		border-color: #DCDFE6;
+		border-style: solid;
+	}
+	
+	.share-btn-text {
+		font-size: 28rpx;
+		font-weight: 500;
+		color: #606266;
+	}
+	
+	.save-btn {
+		flex: 1;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		height: 80rpx;
+		background-color: #00C28A;
+		border-radius: 40rpx;
+	}
+	
+	.save-text {
+		font-size: 28rpx;
+		font-weight: 500;
+		color: #FFFFFF;
+	}
+</style>

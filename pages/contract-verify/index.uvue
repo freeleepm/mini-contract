@@ -367,7 +367,7 @@ export default {
 }
 
 .content-wrapper {
-    padding: 32rpx;
+    padding: 0;
 }
 
 .safe-bottom {
@@ -395,9 +395,9 @@ export default {
 /* 2. 上传卡片 (精致虚线风格) */
 .upload-card {
     background-color: #FFFFFF;
-    border-radius: 24rpx;
+    border-radius: 16rpx;
     padding: 40rpx;
-    margin-bottom: 32rpx;
+    margin-bottom: 24rpx;
     border: 2rpx dashed #E0E0E0;
     position: relative;
     overflow: hidden;
@@ -474,14 +474,14 @@ export default {
 /* 3. 验证内容列表 */
 .section-container {
     background-color: #FFFFFF;
-    border-radius: 24rpx;
+    border-radius: 16rpx;
     padding: 32rpx;
-    margin-bottom: 24rpx;
+    margin-bottom: 20rpx;
     box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
 }
 
 .section-header-group {
-    margin-bottom: 24rpx;
+    margin-bottom: 28rpx;
     padding-left: 8rpx;
 }
 
@@ -498,7 +498,7 @@ export default {
 }
 
 .feature-list {
-    gap: 24rpx;
+    gap: 32rpx;
 }
 
 .feature-row {
@@ -507,12 +507,12 @@ export default {
 }
 
 .feature-icon {
-    width: 72rpx;
-    height: 72rpx;
-    border-radius: 16rpx;
+    width: 80rpx;
+    height: 80rpx;
+    border-radius: 20rpx;
     align-items: center;
     justify-content: center;
-    margin-right: 20rpx;
+    margin-right: 24rpx;
     flex-shrink: 0;
 }
 
@@ -562,10 +562,10 @@ export default {
 /* 4. 结果总览卡片 */
 .result-summary-card {
     background-color: #FFFFFF;
-    border-radius: 24rpx;
+    border-radius: 16rpx;
     padding: 40rpx;
     align-items: center;
-    margin-bottom: 24rpx;
+    margin-bottom: 20rpx;
     box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
 }
 
@@ -787,14 +787,14 @@ export default {
     left: 0;
     right: 0;
     background-color: #FFFFFF;
-    padding: 20rpx 32rpx;
-    padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+    padding: 16rpx 24rpx;
+    padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
     box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.05);
 }
 
 .action-button {
     height: 88rpx;
-    border-radius: 44rpx;
+    border-radius: 16rpx;
     align-items: center;
     justify-content: center;
 }

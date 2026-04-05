@@ -1,0 +1,159 @@
+<template>
+	<view class="h5-batch-container">
+		<view v-if="loading && !errorMessage" class="loading-container">
+			<view class="loading-spinner"></view>
+			<text class="loading-text">加载任务详情...</text>
+		</view>
+
+		<view v-if="errorMessage && !loading" class="error-container">
+			<text class="error-text">{{ errorMessage }}</text>
+			<view class="error-actions">
+				<text class="error-link" @click="retry">重试</text>
+				<text class="error-link" @click="goBack">返回</text>
+			</view>
+		</view>
+
+		<web-view
+			v-if="pageUrl && !errorMessage"
+			:src="pageUrl"
+			@load="handleLoad"
+			@error="handleError"
+			@message="handleMessage"
+		></web-view>
+	</view>
+</template>
+
+<script>
+/**
+ * 批量任务详情页面（WebView 容器）
+ * 加载 seal-core H5 的 BatchDetail 页面
+ */
+import { getSealPageUrl } from '../../api/seals/index';
+
+export default {
+	data() {
+		return {
+			pageUrl: '' as string,
+			loading: true as boolean,
+			errorMessage: '' as string,
+			batchId: '' as string
+		}
+	},
+	onLoad(options : any) {
+		if (options && options.id) {
+			this.batchId = options.id;
+		}
+		if (!this.batchId || this.batchId === '0') {
+			uni.showToast({ title: '缺少任务ID', icon: 'none' });
+			setTimeout(() => { uni.navigateBack(); }, 1500);
+			return;
+		}
+		this.buildUrl();
+	},
+	methods: {
+		async buildUrl() {
+			try {
+				this.loading = true;
+				this.errorMessage = '';
+
+				let enterpriseId : number | undefined = undefined;
+				try {
+					const savedIdentity = uni.getStorageSync('currentIdentity');
+					if (savedIdentity) {
+						const identity = JSON.parse(savedIdentity) as UTSJSONObject | null;
+						if (identity != null && identity['type'] === 'enterprise' && identity['id'] != null) {
+							enterpriseId = parseInt(identity['id']!.toString());
+						}
+					}
+				} catch (_e) { /* ignore */ }
+
+				const params : any = {
+					batchId: parseInt(this.batchId)
+				};
+				if (enterpriseId != null) {
+					params.enterpriseId = enterpriseId;
+				}
+
+				this.pageUrl = await getSealPageUrl('batch-detail', undefined, params);
+				this.loading = false;
+				console.log('[批量详情] H5 URL:', this.pageUrl);
+			} catch (error) {
+				console.error('[批量详情] 构建URL失败:', error);
+				this.errorMessage = '页面加载失败，请重试';
+			}
+		},
+		handleLoad(_e : any) {
+			this.loading = false;
+		},
+		handleError(_e : any) {
+			this.loading = false;
+			this.errorMessage = '页面加载失败，请检查网络连接';
+		},
+		handleMessage(e : any) {
+			const messages = e.detail.data;
+			if (!messages || messages.length === 0) return;
+			const data = messages[messages.length - 1];
+			const action = (data['action'] as string | null) ?? (data['type'] as string | null) ?? '';
+			if (action === 'cancel' || action === 'close') {
+				uni.navigateBack();
+			}
+		},
+		retry() {
+			this.buildUrl();
+		},
+		goBack() {
+			uni.navigateBack();
+		}
+	}
+}
+</script>
+
+<style>
+.h5-batch-container {
+	flex: 1;
+	width: 100%;
+	height: 100%;
+	background-color: #F7F9FC;
+}
+.loading-container {
+	width: 100%;
+	height: 100%;
+	align-items: center;
+	justify-content: center;
+}
+.loading-spinner {
+	width: 80rpx;
+	height: 80rpx;
+	border-width: 4rpx;
+	border-style: solid;
+	border-color: #E4E7ED;
+	border-top-color: #00C28A;
+	border-radius: 40rpx;
+}
+.loading-text {
+	font-size: 28rpx;
+	color: #909399;
+	margin-top: 30rpx;
+}
+.error-container {
+	width: 100%;
+	height: 100%;
+	align-items: center;
+	justify-content: center;
+	padding: 60rpx;
+}
+.error-text {
+	font-size: 30rpx;
+	color: #606266;
+	text-align: center;
+	margin-bottom: 30rpx;
+}
+.error-actions {
+	flex-direction: row;
+	gap: 40rpx;
+}
+.error-link {
+	font-size: 28rpx;
+	color: #00C28A;
+}
+</style>

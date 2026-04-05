@@ -76,19 +76,22 @@
 						this.enterprises = response.list.map(item => ({
 							id: item.id,
 							name: item.name,
-							verified: item.status === EnterpriseStatus.VERIFIED, // 修正为VERIFIED(2)
+							verified: item.status === EnterpriseStatus.VERIFIED,
 							certStatus: this.mapStatusToCertStatus(item.status),
 							role: this.mapRoleToText(item.role),
 							memberCount: item.memberCount || 0,
 							createTime: this.formatCreateTime(item.createTime)
 						}));
 						
-						// 如果存在activeEnterprise且未设置currentEnterpriseId，则使用activeEnterprise的ID
-						if (response.activeEnterprise && !this.currentEnterpriseId) {
-							this.currentEnterpriseId = response.activeEnterprise.id;
-							
-							// 更新本地存储
-							this.saveCurrentIdentity(response.activeEnterprise);
+						// ✅ 后端驱动：根据 activeEnterprise 确定当前选中的企业
+						const activeEnterprise = response.activeEnterprise;
+						if (activeEnterprise != null) {
+							this.currentEnterpriseId = activeEnterprise.id;
+							console.log('[企业列表] 后端驱动：当前激活企业ID:', activeEnterprise.id);
+						} else {
+							// activeEnterprise 为 null 表示个人模式，不自动选中企业
+							this.currentEnterpriseId = '';
+							console.log('[企业列表] 后端驱动：当前为个人模式');
 						}
 					} else {
 						console.error('企业列表格式异常:', response);

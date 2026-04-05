@@ -201,6 +201,7 @@
 .icon-signature::before { content: "\f5b7"; } /* fa-signature */
 .icon-download::before { content: "\f019"; } /* fa-download */
 .icon-plus::before { content: "\f067"; } /* fa-plus */
+.icon-minus::before { content: "\f068"; } /* fa-minus */
 .icon-list-check::before { content: "\f0ae"; } /* fa-tasks */
 .icon-check::before { content: "\f00c"; } /* fa-check */
 .icon-close::before { content: "\f00d"; } /* fa-times */
@@ -248,6 +249,9 @@
 .icon-file-pdf::before { content: "\f1c1"; } /* PDF文件 */
 .icon-expand::before { content: "\f065"; } /* 展开 */
 .icon-plus-circle::before { content: "\f055"; } /* 加号圆圈 */
+.icon-copy::before { content: "\f0c5"; } /* 复制/批量 */
+.icon-layer-group::before { content: "\f5fd"; } /* 图层/批量 */
+.icon-trash::before { content: "\f1f8"; } /* 删除/垃圾桶 */
 .icon-signature::before { content: "\f5b7"; } /* 签名 */
 
 /* 企业列表页面专用图标定义 */
@@ -334,6 +338,10 @@
 .fa-lightbulb::before { content: "\f0eb"; }
 .fa-balance-scale::before { content: "\f24e"; }
 .fa-quote-left::before { content: "\f10d"; }
+
+/* 撤销/回退 */
+.fa-undo::before { content: "\f0e2"; }
+.fa-rotate-left::before { content: "\f0e2"; }
 
 /* 加载和刷新 */
 .fa-spinner::before { content: "\f110"; }

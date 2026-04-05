@@ -1,18 +1,16 @@
 <template>
-	<view class="page-container">
-		<scroll-view class="content-scroll" scroll-y="true">
-			<view class="content-wrapper">
+	<view class="purchase-page">
+		<scroll-view scroll-y="true" class="content">
+			<view class="detail-content">
 				<!-- 当前余额 -->
-				<view class="balance-section">
-					<QuotaBalanceCard :enterpriseId="enterpriseId" :showActions="false" ref="balanceCardRef" />
-				</view>
+				<QuotaBalanceCard :enterpriseId="enterpriseId" :showActions="false" ref="balanceCardRef" />
 
 				<!-- 套餐列表 -->
 				<view class="section-title">
 					<text class="section-title-text">选择套餐</text>
 				</view>
 
-				<view class="package-list" v-if="!loading">
+				<view v-if="!loading">
 					<view class="package-card" v-for="pkg in packageList" :key="pkg.id"
 						:class="{ 'selected': selectedPackageId === pkg.id }" @click="selectPackage(pkg.id)">
 						<view class="package-info">
@@ -159,8 +157,12 @@
 									}, 1500);
 								} else {
 									// 跳转到支付页面
+									let payUrl = `/pages/quota/pay?orderId=${result.orderId}&payOrderId=${result.payOrderId}`;
+									if (this.enterpriseId != null) {
+										payUrl += `&enterpriseId=${this.enterpriseId}`;
+									}
 									uni.navigateTo({
-										url: `/pages/quota/pay?orderId=${result.orderId}&payOrderId=${result.payOrderId}`
+										url: payUrl
 									});
 								}
 							} catch (error : any) {
@@ -184,25 +186,22 @@
 	/* 引入FontAwesome图标 */
 	@import url("../../static/styles/fontawesome.css");
 	
-	.page-container {
+	.purchase-page {
 		flex: 1;
 		background-color: #F7F9FC;
 	}
 
-	.content-scroll {
+	.content {
 		flex: 1;
 	}
 
-	.content-wrapper {
-		padding: 20rpx;
+	.detail-content {
+		padding: 30rpx;
 		padding-bottom: 140rpx;
 	}
 
-	.balance-section {
-		margin-bottom: 24rpx;
-	}
-
 	.section-title {
+		margin-top: 24rpx;
 		margin-bottom: 16rpx;
 	}
 
@@ -212,10 +211,6 @@
 		color: #303133;
 	}
 
-	.package-list {
-		margin-bottom: 20rpx;
-	}
-
 	.package-card {
 		flex-direction: row;
 		justify-content: space-between;
@@ -223,7 +218,7 @@
 		background-color: #FFFFFF;
 		border-radius: 16rpx;
 		padding: 24rpx;
-		margin-bottom: 12rpx;
+		margin-bottom: 16rpx;
 		border-width: 2rpx;
 		border-color: #E4E7ED;
 		border-style: solid;
@@ -318,15 +313,15 @@
 		left: 0;
 		right: 0;
 		background-color: #FFFFFF;
-		padding: 16rpx 20rpx;
-		padding-bottom: 32rpx;
-		box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.04);
+		padding: 20rpx 30rpx;
+		box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+		padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
 	}
 
 	.purchase-btn {
 		background-color: #00C28A;
 		height: 88rpx;
-		border-radius: 44rpx;
+		border-radius: 16rpx;
 		align-items: center;
 		justify-content: center;
 	}

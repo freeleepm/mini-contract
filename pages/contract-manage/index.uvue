@@ -77,6 +77,9 @@ import KycModal from '../../components/KycModal.uvue';
 		
 		// 列表页头像最多显示数量
 		maxAvatarsShow: 4,
+
+		// 悬浮菜单展开状态
+		showFloatMenu: false,
 				
 				// 搜索相关
 				searchText: '',
@@ -177,6 +180,8 @@ import KycModal from '../../components/KycModal.uvue';
 	
 onShow() {
 	this.safeTop = this.getSafeTop();
+	// 切回页面时关闭浮动菜单
+	this.showFloatMenu = false;
 	// 🔧 检查是否有从首页传递过来的状态筛选参数（tabBar 页面从其他页面返回时也会触发）
 	// 从其他页面返回时，不需要加载默认数据（避免覆盖已有数据）
 	this.checkAndApplyStatusFilter(false);
@@ -447,6 +452,9 @@ onShow() {
 		 */
 		changeTab(tabId: string): void {
 			if (this.currentTab === tabId) return;
+			
+			// 切换 Tab 时关闭浮动菜单
+			this.showFloatMenu = false;
 			
 			console.log('🔀 切换标签:', tabId);
 			this.currentTab = tabId;
@@ -1031,6 +1039,25 @@ onShow() {
 	},
 		
 	/**
+	 * 切换悬浮菜单显示
+	 */
+		toggleFloatMenu() {
+			this.showFloatMenu = !this.showFloatMenu;
+		},
+
+	/**
+	 * 悬浮菜单点击处理
+	 */
+		handleFloatMenuClick(action : string) {
+			this.showFloatMenu = false;
+			if (action == 'batch') {
+				uni.navigateTo({ url: '/pages/batch-create/index' });
+			} else if (action == 'single') {
+				this.navigateToCreate();
+			}
+		},
+
+	/**
 	 * 导航到创建页面（需要先验证实名认证，并检测H5服务）
 	 */
 		async navigateToCreate(): Promise<void> {
@@ -1236,6 +1263,22 @@ onShow() {
 			return getContractStatusColor(status);
 		},
 		
+		/**
+		 * 获取状态浅色背景
+		 */
+		getStatusBgColor(status: ContractStatus): string {
+			const bgMap = new Map<number, string>();
+			bgMap.set(1, 'rgba(144, 147, 153, 0.1)');  // 草稿 - 灰
+			bgMap.set(2, 'rgba(24, 144, 255, 0.1)');   // 签署中 - 蓝
+			bgMap.set(3, 'rgba(0, 194, 138, 0.1)');    // 已完成 - 绿
+			bgMap.set(4, 'rgba(144, 147, 153, 0.1)');  // 已撤销 - 灰
+			bgMap.set(5, 'rgba(245, 108, 108, 0.1)');  // 已拒签 - 红
+			bgMap.set(6, 'rgba(250, 173, 20, 0.1)');   // 已过期 - 橙
+			bgMap.set(7, 'rgba(250, 173, 20, 0.1)');   // 填写中 - 橙
+			const bg = bgMap.get(status as number);
+			return bg != null ? bg : 'rgba(144, 147, 153, 0.1)';
+		},
+		
 	/**
 	 * 格式化时间显示
 	 */
@@ -1388,15 +1431,13 @@ onShow() {
 					hover-class="contract-item-hover"
 					@click="viewContractDetail(contract)"
 				>
-					<!-- 合同状态标签（智能显示：区分"待我操作"和"等待他人操作"） -->
-					<view class="status-badge" :style="{ backgroundColor: getStatusColor(contract.status) }">
-						<text class="status-text">{{ getSmartStatusName(contract) }}</text>
-					</view>
-					
-					<!-- 合同标题 -->
+					<!-- 合同标题行（标题 + 状态标签） -->
 					<view class="contract-header">
 						<view class="contract-title-container">
 							<text class="contract-title">{{ contract.name }}</text>
+						</view>
+						<view class="status-tag" :style="{ backgroundColor: getStatusBgColor(contract.status), borderColor: getStatusColor(contract.status) }">
+							<text class="status-tag-text" :style="{ color: getStatusColor(contract.status) }">{{ getSmartStatusName(contract) }}</text>
 						</view>
 					</view>
 					
@@ -1540,9 +1581,20 @@ onShow() {
 			</view>
 		</scroll-view>
 		
-		<!-- 悬浮按钮 - 发起合同 -->
-		<view class="float-button create" @click="navigateToCreate">
-			<text class="fa fa-plus float-icon"></text>
+		<!-- 悬浮操作菜单 -->
+		<view class="float-menu-mask" v-if="showFloatMenu" @click="showFloatMenu = false"></view>
+		<view class="float-menu" v-if="showFloatMenu">
+			<view class="float-menu-item" @click="handleFloatMenuClick('batch')">
+				<text class="icon icon-copy float-menu-icon"></text>
+				<text class="float-menu-label">批量发起</text>
+			</view>
+			<view class="float-menu-item" @click="handleFloatMenuClick('single')">
+				<text class="icon icon-plus-circle float-menu-icon"></text>
+				<text class="float-menu-label">发起合同</text>
+			</view>
+		</view>
+		<view class="float-button create" @click="toggleFloatMenu">
+			<text class="fa float-icon" :class="showFloatMenu ? 'fa-times' : 'fa-plus'"></text>
 		</view>
 		
 		<!-- 实名认证提示弹窗 - 使用统一组件 -->
@@ -1784,7 +1836,6 @@ onShow() {
 	padding: 30rpx;
 	margin-bottom: 24rpx;
 	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
-		position: relative;
 	}
 	
 	.contract-item-hover {
@@ -1792,30 +1843,33 @@ onShow() {
 	}
 	
 	/* 状态标签 */
-	.status-badge {
-		position: absolute;
-		top: 0;
-		right: 0;
-	padding: 10rpx 24rpx;
-	border-bottom-left-radius: 16rpx;
+	.status-tag {
+		padding: 4rpx 14rpx;
+		border-radius: 8rpx;
+		border-width: 1rpx;
+		border-style: solid;
+		flex-shrink: 0;
 	}
 	
-	.status-text {
-		color: #FFFFFF;
-	font-size: 24rpx;
+	.status-tag-text {
+		font-size: 22rpx;
 		font-weight: 500;
 	}
 	
 /* 合同标题 */
 	.contract-header {
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: flex-start;
 	margin-bottom: 20rpx;
-	padding-right: 100rpx;
 	}
 	
 	.contract-title-container {
+		flex: 1;
 		flex-direction: row;
 		align-items: center;
 		flex-wrap: wrap;
+		margin-right: 16rpx;
 	}
 	
 	.contract-title {
@@ -2172,18 +2226,59 @@ onShow() {
 		margin: 0 20rpx;
 	}
 	
-/* ==================== 悬浮按钮 ==================== */
+/* ==================== 悬浮按钮与菜单 ==================== */
+	.float-menu-mask {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.35);
+		z-index: 998;
+	}
+
+	.float-menu {
+		position: fixed;
+		right: 32rpx;
+		bottom: 248rpx;
+		align-items: flex-end;
+		z-index: 999;
+	}
+
+	.float-menu-item {
+		flex-direction: row;
+		align-items: center;
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 24rpx 36rpx;
+		margin-bottom: 20rpx;
+		box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.12);
+	}
+
+	.float-menu-icon {
+		font-size: 36rpx;
+		color: #00C28A;
+		margin-right: 16rpx;
+	}
+
+	.float-menu-label {
+		font-size: 30rpx;
+		color: #303133;
+		font-weight: 600;
+	}
+
 	.float-button {
 		position: fixed;
 		right: 40rpx;
 	bottom: 120rpx;
 		width: 112rpx;
 		height: 112rpx;
-	border-radius: 12rpx;
+	border-radius: 56rpx;
 	background-color: #00C28A;
 		align-items: center;
 		justify-content: center;
 	box-shadow: 0 8rpx 24rpx rgba(0, 194, 138, 0.3);
+	z-index: 999;
 	}
 	
 	.float-button:active {

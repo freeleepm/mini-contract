@@ -6,11 +6,13 @@
 	import { checkNetworkStatus, testH5ServiceAvailability } from '../../utils/network';
 	import { getKycStatus, KycStatus } from '../../utils/kyc-check';
 	import KycModal from '../../components/KycModal.uvue';
+	import TemplateQrcodeModal from '../../components/TemplateQrcodeModal.uvue';
 	import { buildTemplateShareConfig, buildDefaultShareConfig } from '../../utils/share';
 	
 	export default {
 		components: {
-			KycModal
+			KycModal,
+			TemplateQrcodeModal
 		},
 		data() {
 			return {
@@ -27,7 +29,9 @@
 			// 用户认证状态
 			verifyStatus: KycStatus.NOT_VERIFIED as number,
 			// 是否显示认证弹窗
-			showKycModal: false
+			showKycModal: false,
+			// 二维码弹窗
+			showQrcodeModal: false
 			}
 		},
 		onLoad(options: any) {
@@ -136,6 +140,11 @@
 				}
 			},
 			
+	// 打开二维码弹窗
+	openQrcodeModal(): void {
+		this.showQrcodeModal = true;
+	},
+
  	// 预览模板（带字段位置标记）
  	async handlePreview(): Promise<void> {
  		if (!this.templateDetail) return;
@@ -224,6 +233,13 @@
 		}
  	},
 			
+		handleBatchLaunch() {
+			if (!this.templateDetail) return;
+			uni.navigateTo({
+				url: `/pages/batch-create/index?templateId=${this.templateId}`
+			});
+		},
+
 		// 使用此模板创建合同（先检测H5服务，再跳转）
 		async handleUseTemplate(): Promise<void> {
 			if (!this.templateDetail) return;
@@ -482,11 +498,26 @@
 							<text class="icon icon-chart-line meta-icon"></text>
 							<text class="meta-text">{{ templateDetail.usageCount || 0 }} 次使用</text>
 			</view>
-						<view v-if="templateDetail.isHot" class="meta-item hot-tag">
-							<text class="icon icon-fire meta-icon"></text>
-							<text class="meta-text">热门</text>
+					<view v-if="templateDetail.isHot" class="meta-item hot-tag">
+						<text class="icon icon-fire meta-icon"></text>
+						<text class="meta-text">热门</text>
 				</view>
 			</view>
+				
+				<!-- 二维码操作栏 -->
+				<view v-if="templateDetail.qrcodeEnabled" class="qr-action-bar" @click="openQrcodeModal">
+					<view class="qr-action-left">
+						<text class="fa fa-qrcode qr-action-icon"></text>
+						<view class="qr-action-info">
+							<text class="qr-action-title">模板二维码</text>
+							<text class="qr-action-desc">扫码即可使用此模板创建合同</text>
+						</view>
+					</view>
+					<view class="qr-action-right">
+						<text class="qr-action-btn-text">查看</text>
+						<text class="fa fa-chevron-right qr-action-arrow"></text>
+					</view>
+				</view>
 		</view>
 		
 			<!-- 模板预览（字段位置可视化） -->
@@ -653,11 +684,17 @@
 		
 	<!-- 底部固定操作栏 -->
 	<view class="bottom-bar" v-if="templateDetail">
-		<view class="bottom-button primary full-width" @click="handleUseTemplate">
+		<!-- 批量发起按钮 -->
+		<view class="bottom-button secondary" @click="handleBatchLaunch">
+			<text class="icon icon-copy btn-icon"></text>
+			<text class="btn-text-secondary">批量发起</text>
+		</view>
+		<!-- 使用模版按钮 -->
+		<view class="bottom-button primary" @click="handleUseTemplate">
 			<text class="icon icon-plus-circle btn-icon"></text>
 			<text class="btn-text">使用此模版</text>
-			</view>
 		</view>
+	</view>
 	
 	<!-- 实名认证提示弹窗 - 使用统一组件 -->
 	<kyc-modal 
@@ -665,6 +702,15 @@
 		description="为保障合同的法律效力，使用模板创建合同前需要完成实名认证。"
 		@close="closeKycModal"
 		@confirm="goToKyc"
+	/>
+	
+	<!-- 二维码弹窗 -->
+	<TemplateQrcodeModal 
+		:visible="showQrcodeModal"
+		:templateName="templateDetail != null ? templateDetail!.name : ''"
+		:baseTemplateId="templateDetail != null ? String(templateDetail!.baseTemplateId ?? templateDetail!.id) : ''"
+		@update:visible="(val: boolean) => { showQrcodeModal = val }"
+		@close="showQrcodeModal = false"
 	/>
 	</view>
 </template>
@@ -687,8 +733,7 @@
 	
 /* 内容滚动区域 */
 .content {
-		flex: 1;
-	padding-bottom: 140rpx; /* 为底部操作栏预留空间 */
+	flex: 1;
 }
 
 /* 加载中容器 */
@@ -729,6 +774,7 @@
 /* 详情内容区域 */
 .detail-content {
 	padding: 30rpx;
+	padding-bottom: 140rpx;
 }
 
 /* 通用卡片样式 */
@@ -827,6 +873,73 @@
 
 .meta-item.hot-tag .meta-text {
 	color: #F56C6C;
+}
+
+/* 二维码操作栏 */
+.qr-action-bar {
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	padding: 24rpx;
+	margin-top: 20rpx;
+	background-color: rgba(24, 144, 255, 0.04);
+	border-radius: 12rpx;
+	border-width: 1rpx;
+	border-color: rgba(24, 144, 255, 0.15);
+	border-style: solid;
+}
+
+.qr-action-left {
+	flex-direction: row;
+	align-items: center;
+	flex: 1;
+}
+
+.qr-action-icon {
+	font-family: FontAwesome;
+	font-size: 36rpx;
+	color: #1890FF;
+	margin-right: 16rpx;
+	font-style: normal;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+.qr-action-info {
+	flex: 1;
+}
+
+.qr-action-title {
+	font-size: 28rpx;
+	font-weight: 500;
+	color: #303133;
+}
+
+.qr-action-desc {
+	font-size: 22rpx;
+	color: #909399;
+	margin-top: 4rpx;
+}
+
+.qr-action-right {
+	flex-direction: row;
+	align-items: center;
+}
+
+.qr-action-btn-text {
+	font-size: 26rpx;
+	color: #1890FF;
+	font-weight: 500;
+	margin-right: 6rpx;
+}
+
+.qr-action-arrow {
+	font-family: FontAwesome;
+	font-size: 22rpx;
+	color: #1890FF;
+	font-style: normal;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 }
 
 /* 模板缩略图 */
@@ -1035,7 +1148,7 @@
 	display: flex;  /* 确保flex布局生效 */
 	flex: 1;
 	height: 88rpx;
-	border-radius: 44rpx;
+	border-radius: 16rpx;
 		flex-direction: row;
 		align-items: center;
 	justify-content: center;
@@ -1044,6 +1157,17 @@
 
 .bottom-button:active {
 	opacity: 0.9;
+}
+
+.bottom-button.secondary {
+	background-color: #F5F7FA;
+	border: 1rpx solid #DCDFE6;
+}
+
+.btn-text-secondary {
+	font-size: 30rpx;
+	font-weight: 500;
+	color: #606266;
 }
 
 /* 主要按钮（使用） */
@@ -1059,11 +1183,6 @@
 	color: #FFFFFF;
 }
 
-/* 全宽按钮 */
-.bottom-button.full-width {
-	flex: none;
-	width: 100%;
-}
 	
 .btn-icon {
 	font-size: 32rpx;

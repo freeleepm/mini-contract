@@ -458,7 +458,7 @@ export default {
 /* 下载按钮 */
 .download-btn {
 	height: 88rpx;
-	border-radius: 44rpx;
+	border-radius: 16rpx;
 	background-color: #00C28A;
 	flex-direction: row;
 	align-items: center;

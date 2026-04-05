@@ -2,9 +2,9 @@
   ===============
 
 
-当前最新版本：v3.3.0 (发布时间：2026-02-07)
+当前最新版本：v3.4.0 (发布时间：2026-04-05)
 
-[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.3.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
+[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.4.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
 
 
 
@@ -61,7 +61,23 @@
 | 适用签署方 | 外部人员、客户、供应商 | 内部员工、企业法人代表 |
 | 签署耗时 | 最快 30 秒 | 首次需完成认证 |
 
+#### 签署安全级别设计分析 (sign_security_level)
 
+**原始设计意图**
+系统设计了**两层安全级别控制**：
+- **全局配置**：`infra_config` 表，key=`seal.sign.default-security-level`（管理后台可改）
+- **任务级别**：`seal_sign_task.sign_security_level` 字段（任务创建时快照写入）
+
+**设计思路（快照策略）**：
+任务创建时拍一张全局配置的快照，后续流程（链接生成/校验）以任务自身的安全级别为准，不受全局配置后期变更的影响。
+
+**当前挑战**：
+若系统初始化时设为“快捷签署”，产生大量任务后，管理员将全局改为“登录签署”以提升安全性。此时“快照策略”会导致旧任务依然维持低安全级别，与管理员“立即收紧权限”的期望相左。
+
+**改进策略：全局底线原则**
+本项目采用：`最终安全级别 = max(全局配置, 任务级别)`
+- **全局配置是底线**：若全局改为“登录签署”，所有历史任务及链接均立刻要求登录。
+- **任务级别可加严**：若全局是“快捷签署”，但某个特定重要任务设为“登录签署”，则该任务依然强制登录。
 
 #### 第三方开发者友好
 
@@ -405,7 +421,7 @@ Mini Contract.Pro 采用现代化的跨平台架构设计，基于 **uni-app + V
 - **应用名称**：Mini Contract.Pro
 - **框架**：uni-app + Vue 3
 - **语言**：UTS (TypeScript)
-- **版本**：3.3.0
+- **版本**：3.4.0
 - **支持平台**：iOS、Android、H5、小程序、APP
 - **IDE**：HBuilder
 
@@ -1947,6 +1963,15 @@ $background-color: #F7F9FC; // 背景色
 
 
 ### 最近更新
+
+##### V 3.4.0（2026-04-05）
+
+- [x] 【新增】合同详情：发起人可在「签署中 / 表单填写中」为待办参与方生成并复制签署链接（仅一名待办时一键复制，多名时可选择后再复制）
+- [x] 【新增】合同 API：签署链接生成等相关接口封装（如 `generateSignLink`）
+- [x] 【优化】请求层：统一登录过期清理与跳转；针对「需登录后方可查看」、签署方身份与当前账号不匹配等业务错误码，提供明确文案与「切换账号 / 返回」引导
+- [x] 【修复】个人印章列表在状态筛选下的分页与「数量上限」统计（避免筛选后 total 变小导致上限校验偏差）
+- [x] 【优化】个人中心印章页：与个人章 / 企业章入口拆分，列表与触底加载逻辑简化，减少误切换与重复请求
+- [x] 【优化】实名认证（个人 / 企业）、KYC 引导弹窗、帮助中心、首页与企业相关入口的交互与提示一致性
 
 ##### V 3.3.0
 

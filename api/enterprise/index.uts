@@ -72,9 +72,10 @@ export interface EnterpriseSimple {
 }
 
 // 企业列表响应接口
+// activeEnterprise 为 null 表示个人模式，非 null 表示企业模式（由后端 current_enterprise_id 决定）
 export interface EnterpriseListResponse {
     list: EnterpriseSimple[];
-    activeEnterprise: EnterpriseSimple;
+    activeEnterprise: EnterpriseSimple | null;
 }
 
 // 企业成员信息接口
@@ -669,6 +670,19 @@ export function switchEnterprise(enterpriseId: number): Promise<boolean> {
         url: '/api/v1/member/enterprise/switch',
         method: 'POST',
         data: { enterpriseId },
+        isAuth: true
+    });
+}
+
+/**
+ * 切换到个人身份（清除后端 current_enterprise_id）
+ * @returns Promise<boolean>
+ */
+export function switchToPersonal(): Promise<boolean> {
+    console.log('调用切换到个人身份API');
+    return request<boolean>({
+        url: '/api/v1/member/enterprise/switch-personal',
+        method: 'POST',
         isAuth: true
     });
 }

@@ -3,7 +3,7 @@
  * 处理移动端文件下载的统一逻辑
  */
 
-import { getBaseURL } from '../config.uts';
+import { getBaseURL } from '../../config/app.config';
 
 /**
  * 下载合同文件

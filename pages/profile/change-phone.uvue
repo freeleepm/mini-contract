@@ -1,0 +1,486 @@
+<script lang="uts">
+	/**
+	 * 修改手机号页面 - 两步验证流程
+	 * 步骤1：验证旧手机号（发送验证码到旧手机号）
+	 * 步骤2：绑定新手机号（输入新手机号并验证）
+	 * @author 小华同学AI
+	 */
+	import { get } from '@/api/index'
+	import { checkAuthAndRedirect } from '@/api/auth'
+	import { sendUpdateMobileCode, updateMobile, validateSmsCode } from '@/api/auth/login'
+
+	interface UserInfoResp {
+		mobile?: string
+	}
+
+	export default {
+		data() {
+			return {
+				step: 1 as number,
+				mobile: '',
+				maskedMobile: '',
+				oldCode: '',
+				newMobile: '',
+				newCode: '',
+				oldCountdown: 0,
+				newCountdown: 0,
+				oldTimer: 0,
+				newTimer: 0,
+				sendingOldCode: false,
+				sendingNewCode: false,
+				submitting: false,
+				errorMessage: ''
+			}
+		},
+
+		onLoad() {
+			if (!checkAuthAndRedirect(false)) {
+				return
+			}
+			this.loadUserMobile()
+		},
+
+		onUnload() {
+			if (this.oldTimer > 0) {
+				clearTimeout(this.oldTimer)
+				this.oldTimer = 0
+			}
+			if (this.newTimer > 0) {
+				clearTimeout(this.newTimer)
+				this.newTimer = 0
+			}
+		},
+
+		computed: {
+			isStep1Disabled(): boolean {
+				return !this.oldCode
+			},
+			isStep2Disabled(): boolean {
+				return !this.newMobile || !this.newCode
+			}
+		},
+
+		methods: {
+			maskMobile(mobile: string): string {
+				if (!mobile || mobile.length < 11) return mobile
+				return mobile.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')
+			},
+
+			async loadUserMobile(): Promise<void> {
+				try {
+					const res = await get<UserInfoResp>('/api/v1/member/user/get')
+					const mobile = res?.mobile ?? ''
+					this.mobile = mobile
+					this.maskedMobile = this.maskMobile(mobile)
+				} catch (e: any) {
+					console.error('获取用户信息失败:', e)
+					this.errorMessage = (e?.message as string | null) ?? '获取用户信息失败'
+				}
+			},
+
+			startCountdown(type: string): void {
+				if (type === 'old') {
+					if (this.oldTimer > 0) {
+						clearTimeout(this.oldTimer)
+						this.oldTimer = 0
+					}
+					const tick = () => {
+						if (this.oldCountdown > 0) {
+							this.oldCountdown--
+							this.oldTimer = setTimeout(tick, 1000)
+						} else {
+							this.oldTimer = 0
+						}
+					}
+					this.oldTimer = setTimeout(tick, 1000)
+				} else {
+					if (this.newTimer > 0) {
+						clearTimeout(this.newTimer)
+						this.newTimer = 0
+					}
+					const tick = () => {
+						if (this.newCountdown > 0) {
+							this.newCountdown--
+							this.newTimer = setTimeout(tick, 1000)
+						} else {
+							this.newTimer = 0
+						}
+					}
+					this.newTimer = setTimeout(tick, 1000)
+				}
+			},
+
+			async handleSendOldCode(): Promise<void> {
+				this.errorMessage = ''
+				if (!this.mobile) {
+					this.errorMessage = '未获取到绑定手机号'
+					return
+				}
+				if (this.oldCountdown > 0 || this.sendingOldCode) return
+
+				this.sendingOldCode = true
+				try {
+					await sendUpdateMobileCode(this.mobile)
+					uni.showToast({ title: '验证码已发送', icon: 'success' })
+					this.oldCountdown = 60
+					this.startCountdown('old')
+				} catch (e: any) {
+					this.errorMessage = (e?.message as string | null) ?? '发送验证码失败'
+					uni.showToast({ title: this.errorMessage, icon: 'none', duration: 2000 })
+				} finally {
+					this.sendingOldCode = false
+				}
+			},
+
+			async handleNextStep(): Promise<void> {
+				this.errorMessage = ''
+				if (!this.oldCode) {
+					this.errorMessage = '请输入验证码'
+					uni.showToast({ title: this.errorMessage, icon: 'none' })
+					return
+				}
+				if (!/^\d{4,6}$/.test(this.oldCode)) {
+					this.errorMessage = '验证码为 4-6 位数字'
+					uni.showToast({ title: this.errorMessage, icon: 'none' })
+					return
+				}
+				if (this.submitting) return
+				this.submitting = true
+				try {
+					console.log('开始校验旧手机验证码, mobile:', this.mobile, 'code:', this.oldCode)
+					await validateSmsCode(this.mobile, this.oldCode, 2)
+					console.log('旧手机验证码校验通过')
+					this.step = 2
+				} catch (e: any) {
+					console.error('旧手机验证码校验失败:', e)
+					const msg = (e?.message as string | null) ?? '验证码错误'
+					this.errorMessage = msg
+					uni.showToast({ title: msg, icon: 'none', duration: 2000 })
+				} finally {
+					this.submitting = false
+				}
+			},
+
+			validateNewMobile(): boolean {
+				if (!this.newMobile) {
+					this.errorMessage = '请输入新手机号'
+					return false
+				}
+				if (!/^1\d{10}$/.test(this.newMobile)) {
+					this.errorMessage = '请输入正确的11位手机号'
+					return false
+				}
+				if (this.newMobile === this.mobile) {
+					this.errorMessage = '新手机号不能与当前手机号相同'
+					return false
+				}
+				return true
+			},
+
+			async handleSendNewCode(): Promise<void> {
+				this.errorMessage = ''
+				if (!this.validateNewMobile()) {
+					uni.showToast({ title: this.errorMessage, icon: 'none', duration: 2000 })
+					return
+				}
+				if (this.newCountdown > 0 || this.sendingNewCode) return
+
+				this.sendingNewCode = true
+				try {
+					await sendUpdateMobileCode(this.newMobile)
+					uni.showToast({ title: '验证码已发送', icon: 'success' })
+					this.newCountdown = 60
+					this.startCountdown('new')
+				} catch (e: any) {
+					this.errorMessage = (e?.message as string | null) ?? '发送验证码失败'
+					uni.showToast({ title: this.errorMessage, icon: 'none', duration: 2000 })
+				} finally {
+					this.sendingNewCode = false
+				}
+			},
+
+			async handleSubmit(): Promise<void> {
+				this.errorMessage = ''
+				if (!this.validateNewMobile()) {
+					uni.showToast({ title: this.errorMessage, icon: 'none' })
+					return
+				}
+				if (!this.newCode) {
+					this.errorMessage = '请输入新手机号验证码'
+					uni.showToast({ title: this.errorMessage, icon: 'none' })
+					return
+				}
+				if (!/^\d{4,6}$/.test(this.newCode)) {
+					this.errorMessage = '验证码为 4-6 位数字'
+					uni.showToast({ title: this.errorMessage, icon: 'none' })
+					return
+				}
+
+				this.submitting = true
+				try {
+					await updateMobile({
+						mobile: this.newMobile,
+						code: this.newCode,
+						oldCode: this.oldCode
+					})
+
+					uni.showToast({ title: '手机号修改成功', icon: 'success', duration: 1500 })
+					setTimeout(() => {
+						uni.navigateBack()
+					}, 1500)
+				} catch (e: any) {
+					const msg = (e?.message as string | null) ?? '修改失败'
+					this.errorMessage = msg
+					uni.showToast({ title: msg, icon: 'none', duration: 2000 })
+				} finally {
+					this.submitting = false
+				}
+			},
+
+			goBack(): void {
+				if (this.step === 2) {
+					this.step = 1
+					this.errorMessage = ''
+				} else {
+					uni.navigateBack()
+				}
+			}
+		}
+	}
+</script>
+
+<template>
+	<view class="container">
+		<!-- 步骤指示器 -->
+		<view class="steps">
+			<view class="step" :class="{ active: step >= 1 }">
+				<view class="step-circle"><text class="step-num">1</text></view>
+				<text class="step-label">验证旧手机号</text>
+			</view>
+			<view class="step-line" :class="{ active: step >= 2 }"></view>
+			<view class="step" :class="{ active: step >= 2 }">
+				<view class="step-circle"><text class="step-num">2</text></view>
+				<text class="step-label">绑定新手机号</text>
+			</view>
+		</view>
+
+		<!-- 步骤1：验证旧手机号 -->
+		<view class="card" v-if="step === 1">
+			<view class="tip" v-if="maskedMobile">
+				<text class="tip-text">验证码将发送至：{{ maskedMobile }}</text>
+			</view>
+
+			<view class="error-message" v-if="errorMessage">
+				<text class="error-text">{{ errorMessage }}</text>
+			</view>
+
+			<view class="form-item">
+				<text class="label">短信验证码</text>
+				<view class="code-row">
+					<input class="input code-input" type="number" placeholder="请输入验证码" v-model="oldCode" maxlength="6" />
+					<button class="code-btn" :disabled="oldCountdown > 0 || sendingOldCode" @click="handleSendOldCode">
+						<text class="code-btn-text">{{ oldCountdown > 0 ? oldCountdown + 's 后重发' : (sendingOldCode ? '发送中...' : '获取验证码') }}</text>
+					</button>
+				</view>
+			</view>
+
+			<button class="submit-btn" :disabled="isStep1Disabled || submitting" :loading="submitting" @click="handleNextStep">
+				<text class="submit-text">{{ submitting ? '验证中...' : '下一步' }}</text>
+			</button>
+		</view>
+
+		<!-- 步骤2：绑定新手机号 -->
+		<view class="card" v-if="step === 2">
+			<view class="tip">
+				<text class="tip-text">请输入新的手机号码</text>
+			</view>
+
+			<view class="error-message" v-if="errorMessage">
+				<text class="error-text">{{ errorMessage }}</text>
+			</view>
+
+			<view class="form-item">
+				<text class="label">新手机号</text>
+				<input class="input" type="number" placeholder="请输入新手机号" v-model="newMobile" maxlength="11" />
+			</view>
+
+			<view class="form-item">
+				<text class="label">短信验证码</text>
+				<view class="code-row">
+					<input class="input code-input" type="number" placeholder="请输入验证码" v-model="newCode" maxlength="6" />
+					<button class="code-btn" :disabled="newCountdown > 0 || sendingNewCode" @click="handleSendNewCode">
+						<text class="code-btn-text">{{ newCountdown > 0 ? newCountdown + 's 后重发' : (sendingNewCode ? '发送中...' : '获取验证码') }}</text>
+					</button>
+				</view>
+			</view>
+
+			<button class="submit-btn" :disabled="isStep2Disabled" :loading="submitting" @click="handleSubmit">
+				<text class="submit-text">{{ submitting ? '提交中...' : '确认修改' }}</text>
+			</button>
+		</view>
+	</view>
+</template>
+
+<style>
+	.container {
+		flex: 1;
+		background-color: #F7F9FC;
+		padding: 32rpx;
+	}
+
+	.steps {
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 40rpx;
+	}
+
+	.step {
+		align-items: center;
+	}
+
+	.step-circle {
+		width: 48rpx;
+		height: 48rpx;
+		border-radius: 24rpx;
+		background-color: #E6E8EB;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 8rpx;
+	}
+
+	.step.active .step-circle {
+		background-color: #00C28A;
+	}
+
+	.step-num {
+		font-size: 24rpx;
+		color: #FFFFFF;
+		font-weight: 600;
+	}
+
+	.step-label {
+		font-size: 22rpx;
+		color: #909399;
+	}
+
+	.step.active .step-label {
+		color: #00C28A;
+		font-weight: 500;
+	}
+
+	.step-line {
+		width: 80rpx;
+		height: 4rpx;
+		background-color: #E6E8EB;
+		margin: 0 20rpx;
+		margin-bottom: 30rpx;
+	}
+
+	.step-line.active {
+		background-color: #00C28A;
+	}
+
+	.card {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 32rpx;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+	}
+
+	.tip {
+		margin-bottom: 24rpx;
+		padding: 20rpx;
+		background-color: rgba(0, 194, 138, 0.08);
+		border-radius: 12rpx;
+	}
+
+	.tip-text {
+		font-size: 26rpx;
+		color: #00C28A;
+	}
+
+	.error-message {
+		margin-bottom: 24rpx;
+		padding: 20rpx;
+		background-color: rgba(255, 77, 79, 0.08);
+		border-radius: 12rpx;
+	}
+
+	.error-text {
+		font-size: 26rpx;
+		color: #FF4D4F;
+	}
+
+	.form-item {
+		margin-bottom: 28rpx;
+	}
+
+	.label {
+		font-size: 26rpx;
+		color: #333333;
+		margin-bottom: 12rpx;
+	}
+
+	.input {
+		height: 88rpx;
+		border: 1rpx solid #E6E8EB;
+		border-radius: 12rpx;
+		padding: 0 24rpx;
+		font-size: 28rpx;
+		background-color: #FFFFFF;
+	}
+
+	.code-row {
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.code-input {
+		flex: 1;
+	}
+
+	.code-btn {
+		margin-left: 16rpx;
+		background-color: #00C28A;
+		border-radius: 12rpx;
+		padding: 0 24rpx;
+		height: 88rpx;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.code-btn[disabled] {
+		background-color: rgba(0, 194, 138, 0.5);
+	}
+
+	.code-btn-text {
+		color: #FFFFFF;
+		font-size: 26rpx;
+		text-align: center;
+	}
+
+	.submit-btn {
+		margin-top: 16rpx;
+		background-color: #00C28A;
+		border-radius: 16rpx;
+		height: 96rpx;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.submit-btn[disabled] {
+		background-color: rgba(0, 194, 138, 0.5);
+	}
+
+	.submit-text {
+		color: #FFFFFF;
+		font-size: 30rpx;
+		font-weight: 600;
+		text-align: center;
+	}
+</style>

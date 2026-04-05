@@ -11,6 +11,7 @@
     "sync-name": "node scripts/sync-app-name.js"
   },
   "dependencies": {
-    "@dcloudio/uni-ui": "^1.5.8"
+    "@dcloudio/uni-ui": "^1.5.8",
+    "uqrcodejs": "^4.0.7"
   }
 }

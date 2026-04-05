@@ -680,7 +680,7 @@
           <view class="benefits-grid">
             <view class="benefit-item">
               <view class="benefit-icon verified">
-                <text class="fa fa-shield-check"></text>
+                <text class="fa fa-certificate"></text>
               </view>
               <text class="benefit-text">官方认证标识</text>
             </view>
@@ -776,6 +776,7 @@
           
           <!-- 基本信息 -->
           <view class="form-item">
+            <text class="input-label">企业名称 <text class="required">*</text></text>
             <view class="input-wrapper">
               <input 
                 class="form-input" 
@@ -784,10 +785,10 @@
                 placeholder-class="input-placeholder"
               />
             </view>
-            <text class="input-label">企业名称 <text class="required">*</text></text>
           </view>
           
           <view class="form-item">
+            <text class="input-label">统一社会信用代码 <text class="required">*</text></text>
             <view class="input-wrapper" :class="{ 'error': !validation.licenseNumber.valid }">
               <input 
                 class="form-input" 
@@ -797,7 +798,6 @@
                 @blur="validateLicenseNumber"
               />
             </view>
-            <text class="input-label">统一社会信用代码 <text class="required">*</text></text>
             <text v-if="!validation.licenseNumber.valid" class="error-message">
               <text class="fa fa-exclamation-circle error-icon"></text>
               {{validation.licenseNumber.message}}
@@ -805,16 +805,16 @@
           </view>
           
           <view class="form-item">
+            <text class="input-label">法人姓名 <text class="required">*</text></text>
             <view class="input-wrapper" :class="{ 'error': !validation.legalPerson.valid }">
               <input 
                 class="form-input" 
                 v-model="certificationInfo.legalPerson"
-                placeholder="请输入法定代表人姓名"
+                placeholder="请输入法人姓名"
                 placeholder-class="input-placeholder"
                 @blur="validateLegalPerson"
               />
             </view>
-            <text class="input-label">法人姓名 <text class="required">*</text></text>
             <text v-if="!validation.legalPerson.valid" class="error-message">
               <text class="fa fa-exclamation-circle error-icon"></text>
               {{validation.legalPerson.message}}
@@ -822,6 +822,7 @@
           </view>
           
           <view class="form-item">
+            <text class="input-label">法人身份证号 <text class="required">*</text></text>
             <view class="input-wrapper" :class="{ 'error': !validation.legalPersonIdCard.valid }">
               <input 
                 class="form-input" 
@@ -831,7 +832,6 @@
                 @blur="validateLegalPersonIdCard"
               />
             </view>
-            <text class="input-label">法人身份证号 <text class="required">*</text></text>
             <text v-if="!validation.legalPersonIdCard.valid" class="error-message">
               <text class="fa fa-exclamation-circle error-icon"></text>
               {{validation.legalPersonIdCard.message}}
@@ -839,6 +839,7 @@
           </view>
           
           <view class="form-item">
+            <text class="input-label">联系人姓名 <text class="required">*</text></text>
             <view class="input-wrapper" :class="{ 'error': !validation.contactName.valid }">
               <input 
                 class="form-input" 
@@ -848,7 +849,6 @@
                 @blur="validateContactName"
               />
             </view>
-            <text class="input-label">联系人姓名 <text class="required">*</text></text>
             <text v-if="!validation.contactName.valid" class="error-message">
               <text class="fa fa-exclamation-circle error-icon"></text>
               {{validation.contactName.message}}
@@ -856,6 +856,7 @@
           </view>
           
           <view class="form-item">
+            <text class="input-label">联系电话 <text class="required">*</text></text>
             <view class="input-wrapper" :class="{ 'error': !validation.contactPhone.valid }">
               <input 
                 class="form-input" 
@@ -866,7 +867,6 @@
                 @blur="validateContactPhone"
               />
             </view>
-            <text class="input-label">联系电话 <text class="required">*</text></text>
             <text v-if="!validation.contactPhone.valid" class="error-message">
               <text class="fa fa-exclamation-circle error-icon"></text>
               {{validation.contactPhone.message}}
@@ -1624,6 +1624,7 @@ page {
   font-size: 26rpx;
   color: #6B7280;
   margin-bottom: 8rpx;
+  display: block;
 }
 
 .required {
@@ -1858,7 +1859,7 @@ page {
         justify-content: center;
   background-color: #00C28A;
   height: 88rpx;
-  border-radius: 44rpx;
+  border-radius: 8rpx;
   box-shadow: 0 4rpx 12rpx rgba(0, 194, 138, 0.2);
   transition: all 0.2s ease;
 }

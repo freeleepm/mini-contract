@@ -1,6 +1,7 @@
 <script>
 	import { get } from '@/api/index'
-	import { getEnterpriseList, EnterpriseStatus } from '../../api/enterprise/index';
+	import { clearSealToken } from '../../utils/sealTokenManager';
+	import { getEnterpriseList, switchEnterprise, switchToPersonal, EnterpriseStatus } from '../../api/enterprise/index';
 	import { checkAuthAndRedirect } from '../../api/auth';
 	import { getQuotaBalance } from '../../api/quota/index';
 	import EnterpriseKycModal from '../../components/EnterpriseKycModal.uvue';
@@ -315,7 +316,10 @@
 				}
 			},
 			
-			// 加载企业列表
+			// 加载企业列表（后端驱动身份模型）
+			// 后端根据 current_enterprise_id 字段返回 activeEnterprise：
+			// - activeEnterprise 非 null → 企业模式
+			// - activeEnterprise 为 null → 个人模式
 			async loadEnterpriseList() {
 				// 检查页面状态
 				if (this.isDestroyed) {
@@ -341,7 +345,7 @@
 						this.enterprises = response.list.map(item => ({
 							id: item.id,
 							name: item.name,
-							verified: item.status === EnterpriseStatus.VERIFIED, // 修正为VERIFIED(2)
+							verified: item.status === EnterpriseStatus.VERIFIED,
 							role: this.mapRoleToText(item.role)
 						}));
 						console.log('企业列表加载成功，企业数量:', this.enterprises.length);
@@ -351,22 +355,34 @@
 							return;
 						}
 						
-						// ✅ 修复bug：加载企业列表后，如果当前身份是企业，需要重新验证管理员权限
-						if (this.currentIdentity.type === 'enterprise' && this.currentIdentity.id) {
-							const currentEnterprise = this.enterprises.find(e => e.id === this.currentIdentity.id);
-							if (currentEnterprise && !this.isDestroyed) {
-								// 更新当前身份的角色信息
-								this.currentIdentity.role = currentEnterprise.role;
-								this.currentIdentity.verified = currentEnterprise.verified;
-								// 更新管理员权限
-								this.isEnterpriseAdmin = ['管理员', '所有者'].includes(currentEnterprise.role);
-								console.log('更新企业管理员权限:', this.isEnterpriseAdmin, '角色:', currentEnterprise.role);
-								// 保存更新后的身份信息
-								this.saveIdentityToStorage();
-							} else if (!currentEnterprise) {
-								console.warn('当前选择的企业不在企业列表中');
+						// ✅ 后端驱动：根据 activeEnterprise 确定当前身份
+						const activeEnterprise = response.activeEnterprise;
+						if (activeEnterprise != null) {
+							// 后端返回了激活的企业 → 企业模式
+							const matchedEnterprise = this.enterprises.find(e => e.id === activeEnterprise.id);
+							if (matchedEnterprise) {
+								this.currentIdentity = {
+									type: 'enterprise',
+									id: matchedEnterprise.id,
+									name: matchedEnterprise.name,
+									verified: matchedEnterprise.verified,
+									role: matchedEnterprise.role
+								};
+								this.isEnterpriseAdmin = ['管理员', '所有者'].includes(matchedEnterprise.role);
+								console.log('[个人中心] 后端驱动：恢复企业身份:', matchedEnterprise.name, '管理员:', this.isEnterpriseAdmin);
+							} else {
+								// 企业已失效，后端会自动清除，回退到个人模式
+								this.setPersonalIdentity();
+								console.log('[个人中心] 后端驱动：企业已失效，回退到个人模式');
 							}
+						} else {
+							// activeEnterprise 为 null → 个人模式
+							this.setPersonalIdentity();
+							console.log('[个人中心] 后端驱动：当前为个人模式');
 						}
+						
+						// 保存身份到本地存储（作为缓存）
+						this.saveIdentityToStorage();
 					} else if (!this.isDestroyed) {
 						console.error('企业列表格式异常:', response);
 					}
@@ -375,6 +391,18 @@
 						console.error('获取企业列表失败:', error);
 					}
 				}
+			},
+			
+			// 设置为个人身份
+			setPersonalIdentity() {
+				this.currentIdentity = {
+					type: 'personal',
+					id: this.userInfo.id || '',
+					name: '个人',
+					verified: this.userInfo.isVerified,
+					role: ''
+				};
+				this.isEnterpriseAdmin = false;
 			},
 			
 			// 将API角色值映射为角色文本
@@ -413,41 +441,52 @@
 				this.showIdentityDropdown = false;
 			},
 			
-			// 切换身份
-			switchIdentity(type: string, enterprise: EnterpriseItem | null = null) {
-				if (type === 'personal') {
-					this.currentIdentity = {
-						type: 'personal',
-						id: this.userInfo.id || '',
-						name: '个人',
-						verified: this.userInfo.isVerified,
-						role: ''
-					};
-					// ✅ 切换到个人身份时，重置管理员权限
-					this.isEnterpriseAdmin = false;
-					console.log('切换到个人身份，重置管理员权限为false');
-				} else if (type === 'enterprise' && enterprise) {
-					this.currentIdentity = {
-						type: 'enterprise',
-						id: enterprise.id,
-						name: enterprise.name,
-						verified: enterprise.verified,
-						role: enterprise.role
-					};
+			// 切换身份（后端驱动）
+			async switchIdentity(type: string, enterprise: EnterpriseItem | null = null) {
+				try {
+					if (type === 'personal') {
+						// ✅ 先调用后端API，清除 current_enterprise_id
+						await switchToPersonal();
+						
+						this.setPersonalIdentity();
+						console.log('[个人中心] 切换到个人身份（已同步后端）');
+					} else if (type === 'enterprise' && enterprise != null) {
+						// ✅ 先调用后端API，保存 current_enterprise_id
+						await switchEnterprise(enterprise.id as number);
+						
+						this.currentIdentity = {
+							type: 'enterprise',
+							id: enterprise.id,
+							name: enterprise.name,
+							verified: enterprise.verified,
+							role: enterprise.role
+						};
+						
+						// 根据当前企业角色更新管理权限
+						this.isEnterpriseAdmin = ['管理员', '所有者'].includes(enterprise.role);
+						console.log('[个人中心] 切换到企业身份（已同步后端），管理员权限:', this.isEnterpriseAdmin);
+					}
 					
-					// 根据当前企业角色更新管理权限
-					this.isEnterpriseAdmin = ['管理员', '所有者'].includes(enterprise.role);
-					console.log('切换到企业身份，管理员权限:', this.isEnterpriseAdmin, '角色:', enterprise.role);
-				}
-				
-				// 保存身份选择到本地存储
+				// 保存身份选择到本地存储（作为缓存）
 				this.saveIdentityToStorage();
+				
+				// 🔧 清除 Seal-Token 缓存，下次 API 调用时会用新身份重新获取
+				// 确保模板查询等使用正确的企业上下文
+				clearSealToken();
+				console.log('[个人中心] Seal-Token 缓存已清除（身份已变更）');
 				
 				// 关闭下拉菜单
 				this.closeIdentityDropdown();
 				
 				// 刷新页面数据
 				this.refreshPageData();
+				} catch (error) {
+					console.error('[个人中心] 切换身份失败:', error);
+					uni.showToast({
+						title: '切换身份失败，请重试',
+						icon: 'none'
+					});
+				}
 			},
 			
 			// 保存身份选择到本地存储
@@ -1141,14 +1180,14 @@
 							<text class="icon icon-chevron-right"></text>
 						</view>
 					</view>
-					<!-- 印章管理入口 -->
+					<!-- 个人印章入口（个人身份时显示） -->
 					<view v-if="isPersonal" class="menu-item" hover-class="menu-item-hover" @click="goToPersonalSeals">
 						<view class="menu-icon">
 							<text class="icon icon-stamp"></text>
 						</view>
 						<view class="menu-content">
-							<text class="menu-title">印章管理</text>
-							<text class="menu-desc">管理个人和企业印章</text>
+							<text class="menu-title">个人印章</text>
+							<text class="menu-desc">管理个人印章，用于合同签署</text>
 						</view>
 						<view class="menu-arrow">
 							<text class="icon icon-chevron-right"></text>

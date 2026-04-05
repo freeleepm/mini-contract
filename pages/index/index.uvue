@@ -4,8 +4,8 @@
 	import { checkAuthAndRedirect } from '../../api/auth';
 	import { getSealPageUrl } from '../../api/seals/index';
 	import { checkNetworkStatus, testH5ServiceAvailability } from '../../utils/network';
-	import { getSealToken } from '../../utils/sealTokenManager';
-	import { getEnterpriseList, EnterpriseStatus } from '../../api/enterprise/index';
+	import { getSealToken, clearSealToken } from '../../utils/sealTokenManager';
+	import { getEnterpriseList, switchEnterprise, switchToPersonal, EnterpriseStatus } from '../../api/enterprise/index';
 	import { getQuotaBalance } from '@/api/quota/index';
 	import { get } from '@/api/index';
 	import PrivacyGuideModal from '../../components/PrivacyGuideModal.uvue';
@@ -125,11 +125,12 @@
 					{ icon: '/static/icons/template.png', label: '模板发起', path: '/pages/template-market/index' },
 					{ icon: '/static/icons/folder.png', label: '文件发起', path: '/pages/contract-create/h5-create?type=file' },
 					{ icon: '/static/icons/image.png', label: '图片发起', path: '/pages/contract-create/h5-create?type=image' },
-					{ icon: '/static/icons/draft.png', label: '草稿发起', path: null } // 功能暂未开放，不设置路径
+					{ icon: '/static/icons/draft.png', label: '批量发起', path: '' }
 				],
-				// 热门模板数据
+				// 热门模板数据（固定模板ID）
 				templates: [
 					{ 
+						id: 888,
 						name: '借条', 
 						description: '让每一份承诺都有据可依',
 						buttonLabel: '立即使用',
@@ -137,11 +138,13 @@
 						image: '/static/templates/loan.png'
 					},
 					{
+						id: 777,
 						name: '收据',
 						description: '让每一笔资金流动都有迹可循',
 						image: '/static/templates/receipt.png'
 					},
 					{
+						id: 666,
 						name: '买卖',
 						description: '让每一次交易都充满安心与信赖',
 						image: '/static/templates/purchase.png'
@@ -301,12 +304,12 @@
 					return
 				}
 				
-				// 如果是模板项，跳转到合同创建页面
-				if (item.name) {
+				// 如果是热门模板项，跳转到模板详情页
+				if (item.id != null && item.name) {
 					uni.navigateTo({
-						url: '/pages/contract-create/index'
-					})
-					return
+						url: `/pages/template-detail/index?id=${item.id}`
+					});
+					return;
 				}
 				
 				// 默认提示
@@ -318,6 +321,22 @@
 			
 			// 处理快速发起项点击（先检测H5服务，再跳转）
 			async handleQuickStartClick(item: any): Promise<void> {
+				// 批量发起已迁移到模板详情页面
+				if (item.label === '批量发起') {
+					uni.showModal({
+						title: '功能已迁移',
+						content: '批量发起功能已迁移至模板详情页面，请先选择模板后再进行批量发起。',
+						confirmText: '去选模板',
+						cancelText: '知道了',
+						success: (res) => {
+							if (res.confirm) {
+								uni.navigateTo({ url: '/pages/template-market/index' });
+							}
+						}
+					});
+					return;
+				}
+				
 				// 草稿发起功能暂未开放（通过 path 为 null 或 label 判断）
 				if (item.label === '草稿发起' || !item.path) {
 					uni.showToast({
@@ -510,7 +529,10 @@
 				}
 			},
 			
-			// 加载企业列表
+			// 加载企业列表（后端驱动身份模型）
+			// 后端根据 current_enterprise_id 字段返回 activeEnterprise：
+			// - activeEnterprise 非 null → 企业模式
+			// - activeEnterprise 为 null → 个人模式
 			async loadEnterpriseList(): Promise<void> {
 				try {
 					console.log('[首页] 开始加载企业列表...');
@@ -527,15 +549,45 @@
 						}));
 						console.log('[首页] 企业列表加载成功，企业数量:', this.enterprises.length);
 						
-						// 如果当前身份是企业，更新企业信息
-						if (this.currentIdentity.type === 'enterprise' && this.currentIdentity.id) {
-							const currentEnterprise = this.enterprises.find(e => e.id === this.currentIdentity.id);
-							if (currentEnterprise) {
-								this.currentIdentity.role = currentEnterprise.role;
-								this.currentIdentity.verified = currentEnterprise.verified;
-								this.saveIdentityToStorage();
+						// ✅ 后端驱动：根据 activeEnterprise 确定当前身份
+						const activeEnterprise = response.activeEnterprise;
+						if (activeEnterprise != null) {
+							// 后端返回了激活的企业 → 企业模式
+							const matchedEnterprise = this.enterprises.find(e => e.id === activeEnterprise.id);
+							if (matchedEnterprise) {
+								this.currentIdentity = {
+									type: 'enterprise',
+									id: matchedEnterprise.id,
+									name: matchedEnterprise.name,
+									verified: matchedEnterprise.verified,
+									role: matchedEnterprise.role
+								};
+								console.log('[首页] 后端驱动：恢复企业身份:', matchedEnterprise.name);
+							} else {
+								// 企业已失效，回退到个人模式
+								this.currentIdentity = {
+									type: 'personal',
+									id: this.userInfo.id,
+									name: '个人',
+									verified: this.userInfo.isVerified,
+									role: ''
+								};
+								console.log('[首页] 后端驱动：企业已失效，回退到个人模式');
 							}
+						} else {
+							// activeEnterprise 为 null → 个人模式
+							this.currentIdentity = {
+								type: 'personal',
+								id: this.userInfo.id,
+								name: '个人',
+								verified: this.userInfo.isVerified,
+								role: ''
+							};
+							console.log('[首页] 后端驱动：当前为个人模式');
 						}
+						
+						// 保存身份到本地存储（作为缓存）
+						this.saveIdentityToStorage();
 					}
 				} catch (error) {
 					console.error('[首页] 获取企业列表失败:', error);
@@ -578,43 +630,62 @@
 				this.showIdentityDropdown = false;
 			},
 			
-			// 切换身份
-			switchIdentity(type: string, enterprise: any = null): void {
-				if (type === 'personal') {
-					this.currentIdentity = {
-						type: 'personal',
-						id: this.userInfo.id || '',
-						name: '个人',
-						verified: this.userInfo.isVerified,
-						role: ''
-					};
-					console.log('[首页] 切换到个人身份');
-				} else if (type === 'enterprise' && enterprise) {
-					this.currentIdentity = {
-						type: 'enterprise',
-						id: enterprise.id,
-						name: enterprise.name,
-						verified: enterprise.verified,
-						role: enterprise.role
-					};
-					console.log('[首页] 切换到企业身份:', enterprise.name);
+			// 切换身份（后端驱动）
+			async switchIdentity(type: string, enterprise: any = null): Promise<void> {
+				try {
+					if (type === 'personal') {
+						// ✅ 先调用后端API，清除 current_enterprise_id
+						await switchToPersonal();
+						
+						this.currentIdentity = {
+							type: 'personal',
+							id: this.userInfo.id || '',
+							name: '个人',
+							verified: this.userInfo.isVerified,
+							role: ''
+						};
+						console.log('[首页] 切换到个人身份（已同步后端）');
+					} else if (type === 'enterprise' && enterprise != null) {
+						// ✅ 先调用后端API，保存 current_enterprise_id
+						await switchEnterprise(enterprise.id as number);
+						
+						this.currentIdentity = {
+							type: 'enterprise',
+							id: enterprise.id,
+							name: enterprise.name,
+							verified: enterprise.verified,
+							role: enterprise.role
+						};
+						console.log('[首页] 切换到企业身份（已同步后端）:', enterprise.name);
+					}
+					
+					// 保存身份选择到本地存储（作为缓存）
+					this.saveIdentityToStorage();
+					
+					// 🔧 清除 Seal-Token 缓存，下次 API 调用时会用新身份重新获取
+					// 确保模板查询等使用正确的企业上下文
+					clearSealToken();
+					console.log('[首页] Seal-Token 缓存已清除（身份已变更）');
+					
+					// 关闭下拉菜单
+					this.closeIdentityDropdown();
+					
+					// 刷新页面数据
+					this.loadContractSummary();
+					
+					// 显示切换成功提示
+					uni.showToast({
+						title: '已切换到' + this.currentIdentity.name,
+						icon: 'none',
+						duration: 1500
+					});
+				} catch (error) {
+					console.error('[首页] 切换身份失败:', error);
+					uni.showToast({
+						title: '切换身份失败，请重试',
+						icon: 'none'
+					});
 				}
-				
-				// 保存身份选择到本地存储
-				this.saveIdentityToStorage();
-				
-				// 关闭下拉菜单
-				this.closeIdentityDropdown();
-				
-				// 刷新页面数据
-				this.loadContractSummary();
-				
-				// 显示切换成功提示
-				uni.showToast({
-					title: '已切换到' + this.currentIdentity.name,
-					icon: 'none',
-					duration: 1500
-				});
 			},
 			
 			// 保存身份选择到本地存储

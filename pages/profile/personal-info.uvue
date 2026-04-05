@@ -142,7 +142,13 @@
 				if (!phone || phone.length < 11) return phone;
 				return phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
 			},
-			
+
+			goChangePhone(): void {
+				uni.navigateTo({
+					url: '/pages/profile/change-phone'
+				});
+			},
+
 			// 跳转到实名认证页面
 			goToRealNameVerification(): void {
 				uni.navigateTo({
@@ -196,9 +202,14 @@
 					</view>
 					
 					<!-- 手机号 -->
-					<view class="info-item">
+					<view class="info-item" @click="goChangePhone">
 						<text class="item-label">手机号</text>
-						<text class="item-value">{{maskPhone(userInfo.phone)}}</text>
+						<view class="item-right">
+							<text class="item-value">{{maskPhone(userInfo.phone)}}</text>
+							<view class="edit-button" hover-class="edit-button-hover">
+								<text class="edit-button-text">修改</text>
+							</view>
+						</view>
 					</view>
 					
 					<!-- 性别 -->
@@ -377,25 +388,39 @@
 		color: #333333;
 		flex: 1;
 	}
-	
+
+	.item-right {
+		flex-direction: row;
+		align-items: center;
+		flex: 1;
+		justify-content: flex-end;
+	}
+
+	.item-action {
+		font-size: 24rpx;
+		color: #00C28A;
+		margin-left: 12rpx;
+		font-weight: 500;
+	}
+
 	/* 修改按钮样式 */
 	.edit-button {
-		background-color: #F0F7FF;
-		border-radius: 24rpx;
+		background-color: rgba(0, 194, 138, 0.08);
+		border-radius: 12rpx;
 		padding: 8rpx 20rpx;
 		margin-left: 20rpx;
-		border: 1rpx solid rgba(24, 144, 255, 0.2);
+		border: 1rpx solid rgba(0, 194, 138, 0.2);
 		transition: all 0.3s ease;
 	}
 	
 	.edit-button-hover {
-		background-color: #E6F0FF;
+		background-color: rgba(0, 194, 138, 0.15);
 		transform: scale(0.98);
 	}
 	
 	.edit-button-text {
 		font-size: 24rpx;
-		color: #1890FF;
+		color: #00C28A;
 		font-weight: 500;
 	}
 	
@@ -433,12 +458,11 @@
 	/* 操作按钮样式 */
 	.action-button {
 		padding: 12rpx 24rpx;
-		border-radius: 24rpx;
+		border-radius: 12rpx;
 		margin-left: 16rpx;
 		min-width: 80rpx;
 		text-align: center;
 		transition: all 0.3s ease;
-		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
 	}
 	
 	.action-button-text {
@@ -511,19 +535,17 @@
 	
 	/* 认证按钮样式 */
 	.verify-button {
-		background: linear-gradient(135deg, #00C28A 0%, #00B07C 100%);
-		border-radius: 24rpx;
+		background-color: #00C28A;
+		border-radius: 12rpx;
 		padding: 10rpx 24rpx;
 		margin-left: 20rpx;
-		box-shadow: 0 4rpx 12rpx rgba(0, 194, 138, 0.3);
-		border: 1rpx solid rgba(0, 194, 138, 0.2);
+		border: 1rpx solid #00C28A;
 		transition: all 0.3s ease;
 	}
 	
 	.verify-button-hover {
-		background: linear-gradient(135deg, #00B07C 0%, #009E6F 100%);
+		background-color: #00B07C;
 		transform: scale(0.98);
-		box-shadow: 0 2rpx 8rpx rgba(0, 194, 138, 0.4);
 	}
 	
 	.verify-button-text {
@@ -536,19 +558,16 @@
 
 	/* 认证状态徽章样式 */
 	.verification-status {
-		flex: 1;
 	}
 	
 	.status-badge {
 		display: flex;
 		flex-direction: row;
 		align-items: center;
-		padding: 8rpx 16rpx;
-		border-radius: 24rpx;
-		min-height: 48rpx;
-		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
-		border: 2rpx solid;
-		transition: all 0.3s ease;
+		padding: 6rpx 16rpx;
+		border-radius: 12rpx;
+		border: 1rpx solid;
+		align-self: flex-start;
 	}
 	
 	.status-badge .status-icon {
@@ -573,31 +592,15 @@
 		font-weight: 600;
 	}
 	
-	/* 已认证徽章 - 金色特效 */
+	/* 已认证徽章 - 轻量绿色 */
 	.verified-badge {
-		background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%);
-		border-color: #FFD700;
-		position: relative;
-		overflow: hidden;
-	}
-	
-	.verified-badge::before {
-		content: '';
-		position: absolute;
-		top: -50%;
-		left: -50%;
-		width: 200%;
-		height: 200%;
-		background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-		animation: shine 2s infinite;
+		background-color: rgba(0, 194, 138, 0.1);
+		border-color: rgba(0, 194, 138, 0.3);
 	}
 	
 	.verified-badge .fa,
 	.verified-badge .status-text {
-		color: #FFFFFF;
-		text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.3);
-		position: relative;
-		z-index: 1;
+		color: #00C28A;
 	}
 	
 	/* FontAwesome图标定义 - 补充缺失的图标 */
@@ -606,24 +609,24 @@
 	
 	/* 审核中徽章 */
 	.pending-badge {
-		background: linear-gradient(135deg, #FAAD14 0%, #F39C12 100%);
-		border-color: #FAAD14;
+		background-color: rgba(250, 173, 20, 0.1);
+		border-color: rgba(250, 173, 20, 0.3);
 	}
 	
 	.pending-badge .fa,
 	.pending-badge .status-text {
-		color: #FFFFFF;
+		color: #FAAD14;
 	}
 	
 	/* 认证失败徽章 */
 	.failed-badge {
-		background: linear-gradient(135deg, #FF6B6B 0%, #E74C3C 100%);
-		border-color: #FF6B6B;
+		background-color: rgba(245, 108, 108, 0.1);
+		border-color: rgba(245, 108, 108, 0.3);
 	}
 	
 	.failed-badge .fa,
 	.failed-badge .status-text {
-		color: #FFFFFF;
+		color: #F56C6C;
 	}
 	
 	/* 未认证徽章 */
@@ -637,12 +640,6 @@
 		color: #909399;
 	}
 	
-	/* 金色徽章闪烁动画 */
-	@keyframes shine {
-		0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-		100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
-	}
-
 	.safe-area-bottom {
 		height: 60rpx;
 	}

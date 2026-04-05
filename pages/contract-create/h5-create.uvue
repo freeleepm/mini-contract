@@ -16,7 +16,7 @@
  * @date 2025-11-02
  */
 import { getSealPageUrl } from '../../api/seals/index';
-import { API_BASE_URL } from '../../api/config';
+import { API_BASE_URL } from '../../config/app.config';
 import { getQuotaBalance } from '../../api/quota/index';
 
 export default {
@@ -277,36 +277,44 @@ export default {
 				return;
 			}
 			
-			// 调用API检查配额
-			const quotaInfo = await getQuotaBalance(enterpriseId);
-			const balance = quotaInfo?.balance || 0;
-			
-			console.log('[H5容器] 当前配额余额:', balance);
-			
-			if (balance <= 0) {
-				// 配额不足，显示提示
-				this.loading = false;
-				uni.showModal({
-					title: '配额不足',
-					content: '您的合同配额已用完，请先购买配额后再创建合同。',
-					confirmText: '去购买',
-					cancelText: '返回',
-					success: (res) => {
-						if (res.confirm) {
-							// 跳转到购买页面
-							let url = '/pages/quota/purchase';
-							if (enterpriseId != null) {
-								url += `?enterpriseId=${enterpriseId}`;
-							}
-							uni.navigateTo({ url: url });
-						} else {
-							// 返回上一页
-							uni.navigateBack();
+		// 调用API检查配额
+		const quotaInfo = await getQuotaBalance(enterpriseId);
+		
+		// 🔧 如果配额功能已关闭，跳过配额检查
+		if (quotaInfo?.enabled === false) {
+			console.log('[H5容器] 配额功能已关闭，跳过配额检查');
+			this.buildCreateUrl();
+			return;
+		}
+		
+		const balance = quotaInfo?.balance || 0;
+		
+		console.log('[H5容器] 当前配额余额:', balance, '身份模式:', isEnterprise ? '企业' : '个人', '企业ID:', enterpriseId);
+		
+		if (balance <= 0) {
+			// 配额不足，显示提示
+			this.loading = false;
+			uni.showModal({
+				title: '配额不足',
+				content: '您的合同配额已用完，请先购买配额后再创建合同。',
+				confirmText: '去购买',
+				cancelText: '返回',
+				success: (res) => {
+					if (res.confirm) {
+						// 跳转到购买页面
+						let url = '/pages/quota/purchase';
+						if (enterpriseId != null) {
+							url += `?enterpriseId=${enterpriseId}`;
 						}
+						uni.navigateTo({ url: url });
+					} else {
+						// 返回上一页
+						uni.navigateBack();
 					}
-				});
-				return;
-			}
+				}
+			});
+			return;
+		}
 			
 			// 配额充足且认证通过，继续构建URL
 			this.buildCreateUrl();
@@ -743,7 +751,7 @@ export default {
 				
 				// 上传文件
 				const uploadTask = uni.uploadFile({
-					url: `${API_BASE_URL}/admin-api/infra/file/upload`,
+					url: `${API_BASE_URL}/api/v1/infra/file/upload`,
 					filePath: filePath,
 					name: 'file',
 					header: {

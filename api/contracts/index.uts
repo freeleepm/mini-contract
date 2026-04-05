@@ -146,6 +146,24 @@ export interface CreateContractParams {
 	}[];
 }
 
+/**
+ * 生成签署链接请求参数
+ */
+export type GenerateSignLinkParams = {
+  participantId: number
+  validHours?: number
+  oneTime?: boolean
+}
+
+/**
+ * 生成签署链接响应
+ */
+export interface GenerateSignLinkResp {
+	signUrl: string;
+	token: string;
+	expireTime: string;
+}
+
 // ==================== API方法 ====================
 
 /**
@@ -177,6 +195,13 @@ export function createContract(data: CreateContractParams): Promise<{ id: string
 }
 
 /**
+ * 生成签署链接（供分享使用）
+ */
+export function generateSignLink(taskId: string, params: GenerateSignLinkParams): Promise<GenerateSignLinkResp> {
+	return post<GenerateSignLinkResp>(`/api/v1/seal/sign-task/generate-link?taskId=${taskId}`, params);
+}
+
+/**
  * 撤销合同
  * 注意：DELETE 请求的参数应该在 URL 中，不是 request body
  */
@@ -195,11 +220,10 @@ export function deleteContract(id: string): Promise<void> {
 }
 
 /**
- * 催签（暂时使用空实现，后续可扩展）
+ * 催签（向未签署的参与人重新发送签署通知）
  */
 export function urgeContract(id: string): Promise<void> {
-	// TODO: 后台可能需要添加催签接口
-	return post<void>(`/api/v1/seal/sign-task/${id}/urge`, {});
+	return post<void>(`/api/v1/seal/sign-task/urge?id=${id}`, {});
 }
 
 /**

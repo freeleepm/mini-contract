@@ -104,3 +104,51 @@ export function updateUserPassword(data: { password: string; code: string }): Pr
 		data
 	})
 }
+
+/**
+ * 发送修改手机号验证码
+ * @param mobile 手机号（旧手机号或新手机号）
+ * @returns 发送结果
+ */
+export function sendUpdateMobileCode(mobile: string): Promise<boolean> {
+	return request<boolean>({
+		url: '/api/v1/member/auth/send-sms-code',
+		method: 'POST',
+		data: {
+			mobile: mobile,
+			scene: 2
+		}
+	})
+}
+
+/**
+ * 校验短信验证码（仅验证，不消费）
+ * @param mobile 手机号
+ * @param code 验证码
+ * @param scene 场景
+ * @returns 校验结果
+ */
+export function validateSmsCode(mobile: string, code: string, scene: number): Promise<boolean> {
+	return request<boolean>({
+		url: '/api/v1/member/auth/validate-sms-code',
+		method: 'POST',
+		data: {
+			mobile: mobile,
+			code: code,
+			scene: scene
+		}
+	})
+}
+
+/**
+ * 修改手机号
+ * @param data 包含新手机号、新手机号验证码、旧手机号验证码
+ * @returns 修改结果
+ */
+export function updateMobile(data: { mobile: string; code: string; oldCode: string }): Promise<boolean> {
+	return request<boolean>({
+		url: '/api/v1/member/user/update-mobile',
+		method: 'PUT',
+		data: data
+	})
+}

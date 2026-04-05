@@ -1,40 +1,57 @@
 <template>
   <view class="page-container">
-    <!-- 标题区域 -->
+    <!-- 顶部区域 -->
     <view class="header-section">
-      <text class="header-title">AI起草合同</text>
-      <text class="header-subtitle">与AI对话，快速起草专业合同</text>
+      <view class="header-bg-decor"></view>
+      <view class="header-content">
+        <view class="header-text-group">
+          <text class="header-title">AI 智能起草</text>
+          <text class="header-subtitle">对话式合同生成，专业高效</text>
+        </view>
+        <view class="header-stats" v-if="templateList.length > 0">
+          <view class="stat-item">
+            <text class="stat-num">{{ templateList.length }}</text>
+            <text class="stat-label">合同模板</text>
+          </view>
+          <view class="stat-divider"></view>
+          <view class="stat-item">
+            <text class="stat-num">{{ conversationList.length }}</text>
+            <text class="stat-label">近期对话</text>
+          </view>
+        </view>
+      </view>
     </view>
 
     <!-- 内容滚动区域 -->
     <scroll-view class="content-scroll" scroll-y="true">
       <view class="content-wrapper">
-        <!-- 推荐话术卡片 -->
+
+        <!-- 推荐话术 -->
         <view class="section">
           <view class="section-header">
-            <text class="section-title">推荐话术</text>
-            <text class="section-subtitle">选择一个话术快速开始</text>
+            <view class="section-title-group">
+              <text class="section-title">推荐话术</text>
+              <text class="section-subtitle">选择一个话术快速开始</text>
+            </view>
           </view>
 
-          <!-- 话术列表 -->
-          <view class="template-list">
-            <view 
-              v-for="template in templateList" 
+          <view class="template-grid">
+            <view
+              v-for="(template, index) in templateList"
               :key="template.id"
               class="template-card"
               @click="handleTemplateClick(template)"
             >
-              <view class="template-icon">
-                <text class="fa fa-file-text-o"></text>
+              <view class="template-card-top">
+                <view class="template-icon" :class="getIconColorClass(index)">
+                  <text class="icon" :class="getIconName(index)"></text>
+                </view>
+                <view class="template-badge" v-if="template.useCount > 0">
+                  <text class="badge-text">{{ template.useCount }}次</text>
+                </view>
               </view>
-              <view class="template-content">
-                <text class="template-title">{{ template.title }}</text>
-                <text class="template-description">{{ template.description }}</text>
-                <text class="template-use-count">使用次数: {{ template.useCount }}</text>
-              </view>
-              <view class="template-arrow">
-                <text class="fa fa-angle-right"></text>
-              </view>
+              <text class="template-title">{{ template.title }}</text>
+              <text class="template-desc">{{ template.description }}</text>
             </view>
           </view>
         </view>
@@ -42,52 +59,64 @@
         <!-- 最近对话 -->
         <view class="section">
           <view class="section-header">
-            <text class="section-title">最近对话</text>
-            <text class="section-link" @click="handleViewAllHistory">
-              <text class="link-text">查看全部</text>
-              <text class="fa fa-angle-right"></text>
-            </text>
+            <view class="section-title-group">
+              <text class="section-title">最近对话</text>
+            </view>
+            <view class="section-action" @click="handleViewAllHistory">
+              <text class="action-text">查看全部</text>
+              <text class="icon icon-chevron-right"></text>
+            </view>
           </view>
 
-          <!-- 对话列表 -->
           <view class="conversation-list" v-if="conversationList.length > 0">
-            <view 
-              v-for="conversation in conversationList" 
+            <view
+              v-for="conversation in conversationList"
               :key="conversation.id"
               class="conversation-card"
               @click="handleConversationClick(conversation)"
             >
-              <view class="conversation-header">
-                <text class="conversation-title">{{ conversation.title }}</text>
-                <text class="conversation-time">{{ formatTime(conversation.lastMessageTime) }}</text>
+              <view class="conv-left">
+                <view class="conv-indicator" :class="getConvStatusClass(conversation.status)"></view>
+                <view class="conv-info">
+                  <text class="conv-title">{{ conversation.title }}</text>
+                  <view class="conv-meta">
+                    <text class="conv-status" :class="getConvStatusClass(conversation.status)">{{ getStatusText(conversation.status) }}</text>
+                    <text class="conv-dot">·</text>
+                    <text class="conv-messages">{{ conversation.totalMessages }}条消息</text>
+                  </view>
+                </view>
               </view>
-              <view class="conversation-footer">
-                <text class="conversation-status">{{ getStatusText(conversation.status) }}</text>
-                <text class="conversation-messages">{{ conversation.totalMessages }}条消息</text>
+              <view class="conv-right">
+                <text class="conv-time">{{ formatTime(conversation.lastMessageTime) }}</text>
+                <text class="icon icon-chevron-right conv-arrow"></text>
               </view>
             </view>
           </view>
 
           <!-- 空状态 -->
           <view class="empty-state" v-else>
-            <text class="fa fa-comments-o empty-icon"></text>
+            <view class="empty-icon-wrapper">
+              <text class="icon icon-chat-empty"></text>
+            </view>
             <text class="empty-text">{{ loadError ? '加载失败' : '暂无对话记录' }}</text>
-            <text class="empty-hint">{{ loadError ? '请检查网络连接' : '点击上方话术或下方按钮开始对话' }}</text>
-            <button v-if="loadError" class="retry-button" @click="loadData">
-              <text class="fa fa-refresh"></text>
+            <text class="empty-hint">{{ loadError ? '请检查网络连接' : '选择话术或点击下方按钮开始' }}</text>
+            <view v-if="loadError" class="retry-btn" @click="loadData">
+              <text class="icon icon-refresh"></text>
               <text class="retry-text">重试</text>
-            </button>
+            </view>
           </view>
         </view>
+
+        <view class="safe-bottom"></view>
       </view>
     </scroll-view>
 
-    <!-- 底部操作按钮 -->
-    <view class="bottom-bar">
-      <button class="bottom-button" @click="handleStartNewChat">
-        <text class="fa fa-plus button-icon"></text>
-        <text class="button-text">开始新对话</text>
-      </button>
+    <!-- 底部按钮 -->
+    <view class="fixed-footer">
+      <view class="action-button" @click="handleStartNewChat">
+        <text class="icon icon-plus btn-icon"></text>
+        <text class="btn-text">开始新对话</text>
+      </view>
     </view>
   </view>
 </template>
@@ -120,49 +149,52 @@ export default {
       templateList: [] as TemplateItem[],
       conversationList: [] as ConversationItem[],
       loading: false,
-      loadError: false
+      loadError: false,
+      iconColors: ['blue', 'green', 'orange', 'purple', 'cyan', 'red'] as string[],
+      iconNames: ['icon-file-contract', 'icon-cart', 'icon-handshake', 'icon-shield', 'icon-briefcase', 'icon-file-text'] as string[]
     }
   },
   onLoad() {
     this.loadData()
   },
   onShow() {
-    // 页面显示时重新加载数据，以便在返回时刷新
     if (!this.loading) {
       this.loadData()
     }
   },
   methods: {
+    getIconColorClass(index: number): string {
+      return this.iconColors[index % this.iconColors.length]
+    },
+    getIconName(index: number): string {
+      return this.iconNames[index % this.iconNames.length]
+    },
+    getConvStatusClass(status: number): string {
+      if (status === 0) return 'status-active'
+      if (status === 1) return 'status-done'
+      if (status === 2) return 'status-signed'
+      return ''
+    },
     async loadData() {
       this.loading = true
       this.loadError = false
       
       try {
-        // 加载推荐话术
         const templatesRes = await getTemplateList()
-        console.log('推荐话术响应:', templatesRes)
-        
         if (templatesRes.code === 0 || templatesRes.code === 200) {
           this.templateList = (templatesRes.data || []) as TemplateItem[]
-          console.log('推荐话术加载成功:', this.templateList.length, '条')
         } else {
-          console.error('推荐话术加载失败:', templatesRes.msg)
           this.templateList = []
         }
 
-        // 加载最近对话（最多显示3条）
         const conversationsRes = await getConversationPage({
           pageNo: 1,
           pageSize: 3
         })
-        console.log('最近对话响应:', conversationsRes)
-        
         if (conversationsRes.code === 0 || conversationsRes.code === 200) {
           const data = (conversationsRes.data as { total?: number; list?: ConversationItem[] }) || { total: 0, list: [] }
           this.conversationList = (data.list || []) as ConversationItem[]
-          console.log('最近对话加载成功:', this.conversationList.length, '条')
         } else {
-          console.error('最近对话加载失败:', conversationsRes.msg)
           this.conversationList = []
         }
       } catch (error: any) {
@@ -179,56 +211,30 @@ export default {
     },
     
     async handleTemplateClick(template: TemplateItem) {
-      console.log('点击了模板:', template.title)
-      uni.showLoading({
-        title: '创建对话中...',
-        mask: true
-      })
+      uni.showLoading({ title: '创建对话中...', mask: true })
       
       try {
-        // 增加使用次数
-        console.log('增加模板使用次数...')
         await incrementTemplateUse(template.id)
-        
-        // 创建新对话
-        console.log('创建新对话...')
         const res = await createConversation({
           title: template.title,
           contractType: template.contractType
         })
-        console.log('创建对话响应:', res)
         
         uni.hideLoading()
         
         if (res.code === 0 || res.code === 200) {
-          console.log('创建成功，准备跳转...')
-          // 跳转到对话页面，带上初始提示词
           uni.navigateTo({
             url: `/pages/ai-draft/chat?conversationId=${res.data}&prompt=${encodeURIComponent(template.prompt || template.description)}`,
-            fail: (err) => {
-              console.error('跳转失败:', err)
-              uni.showToast({
-                title: '页面跳转失败',
-                icon: 'none'
-              })
+            fail: () => {
+              uni.showToast({ title: '页面跳转失败', icon: 'none' })
             }
           })
         } else {
-          console.error('创建对话失败:', res.msg)
-          uni.showToast({
-            title: res.msg || '创建对话失败',
-            icon: 'none',
-            duration: 2000
-          })
+          uni.showToast({ title: res.msg || '创建对话失败', icon: 'none', duration: 2000 })
         }
       } catch (error: any) {
-        console.error('创建对话异常:', error)
         uni.hideLoading()
-        uni.showToast({
-          title: '网络异常，请重试',
-          icon: 'none',
-          duration: 2000
-        })
+        uni.showToast({ title: '网络异常，请重试', icon: 'none', duration: 2000 })
       }
     },
     
@@ -239,66 +245,30 @@ export default {
     },
     
     async handleStartNewChat() {
-      console.log('点击了开始新对话按钮')
-      uni.showLoading({
-        title: '创建中...',
-        mask: true
-      })
+      uni.showLoading({ title: '创建中...', mask: true })
       
       try {
-        console.log('开始调用创建对话API...')
-        const res = await createConversation({
-          title: '新对话'
-        })
-        console.log('创建对话响应:', res)
-        
+        const res = await createConversation({ title: '新对话' })
         uni.hideLoading()
         
         if (res.code === 0 || res.code === 200) {
-          console.log('创建成功，对话ID:', res.data)
-          uni.showToast({
-            title: '创建成功',
-            icon: 'success',
-            duration: 1000
+          uni.navigateTo({
+            url: `/pages/ai-draft/chat?conversationId=${res.data}`,
+            fail: () => {
+              uni.showToast({ title: '页面跳转失败', icon: 'none' })
+            }
           })
-          
-          // 延迟跳转，让用户看到成功提示
-          setTimeout(() => {
-            console.log('跳转到聊天页面...')
-            uni.navigateTo({
-              url: `/pages/ai-draft/chat?conversationId=${res.data}`,
-              fail: (err) => {
-                console.error('跳转失败:', err)
-                uni.showToast({
-                  title: '页面跳转失败',
-                  icon: 'none'
-                })
-              }
-            })
-          }, 1000)
         } else {
-          console.error('创建失败:', res.msg)
-          uni.showToast({
-            title: res.msg || '创建失败',
-            icon: 'none',
-            duration: 2000
-          })
+          uni.showToast({ title: res.msg || '创建失败', icon: 'none', duration: 2000 })
         }
       } catch (error) {
-        console.error('创建对话异常:', error)
         uni.hideLoading()
-        uni.showToast({
-          title: '网络异常，请重试',
-          icon: 'none',
-          duration: 2000
-        })
+        uni.showToast({ title: '网络异常，请重试', icon: 'none', duration: 2000 })
       }
     },
     
     handleViewAllHistory() {
-      uni.navigateTo({
-        url: '/pages/ai-draft/history'
-      })
+      uni.navigateTo({ url: '/pages/ai-draft/history' })
     },
     
     getStatusText(status: number) {
@@ -326,276 +296,404 @@ export default {
 </script>
 
 <style>
-.page-container {
-  flex: 1;
-  background-color: #F7F9FC;
+@import url("../../static/styles/fontawesome.css");
+
+.icon {
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
 }
 
+/* 图标映射 */
+.icon-file-contract::before { content: "\f56c"; }
+.icon-cart::before { content: "\f07a"; }
+.icon-handshake::before { content: "\f2b5"; }
+.icon-shield::before { content: "\f3ed"; }
+.icon-briefcase::before { content: "\f0b1"; }
+.icon-file-text::before { content: "\f15c"; }
+.icon-chevron-right::before { content: "\f054"; }
+.icon-plus::before { content: "\f067"; }
+.icon-chat-empty::before { content: "\f075"; }
+.icon-refresh::before { content: "\f021"; }
+
+/* 页面容器 */
+.page-container {
+    flex: 1;
+    background-color: #F5F7FA;
+}
+
+/* 顶部区域 */
 .header-section {
-  padding: 60rpx 30rpx 40rpx;
-  background: linear-gradient(135deg, #1890FF 0%, #00C28A 100%);
+    padding: 48rpx 32rpx 40rpx;
+    background-color: #0D7CFF;
+    position: relative;
+    overflow: hidden;
+}
+
+.header-bg-decor {
+    position: absolute;
+    top: -60rpx;
+    right: -40rpx;
+    width: 240rpx;
+    height: 240rpx;
+    border-radius: 120rpx;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.header-content {
+    position: relative;
+}
+
+.header-text-group {
+    margin-bottom: 32rpx;
 }
 
 .header-title {
-  font-size: 48rpx;
-  font-weight: 600;
-  color: #FFFFFF;
-  display: block;
-  margin-bottom: 12rpx;
+    font-size: 40rpx;
+    font-weight: 700;
+    color: #FFFFFF;
+    margin-bottom: 8rpx;
+    letter-spacing: 2rpx;
 }
 
 .header-subtitle {
-  font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.9);
-  display: block;
+    font-size: 26rpx;
+    color: rgba(255, 255, 255, 0.85);
 }
 
+.header-stats {
+    flex-direction: row;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0.15);
+    border-radius: 12rpx;
+    padding: 20rpx 32rpx;
+}
+
+.stat-item {
+    flex: 1;
+    align-items: center;
+}
+
+.stat-num {
+    font-size: 36rpx;
+    font-weight: 700;
+    color: #FFFFFF;
+    margin-bottom: 4rpx;
+}
+
+.stat-label {
+    font-size: 22rpx;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.stat-divider {
+    width: 1rpx;
+    height: 48rpx;
+    background-color: rgba(255, 255, 255, 0.25);
+    margin: 0 24rpx;
+}
+
+/* 内容区域 */
 .content-scroll {
-  flex: 1;
+    flex: 1;
 }
 
 .content-wrapper {
-  padding: 30rpx;
+    padding: 32rpx;
 }
 
+.safe-bottom {
+    height: 160rpx;
+}
+
+/* 区块 */
 .section {
-  margin-bottom: 40rpx;
+    margin-bottom: 40rpx;
 }
 
 .section-header {
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24rpx;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24rpx;
+}
+
+.section-title-group {
+    flex: 1;
 }
 
 .section-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #303133;
+    font-size: 32rpx;
+    font-weight: 700;
+    color: #1A1A1A;
+    margin-bottom: 4rpx;
 }
 
 .section-subtitle {
-  font-size: 24rpx;
-  color: #909399;
+    font-size: 24rpx;
+    color: #999999;
 }
 
-.section-link {
-  flex-direction: row;
-  align-items: center;
+.section-action {
+    flex-direction: row;
+    align-items: center;
 }
 
-.link-text {
-  font-size: 28rpx;
-  color: #1890FF;
-  margin-right: 8rpx;
+.action-text {
+    font-size: 26rpx;
+    color: #0D7CFF;
+    margin-right: 4rpx;
 }
 
-/* 推荐话术样式 */
-.template-list {
-  gap: 20rpx;
+.section-action .icon {
+    font-size: 20rpx;
+    color: #0D7CFF;
+}
+
+/* 推荐话术 - 两列网格 */
+.template-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
 }
 
 .template-card {
-  background-color: #FFFFFF;
-  border-radius: 16rpx;
-  padding: 30rpx;
-  flex-direction: row;
-  align-items: center;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
-  margin-bottom: 20rpx;
+    width: 48.5%;
+    background-color: #FFFFFF;
+    border-radius: 16rpx;
+    padding: 28rpx;
+    margin-bottom: 20rpx;
+    box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.template-card-top {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20rpx;
 }
 
 .template-icon {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 40rpx;
-  background-color: #F0F7FF;
-  align-items: center;
-  justify-content: center;
-  margin-right: 24rpx;
+    width: 72rpx;
+    height: 72rpx;
+    border-radius: 18rpx;
+    align-items: center;
+    justify-content: center;
 }
 
-.template-icon .fa {
-  font-family: FontAwesome;
-  font-size: 40rpx;
-  color: #1890FF;
+.template-icon .icon {
+    font-size: 30rpx;
 }
 
-.template-content {
-  flex: 1;
+/* 图标颜色变体 */
+.template-icon.blue { background-color: #EBF5FF; }
+.template-icon.blue .icon { color: #0D7CFF; }
+.template-icon.green { background-color: #E8F8F2; }
+.template-icon.green .icon { color: #00B578; }
+.template-icon.orange { background-color: #FFF5EB; }
+.template-icon.orange .icon { color: #FF8C00; }
+.template-icon.purple { background-color: #F3EEFF; }
+.template-icon.purple .icon { color: #7C3AED; }
+.template-icon.cyan { background-color: #E6FFFE; }
+.template-icon.cyan .icon { color: #06B6D4; }
+.template-icon.red { background-color: #FFF0F0; }
+.template-icon.red .icon { color: #EF4444; }
+
+.template-badge {
+    background-color: #F5F7FA;
+    border-radius: 20rpx;
+    padding: 4rpx 14rpx;
+}
+
+.badge-text {
+    font-size: 20rpx;
+    color: #999999;
 }
 
 .template-title {
-  font-size: 30rpx;
-  font-weight: 500;
-  color: #303133;
-  display: block;
-  margin-bottom: 8rpx;
+    font-size: 28rpx;
+    font-weight: 600;
+    color: #1A1A1A;
+    margin-bottom: 8rpx;
 }
 
-.template-description {
-  font-size: 24rpx;
-  color: #909399;
-  display: block;
-  margin-bottom: 8rpx;
-  lines: 2;
+.template-desc {
+    font-size: 22rpx;
+    color: #999999;
+    lines: 2;
+    text-overflow: ellipsis;
 }
 
-.template-use-count {
-  font-size: 22rpx;
-  color: #C0C4CC;
-  display: block;
-}
-
-.template-arrow {
-  margin-left: 16rpx;
-}
-
-.template-arrow .fa {
-  font-family: FontAwesome;
-  font-size: 32rpx;
-  color: #C0C4CC;
-}
-
-/* 对话列表样式 */
+/* 对话列表 */
 .conversation-list {
-  gap: 16rpx;
+    background-color: #FFFFFF;
+    border-radius: 16rpx;
+    overflow: hidden;
+    box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
 }
 
 .conversation-card {
-  background-color: #FFFFFF;
-  border-radius: 16rpx;
-  padding: 30rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
-  margin-bottom: 16rpx;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 28rpx 28rpx;
+    border-bottom: 1rpx solid #F5F7FA;
 }
 
-.conversation-header {
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16rpx;
+.conversation-card:last-child {
+    border-bottom: none;
 }
 
-.conversation-title {
-  font-size: 30rpx;
-  font-weight: 500;
-  color: #303133;
-  flex: 1;
+.conv-left {
+    flex-direction: row;
+    align-items: center;
+    flex: 1;
 }
 
-.conversation-time {
-  font-size: 24rpx;
-  color: #909399;
-  margin-left: 16rpx;
+.conv-indicator {
+    width: 8rpx;
+    height: 8rpx;
+    border-radius: 4rpx;
+    margin-right: 16rpx;
+    flex-shrink: 0;
 }
 
-.conversation-footer {
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
+.conv-indicator.status-active { background-color: #0D7CFF; }
+.conv-indicator.status-done { background-color: #00B578; }
+.conv-indicator.status-signed { background-color: #999999; }
+
+.conv-info {
+    flex: 1;
 }
 
-.conversation-status {
-  font-size: 24rpx;
-  color: #00C28A;
+.conv-title {
+    font-size: 28rpx;
+    font-weight: 600;
+    color: #1A1A1A;
+    margin-bottom: 8rpx;
 }
 
-.conversation-messages {
-  font-size: 24rpx;
-  color: #909399;
+.conv-meta {
+    flex-direction: row;
+    align-items: center;
+}
+
+.conv-status {
+    font-size: 22rpx;
+}
+
+.conv-status.status-active { color: #0D7CFF; }
+.conv-status.status-done { color: #00B578; }
+.conv-status.status-signed { color: #999999; }
+
+.conv-dot {
+    font-size: 22rpx;
+    color: #DCDFE6;
+    margin: 0 8rpx;
+}
+
+.conv-messages {
+    font-size: 22rpx;
+    color: #999999;
+}
+
+.conv-right {
+    align-items: flex-end;
+}
+
+.conv-time {
+    font-size: 22rpx;
+    color: #CCCCCC;
+    margin-bottom: 8rpx;
+}
+
+.conv-arrow {
+    font-size: 20rpx;
+    color: #DCDFE6;
 }
 
 /* 空状态 */
 .empty-state {
-  align-items: center;
-  padding: 80rpx 0;
+    align-items: center;
+    padding: 60rpx 0;
 }
 
-.empty-icon {
-  font-family: FontAwesome;
-  font-size: 96rpx;
-  color: #DCDFE6;
-  margin-bottom: 24rpx;
+.empty-icon-wrapper {
+    width: 120rpx;
+    height: 120rpx;
+    border-radius: 60rpx;
+    background-color: #F5F7FA;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24rpx;
+}
+
+.empty-icon-wrapper .icon {
+    font-size: 48rpx;
+    color: #DCDFE6;
 }
 
 .empty-text {
-  font-size: 28rpx;
-  color: #909399;
-  margin-bottom: 12rpx;
-  display: block;
+    font-size: 28rpx;
+    color: #666666;
+    margin-bottom: 8rpx;
 }
 
 .empty-hint {
-  font-size: 24rpx;
-  color: #C0C4CC;
-  display: block;
-  margin-bottom: 30rpx;
+    font-size: 24rpx;
+    color: #CCCCCC;
+    margin-bottom: 24rpx;
 }
 
-.retry-button {
-  margin-top: 20rpx;
-  padding: 20rpx 40rpx;
-  background-color: #1890FF;
-  border-radius: 22rpx;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  border: none;
+.retry-btn {
+    flex-direction: row;
+    align-items: center;
+    padding: 16rpx 32rpx;
+    background-color: #0D7CFF;
+    border-radius: 32rpx;
 }
 
-.retry-button .fa {
-  font-family: FontAwesome;
-  font-size: 28rpx;
-  color: #FFFFFF;
-  margin-right: 12rpx;
+.retry-btn .icon {
+    font-size: 24rpx;
+    color: #FFFFFF;
+    margin-right: 8rpx;
 }
 
 .retry-text {
-  font-size: 28rpx;
-  color: #FFFFFF;
+    font-size: 26rpx;
+    color: #FFFFFF;
 }
 
-/* 底部操作栏 */
-.bottom-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: #FFFFFF;
-  padding: 20rpx 30rpx;
-  box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+/* 底部按钮 */
+.fixed-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #FFFFFF;
+    padding: 16rpx 32rpx;
+    padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+    box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.05);
 }
 
-.bottom-button {
-  height: 88rpx;
-  border-radius: 12rpx;
-  background-color: #00C28A;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  border: none;
+.action-button {
+    height: 92rpx;
+    border-radius: 16rpx;
+    background-color: #00B578;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8rpx 24rpx rgba(0, 181, 120, 0.2);
 }
 
-.button-icon {
-  font-family: FontAwesome;
-  font-size: 28rpx;
-  color: #FFFFFF;
-  margin-right: 12rpx;
+.btn-icon {
+    font-size: 26rpx;
+    color: #FFFFFF;
+    margin-right: 12rpx;
 }
 
-.button-text {
-  font-size: 30rpx;
-  font-weight: 500;
-  color: #FFFFFF;
-}
-
-.fa {
-  font-family: FontAwesome;
-  font-style: normal;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+.btn-text {
+    font-size: 30rpx;
+    font-weight: 600;
+    color: #FFFFFF;
 }
 </style>
-

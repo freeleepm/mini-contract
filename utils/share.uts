@@ -18,7 +18,9 @@ export const ShareType = {
 	/** 企业邀请加入 */
 	INVITE: 'invite',
 	/** 应用推广（默认分享） */
-	APP: 'app'
+	APP: 'app',
+	/** 模板二维码扫码创建合同 */
+	TEMPLATE_QR: 'template_qr'
 } as const;
 
 // ==================== 分享封面图路径 ====================
@@ -136,6 +138,19 @@ export function buildInviteShareConfig(enterpriseId : string, enterpriseName : s
 }
 
 /**
+ * 构建「模板二维码」分享路径
+ * 用于生成模板二维码的URL内容
+ * 
+ * @param baseTemplateId 基础模板ID
+ * @returns 分享落地页完整路径
+ */
+export function buildTemplateQRSharePath(baseTemplateId : string) : string {
+	const params = new Map<string, string>();
+	params.set('templateId', baseTemplateId);
+	return buildSharePath(ShareType.TEMPLATE_QR, params);
+}
+
+/**
  * 构建默认（应用推广）分享配置
  * 用于未单独配置分享的页面
  * 
@@ -173,6 +188,13 @@ export function getTargetPagePath(type : string, params : Map<string, string>) :
 			const templateId = params.get('templateId') ?? '';
 			return `/pages/template-detail/index?id=${templateId}`;
 		}
+		case ShareType.TEMPLATE_QR: {
+			// 🔧 修复：H5模式下 web-view 导航会丢失 URL query 参数
+			// 先跳转到模板详情页，用户再通过「使用此模版」按钮进入创建流程
+			// 这样 templateId 能通过 uni-app 内部路由正确传递
+			const templateId = params.get('templateId') ?? '';
+			return `/pages/template-detail/index?id=${templateId}`;
+		}
 		case ShareType.INVITE: {
 			const enterpriseId = params.get('enterpriseId') ?? '';
 			return `/pages/enterprise/detail?id=${enterpriseId}`;
@@ -197,6 +219,8 @@ export function getShareTypeTitle(type : string) : string {
 			return '合同查看';
 		case ShareType.TEMPLATE:
 			return '模板推荐';
+		case ShareType.TEMPLATE_QR:
+			return '模板二维码';
 		case ShareType.INVITE:
 			return '企业邀请';
 		case ShareType.APP:
@@ -219,6 +243,8 @@ export function getShareTypeIcon(type : string) : string {
 			return 'fa-file-text-o';
 		case ShareType.TEMPLATE:
 			return 'fa-clone';
+		case ShareType.TEMPLATE_QR:
+			return 'fa-qrcode';
 		case ShareType.INVITE:
 			return 'fa-building-o';
 		case ShareType.APP:

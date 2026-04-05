@@ -1,7 +1,37 @@
 <template>
-	<view class="page-container">
-		<scroll-view class="content-scroll" scroll-y="true">
-			<view class="content-wrapper">
+	<view class="pay-page">
+		<scroll-view scroll-y="true" class="content">
+			<view class="detail-content">
+				<!-- 购买账户信息 -->
+				<view class="buyer-card" v-if="!loading">
+					<view class="buyer-header">
+						<text class="fa fa-user buyer-header-icon"></text>
+						<text class="buyer-header-title">购买账户</text>
+						<view class="buyer-tag" :class="{ 'buyer-tag-enterprise': enterpriseId != null }">
+							<text class="buyer-tag-text">{{ enterpriseId != null ? '企业账户' : '个人账户' }}</text>
+						</view>
+					</view>
+					<view class="buyer-divider"></view>
+					<view class="buyer-body">
+						<view class="buyer-info-item">
+							<text class="buyer-label">用户昵称</text>
+							<text class="buyer-value">{{ buyerNickname }}</text>
+						</view>
+						<view class="buyer-info-item">
+							<text class="buyer-label">手机号码</text>
+							<text class="buyer-value">{{ buyerMobile }}</text>
+						</view>
+						<view class="buyer-info-item" v-if="enterpriseId != null">
+							<text class="buyer-label">充值账户</text>
+							<text class="buyer-value buyer-value-highlight">企业账户</text>
+						</view>
+					</view>
+					<view class="buyer-tip">
+						<text class="fa fa-exclamation-triangle buyer-tip-icon"></text>
+						<text class="buyer-tip-text">配额将充值到上述账户，请确认后再支付</text>
+					</view>
+				</view>
+
 				<!-- 支付订单信息 -->
 				<view class="order-card" v-if="!loading">
 					<view class="order-header">
@@ -54,7 +84,7 @@
 					</view>
 					
 					<!-- 动态渠道列表 -->
-					<view class="method-list" v-else>
+					<view v-else>
 						<view class="method-item" 
 							v-for="(channel, index) in getAvailableChannels()"
 							:key="channel.code"
@@ -110,6 +140,7 @@
 		getQuotaBalance,
 		type PayOrderInfo 
 	} from '@/api/quota/index';
+	import { get } from '@/api/index';
 
 	// 支付状态枚举
 	const PayOrderStatusEnum = {
@@ -148,7 +179,10 @@
 				selectedChannel: '',
 				pollingTimer: null as number | null,
 				enabledChannelCodes: [] as string[],
-				channelLoading: false
+				channelLoading: false,
+				enterpriseId: null as number | null,
+				buyerNickname: '-',
+				buyerMobile: '-'
 			}
 		},
 
@@ -159,6 +193,12 @@
 			if (options['payOrderId'] != null) {
 				this.payOrderId = parseInt(options['payOrderId'] as string);
 			}
+			if (options['enterpriseId'] != null) {
+				this.enterpriseId = parseInt(options['enterpriseId'] as string);
+			}
+			
+			// 加载当前用户信息
+			this.loadBuyerInfo();
 			
 			// 检查配额功能是否启用
 			try {
@@ -195,6 +235,21 @@
 		},
 
 		methods: {
+			async loadBuyerInfo() {
+				try {
+					const res = await get<any>('/api/v1/member/user/get');
+					this.buyerNickname = (res.nickname as string | null) ?? '-';
+					const mobile = (res.mobile as string | null) ?? '';
+					if (mobile.length >= 7) {
+						this.buyerMobile = mobile.substring(0, 3) + '****' + mobile.substring(7);
+					} else {
+						this.buyerMobile = mobile.length > 0 ? mobile : '-';
+					}
+				} catch (error: any) {
+					console.warn('获取购买用户信息失败', error);
+				}
+			},
+
 			formatPrice(price: number): string {
 				return (price / 100).toFixed(2);
 			},
@@ -396,26 +451,127 @@
 	/* 引入FontAwesome图标 */
 	@import url("../../static/styles/fontawesome.css");
 	
-	.page-container {
+	.pay-page {
 		flex: 1;
 		background-color: #F7F9FC;
 	}
 
-	.content-scroll {
+	.content {
 		flex: 1;
 	}
 
-	.content-wrapper {
+	.detail-content {
 		padding: 30rpx;
-		padding-bottom: 180rpx;
+		padding-bottom: 160rpx;
+	}
+
+	/* 购买账户卡片 */
+	.buyer-card {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 28rpx;
+		margin-bottom: 24rpx;
+		border-left-width: 6rpx;
+		border-left-color: #1890FF;
+		border-left-style: solid;
+	}
+
+	.buyer-header {
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.buyer-header-icon {
+		font-family: FontAwesome;
+		font-size: 28rpx;
+		color: #1890FF;
+		margin-right: 12rpx;
+	}
+
+	.buyer-header-title {
+		font-size: 30rpx;
+		font-weight: 600;
+		color: #303133;
+		flex: 1;
+	}
+
+	.buyer-tag {
+		padding: 4rpx 12rpx;
+		border-radius: 12rpx;
+		background-color: rgba(0, 194, 138, 0.1);
+	}
+
+	.buyer-tag-enterprise {
+		background-color: rgba(24, 144, 255, 0.1);
+	}
+
+	.buyer-tag .buyer-tag-text {
+		font-size: 22rpx;
+		color: #00C28A;
+	}
+
+	.buyer-tag-enterprise .buyer-tag-text {
+		color: #1890FF;
+	}
+
+	.buyer-divider {
+		height: 1rpx;
+		background-color: #EBEEF5;
+		margin: 20rpx 0;
+	}
+
+	.buyer-body {
+		margin-bottom: 16rpx;
+	}
+
+	.buyer-info-item {
+		flex-direction: row;
+		justify-content: space-between;
+		margin-bottom: 12rpx;
+	}
+
+	.buyer-label {
+		font-size: 26rpx;
+		color: #909399;
+	}
+
+	.buyer-value {
+		font-size: 26rpx;
+		color: #303133;
+		font-weight: 500;
+	}
+
+	.buyer-value-highlight {
+		color: #1890FF;
+	}
+
+	.buyer-tip {
+		flex-direction: row;
+		align-items: center;
+		background-color: #FDF6EC;
+		border-radius: 8rpx;
+		padding: 16rpx 20rpx;
+	}
+
+	.buyer-tip-icon {
+		font-family: FontAwesome;
+		font-size: 24rpx;
+		color: #E6A23C;
+		margin-right: 10rpx;
+	}
+
+	.buyer-tip-text {
+		font-size: 24rpx;
+		color: #909399;
+		flex: 1;
 	}
 
 	/* 订单卡片 */
 	.order-card {
 		background-color: #FFFFFF;
-		border-radius: 20rpx;
-		padding: 32rpx;
-		margin-bottom: 30rpx;
+		border-radius: 16rpx;
+		padding: 28rpx;
+		margin-bottom: 24rpx;
 	}
 
 	.order-header {
@@ -432,8 +588,8 @@
 	}
 
 	.order-status {
-		padding: 8rpx 20rpx;
-		border-radius: 20rpx;
+		padding: 6rpx 16rpx;
+		border-radius: 12rpx;
 	}
 
 	.status-waiting {
@@ -511,10 +667,10 @@
 	/* 加载中 */
 	.loading-card {
 		background-color: #FFFFFF;
-		border-radius: 20rpx;
+		border-radius: 16rpx;
 		padding: 60rpx;
 		align-items: center;
-		margin-bottom: 30rpx;
+		margin-bottom: 24rpx;
 	}
 
 	.loading-text {
@@ -531,10 +687,6 @@
 		font-size: 32rpx;
 		font-weight: 600;
 		color: #303133;
-	}
-
-	.method-list {
-		margin-bottom: 30rpx;
 	}
 	
 	.loading-tip {
@@ -563,10 +715,10 @@
 		flex-direction: row;
 		align-items: center;
 		background-color: #FFFFFF;
-		border-radius: 20rpx;
-		padding: 32rpx;
+		border-radius: 16rpx;
+		padding: 28rpx;
 		margin-bottom: 16rpx;
-		border-width: 3rpx;
+		border-width: 2rpx;
 		border-color: #E4E7ED;
 		border-style: solid;
 	}
@@ -628,10 +780,10 @@
 	/* 成功提示 */
 	.success-card {
 		background-color: #FFFFFF;
-		border-radius: 20rpx;
+		border-radius: 16rpx;
 		padding: 60rpx;
 		align-items: center;
-		margin-bottom: 30rpx;
+		margin-bottom: 24rpx;
 	}
 
 	.success-icon-container {
@@ -670,14 +822,14 @@
 		right: 0;
 		background-color: #FFFFFF;
 		padding: 20rpx 30rpx;
-		padding-bottom: 40rpx;
+		padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
 		box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
 	}
 
 	.pay-btn {
 		background-color: #00C28A;
 		height: 88rpx;
-		border-radius: 44rpx;
+		border-radius: 16rpx;
 		align-items: center;
 		justify-content: center;
 	}

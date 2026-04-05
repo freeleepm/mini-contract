@@ -140,6 +140,14 @@
 			}
 		},
 		{
+			"path": "pages/profile/change-phone",
+			"style": {
+				"navigationBarTitleText": "修改手机号",
+				"navigationBarBackgroundColor": "#FFFFFF",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
 			"path": "pages/profile/about",
 			"style": {
 				"navigationBarTitleText": "关于我们",
@@ -299,6 +307,30 @@
 			"path": "pages/ai-draft/preview",
 			"style": {
 				"navigationBarTitleText": "合同预览",
+				"navigationBarBackgroundColor": "#FFFFFF",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/batch-create/index",
+			"style": {
+				"navigationBarTitleText": "批量发起合同",
+				"navigationBarBackgroundColor": "#FFFFFF",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/batch-list/index",
+			"style": {
+				"navigationBarTitleText": "批量任务",
+				"navigationBarBackgroundColor": "#FFFFFF",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/batch-detail/index",
+			"style": {
+				"navigationBarTitleText": "任务详情",
 				"navigationBarBackgroundColor": "#FFFFFF",
 				"navigationBarTextStyle": "black"
 			}

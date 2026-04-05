@@ -18,7 +18,7 @@ interface UserInfo {
 
 // 导入API工具
 import { post, get, uploadFileAdvanced, simpleUpload } from '../../../api/index';
-import { API_BASE_URL, TENANT_ID, UPLOAD_CONFIG } from '../../../api/config';
+import { API_BASE_URL, TENANT_ID, UPLOAD_CONFIG } from '../../../config/app.config';
 import { recognizeIdCard } from '../../../api/member/verify';
 
 export default {
@@ -386,6 +386,29 @@ export default {
             }
         },
 
+		/**
+		 * 从 chooser/相机 返回的临时路径解析图片扩展名（避免 H5 URL、blob、域名中带点导致误判）
+		 */
+		getSafeImageExtensionForPath(filePath: string): string {
+			const pathOnly = (filePath.split('?')[0] ?? '').split('#')[0] ?? ''
+			const slashIdx = pathOnly.lastIndexOf('/')
+			const base = slashIdx >= 0 ? pathOnly.substring(slashIdx + 1) : pathOnly
+			const dotIdx = base.lastIndexOf('.')
+			let ext = 'jpg'
+			if (dotIdx > 0 && dotIdx < base.length - 1) {
+				ext = base.substring(dotIdx + 1).toLowerCase()
+				/* 去掉路径里误当成扩展名的片段 */
+				if (ext.indexOf('/') >= 0 || ext.indexOf('\\') >= 0 || ext.length > 8) {
+					ext = 'jpg'
+				}
+			}
+			if (!UPLOAD_CONFIG.ALLOWED_TYPES.IMAGE.includes(ext)) {
+				/* 无扩展名或非常规格式：相机场景按 jpeg 处理 */
+				ext = 'jpg'
+			}
+			return ext
+		},
+
         // 处理相机拍照成功的回调
         handleCameraSuccess(res: any): void {
                         try {
@@ -404,20 +427,8 @@ export default {
                             return
                         }
                             
-                            // 提取文件扩展名
-                            let fileExtension = 'jpg' // 默认扩展名
-                            if (tempFilePath.includes('.')) {
-                                const parts = tempFilePath.split('.')
-                                fileExtension = parts[parts.length - 1].toLowerCase()
-                                console.log('从路径提取的文件扩展名:', fileExtension)
-                            }
-                            
-                        // 验证文件类型
-                        if (!UPLOAD_CONFIG.ALLOWED_TYPES.IMAGE.includes(fileExtension)) {
-                            uni.hideLoading()
-                            this.showUploadError(`不支持的图片格式，请使用${UPLOAD_CONFIG.ALLOWED_TYPES.IMAGE.join('/')}格式`)
-                            return
-                        }
+                        const fileExtension = this.getSafeImageExtensionForPath(tempFilePath)
+                        console.log('解析后的上传扩展名:', fileExtension)
                         
                         // 开始上传流程
                         this.uploadFaceImage(tempFilePath, fileExtension)
@@ -503,13 +514,13 @@ export default {
                 this.uploadStatus.progress = 100
                 this.retryCount = 0 // 重置重试计数器
                 
-                // 更新用户信息
+                // 仅表示文件上传成功；人脸与身份证是否一致由提交认证时后端 MemberVerifyService 核验
                                 this.userInfo.faceImage = fileUrl
                                 this.userInfo.faceVerified = true
                                 
                                 uni.hideLoading()
                                 uni.showToast({
-                                    title: '人脸采集成功',
+                                    title: '照片已上传，请提交认证完成核验',
                                     icon: 'success'
                                 })
                             })
@@ -733,7 +744,9 @@ export default {
 </script>
 
 <template>
-	<view class="kyc-container">
+	<view class="kyc-page-root">
+		<scroll-view class="kyc-page-scroll" scroll-y="true" enable-back-to-top="true">
+			<view class="kyc-container">
 		<!-- 认证状态显示 -->
 		<block v-if="verificationStatus !== 'none'">
 			<view class="status-container">
@@ -852,8 +865,8 @@ export default {
 					<view class="face-icon-container">
 						<text class="icon icon-user face-icon"></text>
 					</view>
-					<text class="face-title">人脸识别验证</text>
-					<text class="face-desc">请确保光线充足，面部无遮挡，完成人脸识别验证</text>
+					<text class="face-title">人脸照片采集</text>
+					<text class="face-desc">请本人正脸出镜拍摄；本页仅在确认照片已成功上传。是否与身份证匹配，将在您点击「提交认证」后由服务端做人脸核验。</text>
 					
 					<!-- 上传状态显示 -->
 					<view class="upload-status-container" v-if="uploadStatus.inProgress">
@@ -881,14 +894,17 @@ export default {
 					<view class="face-button-container" v-if="!userInfo.faceVerified && !uploadStatus.inProgress && !uploadStatus.error">
 						<view class="face-button" @click="startFaceVerification">
 							<text class="icon icon-camera button-icon"></text>
-							<text>开始人脸识别</text>
+							<text>拍摄人脸照片</text>
 						</view>
 					</view>
 					
-					<!-- 验证成功状态 -->
+					<!-- 上传成功（非服务端人脸比对结果） -->
 					<view class="face-verified" v-if="userInfo.faceVerified">
-						<text class="icon icon-check verified-icon"></text>
-						<text class="verified-text">人脸识别验证通过</text>
+						<view class="face-verified-main">
+							<text class="icon icon-check verified-icon"></text>
+							<text class="verified-text">人脸照片已上传</text>
+						</view>
+						<text class="verified-hint">提交认证后，系统将把本照片与身份证信息做人脸比对；若照片非本人正脸，认证将失败。</text>
 					</view>
 					
 					<!-- 拍照提示列表 -->
@@ -912,39 +928,48 @@ export default {
 					</view>
 				</view>
 			</view>
-			
+		</block>
+			<!-- 底部占位：移动端浏览器工具栏/主页条会盖住最后一截，需额外可滚动空白 -->
+			<view class="kyc-scroll-spacer"></view>
+			</view>
+		</scroll-view>
+		
+		<!-- 固定层弹窗：放在 scroll-view 外，避免 H5 滚动失效 -->
+		<block v-if="verificationStatus === 'none'">
 			<!-- 人脸识别指导弹窗 -->
 			<view class="modal-overlay" v-if="faceGuidanceVisible" @click="faceGuidanceVisible = false">
 				<view class="modal-content" @click.stop>
 					<view class="modal-header">
 						<text class="modal-title">人脸拍摄指南</text>
 					</view>
-					<view class="modal-body">
-						<!-- 文字提示 -->
-						<view class="guidance-item" v-for="(tip, index) in guidanceTips" :key="index">
-							<text class="guidance-number">{{ index + 1 }}.</text>
-							<text class="guidance-text">{{ tip }}</text>
-						</view>
-						
-						<!-- 人脸轮廓示意图 -->
-						<view class="face-outline-container">
-							<view class="face-outline">
-								<view class="face-outline-border"></view>
+					<scroll-view class="modal-body-scroll" scroll-y="true">
+						<view class="modal-body">
+							<!-- 文字提示 -->
+							<view class="guidance-item" v-for="(tip, index) in guidanceTips" :key="index">
+								<text class="guidance-number">{{ index + 1 }}.</text>
+								<text class="guidance-text">{{ tip }}</text>
 							</view>
-							<text class="face-outline-tip">识别时请确保半米内无其他游客</text>
-						</view>
-						
-						<!-- 图标化注意事项 -->
-						<view class="icon-tips-container">
-							<view class="icon-tip-item" v-for="(tip, index) in iconTips" :key="index">
-								<view class="icon-tip-circle">
-									<text class="icon" :class="tip.icon"></text>
-									<view class="icon-tip-slash"></view>
+							
+							<!-- 人脸轮廓示意图 -->
+							<view class="face-outline-container">
+								<view class="face-outline">
+									<view class="face-outline-border"></view>
 								</view>
-								<text class="icon-tip-text">{{ tip.text }}</text>
+								<text class="face-outline-tip">识别时请确保半米内无其他游客</text>
+							</view>
+							
+							<!-- 图标化注意事项 -->
+							<view class="icon-tips-container">
+								<view class="icon-tip-item" v-for="(tip, index) in iconTips" :key="index">
+									<view class="icon-tip-circle">
+										<text class="icon" :class="tip.icon"></text>
+										<view class="icon-tip-slash"></view>
+									</view>
+									<text class="icon-tip-text">{{ tip.text }}</text>
+								</view>
 							</view>
 						</view>
-					</view>
+					</scroll-view>
 					<view class="modal-footer">
 						<view class="modal-button" @click="confirmGuidanceAndStartCamera">
 							<text>知道了，开始拍摄</text>
@@ -959,20 +984,22 @@ export default {
 					<view class="modal-header">
 						<text class="modal-title">身份证拍摄指南</text>
 					</view>
-					<view class="modal-body">
-						<!-- 文字提示 -->
-						<view class="guidance-item" v-for="(tip, index) in ocrGuidanceTips" :key="index">
-							<text class="guidance-number">{{ index + 1 }}.</text>
-							<text class="guidance-text">{{ tip }}</text>
-						</view>
-						
-						<!-- 身份证示意图 -->
-						<view class="idcard-demo-container">
-							<view class="idcard-demo">
-								<text class="demo-text">身份证正面</text>
+					<scroll-view class="modal-body-scroll" scroll-y="true">
+						<view class="modal-body">
+							<!-- 文字提示 -->
+							<view class="guidance-item" v-for="(tip, index) in ocrGuidanceTips" :key="index">
+								<text class="guidance-number">{{ index + 1 }}.</text>
+								<text class="guidance-text">{{ tip }}</text>
+							</view>
+							
+							<!-- 身份证示意图 -->
+							<view class="idcard-demo-container">
+								<view class="idcard-demo">
+									<text class="demo-text">身份证正面</text>
+								</view>
 							</view>
 						</view>
-					</view>
+					</scroll-view>
 					<view class="modal-footer">
 						<view class="modal-button" @click="confirmOcrGuidanceAndCapture">
 							<text>知道了，开始拍摄</text>
@@ -985,11 +1012,56 @@ export default {
 </template>
 
 <style>
-.kyc-container {
+/* 整页可滚动：H5/小程序避免内容超高时底部按钮被挡在可视区域外 */
+.kyc-page-root {
 	flex: 1;
-	background-color: #F8F8F8;
-	padding-bottom: 40rpx;
+	flex-direction: column;
+	width: 100%;
+	min-height: 0;
 }
+
+.kyc-page-scroll {
+	flex: 1;
+	width: 100%;
+	height: 0;
+	min-height: 0;
+}
+
+/* #ifdef H5 */
+/*
+ * H5：移动端 100vh 往往大于「实际可见高度」（底部浏览器栏、工具条）。
+ * 缩小 scroll 可视区并加大底部 spacer，避免最后一屏按钮只露出一截。
+ */
+.kyc-page-root {
+	height: 100vh;
+	flex-direction: column;
+}
+.kyc-page-scroll {
+	flex: none;
+	height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 88px);
+	max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 88px);
+}
+/* #endif */
+
+.kyc-container {
+	width: 100%;
+	background-color: #F8F8F8;
+	padding-bottom: calc(120rpx + constant(safe-area-inset-bottom));
+	padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
+}
+
+.kyc-scroll-spacer {
+	width: 100%;
+	height: 200rpx;
+	flex-shrink: 0;
+}
+
+/* #ifdef H5 */
+.kyc-scroll-spacer {
+	height: calc(180rpx + env(safe-area-inset-bottom, 0px) + 56px);
+	min-height: 200rpx;
+}
+/* #endif */
 
 /* 认证状态 */
 .status-container {
@@ -1071,7 +1143,7 @@ export default {
 	background-color: #00C28A;
 	height: 80rpx;
 	width: 300rpx;
-	border-radius: 40rpx;
+	border-radius: 8rpx;
 	align-items: center;
 	justify-content: center;
 }
@@ -1363,7 +1435,7 @@ export default {
 	font-size: 32rpx;
 	height: 90rpx;
 	width: 400rpx;
-	border-radius: 45rpx;
+	border-radius: 8rpx;
 	flex-direction: row;
 	align-items: center;
 	justify-content: center;
@@ -1375,11 +1447,17 @@ export default {
 }
 
 .face-verified {
-	flex-direction: row;
-	align-items: center;
+	flex-direction: column;
+	align-items: stretch;
 	background-color: rgba(0, 194, 138, 0.1);
 	padding: 20rpx 40rpx;
-	border-radius: 45rpx;
+	border-radius: 8rpx;
+	width: 100%;
+}
+
+.face-verified-main {
+	flex-direction: row;
+	align-items: center;
 }
 
 .verified-icon {
@@ -1393,17 +1471,26 @@ export default {
 	color: #00C28A;
 }
 
+.verified-hint {
+	font-size: 24rpx;
+	color: #606266;
+	line-height: 36rpx;
+	margin-top: 12rpx;
+	padding-left: 42rpx;
+}
+
 /* 步骤导航按钮 */
 .step-actions {
 	flex-direction: column;
 	justify-content: center;
 	margin-top: 40rpx;
+	margin-bottom: 24rpx;
 	gap: 20rpx;
 }
 
 .action-button {
 	height: 90rpx;
-	border-radius: 45rpx;
+	border-radius: 8rpx;
 	align-items: center;
 	justify-content: center;
 	width: 100%;
@@ -1476,6 +1563,7 @@ export default {
 }
 
 /* 模态弹窗 */
+/* H5 移动端：避免垂直居中 + 未限定高度的 scroll-view 撑破 max-height，致使底部按钮被 overflow 裁切 */
 .modal-overlay {
 	position: fixed;
 	top: 0;
@@ -1485,23 +1573,38 @@ export default {
 	background-color: rgba(0, 0, 0, 0.6);
 	z-index: 999;
 	flex-direction: column;
-	justify-content: center;
+	justify-content: flex-start;
 	align-items: center;
+	padding-top: 5vh;
+	padding-bottom: calc(12vh + constant(safe-area-inset-bottom));
+	padding-bottom: calc(12vh + env(safe-area-inset-bottom));
+	box-sizing: border-box;
 }
 
 .modal-content {
-	width: 80%;
+	width: 85%;
+	max-height: 82vh;
 	background-color: #FFFFFF;
 	border-radius: 16rpx;
 	overflow: hidden;
-	max-height: 80%;
+	flex-direction: column;
+	flex-shrink: 0;
 }
 
 .modal-header {
-	padding: 30rpx;
+	flex-shrink: 0;
+	padding: 24rpx 30rpx;
 	border-bottom-width: 1rpx;
 	border-bottom-color: #EEEEEE;
 	align-items: center;
+}
+
+/* scroll-view 在 H5 上需明确高度上限才会内部滚动，不能用 flex:1+height:0 依赖父级分配 */
+.modal-body-scroll {
+	width: 100%;
+	max-height: 48vh;
+	height: 48vh;
+	flex-shrink: 0;
 }
 
 .modal-title {
@@ -1511,7 +1614,7 @@ export default {
 }
 
 .modal-body {
-	padding: 30rpx;
+	padding: 24rpx 30rpx 32rpx 30rpx;
 }
 
 .guidance-item {
@@ -1536,17 +1639,17 @@ export default {
 /* 人脸轮廓示意图 */
 .face-outline-container {
 	align-items: center;
-	margin-top: 40rpx;
-	margin-bottom: 30rpx;
+	margin-top: 28rpx;
+	margin-bottom: 20rpx;
 }
 
 .face-outline {
-	width: 280rpx;
-	height: 340rpx;
+	width: 240rpx;
+	height: 300rpx;
 	position: relative;
 	align-items: center;
 	justify-content: center;
-	margin-bottom: 20rpx;
+	margin-bottom: 16rpx;
 }
 
 .face-outline-border {
@@ -1555,7 +1658,7 @@ export default {
 	border-width: 3rpx;
 	border-style: dashed;
 	border-color: #FF4D4F;
-	border-radius: 140rpx 140rpx 180rpx 180rpx;
+	border-radius: 120rpx 120rpx 160rpx 160rpx;
 	background-color: #FAFAFA;
 }
 
@@ -1570,8 +1673,8 @@ export default {
 .icon-tips-container {
 	flex-direction: row;
 	justify-content: space-around;
-	margin-top: 30rpx;
-	padding: 0 20rpx;
+	margin-top: 20rpx;
+	padding: 0 12rpx;
 }
 
 .icon-tip-item {
@@ -1615,8 +1718,15 @@ export default {
 }
 
 .modal-footer {
-	padding: 20rpx 30rpx 40rpx 30rpx;
+	flex-shrink: 0;
+	width: 100%;
+	padding: 16rpx 30rpx;
+	padding-bottom: calc(16rpx + constant(safe-area-inset-bottom));
+	padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+	border-top-width: 1rpx;
+	border-top-color: #F0F0F0;
 	align-items: center;
+	background-color: #FFFFFF;
 }
 
 .modal-button {
@@ -1624,7 +1734,7 @@ export default {
 	color: #FFFFFF;
 	font-size: 32rpx;
 	height: 90rpx;
-	border-radius: 45rpx;
+	border-radius: 8rpx;
 	align-items: center;
 	justify-content: center;
 	width: 100%;
@@ -1727,7 +1837,7 @@ export default {
 	background-color: #FFFFFF;
 	border-width: 1rpx;
 	border-color: #FF4D4F;
-	border-radius: 30rpx;
+	border-radius: 8rpx;
 }
 
 .retry-icon {

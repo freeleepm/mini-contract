@@ -9,7 +9,7 @@
  */
 import { getSealPageUrl } from '../../api/seals/index';
 import { checkNetworkStatus, testH5ServiceAvailability } from '../../utils/network';
-import { SEAL_CORE_H5_URL } from '../../api/config';
+import { SEAL_CORE_H5_URL } from '../../config/app.config';
 
 export default {
   data() {

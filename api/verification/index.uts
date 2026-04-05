@@ -7,7 +7,7 @@
  */
 
 import { get, uploadFile } from '../index.uts';
-import { TIMEOUT } from '../config.uts';
+import { TIMEOUT } from '../../config/app.config';
 
 // API 基础路径
 const BASE_PATH = '/api/v1/seal/verification';

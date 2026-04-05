@@ -1,136 +1,108 @@
 <template>
 	<view class="page-container">
 		<scroll-view class="scroll-view" scroll-y="true">
-			<!-- Hero区域 -->
+			<!-- Hero 区域 -->
 			<view class="hero-section">
-			<view class="hero-icon">
-				<text class="fa fa-eye hero-icon-text"></text>
-			</view>
-			<text class="hero-title">AI天眼审查</text>
-			<text class="hero-subtitle">专业合同风险智能识别系统</text>
-			<text class="hero-desc">基于大语言模型深度分析，秒级定位合同风险点</text>
-		</view>
-
-		<!-- 核心特色卡片 -->
-		<view class="features-section">
-			<text class="section-title">核心能力</text>
-			
-			<view class="feature-card">
-				<view class="feature-icon-wrapper blue">
-					<text class="fa fa-clock feature-icon"></text>
-				</view>
-				<view class="feature-content">
-					<text class="feature-title">秒级响应</text>
-					<text class="feature-desc">智能算法快速扫描，平均响应时间小于10秒</text>
+				<view class="hero-decor"></view>
+				<view class="hero-content">
+					<view class="hero-icon-box">
+						<text class="fa fa-eye hero-icon-text"></text>
+					</view>
+					<text class="hero-title">天眼审查</text>
+					<text class="hero-subtitle">专业合同风险智能识别系统</text>
+					<text class="hero-desc">基于大语言模型深度分析，秒级定位合同风险点</text>
 				</view>
 			</view>
 
-			<view class="feature-card">
-				<view class="feature-icon-wrapper green">
-					<text class="fa fa-shield-halved feature-icon"></text>
-				</view>
-				<view class="feature-content">
-					<text class="feature-title">三级风险识别</text>
-					<text class="feature-desc">高危、中危、低危分级预警，精准定位风险条款</text>
-				</view>
-			</view>
+			<view class="body-wrapper">
+				<!-- 核心能力 -->
+				<view class="section">
+					<view class="section-header">
+						<text class="section-title">核心能力</text>
+						<text class="section-subtitle">四大智能引擎，全方位守护</text>
+					</view>
 
-			<view class="feature-card">
-				<view class="feature-icon-wrapper orange">
-					<text class="fa fa-arrows-rotate feature-icon"></text>
-				</view>
-				<view class="feature-content">
-					<text class="feature-title">智能修改建议</text>
-					<text class="feature-desc">AI提供专业法律意见，给出可落地的修改方案</text>
-				</view>
-			</view>
-
-			<view class="feature-card">
-				<view class="feature-icon-wrapper purple">
-					<text class="fa fa-eye feature-icon"></text>
-				</view>
-				<view class="feature-content">
-					<text class="feature-title">精准定位</text>
-					<text class="feature-desc">风险条款一键跳转，支持按段落、页码、关键词定位</text>
-				</view>
-			</view>
-		</view>
-
-		<!-- 使用场景 -->
-		<view class="scenarios-section">
-			<text class="section-title">适用场景</text>
-			<view class="scenario-tags">
-				<view class="scenario-tag">
-					<text class="fa fa-circle-check scenario-tag-icon"></text>
-					<text class="scenario-tag-text">劳动合同</text>
-				</view>
-				<view class="scenario-tag">
-					<text class="fa fa-circle-check scenario-tag-icon"></text>
-					<text class="scenario-tag-text">销售合同</text>
-				</view>
-				<view class="scenario-tag">
-					<text class="fa fa-circle-check scenario-tag-icon"></text>
-					<text class="scenario-tag-text">租赁协议</text>
-				</view>
-				<view class="scenario-tag">
-					<text class="fa fa-circle-check scenario-tag-icon"></text>
-					<text class="scenario-tag-text">服务协议</text>
-				</view>
-				<view class="scenario-tag">
-					<text class="fa fa-circle-check scenario-tag-icon"></text>
-					<text class="scenario-tag-text">采购合同</text>
-				</view>
-				<view class="scenario-tag">
-					<text class="fa fa-circle-check scenario-tag-icon"></text>
-					<text class="scenario-tag-text">保密协议</text>
-				</view>
-			</view>
-		</view>
-
-		<!-- 使用流程 -->
-		<view class="process-section">
-			<text class="section-title">使用流程</text>
-			<view class="process-list">
-				<view class="process-item">
-					<view class="item-badge">1</view>
-					<view class="item-body">
-						<text class="item-title">选择已完成的合同</text>
+					<view class="ability-grid">
+						<view class="ability-card">
+							<view class="ability-icon blue">
+								<text class="fa fa-clock"></text>
+							</view>
+							<text class="ability-title">秒级响应</text>
+							<text class="ability-desc">平均响应 &lt;10s</text>
+						</view>
+						<view class="ability-card">
+							<view class="ability-icon green">
+								<text class="fa fa-shield-halved"></text>
+							</view>
+							<text class="ability-title">三级风险</text>
+							<text class="ability-desc">高/中/低分级预警</text>
+						</view>
+						<view class="ability-card">
+							<view class="ability-icon orange">
+								<text class="fa fa-arrows-rotate"></text>
+							</view>
+							<text class="ability-title">修改建议</text>
+							<text class="ability-desc">可落地的修改方案</text>
+						</view>
+						<view class="ability-card">
+							<view class="ability-icon purple">
+								<text class="fa fa-eye"></text>
+							</view>
+							<text class="ability-title">精准定位</text>
+							<text class="ability-desc">一键跳转风险条款</text>
+						</view>
 					</view>
 				</view>
-				
-				<view class="process-item">
-					<view class="item-badge">2</view>
-					<view class="item-body">
-						<text class="item-title">点击"AI审查"按钮</text>
+
+				<!-- 适用场景 -->
+				<view class="section">
+					<view class="section-header">
+						<text class="section-title">适用场景</text>
+					</view>
+					<view class="scenario-tags">
+						<view class="scenario-tag" v-for="(item, index) in scenarios" :key="index">
+							<text class="fa fa-circle-check tag-icon"></text>
+							<text class="tag-text">{{ item }}</text>
+						</view>
 					</view>
 				</view>
-				
-				<view class="process-item">
-					<view class="item-badge">3</view>
-					<view class="item-body">
-						<text class="item-title">等待AI分析完成</text>
+
+				<!-- 使用流程 -->
+				<view class="section">
+					<view class="section-header">
+						<text class="section-title">使用流程</text>
+						<text class="section-subtitle">简单四步，快速完成审查</text>
+					</view>
+
+					<view class="process-card">
+						<view class="process-step" v-for="(step, index) in steps" :key="index">
+							<view class="step-left">
+								<view class="step-badge">
+									<text class="step-num">{{ index + 1 }}</text>
+								</view>
+								<view class="step-line" v-if="index < steps.length - 1"></view>
+							</view>
+							<view class="step-body">
+								<text class="step-title">{{ step.title }}</text>
+								<text class="step-desc">{{ step.desc }}</text>
+							</view>
+						</view>
 					</view>
 				</view>
-				
-				<view class="process-item">
-					<view class="item-badge">4</view>
-					<view class="item-body">
-						<text class="item-title">查看风险报告</text>
-					</view>
-				</view>
+
+				<view class="safe-bottom"></view>
 			</view>
-		</view>
 		</scroll-view>
 
 		<!-- 底部操作栏 -->
-		<view class="bottom-bar">
-			<view class="bottom-btn secondary" @click="goToContractList">
-				<text class="fa fa-circle-check bottom-btn-icon"></text>
-				<text class="bottom-btn-text">选择合同</text>
+		<view class="fixed-footer">
+			<view class="footer-btn secondary" @click="goToContractList">
+				<text class="fa fa-file-lines btn-icon-secondary"></text>
+				<text class="btn-text-secondary">选择合同</text>
 			</view>
-			<view class="bottom-btn primary" @click="goToHistory">
-				<text class="fa fa-clock bottom-btn-icon"></text>
-				<text class="bottom-btn-text">审查历史</text>
+			<view class="footer-btn primary" @click="goToHistory">
+				<text class="fa fa-clock-rotate-left btn-icon-primary"></text>
+				<text class="btn-text-primary">审查历史</text>
 			</view>
 		</view>
 	</view>
@@ -139,17 +111,22 @@
 <script>
 export default {
 	data() {
-		return {}
+		return {
+			scenarios: ['劳动合同', '销售合同', '租赁协议', '服务协议', '采购合同', '保密协议'] as string[],
+			steps: [
+				{ title: '选择已完成的合同', desc: '从合同列表中选择需要审查的合同' },
+				{ title: '点击"AI审查"按钮', desc: '系统将自动提取合同内容' },
+				{ title: '等待 AI 分析完成', desc: '智能引擎深度扫描，通常 10 秒内完成' },
+				{ title: '查看风险报告', desc: '逐条查看风险点及修改建议' }
+			] as Array<{ title: string; desc: string }>
+		}
 	},
 	methods: {
-		// 跳转到合同列表（选择合同进行审查）
 		goToContractList(): void {
 			uni.switchTab({
 				url: '/pages/contract-manage/index'
 			})
 		},
-		
-		// 跳转到审查历史（查看所有审查记录）
 		goToHistory(): void {
 			uni.navigateTo({
 				url: '/pages/contract-audit/history'
@@ -160,160 +137,166 @@ export default {
 </script>
 
 <style>
-/* 页面容器 */
-.page-container {
-	flex: 1;
-	background-color: #F7F9FC;
+@import url("../../static/styles/fontawesome.css");
+
+.fa {
+	font-family: 'Font Awesome 6 Free';
+	font-weight: 900;
+	font-style: normal;
 }
 
-/* 滚动视图 */
+/* 页面 */
+.page-container {
+	flex: 1;
+	background-color: #F5F7FA;
+}
+
 .scroll-view {
 	flex: 1;
 }
 
-/* Hero区域 */
+/* Hero */
 .hero-section {
-	align-items: center;
-	padding: 50rpx 20rpx;
 	background-color: #1890FF;
-	border-radius: 10rpx;
-	margin: 0 16rpx 16rpx 16rpx;
-	box-shadow: none;
+	padding: 56rpx 32rpx 48rpx;
+	align-items: center;
+	position: relative;
+	overflow: hidden;
 }
 
-.hero-icon {
-	width: 120rpx;
-	height: 120rpx;
-	background-color: #FFFFFF;
-	border-radius: 60rpx;
+.hero-decor {
+	position: absolute;
+	top: -50rpx;
+	right: -30rpx;
+	width: 200rpx;
+	height: 200rpx;
+	border-radius: 100rpx;
+	background-color: rgba(255, 255, 255, 0.08);
+}
+
+.hero-content {
+	align-items: center;
+	position: relative;
+}
+
+.hero-icon-box {
+	width: 108rpx;
+	height: 108rpx;
+	background-color: rgba(255, 255, 255, 0.2);
+	border-radius: 54rpx;
 	align-items: center;
 	justify-content: center;
-	margin-bottom: 30rpx;
+	margin-bottom: 28rpx;
 }
 
 .hero-icon-text {
-	font-size: 64rpx;
-	color: #1890FF;
+	font-size: 48rpx;
+	color: #FFFFFF;
 }
 
 .hero-title {
-	font-size: 48rpx;
+	font-size: 40rpx;
 	font-weight: 700;
 	color: #FFFFFF;
-	margin-bottom: 16rpx;
+	margin-bottom: 12rpx;
+	letter-spacing: 2rpx;
 }
 
 .hero-subtitle {
 	font-size: 28rpx;
 	color: rgba(255, 255, 255, 0.9);
-	margin-bottom: 12rpx;
+	margin-bottom: 8rpx;
 }
 
 .hero-desc {
 	font-size: 24rpx;
-	color: rgba(255, 255, 255, 0.8);
+	color: rgba(255, 255, 255, 0.7);
 	text-align: center;
-	padding: 0 20rpx;
-	line-height: 40rpx;
 }
 
-/* 特色区域 */
-.features-section {
-	margin: 0 16rpx 16rpx 16rpx;
-	padding: 0 20rpx;
+/* 内容区 */
+.body-wrapper {
+	padding: 32rpx;
+}
+
+.safe-bottom {
+	height: 160rpx;
+}
+
+/* 区块 */
+.section {
+	margin-bottom: 40rpx;
+}
+
+.section-header {
+	margin-bottom: 24rpx;
 }
 
 .section-title {
 	font-size: 32rpx;
-	font-weight: 600;
-	color: #303133;
+	font-weight: 700;
+	color: #1A1A1A;
+	margin-bottom: 4rpx;
+}
+
+.section-subtitle {
+	font-size: 24rpx;
+	color: #999999;
+}
+
+/* 核心能力 - 2x2 网格 */
+.ability-grid {
+	flex-direction: row;
+	flex-wrap: wrap;
+	justify-content: space-between;
+}
+
+.ability-card {
+	width: 48.5%;
+	background-color: #FFFFFF;
+	border-radius: 16rpx;
+	padding: 28rpx;
+	margin-bottom: 20rpx;
+	align-items: center;
+	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.ability-icon {
+	width: 72rpx;
+	height: 72rpx;
+	border-radius: 18rpx;
+	align-items: center;
+	justify-content: center;
 	margin-bottom: 16rpx;
 }
 
-.feature-card {
-	background-color: #FFFFFF;
-	border-radius: 8rpx;
-	padding: 20rpx;
-	margin-bottom: 12rpx;
-	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
-	flex-direction: row;
-	align-items: center;
-	transition: all 0.3s ease;
-}
-
-.feature-card:active {
-	transform: scale(0.98);
-	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
-}
-
-.feature-icon-wrapper {
-	width: 80rpx;
-	height: 80rpx;
-	border-radius: 40rpx;
-	align-items: center;
-	justify-content: center;
-	margin-right: 24rpx;
-}
-
-.feature-icon-wrapper.blue {
-	background-color: rgba(24, 144, 255, 0.1);
-}
-
-.feature-icon-wrapper.green {
-	background-color: rgba(0, 194, 138, 0.1);
-}
-
-.feature-icon-wrapper.orange {
-	background-color: rgba(250, 173, 20, 0.1);
-}
-
-.feature-icon-wrapper.purple {
-	background-color: rgba(124, 77, 255, 0.1);
-}
-
-.feature-icon {
-	font-size: 36rpx;
-}
-
-.feature-icon-wrapper.blue .feature-icon {
-	color: #1890FF;
-}
-
-.feature-icon-wrapper.green .feature-icon {
-	color: #00C28A;
-}
-
-.feature-icon-wrapper.orange .feature-icon {
-	color: #FAAD14;
-}
-
-.feature-icon-wrapper.purple .feature-icon {
-	color: #7C4DFF;
-}
-
-.feature-content {
-	flex: 1;
-}
-
-.feature-title {
+.ability-icon .fa {
 	font-size: 30rpx;
+}
+
+.ability-icon.blue { background-color: #EBF5FF; }
+.ability-icon.blue .fa { color: #1890FF; }
+.ability-icon.green { background-color: #E8F8F2; }
+.ability-icon.green .fa { color: #00B578; }
+.ability-icon.orange { background-color: #FFF5EB; }
+.ability-icon.orange .fa { color: #FF8C00; }
+.ability-icon.purple { background-color: #F3EEFF; }
+.ability-icon.purple .fa { color: #7C3AED; }
+
+.ability-title {
+	font-size: 28rpx;
 	font-weight: 600;
-	color: #303133;
-	margin-bottom: 8rpx;
+	color: #1A1A1A;
+	margin-bottom: 6rpx;
 }
 
-.feature-desc {
-	font-size: 24rpx;
-	color: #909399;
-	line-height: 36rpx;
+.ability-desc {
+	font-size: 22rpx;
+	color: #999999;
+	text-align: center;
 }
 
-/* 使用场景 */
-.scenarios-section {
-	margin: 0 16rpx 16rpx 16rpx;
-	padding: 0 20rpx;
-}
-
+/* 适用场景 */
 .scenario-tags {
 	flex-direction: row;
 	flex-wrap: wrap;
@@ -323,154 +306,134 @@ export default {
 	flex-direction: row;
 	align-items: center;
 	background-color: #FFFFFF;
-	border-radius: 24rpx;
-	padding: 8rpx 16rpx;
-	margin-right: 10rpx;
-	margin-bottom: 10rpx;
-	box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.04);
+	border-radius: 32rpx;
+	padding: 14rpx 24rpx;
+	margin-right: 16rpx;
+	margin-bottom: 16rpx;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
 }
 
-.scenario-tag-icon {
-	font-size: 24rpx;
-	color: #00C28A;
+.tag-icon {
+	font-size: 22rpx;
+	color: #00B578;
 	margin-right: 8rpx;
 }
 
-.scenario-tag-text {
+.tag-text {
 	font-size: 26rpx;
-	color: #606266;
+	color: #333333;
 }
 
 /* 使用流程 */
-.process-section {
-	margin: 0 16rpx 16rpx 16rpx;
-	padding: 0 20rpx;
-	padding-bottom: 120rpx; /* 为底部操作栏留出空间 */
-}
-
-.process-list {
-	display: flex;
-	flex-direction: column;
-	gap: 12rpx;
-}
-
-.process-item {
+.process-card {
 	background-color: #FFFFFF;
-	border-radius: 8rpx;
-	padding: 16rpx 20rpx;
-	box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.04);
+	border-radius: 16rpx;
+	padding: 32rpx 28rpx;
+	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.process-step {
 	flex-direction: row;
+}
+
+.step-left {
 	align-items: center;
-	border: 1rpx solid #EBEEF5;
-	transition: all 0.3s ease;
+	margin-right: 20rpx;
 }
 
-.process-item:active {
-	transform: scale(0.98);
-	box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.15);
-}
-
-.item-badge {
-	width: 56rpx;
-	height: 56rpx;
+.step-badge {
+	width: 48rpx;
+	height: 48rpx;
+	border-radius: 24rpx;
 	background-color: #1890FF;
-	border-radius: 28rpx;
-	color: #FFFFFF;
-	font-size: 28rpx;
-	font-weight: 600;
 	align-items: center;
 	justify-content: center;
-	flex-shrink: 0;
 }
 
-.item-body {
+.step-num {
+	font-size: 24rpx;
+	font-weight: 700;
+	color: #FFFFFF;
+}
+
+.step-line {
+	width: 2rpx;
 	flex: 1;
-	margin-left: 24rpx;
+	background-color: #E8ECF0;
+	margin: 8rpx 0;
 }
 
-.item-title {
-	font-size: 30rpx;
-	color: #303133;
-	font-weight: 500;
-	line-height: 42rpx;
+.step-body {
+	flex: 1;
+	padding-bottom: 28rpx;
 }
 
-/* 底部操作栏 */
-.bottom-bar {
+.step-title {
+	font-size: 28rpx;
+	font-weight: 600;
+	color: #1A1A1A;
+	margin-bottom: 6rpx;
+}
+
+.step-desc {
+	font-size: 22rpx;
+	color: #999999;
+	line-height: 34rpx;
+}
+
+/* 底部 */
+.fixed-footer {
 	position: fixed;
 	bottom: 0;
 	left: 0;
 	right: 0;
 	background-color: #FFFFFF;
-	padding: 12rpx 16rpx;
-	box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.05);
+	padding: 16rpx 32rpx;
+	padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+	box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.05);
 	flex-direction: row;
-	align-items: center;
 }
 
-.bottom-btn {
+.footer-btn {
 	flex: 1;
 	height: 88rpx;
-	border-radius: 44rpx;
+	border-radius: 16rpx;
 	flex-direction: row;
 	align-items: center;
 	justify-content: center;
-	transition: all 0.25s ease;
 }
 
-.bottom-btn:active {
-	opacity: 0.9;
-	transform: scale(0.98);
-}
-
-.bottom-btn.secondary {
+.footer-btn.secondary {
 	background-color: #F5F7FA;
-	border: 1rpx solid #DCDFE6;
-	margin-right: 16rpx;
+	border: 1rpx solid #E8ECF0;
+	margin-right: 20rpx;
 }
 
-.bottom-btn.primary {
+.footer-btn.primary {
 	background-color: #1890FF;
-	box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.3);
 }
 
-.bottom-btn-icon {
-	font-size: 30rpx;
+.btn-icon-secondary {
+	font-size: 28rpx;
+	color: #666666;
 	margin-right: 8rpx;
 }
 
-.bottom-btn.secondary .bottom-btn-icon {
-	color: #606266;
-}
-
-.bottom-btn.primary .bottom-btn-icon {
+.btn-icon-primary {
+	font-size: 28rpx;
 	color: #FFFFFF;
+	margin-right: 8rpx;
 }
 
-.bottom-btn-text {
-	font-size: 30rpx;
-	font-weight: 500;
+.btn-text-secondary {
+	font-size: 28rpx;
+	font-weight: 600;
+	color: #333333;
 }
 
-.bottom-btn.secondary .bottom-btn-text {
-	color: #606266;
-}
-
-.bottom-btn.primary .bottom-btn-text {
+.btn-text-primary {
+	font-size: 28rpx;
+	font-weight: 600;
 	color: #FFFFFF;
-}
-
-/* FontAwesome 图标样式 */
-.fa {
-	font-family: 'Font Awesome 6 Free';
-	font-weight: 900;
-	font-size: 26rpx;
-	font-style: normal;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-	display: inline-block;
-	line-height: 1;
-	text-rendering: auto;
 }
 </style>
-

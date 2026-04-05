@@ -5,7 +5,7 @@
  */
 
 // 导入配置
-import { API_BASE_URL, TENANT_ID, TIMEOUT, UPLOAD_CONFIG } from './config';
+import { API_BASE_URL, TENANT_ID, TIMEOUT, UPLOAD_CONFIG } from '../config/app.config';
 
 // 响应数据接口
 export interface ApiResponse<T> {
@@ -37,6 +37,60 @@ let refreshTokenPromise: Promise<string> | null = null;
 // Seal-Token 兑换相关全局变量（防止并发重复兑换）
 let isGeneratingSealToken = false;
 let generateSealTokenPromise: Promise<string> | null = null;
+
+/**
+ * 处理登录过期的函数
+ */
+export function handleLoginExpired(reason?: string) {
+    if (!isRedirectingToLogin) {
+        isRedirectingToLogin = true;
+        
+        console.error('【登录过期处理】原因:', reason || '未知');
+        console.error('【登录过期处理】清除登录信息并跳转登录页');
+        
+        // 清除所有登录信息
+        uni.removeStorageSync('token');
+        uni.removeStorageSync('refreshToken');
+        uni.removeStorageSync('sealToken');
+        uni.removeStorageSync('userId');
+        uni.removeStorageSync('userInfo');
+        
+        // 优化用户提示信息，避免显示技术性错误
+        let message = '登录已过期，请重新登录';
+        if (reason && reason.includes('请重新登录')) {
+            message = reason;
+        } else if (reason) {
+            message = reason;
+        }
+        uni.showToast({
+            title: message,
+            icon: 'none',
+            duration: 2000
+        });
+        
+        // 延迟跳转到登录页
+        if (redirectTimer !== null) {
+            clearTimeout(redirectTimer);
+        }
+        redirectTimer = setTimeout(() => {
+            uni.reLaunch({
+                url: '/pages/login/index',
+                success: () => {
+                    setTimeout(() => {
+                        isRedirectingToLogin = false;
+                        redirectTimer = null;
+                    }, 2000);
+                },
+                fail: () => {
+                    isRedirectingToLogin = false;
+                    redirectTimer = null;
+                }
+            });
+        }, 1500);
+    } else {
+        console.log('已在跳转登录页，跳过重复操作');
+    }
+}
 
 /**
  * 🆕 确保 Seal-Token 存在（在发送seal业务请求前调用）
@@ -440,9 +494,39 @@ function executeRequest<T>(options: RequestOptions, isSealAuthApi: boolean, isSe
                     const apiResponse: ApiResponse<T> = responseData;
                     
                     // 根据业务状态码处理
-                    if (apiResponse.code === 0 || apiResponse.code === 200) {
+					if (apiResponse.code === 0 || apiResponse.code === 200) {
                         // 成功状态码
                         resolve(apiResponse.data);
+					} else if (apiResponse.code === 1012023002) {
+						// 需要登录（例如匿名访问了要求登录的合同）
+						console.error('[API] 🔐 安全校验失败: 此合同需要登录后才能查看');
+						handleLoginExpired(apiResponse.msg || '此安全级别的合同需要登录后查看，请登录');
+						reject(new Error(apiResponse.msg || '需要登录'));
+					} else if (apiResponse.code === 1012023000) {
+						// 身份不匹配
+						console.error('[API] 🔐 身份校验失败: 当前登录账号不是签署方');
+						if (!isRedirectingToLogin) {
+							uni.showModal({
+								title: '无权查看/签署',
+								content: apiResponse.msg || '您当前登录的账号不是此合同的签署方',
+								confirmText: '切换账号',
+								cancelText: '返回',
+								success: (res) => {
+									if (res.confirm) {
+										handleLoginExpired('请使用正确的账号登录');
+									} else {
+										// 判断是否可以返回，如果不能则回首页
+										const pages = getCurrentPages();
+										if (pages.length > 1) {
+											uni.navigateBack({ delta: 1 });
+										} else {
+											uni.switchTab({ url: '/pages/index/index' });
+										}
+									}
+								}
+							});
+						}
+						reject(new Error(apiResponse.msg || '账号不匹配'));
 					} else if (apiResponse.code === 401 || apiResponse.code === 1012005005 || apiResponse.code === 1012005006) {
 						// 未授权或Token无效/过期错误
 						// 401: HTTP未授权
@@ -567,56 +651,7 @@ function executeRequest<T>(options: RequestOptions, isSealAuthApi: boolean, isSe
 							reject(new Error(apiResponse.msg || '未授权'));
 						}
 						
-						// 处理登录过期的函数
-						function handleLoginExpired(reason?: string) {
-							if (!isRedirectingToLogin) {
-								isRedirectingToLogin = true;
-								
-								console.error('【登录过期处理】原因:', reason || '未知');
-								console.error('【登录过期处理】清除登录信息并跳转登录页');
-								
-								// 清除所有登录信息
-								uni.removeStorageSync('token');
-								uni.removeStorageSync('refreshToken');
-								uni.removeStorageSync('sealToken');
-								uni.removeStorageSync('userId');
-								uni.removeStorageSync('userInfo');
-								
-								// 优化用户提示信息，避免显示技术性错误
-								// 如果已经包含"请重新登录"，直接使用；否则使用友好的提示
-								let message = '登录已过期，请重新登录';
-								if (reason && reason.includes('请重新登录')) {
-									message = reason;
-								}
-								uni.showToast({
-									title: message,
-									icon: 'none',
-									duration: 2000
-								});
-								
-								// 延迟跳转到登录页
-								if (redirectTimer) {
-									clearTimeout(redirectTimer);
-								}
-								redirectTimer = setTimeout(() => {
-									uni.reLaunch({
-										url: '/pages/login/index',
-										success: () => {
-											setTimeout(() => {
-												isRedirectingToLogin = false;
-												redirectTimer = null;
-											}, 2000);
-										},
-										fail: () => {
-											isRedirectingToLogin = false;
-											redirectTimer = null;
-										}
-									});
-								}, 1500);
-							} else {
-								console.log('已在跳转登录页，跳过重复操作');
-							}
-						}
+                        // (提取出了 handleLoginExpired 到文件顶部)
                     } else if (apiResponse.code === 403) {
                         // License 授权错误处理
                         console.error('API授权错误:', apiResponse.code, apiResponse.msg);
@@ -645,8 +680,14 @@ function executeRequest<T>(options: RequestOptions, isSealAuthApi: boolean, isSe
                         reject(new Error(apiResponse.msg || '授权验证失败'));
                     } else {
                         // 其他业务错误
-                        console.error('API业务错误:', apiResponse.code, apiResponse.msg);
-                        reject(new Error(apiResponse.msg || '请求失败'));
+                        const errMsg = apiResponse.msg || '请求失败';
+                        console.error('API业务错误:', apiResponse.code, errMsg);
+                        uni.showToast({
+                            title: errMsg,
+                            icon: 'none',
+                            duration: 3000
+                        });
+                        reject(new Error(errMsg));
                     }
                 } catch (error) {
                     console.error('❌ 处理响应数据失败:', error);
@@ -970,7 +1011,7 @@ export function uploadFile(url: string, filePath: string, options?: {
  * @param expirationHours 过期时间（小时）
  */
 export function getPresignedUrl(fileName: string, directory?: string, expirationHours?: number): Promise<any> {
-    let url = '/infra/file/presigned-url?name=' + encodeURIComponent(fileName);
+    let url = '/api/v1/infra/file/presigned-url?name=' + encodeURIComponent(fileName);
     if (directory) {
         url += '&directory=' + encodeURIComponent(directory);
     }
@@ -1111,7 +1152,7 @@ export function createFileRecord(fileInfo: {
     
     return new Promise((resolve, reject) => {
         // 直接使用底层uni.request以便更好地控制和记录过程
-        const fullUrl = buildFullUrl('/infra/file/create');
+        const fullUrl = buildFullUrl('/api/v1/infra/file/create');
         const token = uni.getStorageSync('token');
         
         console.log('记录文件请求URL:', fullUrl);

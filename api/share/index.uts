@@ -12,7 +12,7 @@ import { get } from '../index';
  * 分享摘要信息（无需登录即可获取）
  */
 export type ShareSummary = {
-	/** 分享类型：sign / view / template / invite / app */
+	/** 分享类型：sign / view / template / template_qr / invite / app */
 	type : string;
 	/** 展示标题 */
 	title : string;
@@ -28,6 +28,14 @@ export type ShareSummary = {
 	requireLogin : boolean;
 	/** 目标业务对象ID */
 	targetId : string;
+	/** 作用域：2-企业私有 3-系统公共 */
+	scope : number;
+	/** 企业ID */
+	enterpriseId : number;
+	/** 二维码是否可用（template_qr 场景） */
+	qrcodeAvailable : boolean;
+	/** 不可用原因（template_qr 场景） */
+	unavailableReason : string;
 };
 
 // ==================== API 接口 ====================
@@ -41,7 +49,7 @@ export type ShareSummary = {
  * @returns 分享摘要信息
  */
 export function getShareSummary(type : string, targetId : string) : Promise<ShareSummary> {
-	return get<ShareSummary>('/api/v1/share/summary', {
+	return get<ShareSummary>('/api/v1/seal/share/summary', {
 		type: type,
 		targetId: targetId
 	}, {

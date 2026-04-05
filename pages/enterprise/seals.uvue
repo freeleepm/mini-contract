@@ -212,7 +212,7 @@ export default {
             this.enterpriseName = enterpriseData.name || "企业名称";
             this.enterpriseCreditCode = enterpriseData.creditCode || "";
             this.enterpriseLogo = enterpriseData.logo || "/static/icons/blue-icon.png";
-            this.isVerified = enterpriseData.status === 1;
+            this.isVerified = enterpriseData.status === 2; // 2=已认证(VERIFIED)
             console.log('[企业印章] ✅ 从缓存获取企业ID:', this.enterpriseId);
           } else {
             console.warn('[企业印章] ⚠️ 缓存中的企业数据无效');
@@ -287,7 +287,7 @@ export default {
           this.enterpriseName = enterprise.name || "企业名称";
           this.enterpriseCreditCode = enterprise.creditCode || "";
           this.enterpriseLogo = enterprise.logo || "/static/icons/blue-icon.png";
-          this.isVerified = enterprise.status === 1; // 1表示已认证
+          this.isVerified = enterprise.status === 2; // 2表示已认证(VERIFIED)
           
           console.log('[企业印章] 数据已赋值:', {
             name: this.enterpriseName,

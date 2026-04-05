@@ -75,6 +75,8 @@
 						return '你收到一份合同分享，点击下方按钮查看详情';
 					case ShareType.TEMPLATE:
 						return '为你推荐一个合同模板，点击下方按钮查看';
+					case ShareType.TEMPLATE_QR:
+						return '扫码使用此模板创建合同，点击下方按钮查看模板详情';
 					case ShareType.INVITE:
 						return '你收到一个企业加入邀请，点击下方按钮查看';
 					default:
@@ -108,6 +110,10 @@
 			
 			/** 主操作按钮文案 */
 			actionButtonText() : string {
+				// 如果二维码不可用，显示"返回首页"
+				if (this.shareType === ShareType.TEMPLATE_QR && this.summary != null && !this.summary!.qrcodeAvailable) {
+					return '返回首页';
+				}
 				switch (this.shareType) {
 					case ShareType.SIGN:
 						return '立即签署';
@@ -115,11 +121,28 @@
 						return '查看合同';
 					case ShareType.TEMPLATE:
 						return '查看模板';
+					case ShareType.TEMPLATE_QR:
+						return '查看模板并创建合同';
 					case ShareType.INVITE:
 						return '接受邀请';
 					default:
 						return '进入应用';
 				}
+			},
+			
+			/** 二维码是否不可用 */
+			isQrcodeUnavailable() : boolean {
+				return this.shareType === ShareType.TEMPLATE_QR 
+					&& this.summary != null 
+					&& !this.summary!.qrcodeAvailable;
+			},
+			
+			/** 不可用原因 */
+			unavailableReason() : string {
+				if (this.summary != null && this.summary!.unavailableReason !== '') {
+					return this.summary!.unavailableReason;
+				}
+				return '该模版二维码不可用';
 			},
 			
 			/** 是否为「应用推广」类型 */
@@ -146,6 +169,10 @@
 				if (options.enterpriseId) {
 					this.targetId = options.enterpriseId as string;
 					this.allParams.set('enterpriseId', this.targetId);
+				}
+				if (options.baseTemplateId) {
+					this.targetId = options.baseTemplateId as string;
+					this.allParams.set('baseTemplateId', this.targetId);
 				}
 			}
 			
@@ -227,6 +254,14 @@
 					return;
 				}
 				
+				// 二维码不可用场景：返回首页
+				if (this.isQrcodeUnavailable) {
+					uni.switchTab({
+						url: '/pages/index/index'
+					});
+					return;
+				}
+				
 				if (!this.isLoggedIn) {
 					// 未登录：跳转登录页，携带回调地址
 					const targetPath = getTargetPagePath(this.shareType, this.allParams);
@@ -297,8 +332,15 @@
 						<text class="type-badge-text">{{ typeTitle }}</text>
 					</view>
 					
+					<!-- 不可用提示 -->
+					<view v-if="isQrcodeUnavailable" class="card-content unavailable-content">
+						<text class="fa fa-exclamation-circle unavailable-icon"></text>
+						<text class="card-title unavailable-title">模版不可用</text>
+						<text class="card-description unavailable-desc">{{ unavailableReason }}</text>
+					</view>
+					
 					<!-- 主要内容 -->
-					<view class="card-content">
+					<view v-else class="card-content">
 						<text class="card-title">{{ displayTitle }}</text>
 						<text class="card-description">{{ displayDescription }}</text>
 						
@@ -329,7 +371,7 @@
 					
 					<!-- 操作按钮 -->
 					<view class="action-section">
-						<view class="action-btn" @click="handleAction">
+						<view class="action-btn" :class="{'action-btn-secondary': isQrcodeUnavailable}" @click="handleAction">
 							<text class="action-btn-text">{{ actionButtonText }}</text>
 						</view>
 					</view>
@@ -526,6 +568,44 @@
 		font-size: 32rpx;
 		font-weight: 500;
 		color: #FFFFFF;
+	}
+	
+	/* ==================== 不可用状态 ==================== */
+	
+	.unavailable-content {
+		align-items: center;
+		padding: 50rpx 30rpx;
+	}
+	
+	.unavailable-icon {
+		font-family: FontAwesome;
+		font-size: 60rpx;
+		color: #FAAD14;
+		margin-bottom: 20rpx;
+		font-style: normal;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+	
+	.unavailable-title {
+		text-align: center;
+		color: #303133;
+	}
+	
+	.unavailable-desc {
+		text-align: center;
+		color: #909399;
+	}
+	
+	.action-btn-secondary {
+		background-color: #F5F7FA;
+		border-width: 1rpx;
+		border-color: #DCDFE6;
+		border-style: solid;
+	}
+	
+	.action-btn-secondary .action-btn-text {
+		color: #606266;
 	}
 	
 	/* ==================== 安全提示 ==================== */

@@ -5,7 +5,7 @@
  * 注意：Seal模块使用统一的版本化路径 /api/v1/seal
  */
 import { get, post, put, del } from '../index';
-import { SEAL_CORE_H5_URL } from '../config.uts';
+import { SEAL_CORE_H5_URL } from '../../config/app.config';
 import { getSealTokenConfig, LOG_PREFIX } from '../../config/seal.config';
 
 // ==================== 数据类型定义 ====================
@@ -403,10 +403,12 @@ export async function generateSealToken(options?: {
 		console.log(`${LOG_PREFIX} 移动端兑换 Seal-Token, expireMinutes: ${finalExpireMinutes}, platform: ${config.platform}`);
 	
 	// 🆕 使用统一接口（兼容旧接口和新接口）
-	const response = await post<any>('/api/v1/seal/auth/exchange-token', {
-		enterpriseId: options?.enterpriseId,
-		expireMinutes: finalExpireMinutes
-	});
+	// 🔧 关键修复：后端使用 @RequestParam 注解，必须通过 URL 查询参数传递（不能用 JSON body）
+	let exchangeUrl = `/api/v1/seal/auth/exchange-token?expireMinutes=${finalExpireMinutes}`;
+	if (options?.enterpriseId) {
+		exchangeUrl += `&enterpriseId=${options.enterpriseId}`;
+	}
+	const response = await post<any>(exchangeUrl, {});
 	
 	// 🔧 调试日志：打印后端返回的原始数据
 	console.log(`${LOG_PREFIX} 📦 后端返回数据类型:`, typeof response);
@@ -436,9 +438,9 @@ export async function generateSealToken(options?: {
 }
 
 export async function getSealPageUrl(
-	mode: 'create' | 'create-file' | 'create-image' | 'sign' | 'view' | 'form' | 'seal-create' | 'template-preview',
+	mode: 'create' | 'create-file' | 'create-image' | 'sign' | 'view' | 'form' | 'seal-create' | 'template-preview' | 'batch-create' | 'batch-list' | 'batch-detail',
 	taskId?: string,
-	options?: { token?: string, enterpriseId?: number, enterpriseName?: string, templateId?: number, type?: string, draftId?: string, pdfUrl?: string, name?: string }
+	options?: { token?: string, enterpriseId?: number, enterpriseName?: string, templateId?: number, type?: string, draftId?: string, pdfUrl?: string, name?: string, batchId?: number }
 ): Promise<string> {
 	// 🆕 获取统一配置（静态导入，兼容小程序环境）
 	const config = getSealTokenConfig('mobile');
@@ -459,6 +461,9 @@ export async function getSealPageUrl(
 		case 'form': path = '/h5/sign/form'; break;
 		case 'seal-create': path = '/h5/seal/create'; break;
 		case 'template-preview': path = '/h5/template/preview'; break;
+		case 'batch-create': path = '/h5/batch/create'; break;
+		case 'batch-list': path = '/h5/batch/list'; break;
+		case 'batch-detail': path = '/h5/batch/detail/' + (options?.batchId ?? ''); break;
 		default: path = '/h5/sign/create';
 	}
 	

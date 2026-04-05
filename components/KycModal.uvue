@@ -207,7 +207,7 @@ export default {
 .kyc-button {
 	flex: 1;
 	height: 88rpx;
-	border-radius: 44rpx;
+	border-radius: 8rpx;
 	align-items: center;
 	justify-content: center;
 }

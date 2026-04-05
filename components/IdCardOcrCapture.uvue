@@ -82,7 +82,7 @@
  */
 import { recognizeIdCard } from '../../api/member/verify';
 import { uploadFileAdvanced } from '../../api/index';
-import { UPLOAD_CONFIG } from '../../api/config';
+import { UPLOAD_CONFIG } from '../../config/app.config';
 
 export default {
 	name: 'IdCardOcrCapture',

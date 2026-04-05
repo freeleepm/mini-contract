@@ -1,8 +1,8 @@
 /**
- * 应用品牌配置（唯一修改入口）
+ * 应用全局配置（唯一修改入口）
  * 
- * 集中管理产品名称、版本号、口号等品牌信息。
- * 所有页面中的品牌文案均从此文件引用，修改后运行时代码自动生效。
+ * 集中管理：品牌信息、API 配置、环境变量、文件上传等全局配置。
+ * 所有页面中的品牌文案和 API 地址均从此文件引用，修改后运行时代码自动生效。
  * 
  * ⚠️ 修改 APP_NAME 后，需同步 JSON 配置文件（manifest / pages / package）：
  * 
@@ -21,7 +21,7 @@ export const APP_NAME = 'Contract.Pro';
 export const APP_VERSION = 'v1.0.0';
 
 /** 版本构建号 */
-export const APP_BUILD_NUMBER = '20230615';
+export const APP_BUILD_NUMBER = '20260212';
 
 /** 产品口号 */
 export const APP_SLOGAN = '让签约更简单';
@@ -76,3 +76,106 @@ export const APP_PLATFORM_AUTH_TEXT = `${APP_NAME} 平台认证签署`;
 
 /** 版本显示文本，例如 "Contract.Pro v1.0.0" */
 export const APP_VERSION_TEXT = `${APP_NAME} ${APP_VERSION}`;
+
+// ==================== 环境与 API 配置 ====================
+
+// 环境配置
+export const ENV = {
+    DEV: 'development' as const,
+    PROD: 'production' as const,
+    TEST: 'testing' as const
+};
+
+// 当前环境 - 可以根据需要修改
+// 本地开发请使用 ENV.DEV，后台服务地址为 http://localhost:48080
+export const CURRENT_ENV: string = ENV.PROD as string;
+
+// 不同环境的API基础URL
+export const API_BASE_URLS: Record<string, string> = {
+    'development': 'http://localhost:48080/app-api',  // 应用端接口
+    'testing': 'https://test-api.example.com/app-api',
+    'production': '/app-api'  // 生产环境使用相对路径，保留 /app-api 前缀
+};
+
+// 导出当前环境的API基础URL
+export const API_BASE_URL: string = API_BASE_URLS[CURRENT_ENV] || '/app-api';
+
+// Seal Core H5 页面基础 URL
+export const SEAL_CORE_H5_URLS: Record<string, string> = {
+    'development': 'http://localhost:3100',
+    'testing': 'https://test-seal.example.com',
+    'production': 'https://h5-contract.yingcui.net'
+};
+
+export const SEAL_CORE_H5_URL: string = SEAL_CORE_H5_URLS[CURRENT_ENV];
+
+/**
+ * 获取当前环境的API基础URL
+ */
+export function getBaseURL(): string {
+    return API_BASE_URL;
+}
+
+// 租户ID - 根据API文档，认证相关接口不需要租户ID，但其他业务接口需要
+// 正式环境中应该从用户登录信息或系统配置中获取
+export const TENANT_ID = '1';
+
+// 超时时间（毫秒）- 默认30秒
+export const TIMEOUT = 30000;
+
+// AI生成合同专用超时时间（毫秒）- 3分钟，因为AI生成合同需要较长时间
+export const AI_GENERATION_TIMEOUT = 180000;
+
+// ==================== 文件上传配置 ====================
+
+// 文件上传配置类型
+export interface UploadConfigType {
+    MODE: string;
+    MAX_SIZE: {
+        IMAGE: number;
+        DOCUMENT: number;
+    };
+    ALLOWED_TYPES: {
+        IMAGE: string[];
+        DOCUMENT: string[];
+    };
+    DIRECTORIES: {
+        AVATAR: string;
+        VERIFY: string;
+        DOCUMENT: string;
+    };
+    EXPIRATION: {
+        VERIFY: number;
+        DEFAULT: number;
+    };
+}
+
+// 文件上传配置
+export const UPLOAD_CONFIG: UploadConfigType = {
+    // 文件上传模式: 'server'(后端上传) 或 'client'(前端直传)
+    MODE: 'client', // 使用前端直传模式
+    // 文件大小限制（单位：MB）
+    MAX_SIZE: {
+        IMAGE: 5,
+        DOCUMENT: 20
+    },
+    // 允许的文件类型
+    ALLOWED_TYPES: {
+        /* webp/heic/heif：部分浏览器与 iOS 相机返回；路径解析失败时会回退为 jpg */
+        IMAGE: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif'],
+        DOCUMENT: ['pdf', 'doc', 'docx', 'xls', 'xlsx']
+    },
+    // 上传目录
+    DIRECTORIES: {
+        AVATAR: 'avatar',
+        VERIFY: 'verify',
+        DOCUMENT: 'document'
+    },
+    // 文件过期策略（单位：小时）
+    EXPIRATION: {
+        // 实名认证临时文件过期时间（24小时）
+        VERIFY: 24,
+        // 通用文件过期时间（7天）
+        DEFAULT: 7 * 24
+    }
+};
