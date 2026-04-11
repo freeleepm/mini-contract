@@ -198,7 +198,7 @@ export function createContract(data: CreateContractParams): Promise<{ id: string
  * 生成签署链接（供分享使用）
  */
 export function generateSignLink(taskId: string, params: GenerateSignLinkParams): Promise<GenerateSignLinkResp> {
-	return post<GenerateSignLinkResp>(`/api/v1/seal/sign-task/generate-link?taskId=${taskId}`, params);
+	return post<GenerateSignLinkResp>(`/api/v1/seal/sign-tasks/${taskId}/join-link`, params);
 }
 
 /**

@@ -88,7 +88,7 @@ export const ENV = {
 
 // 当前环境 - 可以根据需要修改
 // 本地开发请使用 ENV.DEV，后台服务地址为 http://localhost:48080
-export const CURRENT_ENV: string = ENV.PROD as string;
+export const CURRENT_ENV: string = ENV.DEV as string;
 
 // 不同环境的API基础URL
 export const API_BASE_URLS: Record<string, string> = {
@@ -104,7 +104,7 @@ export const API_BASE_URL: string = API_BASE_URLS[CURRENT_ENV] || '/app-api';
 export const SEAL_CORE_H5_URLS: Record<string, string> = {
     'development': 'http://localhost:3100',
     'testing': 'https://test-seal.example.com',
-    'production': 'https://h5-contract.yingcui.net'
+    'production': 'https://h5-sign.leepm.com'
 };
 
 export const SEAL_CORE_H5_URL: string = SEAL_CORE_H5_URLS[CURRENT_ENV];

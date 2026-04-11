@@ -756,8 +756,11 @@
 		height: 96rpx;
 		border-radius: 12rpx;
 		background: linear-gradient(135deg, #00C28A 0%, #00A876 100%);
+		display: flex;
+		flex-direction: row;
 		align-items: center;
 		justify-content: center;
+		padding: 0;
 		margin-bottom: 24rpx;
 		box-shadow: 0 8rpx 24rpx rgba(0, 194, 138, 0.3);
 		border: none;
@@ -779,6 +782,7 @@
 		color: #FFFFFF;
 		font-weight: 600;
 		letter-spacing: 2rpx;
+		line-height: 1;
 	}
 	
 	/* 其他登录方式 */
@@ -823,8 +827,11 @@
 		height: 140rpx;
 		border-radius: 16rpx;
 		background-color: #FFFFFF;
+		display: flex;
+		flex-direction: column;
 		align-items: center;
 		justify-content: center;
+		padding: 0;
 		margin: 0 20rpx;
 		border: 2rpx solid #EBEEF5;
 		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.06);

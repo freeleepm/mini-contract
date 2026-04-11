@@ -22,9 +22,9 @@ Current Latest Version: v3.4.0 (Release Date: April 5, 2026)
 
 ####  Dual-Mode Engine (Flexibly Address Business Scenarios)
 
-**Judicial-Level Evidence Chain Mode**
+**Trusted Evidence Chain Mode**
 
-Based on the Ant Judicial Chain blockchain evidence storage system, it generates an evidence storage report including timestamps and digital fingerprints for each contract, ensuring contracts comply with the requirements of the "Electronic Signature Law". This mode has been certified by the National Industrial Information Security Development Research Center and is particularly suitable for high-value scenarios such as financial lending, human resources contracts, and intellectual property agreements, with evidence query response speeds reaching millisecond level.
+Based on distributed trusted evidence storage system adhering to electronic signature laws, it generates an evidence storage report including timestamps and national standard hashes for each contract, ensuring non-repudiation of signatures. This mode has been certified by national information security centers and is particularly suitable for high-value scenarios such as core commercial business, human resources contracts, and intellectual property agreements, with evidence query response speeds reaching millisecond level.
 
 
 
@@ -46,7 +46,7 @@ No registration or login required. Signers access the signing page directly via 
 
 **Secure Sign**
 
-Signers must first log in to the platform and complete real-name verification (KYC) through dual verification of ID card + facial recognition before signing. The signing process is deeply integrated with the user account system, with all operations linked to the authenticated real identity, ensuring the signing has full legal validity. Supports both personal signing and enterprise seals. Suitable for high-value scenarios such as financial contracts, employment agreements, and equity agreements that have strict requirements for identity authenticity and legal enforceability.
+Signers must first log in to the platform and complete identity verification through multi-factor liveness detection before signing. The signing process is deeply integrated with the user account system, with all operations linked to the authenticated real identity, ensuring the signing has full legal validity. Supports both personal signing and enterprise seals. Suitable for high-value scenarios such as core commercial contracts, employment agreements, and equity agreements that have strict requirements for identity authenticity and legal enforceability.
 
 > Both signing modes can be mixed within the same contract — for example, the initiator uses "Secure Sign" (enterprise seal) while external signers use "Quick Sign" (personal signature), balancing security and convenience.
 
@@ -140,8 +140,11 @@ Built on Vue3 + TypeScript + Pinia, adopting:
 
 ### Open Source Notice
 
+> ⚠️ **Compliance Disclaimer**: This project is intended strictly for personal learning and technical exchange. It is not guaranteed to be suitable for any specific production environment.
+
 1. Only allowed for personal learning and research use;
-2. Prohibited from selling this open-source code and resources in any form or name.
+2. Prohibited from selling this open-source code and resources in any form or name;
+3. Strictly prohibited from using this project for any commercial applications or illicit business models that violate national laws and regulations.
 
 
 
@@ -168,17 +171,17 @@ Mini Contract.Pro has served **100+ enterprise clients**, covering multiple indu
 
 ---
 
-#### 💰 Finance & Credit
+#### 💰 Commercial Trade
 
 **Business Pain Points**
-- Loan agreements and guarantee contracts involve large amounts with high risk
+- Commercial agreements and guarantee contracts involve critical terms with high risk
 - Require strict legal validity and evidence chain
 - Customers distributed widely, high offline signing cost
-- Long contract review process affects loan disbursement speed
+- Long contract review process affects business flow speed
 
 **Solutions**
-- ✅ **Judicial Evidence**: Blockchain evidence storage based on Ant Judicial Chain, ensuring legal validity
-- ✅ **Multi-layer Verification**: Face recognition + SMS verification + intent signing, triple protection
+- ✅ **Trusted Evidence**: Trusted evidence storage based on distributed system, ensuring legal validity
+- ✅ **Multi-layer Verification**: Liveness detection + SMS verification + intent signing, triple protection
 - ✅ **Approval Workflow**: Support multi-level approval, ensure compliance
 - ✅ **Risk Audit**: Tianyan audit function auto-identifies risky clauses
 - ✅ **Digital Seal**: Corporate seal digitization, remote signing
@@ -255,7 +258,7 @@ Mini Contract.Pro has served **100+ enterprise clients**, covering multiple indu
 **Solutions**
 - ✅ **Emergency Signing**: Support remote video + electronic signature
 - ✅ **Family Authorization**: Family members can remotely authorize signing
-- ✅ **Blockchain Evidence**: Ensure complete evidence chain for dispute handling
+- ✅ **Distributed Evidence**: Ensure complete evidence chain for dispute handling
 - ✅ **Privacy Protection**: Encrypted data storage, compliant with healthcare industry standards
 - ✅ **Batch Management**: Batch processing of physical examination and hospitalization agreements
 
@@ -330,7 +333,7 @@ Mini Contract.Pro has served **100+ enterprise clients**, covering multiple indu
 
 **Solutions**
 - ✅ **Quick Contract**: Inspiration is fleeting, sign immediately to protect rights
-- ✅ **Copyright Evidence**: Blockchain evidence storage ensures copyright ownership
+- ✅ **Copyright Evidence**: Distributed evidence storage ensures copyright ownership
 - ✅ **Authorization Scope**: Clearly define usage scope and duration
 - ✅ **Revenue Sharing**: Clearly specify revenue distribution ratio
 - ✅ **Breach Accountability**: Complete evidence chain facilitates rights protection
@@ -344,7 +347,7 @@ Mini Contract.Pro has served **100+ enterprise clients**, covering multiple indu
 ```mermaid
 graph TD
     A["Mini Contract.Pro<br/>100+ Enterprise Clients"] --> B["👥 HR & Recruitment"]
-    A --> C["💰 Finance & Credit"]
+    A --> C["💰 Commercial Trade"]
     A --> D["📊 Sales & E-commerce"]
     A --> E["🏠 Real Estate"]
     A --> F["🎓 Education"]
@@ -373,7 +376,7 @@ graph TD
 |-----------|-------------------|-------------------|
 | **Signing Time** | 3-7 days | 3-30 minutes ⚡ |
 | **Cost** | Print+Mail+Labor | Reduce 90% 💰 |
-| **Legal Validity** | Require notarization | Blockchain evidence 🔒 |
+| **Legal Validity** | Require notarization | Distributed evidence 🔒 |
 | **Management Efficiency** | Manual archiving | Auto-archive + Smart search 📊 |
 | **Remote Signing** | Difficult | Anytime, anywhere 📱 |
 | **Contract Changes** | Re-sign | Supplementary agreement ✏️ |
@@ -820,8 +823,8 @@ graph LR
 
 #### Feature Overview
 - **Login/Register**: Supports multiple methods including SMS verification, account/password, WeChat authorization
-- **Real-name Authentication**: Personal KYC authentication with OCR ID card recognition
-- **Enterprise Authentication**: Enterprise-level KYC authentication with business license recognition
+- **Real-name Verification**: Personal identity verification with OCR document recognition
+- **Enterprise Verification**: Enterprise-level identity verification with business license recognition
 
 #### Technical Implementation
 ```typescript
@@ -1828,7 +1831,7 @@ Project Screenshots
 
 ![](.images/app/app_19@4x.png)
 
-> Mobile contract quota purchase: View remaining contract quotas, select packages and complete payment online (WeChat Pay / Alipay, etc.). Quotas are credited instantly after payment, allowing you to manage contract allowances anytime, anywhere
+> Mobile contract quota management: View remaining contract quotas, select packages and complete settlement online. Quotas are credited instantly after operation, allowing you to manage contract allowances anytime, anywhere
 
 
 
@@ -1927,7 +1930,7 @@ Project Screenshots
 
 ![](.images/pc/pc_30@4x.png)
 
-> Contract Quota Management: Supports online purchase of contract quotas with multiple tier packages from individual to large enterprise. Accepts mainstream payment channels including WeChat Pay and Alipay, and also supports manual quota allocation by administrators to meet commercial operation needs at different scales
+> Contract Quota Management: Supports online addition of contract quotas with multiple tier packages from individual to large enterprise. Accepts mainstream settlement channels, and also supports manual quota allocation by administrators to meet commercial operation needs at different scales
 
 
 
@@ -1945,7 +1948,7 @@ Project Screenshots
 ##### V 3.3.0
 
 - [x] [New] Contract verification — verify file integrity, digital signatures, and signing certificates of signed PDFs
-- [x] [New] Contract quota management — purchase contract quotas online (WeChat Pay / Alipay / manual allocation)
+- [x] [New] Contract quota management — acquire contract quotas online (online settlement / manual allocation)
 - [x] [New] Quickly select signers from historical records when creating contracts
 - [x] [New] Visual signing position design for contract templates
 - [x] [New] "Quick Sign" and "Secure Sign" dual signing modes
