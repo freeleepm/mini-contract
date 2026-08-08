@@ -19,7 +19,10 @@ export default {
 			loading: true,
 			
 			// 错误信息
-			errorMessage: ''
+			errorMessage: '',
+
+			// 防止 WebView 重复投递完成消息
+			completionHandled: false
 		}
 	},
 	
@@ -163,14 +166,18 @@ export default {
 			console.log('[H5表单] 收到H5消息:', e);
 			
 			const messages = e.detail.data;
-			if (!messages || messages.length === 0) {
+			if (!messages) {
 				return;
 			}
-			
-			const data = messages[messages.length - 1];
+
+			const data = Array.isArray(messages)
+				? (messages.length > 0 ? messages[messages.length - 1] : null)
+				: messages;
+			if (!data) return;
 			console.log('[H5表单] 处理消息:', data);
 			
-			switch(data.type) {
+			const messageType = data.type || data.action;
+			switch(messageType) {
 				case 'formFilled':
 					this.handleFormFilled(data.taskId);
 					break;
@@ -197,21 +204,18 @@ export default {
 		 * 表单填写完成
 		 */
 		handleFormFilled(taskId) {
+			if (this.completionHandled) return;
+			this.completionHandled = true;
 			console.log('[H5表单] 表单填写完成，任务ID:', taskId);
 			
 			uni.showToast({
 				title: '表单提交成功',
 				icon: 'success',
-				duration: 1500,
-				success: () => {
-					// 通知列表页刷新
-					uni.$emit('contract-updated', { taskId });
-					
-					setTimeout(() => {
-						uni.navigateBack();
-					}, 1500);
-				}
+				duration: 1500
 			});
+
+			// H5 成功后负责关闭 WebView，这里只刷新业务数据，避免重复返回。
+			uni.$emit('contract-updated', { taskId });
 		},
 		
 		/**
@@ -328,4 +332,3 @@ export default {
 	line-height: 50rpx;
 }
 </style>
-

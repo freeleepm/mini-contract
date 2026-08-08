@@ -321,65 +321,6 @@ export default {
 </template>
 ```
 
-### 案例3：个人中心页面（替换旧实现）
-
-**原代码**（使用系统弹窗）：
-
-```javascript
-promptForVerification() {
-  uni.showModal({
-    title: '需要认证',
-    content: '此功能需要先完成个人实名认证，是否现在就去认证？',
-    confirmText: '去认证',
-    cancelText: '稍后',
-    success: (res) => {
-      if (res.confirm) {
-        this.goToPersonalVerification();
-      }
-    }
-  });
-}
-```
-
-**新代码**（使用统一组件）：
-
-```vue
-<script>
-import { kycGuardMixin } from '../../utils/kyc-check';
-import KycModal from '../../components/KycModal.uvue';
-
-export default {
-  mixins: [kycGuardMixin],
-  components: { KycModal },
-  
-  methods: {
-    // 替换原有的 promptForVerification
-    goToSignatures() {
-      if (!this.checkCanProceed()) {
-        return;
-      }
-      
-      uni.navigateTo({
-        url: '/pages/profile/signatures'
-      });
-    }
-  }
-}
-</script>
-
-<template>
-  <view>
-    <button @click="goToSignatures">签名管理</button>
-    
-    <kyc-modal 
-      :visible="showKycModal"
-      @close="closeKycModal"
-      @confirm="goToKyc"
-    />
-  </view>
-</template>
-```
-
 ## 🔄 迁移现有代码
 
 ### 查找需要迁移的代码
@@ -415,7 +356,6 @@ grep -r "需要认证\|实名认证" pages/
 - [ ] `pages/enterprise/members.uvue` - 成员管理认证检查
 - [ ] `pages/enterprise/seals.uvue` - 印章管理认证检查
 - [ ] `pages/profile/seals.uvue` - 个人印章认证检查
-- [ ] `pages/profile/signatures.uvue` - 签名管理认证检查
 
 ## ✅ 最佳实践
 
@@ -482,4 +422,3 @@ export default {
 - 组件源码：`components/KycModal.uvue`
 - 工具源码：`utils/kyc-check.uts`
 - 示例页面：`pages/contract-manage/index.uvue`
-

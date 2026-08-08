@@ -93,8 +93,11 @@ export default {
 		},
 		handleMessage(e : any) {
 			const messages = e.detail.data;
-			if (!messages || messages.length === 0) return;
-			const data = messages[messages.length - 1];
+			if (!messages) return;
+			const data = Array.isArray(messages)
+				? (messages.length > 0 ? messages[messages.length - 1] : null)
+				: messages;
+			if (!data) return;
 			console.log('[批量发起] 收到H5消息:', data);
 
 			const action = (data['action'] as string | null) ?? (data['type'] as string | null) ?? '';

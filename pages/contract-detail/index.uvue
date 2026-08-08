@@ -14,7 +14,7 @@ import {
 import type { Contract, GenerateSignLinkParams } from '../../api/contracts/index';
 // 已不再需要单独调用模板接口，模板名称从签署任务中获取
 // import { getTemplateDetail } from '../../api/templates/index';
-import { downloadContractFile } from '../../api/utils/download.uts';
+import { buildContractDownloadFileName, downloadContractFile } from '../../api/utils/download.uts';
 import { post } from '../../api/index';
 import { getSealPageUrl } from '../../api/seals/index';
 import { buildViewShareConfig, buildSignShareConfig } from '../../utils/share';
@@ -76,7 +76,10 @@ import {
 		isFirstLoad: true,
 		
 		// 🔗 分享弹窗显示状态
-		showSharePopup: false
+		showSharePopup: false,
+		shareLinkItems: [] as any[],
+		shareLinkCacheTaskId: '',
+		shareLinkCache: {} as any
 	}
 },
 	
@@ -89,12 +92,13 @@ import {
 				this.currentUserMobile = (userInfo.mobile as string | null) ?? '';
 				console.log('✅ 当前用户ID:', this.currentUserId);
 			} else {
-				console.warn('⚠️ 未找到用户信息，使用默认用户ID: 1');
-				this.currentUserId = '1';
+				const storedUserId = uni.getStorageSync('userId');
+				this.currentUserId = storedUserId ? String(storedUserId) : '';
+				console.warn('⚠️ userInfo 中没有用户ID，读取登录态 userId:', this.currentUserId);
 			}
 		} catch (error) {
 			console.error('获取用户ID失败:', error);
-			this.currentUserId = '1';
+			this.currentUserId = '';
 		}
 		
 		// 从路由参数中获取合同ID
@@ -201,7 +205,7 @@ onShow() {
 					
 					if (statusName === '未知') {
 						console.warn(`⚠️ 警告：参与人 ${index + 1} 的状态值 "${p.status}" (类型: ${typeof p.status}) 无法识别！`);
-						console.warn(`  预期值: 0(待签署), 1(已签署), 2(已拒绝), 3(已取消)`);
+						console.warn(`  预期值: 0(待处理), 1(表单已填写), 2(已签署), 3(已拒绝), 4(已取消)`);
 					}
 					
 					console.log(`  - 所有字段:`, Object.keys(p).join(', '));
@@ -624,8 +628,8 @@ async handleSign(): Promise<void> {
 				return;
 			}
 			
-			// 生成文件名
-			const fileName = `${this.contract.name || '合同'}_${this.contract.id}.pdf`;
+			// 下载文件名使用合同名称，避免出现合同ID、时间戳等技术字段
+			const fileName = buildContractDownloadFileName(this.contract.name);
 			
 			// 使用统一的下载工具
 			await downloadContractFile(fileUrl, fileName);
@@ -898,6 +902,17 @@ async handleSign(): Promise<void> {
 		// 参考后台 seal/signTask/index.vue 第446行的实现
 		return participant.userName || participant.nickname || '未知';
 	},
+
+	/**
+	 * 获取参与方使用的签名或印章名称
+	 */
+	getParticipantSealName(participant: any): string {
+		const sealName = (participant.sealName as string | null) ?? '';
+		if (participant.type === 'personal' && sealName === '我的签名') {
+			return '个人签名';
+		}
+		return sealName;
+	},
 	
 	/**
 	 * 🔧 根据用户ID获取头像颜色（随机但固定）
@@ -1018,8 +1033,8 @@ async handleSign(): Promise<void> {
 			return false;
 		}
 		
-		// 只有创建者可以撤销
-		return String(this.contract.creator) === String(this.currentUserId);
+		// 只有发起人可以撤销
+		return this.isContractInitiator();
 	},
 		
 		/**
@@ -1038,8 +1053,22 @@ async handleSign(): Promise<void> {
 			
 			if (!deletableStatuses.includes(this.contract.status)) return false;
 			
-			// 只有创建者可以删除
-			return String(this.contract.creator) === String(this.currentUserId);
+			// 只有发起人可以删除
+			return this.isContractInitiator();
+		},
+
+		/**
+		 * 🔐 判断当前用户是否为合同发起人
+		 * 后端移动端 join-link 接口按 initiatorId 校验，creator 是 BaseDO 字符串字段，仅作为旧数据兜底。
+		 */
+		isContractInitiator(): boolean {
+			if (!this.contract || !this.currentUserId) return false;
+			
+			const contractAny = this.contract as any;
+			const initiatorId = contractAny.initiatorId ?? contractAny.initiatorUserId ?? contractAny.creatorId ?? contractAny.creator;
+			if (initiatorId == null) return false;
+			
+			return String(initiatorId) === String(this.currentUserId);
 		},
 
 		/**
@@ -1058,7 +1087,8 @@ async handleSign(): Promise<void> {
 		},
 
 		/**
-		 * 🔧 判断是否可以分享（仅发起人且合同未结束时可见）
+		 * 🔧 判断是否可以分享
+		 * 前端只判断合同阶段和是否存在待办参与人，最终发起人权限由后端 join-link 接口校验。
 		 */
 		canShare(): boolean {
 			if (!this.contract) return false;
@@ -1069,15 +1099,120 @@ async handleSign(): Promise<void> {
 				return false;
 			}
 			
-			// 只有创建者可以分享
-			return String(this.contract.creator) === String(this.currentUserId);
+			return this.getShareableParticipants().length > 0;
+		},
+
+		/**
+		 * 🧹 确保分享链接缓存只属于当前合同
+		 */
+		ensureShareLinkCacheScope(): void {
+			if (this.shareLinkCacheTaskId !== this.contractId) {
+				this.shareLinkCacheTaskId = this.contractId;
+				this.shareLinkCache = {};
+				this.shareLinkItems = [];
+			}
+		},
+
+		/**
+		 * 🔑 获取参与人的分享链接缓存 key
+		 */
+		getShareLinkCacheKey(participant: any): string {
+			return String(participant.id ?? '');
+		},
+
+		/**
+		 * 🗄️ 获取本地持久化缓存 key
+		 */
+		getShareLinkStorageKey(participant: any): string {
+			const participantId = this.getShareLinkCacheKey(participant);
+			if (!this.contractId || !participantId) return '';
+			return `sign_link_cache:${this.contractId}:${participantId}`;
+		},
+
+		/**
+		 * 🔍 读取未过期的分享链接缓存
+		 */
+		getCachedShareLinkItem(participant: any): any | null {
+			const cacheKey = this.getShareLinkCacheKey(participant);
+			if (!cacheKey) return null;
+			
+			const cacheItem = (this.shareLinkCache as any)[cacheKey];
+			if (cacheItem && cacheItem.signUrl) {
+				const expireAt = Number(cacheItem.expireAt ?? 0);
+				if (expireAt > 0 && expireAt <= Date.now()) {
+					delete (this.shareLinkCache as any)[cacheKey];
+					const storageKey = this.getShareLinkStorageKey(participant);
+					if (storageKey) {
+						uni.removeStorageSync(storageKey);
+					}
+					return null;
+				}
+				
+				return cacheItem;
+			}
+			
+			const storageKey = this.getShareLinkStorageKey(participant);
+			if (!storageKey) return null;
+			
+			const savedItem = uni.getStorageSync(storageKey) as any;
+			if (!savedItem || !savedItem.signUrl) return null;
+			
+			if (String(savedItem.contractId ?? '') !== String(this.contractId) ||
+				String(savedItem.participantId ?? '') !== cacheKey) {
+				uni.removeStorageSync(storageKey);
+				return null;
+			}
+			
+			const savedExpireAt = Number(savedItem.expireAt ?? 0);
+			if (savedExpireAt > 0 && savedExpireAt <= Date.now()) {
+				uni.removeStorageSync(storageKey);
+				return null;
+			}
+			
+			const restoredItem = {
+				...participant,
+				signUrl: savedItem.signUrl,
+				expireAt: savedExpireAt
+			};
+			(this.shareLinkCache as any)[cacheKey] = restoredItem;
+			return restoredItem;
+		},
+
+		/**
+		 * 💾 缓存分享链接，默认略短于后端 24 小时有效期
+		 */
+		setCachedShareLinkItem(participant: any, signUrl: string, expireTime?: string): any {
+			const cacheKey = this.getShareLinkCacheKey(participant);
+			const fallbackExpireAt = Date.now() + 23 * 60 * 60 * 1000;
+			const parsedExpireAt = expireTime ? Date.parse(expireTime) : 0;
+			const expireAt = parsedExpireAt > 0 ? parsedExpireAt : fallbackExpireAt;
+			const cacheItem = {
+				...participant,
+				signUrl,
+				expireAt
+			};
+			
+			(this.shareLinkCache as any)[cacheKey] = cacheItem;
+			
+			const storageKey = this.getShareLinkStorageKey(participant);
+			if (storageKey) {
+				uni.setStorageSync(storageKey, {
+					contractId: this.contractId,
+					participantId: cacheKey,
+					signUrl,
+					expireAt
+				});
+			}
+			
+			return cacheItem;
 		},
 
 		/**
 		 * 🔗 处理分享按钮点击
-		 * 🚀 极致简化：如果只有一个可分享人，直接复制；否则才弹窗选择。
+		 * 同一合同详情页内优先复用未过期链接，避免重复生成。
 		 */
-		handleShare() {
+		async handleShare() {
+			this.ensureShareLinkCacheScope();
 			const shareables = this.getShareableParticipants();
 			
 			if (shareables.length === 0) {
@@ -1088,60 +1223,215 @@ async handleSign(): Promise<void> {
 				return;
 			}
 			
-			if (shareables.length === 1) {
-				// 只有一个参与人，直接复制，无需弹窗
-				const p = shareables[0];
-				console.log('🚀 只有一个待办参与人，直接复制链接:', p.userId);
-				this.copySignLink(p);
-			} else {
-				// 多个参与人，弹窗选择
+			uni.showLoading({
+				title: '生成链接中...',
+				mask: true
+			});
+			
+			try {
+				const linkItems: any[] = [];
+				for (let i = 0; i < shareables.length; i++) {
+					const p = shareables[i];
+					if (!p.id) {
+						console.warn('参与人缺少ID，跳过生成链接:', p);
+						continue;
+					}
+
+					const cachedItem = this.getCachedShareLinkItem(p);
+					if (cachedItem != null) {
+						linkItems.push(cachedItem);
+						continue;
+					}
+					
+					const params: GenerateSignLinkParams = {
+						participantId: p.id,
+						validHours: 24,
+						oneTime: false
+					};
+					const res = await generateSignLink(this.contractId, params);
+					if (res && res.signUrl) {
+						const linkItem = this.setCachedShareLinkItem(p, res.signUrl, res.expireTime);
+						linkItems.push(linkItem);
+					}
+				}
+				
+				uni.hideLoading();
+				
+				if (linkItems.length === 0) {
+					uni.showToast({
+						title: '没有可分享的链接',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				this.shareLinkItems = linkItems;
 				this.showSharePopup = true;
+			} catch (error) {
+				console.error('生成签署链接失败:', error);
+				uni.hideLoading();
+				const errorMessage = (error as any)?.message || '生成链接失败';
+				uni.showToast({
+					title: errorMessage,
+					icon: 'none'
+				});
 			}
 		},
 
 		/**
-		 * 🔗 获取并复制签署链接
+		 * 🔗 复制已生成的签署链接
 		 */
-		async copySignLink(participant: any) {
+		copySignLink(participant: any) {
 			if (!this.contract || !participant) return;
 			
-			uni.showLoading({ title: '获取链接中...' });
+			if (participant.signUrl) {
+				this.copyLinkToClipboard(participant.signUrl);
+				return;
+			}
 			
-			try {
-				const params: GenerateSignLinkParams = {
-					participantId: participant.id,
-					validHours: 24,
-					oneTime: false
-				};
-				
-				const res = await generateSignLink(this.contractId, params);
-				
-				if (res && res.signUrl) {
-					uni.setClipboardData({
-						data: res.signUrl,
-						success: () => {
-							uni.showToast({
-								title: '链接已复制到剪贴板',
-								icon: 'success'
-							});
-						}
-					});
-				} else {
+			uni.showToast({
+				title: '链接未生成，请重新打开分享',
+				icon: 'none'
+			});
+		},
+		
+			/**
+			 * 📋 写入剪贴板
+			 */
+			copyLinkToClipboard(signUrl: string) {
+				const normalizedUrl = signUrl.trim();
+				if (!normalizedUrl) {
 					uni.showToast({
-						title: '获取链接失败',
+						title: '链接为空',
 						icon: 'none'
 					});
+					return;
 				}
-			} catch (error) {
-				console.error('获取签署链接失败:', error);
-				uni.showToast({
-					title: '获取链接失败',
-					icon: 'none'
+
+				// #ifdef MP-WEIXIN
+				this.copySignLinkInMiniProgram(normalizedUrl);
+				return;
+				// #endif
+
+				this.writeSignLinkToClipboard(normalizedUrl);
+			},
+
+			copySignLinkInMiniProgram(signUrl: string) {
+				// #ifdef MP-WEIXIN
+				const wxObj = wx;
+				if (wxObj != null && typeof wxObj.getPrivacySetting === 'function') {
+					wxObj.getPrivacySetting({
+						success: (privacyResult: any) => {
+							if (
+								privacyResult != null &&
+								privacyResult.needAuthorization === true &&
+								typeof wxObj.requirePrivacyAuthorize === 'function'
+							) {
+								wxObj.requirePrivacyAuthorize({
+									success: () => {
+										this.writeSignLinkToClipboard(signUrl);
+									},
+									fail: (privacyError: any) => {
+										this.handleCopySignLinkFail(privacyError);
+									}
+								});
+								return;
+							}
+							this.writeSignLinkToClipboard(signUrl);
+						},
+						fail: (privacyError: any) => {
+							console.warn('获取微信隐私授权状态失败，继续尝试复制:', privacyError);
+							this.writeSignLinkToClipboard(signUrl);
+						}
+					});
+					return;
+				}
+				this.writeSignLinkToClipboard(signUrl);
+				// #endif
+			},
+
+			writeSignLinkToClipboard(signUrl: string) {
+				// #ifdef MP-WEIXIN
+				const wxObj = wx;
+				if (wxObj != null && typeof wxObj.setClipboardData === 'function') {
+					wxObj.setClipboardData({
+						data: signUrl,
+						success: () => {
+							this.handleCopySignLinkSuccess();
+						},
+						fail: (copyError: any) => {
+							this.handleCopySignLinkFail(copyError);
+						}
+					});
+					return;
+				}
+				// #endif
+
+				uni.setClipboardData({
+					data: signUrl,
+					success: () => {
+						this.handleCopySignLinkSuccess();
+					},
+					fail: (copyError: any) => {
+						this.handleCopySignLinkFail(copyError);
+					}
 				});
-			} finally {
-				uni.hideLoading();
+			},
+
+			handleCopySignLinkSuccess() {
+				this.showSharePopup = false;
+				setTimeout(() => {
+					uni.showToast({
+						title: '链接已复制',
+						icon: 'success',
+						duration: 2000
+					});
+				}, 120);
+			},
+
+			handleCopySignLinkFail(copyError: any) {
+				let errorMessage = '';
+				if (copyError != null && copyError.errMsg != null) {
+					errorMessage = String(copyError.errMsg);
+				}
+				console.error('复制签署链接失败:', errorMessage, copyError);
+
+				const lowerMessage = errorMessage.toLowerCase();
+				const isScopeNotDeclared =
+					lowerMessage.indexOf('api scope is not declared') >= 0 ||
+					lowerMessage.indexOf('not declared in the privacy agreement') >= 0;
+				const isPrivacyError =
+					lowerMessage.indexOf('privacy') >= 0 ||
+					lowerMessage.indexOf('authorize') >= 0 ||
+					errorMessage.indexOf('隐私') >= 0 ||
+					errorMessage.indexOf('授权') >= 0;
+
+				if (isScopeNotDeclared) {
+					uni.showModal({
+						title: '复制功能未配置',
+						content: '当前小程序尚未在隐私保护指引中声明剪贴板用途，请联系管理员完成声明并重新发布小程序。',
+						showCancel: false,
+						confirmText: '我知道了'
+					});
+					return;
+				}
+
+				if (isPrivacyError) {
+					uni.showModal({
+						title: '需要隐私授权',
+						content: '复制签署链接需要使用剪贴板，请先同意小程序隐私保护指引后重试。',
+						showCancel: false,
+						confirmText: '我知道了'
+					});
+					return;
+				}
+
+				uni.showToast({
+					title: '复制失败，请重试',
+					icon: 'none',
+					duration: 2000
+				});
 			}
-		}
 	}
 }
 </script>
@@ -1302,7 +1592,7 @@ async handleSign(): Promise<void> {
 					<!-- 使用的印章（只在已签署时显示） -->
 					<view v-if="participant.status === PARTICIPANT_SIGNED && participant.sealName" class="info-row">
 						<text class="fa fa-stamp info-icon"></text>
-						<text class="info-text">{{ participant.sealName }}</text>
+						<text class="info-text">{{ getParticipantSealName(participant) }}</text>
 					</view>
 						</view>
 					</view>
@@ -1399,7 +1689,7 @@ async handleSign(): Promise<void> {
 				
 				<scroll-view class="share-participant-list" scroll-y="true">
 					<view 
-						v-for="(p, index) in getShareableParticipants()" 
+						v-for="(p, index) in shareLinkItems" 
 						:key="index"
 						class="share-participant-item"
 					>
@@ -1959,7 +2249,7 @@ async handleSign(): Promise<void> {
 	right: 0;
 	bottom: 0;
 	background-color: rgba(0, 0, 0, 0.6);
-	z-index: 1000;
+	z-index: 99999;
 	display: flex;
 	align-items: flex-end;
 }
@@ -2090,6 +2380,7 @@ async handleSign(): Promise<void> {
 	bottom: 0;
 		left: 0;
 		right: 0;
+	z-index: 900;
 	background-color: #FFFFFF;
 	padding: 20rpx 30rpx;
 	box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);

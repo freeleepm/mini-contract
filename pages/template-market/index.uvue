@@ -101,6 +101,7 @@ export default {
         
         // 图标映射：根据分类code映射到对应的icon class
         const iconMap: Record<string, string> = {
+          'loan': 'icon-dollar-sign',       // 借款合同
           'employment': 'icon-user',        // 劳动合同
           'lease': 'icon-building',         // 租赁合同
           'purchase': 'icon-package',       // 采购合同
@@ -354,23 +355,27 @@ export default {
           <text class="section-title">常用模板</text>
           <text class="section-desc">为您推荐常用的合同模板</text>
         </view>
-        <scroll-view scroll-x="true" class="frequent-scroll" show-scrollbar="false">
-          <view class="frequent-list">
-        <view
-              v-for="(template, index) in frequentTemplates"
-          :key="index"
-              class="frequent-item"
-          @click="viewTemplateDetail(template)"
+        <swiper
+          class="frequent-swiper"
+          :display-multiple-items="3"
+          duration="260"
         >
+          <swiper-item
+            v-for="(template, index) in frequentTemplates"
+            :key="template.id"
+            class="frequent-swiper-item"
+            :class="{ 'frequent-swiper-item-last': index === frequentTemplates.length - 1 }"
+          >
+            <view class="frequent-item" @click="viewTemplateDetail(template)">
               <view class="frequent-icon" :style="{ backgroundColor: getTypeColor(template.category) + '20' }">
                 <text class="icon icon-file" :style="{ color: getTypeColor(template.category) }"></text>
-            </view>
+              </view>
               <text class="frequent-name">{{ template.name }}</text>
               <text class="frequent-count">{{ formatNumber(template.useCount || 0) }}次</text>
-        </view>
+            </view>
+          </swiper-item>
+        </swiper>
       </view>
-    </scroll-view>
-          </view>
           
       <!-- 热门模板 -->
       <view v-if="hotTemplates.length > 0" class="section">
@@ -660,62 +665,64 @@ export default {
 }
 
 /* ========== 常用模板 ========== */
-.frequent-scroll {
-  height: 220rpx; /* 增加高度以容纳完整内容 */
+.frequent-swiper {
+  height: 250rpx;
   width: 100%;
+  touch-action: pan-x;
 }
 
-.frequent-list {
-  display: flex; /* 添加 flex 布局 */
-  flex-direction: row;
-  padding-bottom: 16rpx; /* 只保留底部内边距，左右边距由父容器 .section 提供 */
-  white-space: nowrap; /* 防止换行 */
+.frequent-swiper-item {
+  height: 238rpx;
+  padding-right: 16rpx;
+  box-sizing: border-box;
+}
+
+.frequent-swiper-item-last {
+  padding-right: 0;
 }
 
 .frequent-item {
-  display: flex; /* 添加 flex 布局 */
-  flex-direction: column; /* 垂直排列 */
-  width: 240rpx;
-  min-height: 180rpx; /* 使用 min-height 替代固定 height */
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 238rpx;
   background-color: #FFFFFF;
   border-radius: 16rpx;
-  padding: 24rpx;
-  margin-right: 16rpx;
+  padding: 22rpx 20rpx 18rpx;
   box-shadow: 0 2rpx 16rpx rgba(0, 0, 0, 0.04);
-  flex-shrink: 0; /* 防止在横向滚动时被压缩 */
-}
-
-.frequent-item:last-child {
-  margin-right: 0; /* 最后一个不需要右边距 */
+  box-sizing: border-box;
 }
 
 .frequent-icon {
-  display: flex; /* 添加 flex 布局 */
-  width: 80rpx;
-  height: 80rpx;
+  display: flex;
+  width: 68rpx;
+  height: 68rpx;
   border-radius: 12rpx;
   align-items: center;
   justify-content: center;
   margin-bottom: 16rpx;
+  flex-shrink: 0;
 }
 
 .frequent-name {
   font-size: 26rpx;
   color: #1A1A1A;
-  font-weight: 500;
-  margin-bottom: 8rpx;
-  lines: 2; /* 改为2行显示 */
+  font-weight: 600;
+  lines: 2;
   text-overflow: ellipsis;
   overflow: hidden;
-  word-break: break-all; /* 允许单词内换行 */
-  line-height: 1.4; /* 添加行高以改善可读性 */
-  max-height: 72rpx; /* 限制最大高度为2行 */
+  word-break: break-all;
+  line-height: 34rpx;
+  height: 68rpx;
+  flex-shrink: 0;
 }
 
 .frequent-count {
   font-size: 22rpx;
   color: #999999;
-  margin-top: auto; /* 自动将次数推到底部 */
+  margin-top: auto;
+  line-height: 30rpx;
+  flex-shrink: 0;
 }
 
 /* ========== 热门模板 ========== */
@@ -986,4 +993,3 @@ export default {
   color: #CCCCCC;
 }
 </style>
- 

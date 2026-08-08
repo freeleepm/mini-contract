@@ -4,6 +4,8 @@
 	 */
 	import { verifyEnterprise, getEnterpriseDetail, EnterpriseStatus } from '../../../api/enterprise/index';
 	import { uploadFileAdvanced } from '../../../api/index'; // 从API模块导入上传文件工具
+	import { APP_SERVICE_EMAIL, APP_SERVICE_PHONE } from '../../../config/app.config';
+	import { recognizeIdCard } from '../../../api/member/verify';
 
 	// 定义认证参数类型
 	interface VerifyEnterpriseParams {
@@ -406,37 +408,252 @@
 			
 			// 上传认证文件
 			handleUpload(type) {
+				console.log('[KYC-Enterprise][Upload] 点击上传入口, type=', type);
+				this.chooseCertificationImage((tempFilePath) => {
+					console.log('[KYC-Enterprise][Upload] 已选择/拍摄图片, type=', type, 'tempFilePath=', tempFilePath);
+					this.uploadCertificationImage(type, tempFilePath);
+				});
+			},
+
+			// 小程序优先使用 chooseMedia；chooseImage 在微信基础库 2.21.0 后已停止维护。
+			chooseCertificationImage(onSuccess) {
+				console.log('[KYC-Enterprise][Media] chooseCertificationImage start');
+				this.ensureMediaPrivacyAuthorized(() => {
+				console.log('[KYC-Enterprise][Media] 隐私授权通过，准备调用媒体选择API');
+				// #ifdef MP-WEIXIN
+				const uniObj = uni;
+				if (uniObj && typeof uniObj.chooseMedia === 'function') {
+					console.log('[KYC-Enterprise][Media] 使用 chooseMedia');
+					uniObj.chooseMedia({
+						count: 1,
+						mediaType: ['image'],
+						sourceType: ['album', 'camera'],
+						sizeType: ['compressed'],
+						camera: 'back',
+						success: (res) => {
+							console.log('[KYC-Enterprise][Media] chooseMedia success:', JSON.stringify(res));
+							const tempFilePath = this.resolveChooseMediaPath(res);
+							if (!tempFilePath) {
+								this.handleCertificationImageFail(new Error('未获取到图片路径'));
+								return;
+							}
+							onSuccess(tempFilePath);
+						},
+						fail: (error) => {
+							console.warn('[KYC-Enterprise][Media] chooseMedia 选择图片失败:', error);
+							if (this.isMediaAuthorizationError(error)) {
+								this.handleCertificationImageFail(error);
+								return;
+							}
+							console.warn('[KYC-Enterprise][Media] chooseMedia 不可用，尝试 chooseImage 兼容模式');
+							this.chooseImageFallback(onSuccess);
+						},
+						complete: (res) => {
+							console.log('[KYC-Enterprise][Media] chooseMedia complete:', JSON.stringify(res));
+						}
+					});
+					return;
+				}
+				// #endif
+
+				this.chooseImageFallback(onSuccess);
+				});
+			},
+
+			ensureMediaPrivacyAuthorized(onGranted) {
+				console.log('[KYC-Enterprise][Privacy] 检查微信隐私授权');
+				// #ifdef MP-WEIXIN
+				const wxObj = wx;
+				if (wxObj && typeof wxObj.getPrivacySetting === 'function') {
+					wxObj.getPrivacySetting({
+						success: (res) => {
+							console.log('[KYC-Enterprise][Privacy] getPrivacySetting success:', JSON.stringify(res));
+							if (res && res.needAuthorization === true && typeof wxObj.requirePrivacyAuthorize === 'function') {
+								console.log('[KYC-Enterprise][Privacy] 需要隐私授权，调用 requirePrivacyAuthorize');
+								wxObj.requirePrivacyAuthorize({
+									success: () => {
+										console.log('[KYC-Enterprise][Privacy] requirePrivacyAuthorize success');
+										onGranted();
+									},
+									fail: (error) => {
+										console.error('[KYC-Enterprise][Privacy] requirePrivacyAuthorize fail:', JSON.stringify(error));
+										this.handleCertificationImageFail(error);
+									}
+								});
+								return;
+							}
+							onGranted();
+						},
+						fail: () => {
+							console.warn('[KYC-Enterprise][Privacy] getPrivacySetting fail，继续尝试媒体API');
+							onGranted();
+						}
+					});
+					return;
+				}
+				// #endif
+				console.log('[KYC-Enterprise][Privacy] 非微信或无隐私API，直接继续');
+				onGranted();
+			},
+
+			chooseImageFallback(onSuccess) {
+				console.log('[KYC-Enterprise][Media] 使用 chooseImage fallback');
 				uni.chooseImage({
 					count: 1,
 					sizeType: ['compressed'],
 					sourceType: ['album', 'camera'],
-					success: async (res) => {
-						const tempFilePath = res.tempFilePaths[0];
-						uni.showLoading({ title: '上传中...' });
-						
-						try {
-							const url = await uploadFileAdvanced(tempFilePath, { directory: 'kyc' });
-							if (type === 'license') {
-								this.certificationInfo.businessLicense = url;
-								this.validation.businessLicense.valid = true;
-								this.validation.businessLicense.message = '';
-							} else if (type === 'idCardFront') {
-								this.certificationInfo.idCardFront = url;
-								this.validation.idCardFront.valid = true;
-								this.validation.idCardFront.message = '';
-							} else if (type === 'idCardBack') {
-								this.certificationInfo.idCardBack = url;
-								this.validation.idCardBack.valid = true;
-								this.validation.idCardBack.message = '';
-							}
-							uni.showToast({ title: '上传成功', icon: 'success' });
-						} catch (error) {
-							uni.showToast({ title: '上传失败，请重试', icon: 'none' });
-						} finally {
-							uni.hideLoading();
+					success: (res) => {
+						console.log('[KYC-Enterprise][Media] chooseImage success:', JSON.stringify(res));
+						if (!res || !res.tempFilePaths || res.tempFilePaths.length === 0) {
+							this.handleCertificationImageFail(new Error('未获取到图片路径'));
+							return;
 						}
+						onSuccess(res.tempFilePaths[0]);
+					},
+					fail: (error) => {
+						console.error('[KYC-Enterprise][Media] chooseImage fail:', JSON.stringify(error));
+						this.handleCertificationImageFail(error);
+					},
+					complete: (res) => {
+						console.log('[KYC-Enterprise][Media] chooseImage complete:', JSON.stringify(res));
 					}
 				});
+			},
+
+			resolveChooseMediaPath(res) {
+				if (res && res.tempFiles && res.tempFiles.length > 0 && res.tempFiles[0]) {
+					return res.tempFiles[0].tempFilePath || res.tempFiles[0].path || '';
+				}
+				if (res && res.tempFilePaths && res.tempFilePaths.length > 0) {
+					return res.tempFilePaths[0];
+				}
+				return '';
+			},
+
+			isMediaAuthorizationError(error) {
+				const errMsg = error && (error.errMsg || error.message) ? (error.errMsg || error.message) : '';
+				const lowerMsg = errMsg.toLowerCase();
+				return lowerMsg.indexOf('cancel') >= 0
+					|| lowerMsg.indexOf('privacy') >= 0
+					|| lowerMsg.indexOf('requiredprivateinfos') >= 0
+					|| lowerMsg.indexOf('declared') >= 0
+					|| lowerMsg.indexOf('隐私') >= 0
+					|| lowerMsg.indexOf('auth') >= 0
+					|| lowerMsg.indexOf('authorize') >= 0
+					|| lowerMsg.indexOf('permission') >= 0
+					|| lowerMsg.indexOf('denied') >= 0
+					|| lowerMsg.indexOf('scope.camera') >= 0;
+			},
+
+			handleCertificationImageFail(error) {
+				uni.hideLoading();
+				console.error('选择认证图片失败:', error);
+				const errMsg = error && (error.errMsg || error.message) ? (error.errMsg || error.message) : '';
+				const lowerMsg = errMsg.toLowerCase();
+				if (lowerMsg.indexOf('cancel') >= 0) {
+					uni.showToast({ title: '已取消上传', icon: 'none' });
+					return;
+				}
+				const permissionDenied = lowerMsg.indexOf('auth') >= 0
+					|| lowerMsg.indexOf('authorize') >= 0
+					|| lowerMsg.indexOf('permission') >= 0
+					|| lowerMsg.indexOf('denied') >= 0
+					|| lowerMsg.indexOf('scope.camera') >= 0;
+				const privacyBlocked = lowerMsg.indexOf('privacy') >= 0
+					|| lowerMsg.indexOf('requiredprivateinfos') >= 0
+					|| lowerMsg.indexOf('declared') >= 0
+					|| lowerMsg.indexOf('隐私') >= 0;
+				if (privacyBlocked) {
+					const privacyMessage = errMsg
+						? `证件上传需要先同意小程序隐私协议。\n\n微信返回：${errMsg}`
+						: '证件上传需要先同意小程序隐私协议；如果仍无法打开，请检查微信公众平台隐私协议是否已声明图片/相机用途。';
+					uni.showModal({
+						title: '需要隐私授权',
+						content: privacyMessage,
+						showCancel: false
+					});
+					return;
+				}
+				if (permissionDenied) {
+					uni.showModal({
+						title: '需要相机权限',
+						content: '企业认证需要拍摄或上传营业执照、法人身份证照片，请在设置中允许使用相机。',
+						confirmText: '去设置',
+						success: (res) => {
+							if (res.confirm) {
+								uni.openSetting({});
+							}
+						}
+					});
+					return;
+				}
+				uni.showToast({ title: '选择图片失败，请重试', icon: 'none' });
+			},
+
+			async uploadCertificationImage(type, tempFilePath) {
+				console.log('[KYC-Enterprise][Upload] 开始上传认证图片, type=', type, 'tempFilePath=', tempFilePath);
+				uni.showLoading({ title: '上传中...' });
+
+				try {
+					const url = await uploadFileAdvanced(tempFilePath, { directory: 'kyc' });
+					console.log('[KYC-Enterprise][Upload] 上传完成, type=', type, 'url=', url);
+					if (type === 'license') {
+						this.certificationInfo.businessLicense = url;
+						this.validation.businessLicense.valid = true;
+						this.validation.businessLicense.message = '';
+						uni.showToast({ title: '上传成功', icon: 'success' });
+						return;
+					}
+					if (type === 'idCardFront') {
+						this.certificationInfo.idCardFront = url;
+						this.validation.idCardFront.valid = true;
+						this.validation.idCardFront.message = '';
+						await this.recognizeEnterpriseIdCardFront(url);
+						return;
+					}
+					if (type === 'idCardBack') {
+						this.certificationInfo.idCardBack = url;
+						this.validation.idCardBack.valid = true;
+						this.validation.idCardBack.message = '';
+						uni.showToast({ title: '上传成功', icon: 'success' });
+					}
+				} catch (error) {
+					console.error('认证图片上传失败:', error);
+					uni.showToast({ title: '上传失败，请重试', icon: 'none' });
+				} finally {
+					uni.hideLoading();
+				}
+			},
+
+			async recognizeEnterpriseIdCardFront(imageUrl) {
+				console.log('[KYC-Enterprise][OCR] 开始识别法人身份证正面, imageUrl=', imageUrl);
+				uni.showLoading({ title: '识别中...' });
+				try {
+					const ocrResult = await recognizeIdCard({
+						imageUrl,
+						side: 'front'
+					});
+					console.log('[KYC-Enterprise][OCR] OCR返回结果:', JSON.stringify(ocrResult));
+					if (ocrResult && ocrResult.success) {
+						if (ocrResult.name) {
+							this.certificationInfo.legalPerson = ocrResult.name;
+							this.validateLegalPerson();
+						}
+						if (ocrResult.idCard) {
+							this.certificationInfo.legalPersonIdCard = ocrResult.idCard;
+							this.validateLegalPersonIdCard();
+						}
+						uni.showToast({ title: '上传成功，信息已识别', icon: 'success' });
+						return;
+					}
+					uni.showToast({
+						title: (ocrResult && ocrResult.errorMessage) || '上传成功，请手动填写身份证信息',
+						icon: 'none'
+					});
+				} catch (error) {
+					console.error('企业认证身份证OCR失败:', error);
+					uni.showToast({ title: '上传成功，请手动填写身份证信息', icon: 'none' });
+				}
 			},
 			
 			// 提交认证
@@ -558,7 +775,7 @@
 			contactService() {
 				uni.showModal({
 					title: '联系客服',
-					content: '如果您有任何问题，请拨打客服电话：400-123-4567 或发送邮件至 info@example.com',
+					content: `如果您有任何问题，请拨打客服电话：${APP_SERVICE_PHONE} 或发送邮件至 ${APP_SERVICE_EMAIL}`,
 					showCancel: false
 				});
 			},
@@ -1939,4 +2156,4 @@ page {
     transform: rotate(359deg);
   }
     }
-</style> 
+</style>

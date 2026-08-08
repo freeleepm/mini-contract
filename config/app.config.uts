@@ -21,7 +21,7 @@ export const APP_NAME = 'Contract.Pro';
 export const APP_VERSION = 'v1.0.0';
 
 /** 版本构建号 */
-export const APP_BUILD_NUMBER = '20260212';
+export const APP_BUILD_NUMBER = '20260701';
 
 /** 产品口号 */
 export const APP_SLOGAN = '让签约更简单';
@@ -35,7 +35,7 @@ export const APP_DESCRIPTION = `${APP_NAME}是一款专业的电子合同签署�
 // ==================== 版权信息 ====================
 
 /** 版权所有者 */
-export const APP_COPYRIGHT_OWNER = '小华同学 AI';
+export const APP_COPYRIGHT_OWNER = 'Contract.Pro';
 
 /**
  * 获取版权文本
@@ -77,6 +77,29 @@ export const APP_PLATFORM_AUTH_TEXT = `${APP_NAME} 平台认证签署`;
 /** 版本显示文本，例如 "Contract.Pro v1.0.0" */
 export const APP_VERSION_TEXT = `${APP_NAME} ${APP_VERSION}`;
 
+// ==================== 联系与官网配置 ====================
+
+/** 默认客服电话（兜底展示） */
+export const APP_DEFAULT_SERVICE_PHONE = '400-000-0000';
+
+/** 当前客服电话 */
+export const APP_SERVICE_PHONE = '17895067181';
+
+/** 默认客服邮箱（兜底展示） */
+export const APP_DEFAULT_SERVICE_EMAIL = 'shawn@leepm.com';
+
+/** 当前客服邮箱 */
+export const APP_SERVICE_EMAIL = 'shawn@leepm.com';
+
+/** 默认官方网站（兜底展示） */
+export const APP_DEFAULT_OFFICIAL_WEBSITE = 'https://s.leepm.com';
+
+/** 当前官方网站 */
+export const APP_OFFICIAL_WEBSITE = 'https://s.leepm.com';
+
+/** 客服工作时间 */
+export const APP_SERVICE_WORK_TIME = '周一至周五 9:00-18:00';
+
 // ==================== 环境与 API 配置 ====================
 
 // 环境配置
@@ -88,13 +111,14 @@ export const ENV = {
 
 // 当前环境 - 可以根据需要修改
 // 本地开发请使用 ENV.DEV，后台服务地址为 http://localhost:48080
-export const CURRENT_ENV: string = ENV.DEV as string;
+export const CURRENT_ENV: string = ENV.PROD as string;
 
 // 不同环境的API基础URL
 export const API_BASE_URLS: Record<string, string> = {
     'development': 'http://localhost:48080/app-api',  // 应用端接口
     'testing': 'https://test-api.example.com/app-api',
     'production': '/app-api'  // 生产环境使用相对路径，保留 /app-api 前缀
+	
 };
 
 // 导出当前环境的API基础URL

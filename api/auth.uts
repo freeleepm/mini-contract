@@ -2,6 +2,8 @@
  * 认证相关工具函数
  */
 
+let loginNavigationPending = false;
+
 /**
  * 检查用户是否已登录
  * @returns {boolean} 是否已登录
@@ -14,6 +16,54 @@ export function isLoggedIn(): boolean {
 		console.error('检查登录状态失败:', e);
 		return false;
 	}
+}
+
+/**
+ * 构建登录页地址，并保留登录成功后的应用内目标页面。
+ */
+export function buildLoginUrl(redirectUrl: string = ''): string {
+	if (!redirectUrl) {
+		return '/pages/login/index';
+	}
+	return `/pages/login/index?redirect=${encodeURIComponent(redirectUrl)}`;
+}
+
+/**
+ * 跳转登录页。使用 navigateTo 保留当前游客页面，登录后可精确回跳。
+ */
+export function redirectToLogin(redirectUrl: string = '', showToast: boolean = true): void {
+	if (loginNavigationPending) {
+		return;
+	}
+	loginNavigationPending = true;
+
+	if (showToast) {
+		uni.showToast({
+			title: '请先登录',
+			icon: 'none',
+			duration: 800
+		});
+	}
+
+	setTimeout(() => {
+		uni.navigateTo({
+			url: buildLoginUrl(redirectUrl),
+			complete: () => {
+				loginNavigationPending = false;
+			}
+		});
+	}, showToast ? 800 : 0);
+}
+
+/**
+ * 受保护功能统一入口。
+ */
+export function requireLogin(redirectUrl: string = '', showToast: boolean = true): boolean {
+	if (isLoggedIn()) {
+		return true;
+	}
+	redirectToLogin(redirectUrl, showToast);
+	return false;
 }
 
 /**
@@ -75,29 +125,8 @@ export function clearAuth(): void {
  * @param {boolean} showToast 是否显示提示
  * @returns {boolean} 是否已登录
  */
-export function checkAuthAndRedirect(showToast: boolean = true): boolean {
-	const loggedIn = isLoggedIn();
-	
-	if (!loggedIn) {
-		if (showToast) {
-			uni.showToast({
-				title: '请先登录',
-				icon: 'none',
-				duration: 1500
-			});
-		}
-		
-		// 延迟跳转，让提示显示出来
-		setTimeout(() => {
-			uni.reLaunch({
-				url: '/pages/login/index'
-			});
-		}, showToast ? 1500 : 0);
-		
-		return false;
-	}
-	
-	return true;
+export function checkAuthAndRedirect(showToast: boolean = true, redirectUrl: string = ''): boolean {
+	return requireLogin(redirectUrl, showToast);
 }
 
 /**
@@ -114,11 +143,10 @@ export function logout(): void {
 		duration: 1500
 	});
 	
-	// 跳转到登录页
+	// 退出后回到游客首页，需要业务操作时再登录
 	setTimeout(() => {
-		uni.reLaunch({
-			url: '/pages/login/index'
+		uni.switchTab({
+			url: '/pages/index/index'
 		});
 	}, 1500);
 }
-

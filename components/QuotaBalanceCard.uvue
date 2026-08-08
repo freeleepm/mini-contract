@@ -225,16 +225,16 @@
 	}
 
 	.stat-success {
-		color: #67c23a;
+		color: #FFFFFF;
 	}
 
 	.stat-warning {
-		color: #e6a23c;
+		color: rgba(255, 255, 255, 0.85);
 	}
 
 	.stat-label {
 		font-size: 20rpx;
-		color: rgba(255, 255, 255, 0.75);
+		color: rgba(255, 255, 255, 0.85);
 		margin-top: 4rpx;
 	}
 

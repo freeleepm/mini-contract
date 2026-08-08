@@ -1,5 +1,5 @@
 <script>
-	import { APP_NAME } from '../../config/app.config';
+	import { APP_NAME, APP_SERVICE_EMAIL } from '../../config/app.config';
 	
 	/**
 	 * 隐私政策页面
@@ -8,7 +8,8 @@
 		data() {
 			return {
 				// 品牌信息（从集中配置获取）
-				appName: APP_NAME
+				appName: APP_NAME,
+				serviceEmail: APP_SERVICE_EMAIL
 			}
 		},
 		methods: {
@@ -110,7 +111,7 @@
 				<view class="privacy-section">
 					<text class="section-title">八、如何联系我们</text>
 					<text class="section-content">8.1 如您对本隐私政策有任何疑问、意见或建议，可通过以下方式与我们联系：</text>
-					<text class="section-content">  电子邮件：shawn@leepm.com</text>
+					<text class="section-content">  电子邮件：{{serviceEmail}}</text>
 					<text class="section-content">  在线客服：通过App内的"个人中心-帮助中心"联系我们</text>
 					<text class="section-content">  用户反馈：通过App内的"个人中心-意见反馈"提交您的问题</text>
 					<text class="section-content">8.2 一般情况下，我们将在收到您的问题后15个工作日内回复。</text>

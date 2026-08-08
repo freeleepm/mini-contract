@@ -496,7 +496,7 @@
 				</view>
 						<view class="meta-item">
 							<text class="icon icon-chart-line meta-icon"></text>
-							<text class="meta-text">{{ templateDetail.usageCount || 0 }} 次使用</text>
+							<text class="meta-text">{{ templateDetail.useCount }} 次使用</text>
 			</view>
 					<view v-if="templateDetail.isHot" class="meta-item hot-tag">
 						<text class="icon icon-fire meta-icon"></text>

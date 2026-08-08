@@ -138,9 +138,12 @@
 		syncOrderPayStatus,
 		getEnableChannelCodeList,
 		getQuotaBalance,
-		type PayOrderInfo 
+		type PayOrderInfo,
+		type PayChannelExtras,
+		type PaySubmitResponse
 	} from '@/api/quota/index';
 	import { get } from '@/api/index';
+	import { SocialType, getSocialUser } from '@/api/auth/social';
 
 	// 支付状态枚举
 	const PayOrderStatusEnum = {
@@ -158,13 +161,21 @@
 		desc: string;
 		icon: string;
 	};
+
+	type MiniProgramPaymentParams = {
+		timeStamp: string;
+		nonceStr: string;
+		packageValue: string;
+		signType: string;
+		paySign: string;
+	};
 	
 	const allChannelsConfig: ChannelConfig[] = [
-		{ name: '模拟支付', code: 'mock', desc: '用于测试，立即到账', icon: 'icon-credit-card' },
 		{ name: '支付宝扫码', code: 'alipay_qr', desc: '使用支付宝扫码支付', icon: 'icon-credit-card' },
 		{ name: '支付宝H5', code: 'alipay_wap', desc: '跳转支付宝网页支付', icon: 'icon-credit-card' },
 		{ name: '微信扫码', code: 'wx_native', desc: '使用微信扫码支付', icon: 'icon-credit-card' },
 		{ name: '微信H5', code: 'wx_h5', desc: '跳转微信网页支付', icon: 'icon-credit-card' },
+		{ name: '微信公众号', code: 'wx_pub', desc: '微信公众号内支付', icon: 'icon-credit-card' },
 		{ name: '微信小程序', code: 'wx_lite', desc: '微信小程序内支付', icon: 'icon-credit-card' }
 	];
 
@@ -321,9 +332,12 @@
 					}
 				} catch (error: any) {
 					console.error('加载支付渠道失败', error);
-					// 加载失败时使用默认的模拟支付
-					this.enabledChannelCodes = ['mock'];
-					this.selectedChannel = 'mock';
+					this.enabledChannelCodes = [];
+					this.selectedChannel = '';
+					uni.showToast({
+						title: '支付渠道加载失败，请稍后重试',
+						icon: 'none'
+					});
 				} finally {
 					this.channelLoading = false;
 				}
@@ -338,6 +352,83 @@
 
 			selectChannel(channel: string) {
 				this.selectedChannel = channel;
+			},
+
+			getSocialTypeForChannel(channelCode: string): number | null {
+				if (channelCode === 'wx_pub') {
+					return SocialType.WECHAT_MP;
+				}
+				if (channelCode === 'wx_lite') {
+					return SocialType.WECHAT_MINI_PROGRAM;
+				}
+				return null;
+			},
+
+			async getPayChannelExtras(channelCode: string): Promise<PayChannelExtras | null> {
+				const socialType = this.getSocialTypeForChannel(channelCode);
+				if (socialType == null) {
+					return null;
+				}
+
+				const socialUser = await getSocialUser(socialType as number);
+				if (socialUser == null || socialUser.openid.length === 0) {
+					throw new Error(channelCode === 'wx_lite'
+						? '当前账号未绑定微信小程序，请重新授权登录'
+						: '当前账号未绑定微信公众号，请重新授权登录');
+				}
+
+				// 同步更新登录阶段使用的缓存，支付请求仍以当前账号查询结果为准。
+				uni.setStorageSync('wechat_openid', socialUser.openid);
+				return { openid: socialUser.openid } as PayChannelExtras;
+			},
+
+			async invokeMiniProgramPayment(response: PaySubmitResponse): Promise<boolean> {
+				if (response.displayMode !== 'app' || response.displayContent.length === 0) {
+					throw new Error('微信支付参数返回格式不正确');
+				}
+
+				const rawParams = JSON.parse(response.displayContent) as any;
+				const paymentParams = {
+					timeStamp: (rawParams.timeStamp as string | null) ?? '',
+					nonceStr: (rawParams.nonceStr as string | null) ?? '',
+					packageValue: (rawParams.packageValue as string | null) ?? '',
+					signType: (rawParams.signType as string | null) ?? '',
+					paySign: (rawParams.paySign as string | null) ?? ''
+				} as MiniProgramPaymentParams;
+				if (paymentParams.timeStamp.length === 0
+					|| paymentParams.nonceStr.length === 0
+					|| paymentParams.packageValue.length === 0
+					|| paymentParams.signType.length === 0
+					|| paymentParams.paySign.length === 0) {
+					throw new Error('微信支付参数不完整，请重新发起支付');
+				}
+
+				// #ifdef MP-WEIXIN
+				return new Promise<boolean>((resolve, reject) => {
+					wx.requestPayment({
+						timeStamp: paymentParams.timeStamp,
+						nonceStr: paymentParams.nonceStr,
+						package: paymentParams.packageValue,
+						signType: paymentParams.signType,
+						paySign: paymentParams.paySign,
+						success: () => {
+							resolve(true);
+						},
+						fail: (error: any) => {
+							const errMsg = (error.errMsg as string | null) ?? '';
+							if (errMsg.indexOf('cancel') !== -1) {
+								resolve(false);
+								return;
+							}
+							reject(new Error(errMsg.length > 0 ? errMsg : '微信支付调起失败'));
+						}
+					});
+				});
+				// #endif
+
+				// #ifndef MP-WEIXIN
+				throw new Error('请在微信小程序内使用微信小程序支付');
+				// #endif
 			},
 
 			handlePay() {
@@ -365,12 +456,14 @@
 			async doSubmitPay() {
 				this.submitting = true;
 				try {
+					const channelExtras = await this.getPayChannelExtras(this.selectedChannel);
 					const res = await submitPayOrder(
 						this.payOrderId as number, 
-						this.selectedChannel
+						this.selectedChannel,
+						channelExtras
 					);
 					
-					// 模拟支付直接成功
+					// 部分渠道会在提交后直接返回成功状态
 					if (res.status === PayOrderStatusEnum.SUCCESS) {
 						this.payOrder.status = PayOrderStatusEnum.SUCCESS;
 						await this.syncPayStatus();
@@ -378,8 +471,18 @@
 							title: '支付成功！',
 							icon: 'success'
 						});
+					} else if (this.selectedChannel === 'wx_lite') {
+						const paymentAccepted = await this.invokeMiniProgramPayment(res);
+						if (!paymentAccepted) {
+							uni.showToast({
+								title: '已取消支付',
+								icon: 'none'
+							});
+							return;
+						}
+						this.startPolling();
+						await this.checkPayStatus();
 					} else {
-						// 其他支付方式，开始轮询
 						this.startPolling();
 					}
 				} catch (error: any) {

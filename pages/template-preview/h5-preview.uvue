@@ -87,10 +87,12 @@
 				console.log('[模板预览WebView] 收到H5消息:', event.detail.data);
 				
 				const messages = event.detail.data;
-				if (!messages || messages.length === 0) return;
-				
-				// 处理最新的消息
-				const message = messages[messages.length - 1];
+				if (!messages) return;
+
+				// 小程序返回数组，部分 WebView 容器会直接返回对象。
+				const message = Array.isArray(messages)
+					? (messages.length > 0 ? messages[messages.length - 1] : null)
+					: messages;
 				
 				if (!message || !message.type) return;
 				
@@ -138,4 +140,3 @@
 		flex: 1;
 	}
 </style>
-

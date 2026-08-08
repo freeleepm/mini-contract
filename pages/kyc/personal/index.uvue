@@ -21,6 +21,13 @@ import { post, get, uploadFileAdvanced, simpleUpload } from '../../../api/index'
 import { API_BASE_URL, TENANT_ID, UPLOAD_CONFIG } from '../../../config/app.config';
 import { recognizeIdCard } from '../../../api/member/verify';
 
+const FACE_IMAGE_MAX_SIZE_MB = 1;
+// 第三方实名接口对图片大小比较敏感，上传前压到 900KB 左右，给 1MB 限制留余量。
+const FACE_IMAGE_UPLOAD_TARGET_BYTES = 900 * 1024;
+const FACE_IMAGE_COMPRESSION_TIMEOUT_MS = 30000;
+const ID_CARD_IMAGE_UPLOAD_TARGET_BYTES = 900 * 1024;
+const H5_IMAGE_MAX_DIMENSION = 1280;
+
 export default {
 	data() {
 		return {
@@ -54,6 +61,9 @@ export default {
 			
 			// 认证失败原因
 			failedReason: '',
+
+            // 人脸照片大小限制
+            maxFaceImageSizeMB: FACE_IMAGE_MAX_SIZE_MB,
 			
 			// 是否正在提交
 			isSubmitting: false,
@@ -67,6 +77,7 @@ export default {
                 '请确保光线充足，面部清晰可见',
                 '请直视摄像头，表情自然',
                 '不要佩戴墨镜、帽子等遮挡面部的物品',
+                `照片将自动压缩，建议大小不超过${FACE_IMAGE_MAX_SIZE_MB}MB`,
                 '照片将用于实名认证，请确保真实有效'
             ],
             // 图标化的注意事项
@@ -76,13 +87,16 @@ export default {
                 { icon: 'icon-users', text: '避免他人入镜' }
             ],
             
-            // 上传状态
-            uploadStatus: {
-                inProgress: false,
-                progress: 0,
-                error: false,
-                errorMessage: ''
-            },
+	            // 上传状态
+	            uploadStatus: {
+	                inProgress: false,
+	                progress: 0,
+	                error: false,
+	                errorMessage: ''
+	            },
+
+	            // 当前压缩批次，用于处理 H5/微信环境下 compressImage 长时间无回调的情况
+	            compressionAttemptId: 0,
             
             // 重试计数器，避免无限重试
             retryCount: 0,
@@ -132,71 +146,76 @@ export default {
 		
 		// 开始OCR识别
 		startOcrCapture(): void {
+			console.log('[KYC-Personal][OCR] 点击身份证OCR入口, ocrProcessing=', this.ocrProcessing);
 			if (this.ocrProcessing) return;
 			this.showOcrGuidance = true;
 		},
 		
 		// 确认OCR指导并开始拍照
 		confirmOcrGuidanceAndCapture(): void {
+			console.log('[KYC-Personal][OCR] 确认拍照指引，准备打开相机');
 			this.showOcrGuidance = false;
 			
 			uni.showLoading({
 				title: '准备拍照...'
 			});
 			
-			uni.chooseImage({
-				count: 1,
-				sizeType: ['original'],
-				sourceType: ['camera'],
-				success: (res) => {
-					this.handleIdCardImageSelected(res.tempFilePaths[0]);
-				},
-				fail: (error) => {
-					uni.hideLoading();
-					console.error('拍照失败:', error);
-					uni.showToast({
-						title: '拍照失败，请重试',
-						icon: 'none'
-					});
-				}
+			this.chooseCameraImage(false, (filePath: string) => {
+				console.log('[KYC-Personal][OCR] 已选择/拍摄身份证照片, filePath=', filePath);
+				this.handleIdCardImageSelected(filePath);
 			});
 		},
 		
 		// 处理身份证图片选择
 		async handleIdCardImageSelected(filePath: string): Promise<void> {
+			console.log('[KYC-Personal][OCR] 开始处理身份证照片, filePath=', filePath);
 			this.ocrProcessing = true;
-			
+
 			try {
-				// 1. 上传图片
+				// 1. 压缩身份证图片，避免 OCR 图片在 OSS 中保留过大的原图。
+				uni.showLoading({
+					title: '正在压缩照片...'
+				});
+				const uploadPath = await this.compressImageToTarget(filePath, ID_CARD_IMAGE_UPLOAD_TARGET_BYTES, 70, 25);
+				console.log('[KYC-Personal][OCR] 身份证照片压缩完成, uploadPath=', uploadPath);
+				const timestamp = new Date().getTime();
+				const randomPart = Math.floor(Math.random() * 10000);
+				const idCardFileName = `idcard_${timestamp}_${randomPart}.jpg`;
+
+				// 2. 上传图片
 				uni.showLoading({
 					title: '上传中...'
 				});
-				
-				const imageUrl = await uploadFileAdvanced(filePath, {
+
+				const imageUrl = await uploadFileAdvanced(uploadPath, {
+					fileName: idCardFileName,
 					directory: UPLOAD_CONFIG.DIRECTORIES.VERIFY,
+					fileType: 'image/jpeg',
 					onProgress: (percent: number) => {
 						uni.showLoading({
 							title: `上传中 ${percent}%`
 						});
 					}
 				});
-				
-				// 2. OCR识别
+				console.log('[KYC-Personal][OCR] 身份证照片上传完成, imageUrl=', imageUrl);
+
+				// 3. OCR识别
 				uni.showLoading({
 					title: '识别中...'
 				});
-				
+
 				const ocrResult = await recognizeIdCard({
 					imageUrl: imageUrl,
 					side: 'front'
 				});
-				
+				console.log('[KYC-Personal][OCR] OCR返回结果:', JSON.stringify(ocrResult));
+
 				uni.hideLoading();
-				
-				// 3. 处理识别结果
+
+				// 4. 处理识别结果
 				if (ocrResult.success) {
 					this.ocrResult = ocrResult;
-					
+
 					// 自动填充表单
 					if (ocrResult.name) {
 						this.userInfo.realName = ocrResult.name;
@@ -220,20 +239,220 @@ export default {
 						icon: 'none'
 					});
 				}
-				
 			} catch (error) {
 				uni.hideLoading();
 				console.error('OCR识别失败:', error);
+				const errorMessage = (error as Error).message || '识别失败，请手动输入';
 				uni.showToast({
-					title: '识别失败，请手动输入',
+					title: errorMessage,
 					icon: 'none'
 				});
 			} finally {
 				this.ocrProcessing = false;
 			}
 		},
-		
-		// 检查认证状态
+
+			compressImageToTarget(filePath: string, targetBytes: number, quality: number, minQuality: number): Promise<string> {
+				// #ifdef H5
+				return this.compressImageToTargetByCanvas(filePath, targetBytes, quality, minQuality);
+				// #endif
+
+				// #ifndef H5
+				return this.compressImageToTargetByUni(filePath, targetBytes, quality, minQuality);
+				// #endif
+			},
+
+			compressImageToTargetByUni(filePath: string, targetBytes: number, quality: number, minQuality: number): Promise<string> {
+				return new Promise((resolve, reject) => {
+					const attemptId = this.compressionAttemptId + 1;
+					this.compressionAttemptId = attemptId;
+					const timeoutId = setTimeout(() => {
+						if (this.compressionAttemptId !== attemptId) {
+							return;
+						}
+						this.compressionAttemptId = attemptId + 1;
+						reject(new Error('照片压缩超时，请重新拍摄'));
+					}, FACE_IMAGE_COMPRESSION_TIMEOUT_MS);
+
+					uni.getFileInfo({
+						filePath,
+						success: (originalInfo) => {
+							if (originalInfo.size <= targetBytes) {
+								clearTimeout(timeoutId);
+								resolve(filePath);
+								return;
+							}
+
+							uni.compressImage({
+								src: filePath,
+								quality,
+								success: (res) => {
+									if (this.compressionAttemptId !== attemptId) {
+										return;
+									}
+									const compressedPath = res.tempFilePath;
+									uni.getFileInfo({
+										filePath: compressedPath,
+										success: (compressedInfo) => {
+											if (this.compressionAttemptId !== attemptId) {
+												return;
+											}
+											if (compressedInfo.size <= targetBytes) {
+												clearTimeout(timeoutId);
+												resolve(compressedPath);
+												return;
+											}
+											if (quality > minQuality) {
+												clearTimeout(timeoutId);
+												const nextQuality = quality > 45 ? 45 : minQuality;
+												this.compressImageToTargetByUni(compressedPath, targetBytes, nextQuality, minQuality).then(resolve).catch(reject);
+												return;
+											}
+											clearTimeout(timeoutId);
+											reject(new Error('照片压缩后仍过大，请重新拍摄'));
+										},
+										fail: (error) => {
+											clearTimeout(timeoutId);
+											reject(error);
+										}
+									});
+								},
+								fail: (error) => {
+									clearTimeout(timeoutId);
+									reject(error);
+								}
+							});
+						},
+						fail: (error) => {
+							clearTimeout(timeoutId);
+							reject(error);
+						}
+					});
+				});
+			},
+
+			compressImageToTargetByCanvas(filePath: string, targetBytes: number, quality: number, minQuality: number): Promise<string> {
+				return new Promise((resolve, reject) => {
+					const attemptId = this.compressionAttemptId + 1;
+					this.compressionAttemptId = attemptId;
+					const timeoutId = setTimeout(() => {
+						if (this.compressionAttemptId !== attemptId) {
+							return;
+						}
+						this.compressionAttemptId = attemptId + 1;
+						reject(new Error('照片压缩超时，请重新拍摄'));
+					}, FACE_IMAGE_COMPRESSION_TIMEOUT_MS);
+
+					const finish = (path: string) => {
+						if (this.compressionAttemptId !== attemptId) {
+							return;
+						}
+						clearTimeout(timeoutId);
+						resolve(path);
+					};
+
+					const fail = (error: any) => {
+						if (this.compressionAttemptId !== attemptId) {
+							return;
+						}
+						clearTimeout(timeoutId);
+						reject(error instanceof Error ? error : new Error('照片压缩失败，请重新拍摄'));
+					};
+
+					const fetchFn = fetch as any;
+					if (fetchFn == null) {
+						fail(new Error('当前浏览器不支持图片读取，请重新拍摄较小照片'));
+						return;
+					}
+
+					fetchFn(filePath)
+						.then((response) => response.blob())
+						.then((sourceBlob) => {
+							if (sourceBlob.size <= targetBytes) {
+								finish(filePath);
+								return;
+							}
+
+							const urlObj = URL as any;
+							if (urlObj == null || typeof urlObj.createObjectURL !== 'function') {
+								fail(new Error('当前浏览器不支持图片压缩，请重新拍摄较小照片'));
+								return;
+							}
+							const imageUrl = urlObj.createObjectURL(sourceBlob);
+							const image = new Image() as any;
+							image.onload = () => {
+								try {
+									const width = image.naturalWidth || image.width;
+									const height = image.naturalHeight || image.height;
+									if (!width || !height) {
+										urlObj.revokeObjectURL(imageUrl);
+										fail(new Error('照片读取失败，请重新拍摄'));
+										return;
+									}
+
+									let targetWidth = width;
+									let targetHeight = height;
+									const maxSide = Math.max(width, height);
+									if (maxSide > H5_IMAGE_MAX_DIMENSION) {
+										const ratio = H5_IMAGE_MAX_DIMENSION / maxSide;
+										targetWidth = Math.round(width * ratio);
+										targetHeight = Math.round(height * ratio);
+									}
+
+										const documentObj = document as any;
+										if (documentObj == null || typeof documentObj.createElement !== 'function') {
+											urlObj.revokeObjectURL(imageUrl);
+											fail(new Error('当前浏览器不支持图片压缩，请重新拍摄较小照片'));
+											return;
+										}
+										const canvas = documentObj.createElement('canvas') as any;
+									canvas.width = targetWidth;
+									canvas.height = targetHeight;
+									const context = canvas.getContext('2d');
+									if (!context) {
+										urlObj.revokeObjectURL(imageUrl);
+										fail(new Error('浏览器不支持图片压缩，请重新拍摄较小照片'));
+										return;
+									}
+									context.drawImage(image, 0, 0, targetWidth, targetHeight);
+									urlObj.revokeObjectURL(imageUrl);
+
+									const tryBlob = (currentQuality: number) => {
+										canvas.toBlob((blob: any) => {
+											if (!blob) {
+												fail(new Error('照片压缩失败，请重新拍摄'));
+												return;
+											}
+											if (blob.size <= targetBytes || currentQuality <= minQuality) {
+												if (blob.size > targetBytes) {
+													fail(new Error('照片压缩后仍过大，请重新拍摄'));
+													return;
+												}
+												finish(urlObj.createObjectURL(blob));
+												return;
+											}
+											const nextQuality = currentQuality > 45 ? 45 : minQuality;
+											tryBlob(nextQuality);
+										}, 'image/jpeg', currentQuality / 100);
+									};
+
+									tryBlob(quality);
+								} catch (error) {
+									urlObj.revokeObjectURL(imageUrl);
+									fail(error);
+								}
+							};
+							image.onerror = () => {
+								urlObj.revokeObjectURL(imageUrl);
+								fail(new Error('照片读取失败，请重新拍摄'));
+							};
+							image.src = imageUrl;
+						})
+						.catch(fail);
+				});
+			},
+
+			// 检查认证状态
 		checkVerificationStatus(): void {
             // 显示加载中
             uni.showLoading({
@@ -280,9 +499,9 @@ export default {
 		},
 		
 		// 验证姓名
-		validateName(): void {
-			if (!this.userInfo.realName) {
-				this.validation.realName.valid = false
+			validateName(): void {
+				if (!this.userInfo.realName) {
+					this.validation.realName.valid = false
 				this.validation.realName.message = '请输入真实姓名'
 				return
 			}
@@ -294,12 +513,24 @@ export default {
 				return
 			}
 			
-			this.validation.realName.valid = true
-			this.validation.realName.message = ''
-		},
-		
-		// 验证身份证号
-		validateIdCard(): void {
+				this.validation.realName.valid = true
+				this.validation.realName.message = ''
+			},
+
+			// 身份证号输入：保留前 17 位数字，第 18 位允许数字或 X
+			handleIdCardInput(event: any): void {
+				let rawValue = ''
+				if (event != null && event.detail != null && event.detail.value != null) {
+					rawValue = event.detail.value as string
+				}
+				const cleaned = rawValue.toUpperCase().replace(/[^0-9X]/g, '')
+				const firstPart = cleaned.substring(0, 17).replace(/X/g, '')
+				const lastPart = cleaned.length > 17 ? cleaned.substring(17, 18) : ''
+				this.userInfo.idCardNumber = (firstPart + lastPart).substring(0, 18)
+			},
+
+			// 验证身份证号
+			validateIdCard(): void {
 			if (!this.userInfo.idCardNumber) {
 				this.validation.idCardNumber.valid = false
 				this.validation.idCardNumber.message = '请输入身份证号'
@@ -353,38 +584,284 @@ export default {
                 title: '准备人脸识别...'
             })
             
-            try {
-                // 配置拍照参数，确保高质量照片
-                const cameraOptions = {
-                    count: 1, // 只拍一张照片
-                    sizeType: ['original'], // 使用原图确保清晰度
-                    sourceType: ['camera'], // 只使用相机
-                    quality: 100, // 最高质量
-                    success: (res) => {
-                        this.handleCameraSuccess(res)
-                    },
-                    fail: (error) => {
-                        uni.hideLoading()
-                        console.error('拍照失败:', error)
-                        uni.showToast({
-                            title: '拍照失败，请重试',
-                            icon: 'none'
-                        })
-                    }
-                }
-                
-                // 启动相机
-                uni.chooseImage(cameraOptions)
-            } catch (error) {
-                uni.hideLoading()
-                console.error('启动相机失败:', error)
+	            try {
+	                this.chooseFaceImageWithFrontCamera()
+	            } catch (error) {
+	                uni.hideLoading()
+	                console.error('启动相机失败:', error)
                 uni.showToast({
                     title: '无法启动相机，请检查权限',
                     icon: 'none',
                     duration: 3000
                 })
-            }
-        },
+	            }
+	        },
+
+	        // 人脸认证优先请求前置摄像头。H5 使用 capture=user，App/小程序用 camera=front 尽量指定。
+	        chooseFaceImageWithFrontCamera(): void {
+	            // #ifdef H5
+	            this.chooseFaceImageByH5Input()
+	            // #endif
+
+	            // #ifndef H5
+	            this.chooseCameraImage(true, (filePath: string) => {
+	                this.handleCameraSuccess({
+	                    tempFilePaths: [filePath]
+	                })
+	            })
+	            // #endif
+	        },
+
+	        // 小程序优先使用 chooseMedia；chooseImage 在微信基础库 2.21.0 后已停止维护。
+	        chooseCameraImage(useFrontCamera: boolean, onSuccess: (filePath: string) => void): void {
+	            console.log('[KYC-Personal][Media] chooseCameraImage start, useFrontCamera=', useFrontCamera)
+	            this.ensureMediaPrivacyAuthorized(() => {
+	            console.log('[KYC-Personal][Media] 隐私授权通过，准备调用媒体选择API')
+	            // #ifdef MP-WEIXIN
+	            const uniObj = uni as any
+	            if (uniObj != null && typeof uniObj.chooseMedia === 'function') {
+	                console.log('[KYC-Personal][Media] 使用 chooseMedia')
+	                const mediaOptions: any = {
+	                    count: 1,
+	                    mediaType: ['image'],
+	                    sourceType: ['camera'],
+	                    sizeType: ['compressed'],
+	                    camera: useFrontCamera ? 'front' : 'back',
+	                    success: (res: any) => {
+	                        console.log('[KYC-Personal][Media] chooseMedia success:', JSON.stringify(res))
+	                        const tempFiles = res != null ? res.tempFiles : null
+	                        let filePath = ''
+	                        if (tempFiles != null && tempFiles.length > 0 && tempFiles[0] != null) {
+	                            filePath = (tempFiles[0] as any).tempFilePath as string
+	                        }
+	                        if (!filePath && res != null && res.tempFilePaths != null && res.tempFilePaths.length > 0) {
+	                            filePath = res.tempFilePaths[0] as string
+	                        }
+	                        if (!filePath) {
+	                            this.handleCameraOpenFail(new Error('未获取到照片路径'))
+	                            return
+	                        }
+	                        onSuccess(filePath)
+	                    },
+	                    fail: (error: any) => {
+	                        console.warn('[KYC-Personal][Media] chooseMedia 打开相机失败:', error)
+	                        if (this.isMediaAuthorizationError(error)) {
+	                            this.handleCameraOpenFail(error)
+	                            return
+	                        }
+	                        console.warn('[KYC-Personal][Media] chooseMedia 不可用，尝试 chooseImage 兼容模式')
+	                        this.chooseImageCameraFallback(useFrontCamera, onSuccess)
+	                    },
+	                    complete: (res: any) => {
+	                        console.log('[KYC-Personal][Media] chooseMedia complete:', JSON.stringify(res))
+	                    }
+	                }
+	                uniObj.chooseMedia(mediaOptions)
+	                return
+	            }
+	            // #endif
+
+	            this.chooseImageCameraFallback(useFrontCamera, onSuccess)
+	            })
+	        },
+
+	        ensureMediaPrivacyAuthorized(onGranted: () => void): void {
+	            console.log('[KYC-Personal][Privacy] 检查微信隐私授权')
+	            // #ifdef MP-WEIXIN
+	            const wxObj = wx as any
+	            if (wxObj != null && typeof wxObj.getPrivacySetting === 'function') {
+	                wxObj.getPrivacySetting({
+	                    success: (res: any) => {
+	                        console.log('[KYC-Personal][Privacy] getPrivacySetting success:', JSON.stringify(res))
+	                        if (res != null && res.needAuthorization === true && typeof wxObj.requirePrivacyAuthorize === 'function') {
+	                            console.log('[KYC-Personal][Privacy] 需要隐私授权，调用 requirePrivacyAuthorize')
+	                            wxObj.requirePrivacyAuthorize({
+	                                success: () => {
+	                                    console.log('[KYC-Personal][Privacy] requirePrivacyAuthorize success')
+	                                    onGranted()
+	                                },
+	                                fail: (error: any) => {
+	                                    console.error('[KYC-Personal][Privacy] requirePrivacyAuthorize fail:', JSON.stringify(error))
+	                                    this.handleCameraOpenFail(error)
+	                                }
+	                            })
+	                            return
+	                        }
+	                        onGranted()
+	                    },
+	                    fail: () => {
+	                        console.warn('[KYC-Personal][Privacy] getPrivacySetting fail，继续尝试媒体API')
+	                        onGranted()
+	                    }
+	                })
+	                return
+	            }
+	            // #endif
+	            console.log('[KYC-Personal][Privacy] 非微信或无隐私API，直接继续')
+	            onGranted()
+	        },
+
+	        chooseImageCameraFallback(useFrontCamera: boolean, onSuccess: (filePath: string) => void): void {
+	            console.log('[KYC-Personal][Media] 使用 chooseImage fallback, useFrontCamera=', useFrontCamera)
+	            const cameraOptions: any = {
+	                count: 1,
+	                sizeType: ['compressed'],
+	                sourceType: ['camera'],
+	                quality: 85,
+	                success: (res: any) => {
+	                    console.log('[KYC-Personal][Media] chooseImage success:', JSON.stringify(res))
+	                    if (res == null || res.tempFilePaths == null || res.tempFilePaths.length === 0) {
+	                        this.handleCameraOpenFail(new Error('未获取到照片路径'))
+	                        return
+	                    }
+	                    onSuccess(res.tempFilePaths[0] as string)
+	                },
+	                fail: (error: any) => {
+	                    console.error('[KYC-Personal][Media] chooseImage fail:', JSON.stringify(error))
+	                    this.handleCameraOpenFail(error)
+	                },
+	                complete: (res: any) => {
+	                    console.log('[KYC-Personal][Media] chooseImage complete:', JSON.stringify(res))
+	                }
+	            }
+	            if (useFrontCamera) {
+	                cameraOptions.camera = 'front'
+	            }
+	            uni.chooseImage(cameraOptions)
+	        },
+
+	        isMediaAuthorizationError(error: any): boolean {
+	            let errMsg = ''
+	            if (error != null && (error as any).errMsg != null) {
+	                errMsg = (error as any).errMsg as string
+	            } else if (error != null && (error as Error).message != null) {
+	                errMsg = (error as Error).message
+	            }
+	            const lowerMsg = errMsg.toLowerCase()
+	            return lowerMsg.indexOf('cancel') >= 0
+	                || lowerMsg.indexOf('privacy') >= 0
+	                || lowerMsg.indexOf('requiredprivateinfos') >= 0
+	                || lowerMsg.indexOf('declared') >= 0
+	                || lowerMsg.indexOf('隐私') >= 0
+	                || lowerMsg.indexOf('auth') >= 0
+	                || lowerMsg.indexOf('authorize') >= 0
+	                || lowerMsg.indexOf('permission') >= 0
+	                || lowerMsg.indexOf('denied') >= 0
+	                || lowerMsg.indexOf('scope.camera') >= 0
+	        },
+
+	        handleCameraOpenFail(error: any): void {
+	            uni.hideLoading()
+	            console.error('拍照失败:', error)
+	            let errMsg = ''
+	            if (error != null && (error as any).errMsg != null) {
+	                errMsg = (error as any).errMsg as string
+	            } else if (error != null && (error as Error).message != null) {
+	                errMsg = (error as Error).message
+	            }
+	            const lowerMsg = errMsg.toLowerCase()
+	            if (lowerMsg.indexOf('cancel') >= 0) {
+	                uni.showToast({
+	                    title: '已取消拍照',
+	                    icon: 'none'
+	                })
+	                return
+	            }
+	            const permissionDenied = lowerMsg.indexOf('auth') >= 0
+	                || lowerMsg.indexOf('authorize') >= 0
+	                || lowerMsg.indexOf('permission') >= 0
+	                || lowerMsg.indexOf('denied') >= 0
+	                || lowerMsg.indexOf('scope.camera') >= 0
+	            const privacyBlocked = lowerMsg.indexOf('privacy') >= 0
+	                || lowerMsg.indexOf('requiredprivateinfos') >= 0
+	                || lowerMsg.indexOf('declared') >= 0
+	                || lowerMsg.indexOf('隐私') >= 0
+	            if (privacyBlocked) {
+	                const privacyMessage = errMsg
+	                    ? `拍照上传需要先同意小程序隐私协议。\n\n微信返回：${errMsg}`
+	                    : '拍照上传需要先同意小程序隐私协议；如果仍无法打开，请检查微信公众平台隐私协议是否已声明图片/相机用途。'
+	                uni.showModal({
+	                    title: '需要隐私授权',
+	                    content: privacyMessage,
+	                    showCancel: false
+	                })
+	                return
+	            }
+	            if (permissionDenied) {
+	                uni.showModal({
+	                    title: '需要相机权限',
+	                    content: '实名认证需要拍摄身份证和人脸照片，请在设置中允许使用相机。',
+	                    confirmText: '去设置',
+	                    success: (res) => {
+	                        if (res.confirm) {
+	                            uni.openSetting({})
+	                        }
+	                    }
+	                })
+	                return
+	            }
+	            uni.showToast({
+	                title: '无法打开相机，请检查权限后重试',
+	                icon: 'none',
+	                duration: 3000
+	            })
+	        },
+
+	        chooseFaceImageByH5Input(): void {
+	            const documentObj = document as any
+	            if (documentObj == null || typeof documentObj.createElement !== 'function') {
+	                uni.hideLoading()
+	                this.showUploadError('当前浏览器不支持前置拍照，请检查权限后重试')
+	                return
+	            }
+
+	            const input = documentObj.createElement('input') as any
+	            input.type = 'file'
+	            input.accept = 'image/*'
+	            input.capture = 'user'
+	            input.style.display = 'none'
+
+	            input.onchange = () => {
+	                const files = input.files
+	                if (files == null || files.length === 0) {
+	                    uni.hideLoading()
+	                    return
+	                }
+
+	                const file = files[0]
+	                const urlObj = URL as any
+	                if (urlObj == null || typeof urlObj.createObjectURL !== 'function') {
+	                    uni.hideLoading()
+	                    this.showUploadError('当前浏览器不支持照片读取，请重试')
+	                    return
+	                }
+	                const objectUrl = urlObj.createObjectURL(file)
+	                this.handleCameraSuccess({
+	                    tempFilePaths: [objectUrl]
+	                })
+	                if (input.parentNode != null) {
+	                    input.parentNode.removeChild(input)
+	                }
+	            }
+
+	            input.onerror = () => {
+	                uni.hideLoading()
+	                this.showUploadError('拍照失败，请重试')
+	                if (input.parentNode != null) {
+	                    input.parentNode.removeChild(input)
+	                }
+	            }
+
+	            if (documentObj.body == null) {
+	                uni.hideLoading()
+	                this.showUploadError('当前浏览器不支持拍照上传，请重试')
+	                return
+	            }
+
+	            uni.hideLoading()
+	            documentObj.body.appendChild(input)
+	            input.click()
+	        },
 
 		/**
 		 * 从 chooser/相机 返回的临时路径解析图片扩展名（避免 H5 URL、blob、域名中带点导致误判）
@@ -420,15 +897,14 @@ export default {
                 uni.getFileInfo({
                     filePath: tempFilePath,
                     success: (fileInfo) => {
-                        // 验证文件大小（限制5MB）
-                        if (fileInfo.size > UPLOAD_CONFIG.MAX_SIZE.IMAGE * 1024 * 1024) {
-                            uni.hideLoading()
-                            this.showUploadError(`照片大小超过${UPLOAD_CONFIG.MAX_SIZE.IMAGE}MB限制，请重试`)
-                            return
-                        }
-                            
                         const fileExtension = this.getSafeImageExtensionForPath(tempFilePath)
                         console.log('解析后的上传扩展名:', fileExtension)
+
+                        if (fileInfo.size > FACE_IMAGE_UPLOAD_TARGET_BYTES) {
+                            console.log('人脸照片超过限制，尝试压缩:', fileInfo.size)
+                            this.compressFaceImageAndUpload(tempFilePath, fileExtension, 55)
+                            return
+                        }
                         
                         // 开始上传流程
                         this.uploadFaceImage(tempFilePath, fileExtension)
@@ -445,6 +921,25 @@ export default {
                 this.showUploadError('处理照片失败，请重试')
             }
         },
+
+	        // 压缩人脸照片后上传：H5 使用 canvas，避免公众号环境 uni.compressImage 无回调导致超时。
+	        compressFaceImageAndUpload(filePath: string, fileExtension: string, quality: number): void {
+	            uni.showLoading({
+	                title: '正在压缩照片...'
+	            })
+
+	            this.compressImageToTarget(filePath, FACE_IMAGE_UPLOAD_TARGET_BYTES, quality, 15)
+	                .then((compressedPath: string) => {
+	                    console.log('人脸照片压缩完成:', compressedPath)
+	                    this.uploadFaceImage(compressedPath, fileExtension)
+	                })
+	                .catch((error: Error) => {
+	                    uni.hideLoading()
+	                    console.error('压缩照片失败:', error)
+	                    const message = error.message || `照片超过${FACE_IMAGE_MAX_SIZE_MB}MB，请重新拍摄`
+	                    this.showUploadError(message)
+	                })
+	        },
 
         // 上传人脸照片
         uploadFaceImage(filePath: string, fileExtension: string): void {
@@ -738,7 +1233,13 @@ export default {
 			this.currentStep = 1
             this.userInfo.faceVerified = false
             this.userInfo.faceImage = ''
-		}
+		},
+
+        // 是否为人脸照片大小导致的失败
+        isFaceSizeFailure(): boolean {
+            const reason = this.failedReason || ''
+            return reason.indexOf('文件过大') >= 0 || reason.indexOf('照片文件过大') >= 0 || reason.indexOf('1MB') >= 0 || reason.indexOf('2MB') >= 0
+        }
 	}
 }
 </script>
@@ -761,7 +1262,7 @@ export default {
 						verificationStatus === 'failed' ? 'icon-close' : ''
 					]"></text>
 				</view>
-				
+
 				<text class="status-title" :class="[
 					verificationStatus === 'pending' ? 'pending' : '',
 					verificationStatus === 'success' ? 'success' : '',
@@ -770,20 +1271,29 @@ export default {
 					{{ verificationStatus === 'pending' ? '认证审核中' : 
 					   verificationStatus === 'success' ? '认证已通过' : '认证未通过' }}
 				</text>
-				
+
 				<text class="status-desc" v-if="verificationStatus === 'pending'">
 					您的认证信息已提交，正在审核中，请耐心等待
 				</text>
 				<text class="status-desc" v-else-if="verificationStatus === 'success'">
 					您的实名认证已通过，可以使用所有功能
 				</text>
-				<text class="status-desc" v-else-if="verificationStatus === 'failed'">
-					{{ failedReason || '认证未通过，请重新提交' }}
-				</text>
+				<view class="failed-detail-card" v-else-if="verificationStatus === 'failed'">
+					<text class="failed-label">失败原因</text>
+					<text class="failed-reason">{{ failedReason || '认证未通过，请重新提交' }}</text>
+					<view class="failed-suggestion" v-if="isFaceSizeFailure()">
+						<text class="suggestion-title">建议处理</text>
+						<text class="suggestion-text">请重新拍摄人脸照片，系统会自动压缩到约{{maxFaceImageSizeMB}}MB以内后再上传。</text>
+					</view>
+					<view class="failed-suggestion" v-else>
+						<text class="suggestion-title">建议处理</text>
+						<text class="suggestion-text">请确认姓名、身份证号和本人正脸照片一致，光线充足且无遮挡后重新提交。</text>
+					</view>
+				</view>
 				
 				<view class="status-button-container" v-if="verificationStatus === 'failed'">
 					<view class="resubmit-button" @click="resubmit">
-						<text class="button-text">重新提交</text>
+						<text class="button-text">重新拍摄并提交</text>
 					</view>
 				</view>
 			</view>
@@ -836,13 +1346,14 @@ export default {
 					</text>
 				</view>
 				
-				<view class="form-group">
-					<text class="form-label">身份证号码</text>
-					<input class="form-input" v-model="userInfo.idCardNumber" placeholder="请输入您的身份证号码" 
-						   @blur="validateIdCard" />
-					<text class="error-message" v-if="!validation.idCardNumber.valid">
-						{{ validation.idCardNumber.message }}
-					</text>
+					<view class="form-group">
+						<text class="form-label">身份证号码</text>
+						<input class="form-input" v-model="userInfo.idCardNumber" placeholder="请输入您的身份证号码"
+							   type="idcard" maxlength="18" confirm-type="done"
+							   @input="handleIdCardInput" @blur="validateIdCard" />
+						<text class="error-message" v-if="!validation.idCardNumber.valid">
+							{{ validation.idCardNumber.message }}
+						</text>
 				</view>
 				
 				<view class="form-tips">
@@ -917,10 +1428,10 @@ export default {
 					</view>
 				</view>
 				
-				<view class="step-actions">
-					<view class="action-button secondary" @click="prevStep">
-						<text>上一步</text>
-					</view>
+					<view class="step-actions verify-actions">
+						<view class="action-button secondary" @click="prevStep">
+							<text>上一步</text>
+						</view>
 					<view class="action-button primary" 
 						  :class="{ 'disabled': !canProceed }" 
 						  @click="canProceed ? submitVerification() : null">
@@ -1135,6 +1646,47 @@ export default {
 	margin-bottom: 40rpx;
 }
 
+.failed-detail-card {
+	width: 100%;
+	background-color: #FFF7F7;
+	border-radius: 16rpx;
+	padding: 24rpx;
+	margin-bottom: 28rpx;
+	border: 1rpx solid rgba(255, 77, 79, 0.18);
+}
+
+.failed-label {
+	font-size: 24rpx;
+	color: #FF4D4F;
+	font-weight: bold;
+	margin-bottom: 12rpx;
+}
+
+.failed-reason {
+	font-size: 28rpx;
+	color: #4A4A4A;
+	line-height: 44rpx;
+}
+
+.failed-suggestion {
+	margin-top: 20rpx;
+	padding-top: 20rpx;
+	border-top: 1rpx solid rgba(255, 77, 79, 0.14);
+}
+
+.suggestion-title {
+	font-size: 24rpx;
+	color: #303133;
+	font-weight: bold;
+	margin-bottom: 8rpx;
+}
+
+.suggestion-text {
+	font-size: 26rpx;
+	color: #666666;
+	line-height: 40rpx;
+}
+
 .status-button-container {
 	margin-top: 20rpx;
 }
@@ -1142,7 +1694,7 @@ export default {
 .resubmit-button {
 	background-color: #00C28A;
 	height: 80rpx;
-	width: 300rpx;
+	width: 360rpx;
 	border-radius: 8rpx;
 	align-items: center;
 	justify-content: center;
@@ -1488,6 +2040,13 @@ export default {
 	gap: 20rpx;
 }
 
+.step-actions.verify-actions {
+	flex-direction: row;
+	align-items: center;
+	margin-top: 48rpx;
+	gap: 18rpx;
+}
+
 .action-button {
 	height: 90rpx;
 	border-radius: 8rpx;
@@ -1504,6 +2063,12 @@ export default {
 	background-color: #00C28A;
 }
 
+.verify-actions .action-button.primary {
+	flex: 1;
+	width: 0;
+	box-shadow: 0 8rpx 20rpx rgba(0, 194, 138, 0.18);
+}
+
 .action-button.primary text {
 	color: #FFFFFF;
 }
@@ -1515,9 +2080,20 @@ export default {
 	border-style: solid;
 }
 
+.verify-actions .action-button.secondary {
+	width: 210rpx;
+	background-color: #F8FAFB;
+	border-color: #DDE6EE;
+}
+
 .action-button.secondary text {
 	color: #00C28A;
 	font-weight: 500;
+}
+
+.verify-actions .action-button.secondary text {
+	color: #5E6B75;
+	font-size: 30rpx;
 }
 
 .action-button.secondary:active {
@@ -1527,6 +2103,7 @@ export default {
 .action-button.disabled {
 	background-color: #CCCCCC;
 	opacity: 0.7;
+	box-shadow: none;
 }
 
 /* 人脸拍照提示 */

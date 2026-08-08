@@ -1,4 +1,6 @@
 <script>
+	import { APP_SERVICE_EMAIL, APP_SERVICE_PHONE, APP_SERVICE_WORK_TIME } from '../../config/app.config';
+
 	// 定义FAQ项类型
 	interface FaqItem {
 		id: number;
@@ -116,9 +118,9 @@
 				
 				// 联系方式
 				contact: {
-					phone: '400-000-0000',
-					email: 'shawn@leepm.com',
-					workTime: '周一至周五 9:00-18:00'
+					phone: APP_SERVICE_PHONE,
+					email: APP_SERVICE_EMAIL,
+					workTime: APP_SERVICE_WORK_TIME
 				},
 				
 				// 是否显示联系客服弹窗
@@ -126,8 +128,7 @@
 				
 				// 搜索相关
 				searchKeyword: '',  // 搜索关键词
-				filteredFaqList: [] as FaqItem[],  // 过滤后的FAQ列表
-				activeHelpTab: null as string | null  // 当前选中的帮助选项
+				filteredFaqList: [] as FaqItem[]  // 过滤后的FAQ列表
 			}
 		},
 		methods: {
@@ -164,39 +165,6 @@
 				this.searchKeyword = '';
 				this.filteredFaqList = this.faqList;
 				this.expandedIndex = -1;
-			},
-			
-			// 处理帮助项点击
-			handleHelpItemClick(helpType) {
-				this.activeHelpTab = helpType;
-				
-				switch(helpType) {
-					case 'guide':
-						// 使用指南
-						uni.showToast({
-							title: '正在加载使用指南...',
-							icon: 'none'
-						});
-						break;
-					case 'legal':
-						// 法律支持
-						uni.showToast({
-							title: '正在加载法律支持...',
-							icon: 'none'
-						});
-						break;
-					case 'security':
-						// 安全保障
-						uni.showToast({
-							title: '正在加载安全保障信息...',
-							icon: 'none'
-						});
-						break;
-					case 'feedback':
-						// 意见反馈
-						this.submitFeedback();
-						break;
-				}
 			},
 			
 			// 联系客服
@@ -312,39 +280,6 @@
 				</view>
 			</view>
 			
-			<!-- 更多帮助选项 -->
-			<view class="more-help-section">
-				<view class="section-header">
-					<text class="section-title">更多帮助</text>
-				</view>
-				
-				<view class="help-grid">
-					<view class="help-item" @click="handleHelpItemClick('guide')" :class="activeHelpTab === 'guide' ? 'active' : ''">
-						<view class="help-icon-container">
-							<text class="help-icon fa fa-book"></text>
-						</view>
-						<text class="help-text">使用指南</text>
-					</view>
-					<view class="help-item" @click="handleHelpItemClick('legal')" :class="activeHelpTab === 'legal' ? 'active' : ''">
-						<view class="help-icon-container">
-							<text class="help-icon fa fa-gavel"></text>
-						</view>
-						<text class="help-text">法律支持</text>
-					</view>
-					<view class="help-item" @click="handleHelpItemClick('security')" :class="activeHelpTab === 'security' ? 'active' : ''">
-						<view class="help-icon-container">
-							<text class="help-icon fa fa-lock"></text>
-						</view>
-						<text class="help-text">安全保障</text>
-					</view>
-					<view class="help-item" @click="handleHelpItemClick('feedback')" :class="activeHelpTab === 'feedback' ? 'active' : ''">
-						<view class="help-icon-container">
-							<text class="help-icon fa fa-comment"></text>
-						</view>
-						<text class="help-text">意见反馈</text>
-					</view>
-				</view>
-			</view>
 		</scroll-view>
 		
 		<!-- 联系客服弹窗 -->
@@ -565,59 +500,6 @@
 	.arrow-right {
 		font-size: 32rpx;
 		color: #C0C4CC;
-	}
-	
-	/* 更多帮助样式 */
-	.more-help-section {
-		background-color: #FFFFFF;
-		border-radius: 16rpx;
-		padding: 30rpx;
-		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
-	}
-	
-	.help-grid {
-		flex-direction: row;
-		flex-wrap: wrap;
-		margin-top: 20rpx;
-	}
-	
-	.help-item {
-		width: 25%;
-		align-items: center;
-		padding: 20rpx 0;
-		transition: all 0.3s ease;
-	}
-	
-	.help-item.active .help-icon-container {
-		background-color: rgba(24, 144, 255, 0.2);
-		transform: scale(1.1);
-	}
-	
-	.help-item.active .help-text {
-		color: #1890FF;
-		font-weight: 600;
-	}
-	
-	.help-icon-container {
-		width: 100rpx;
-		height: 100rpx;
-		border-radius: 50rpx;
-		background-color: rgba(24, 144, 255, 0.1);
-		justify-content: center;
-		align-items: center;
-		margin-bottom: 16rpx;
-		transition: all 0.3s ease;
-	}
-	
-	.help-icon {
-		font-size: 48rpx;
-		color: #1890FF;
-	}
-	
-	.help-text {
-		font-size: 24rpx;
-		color: #606266;
-		transition: all 0.3s ease;
 	}
 	
 	/* 弹窗样式 */

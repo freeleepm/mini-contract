@@ -10,6 +10,9 @@ import { request } from '../index'
 export interface SmsLoginRequest {
 	mobile: string      // 手机号
 	code: string        // 验证码
+	socialType?: number // 社交类型：31公众号/34小程序
+	socialCode?: string // 社交授权码
+	socialState?: string // 社交 state
 }
 
 /**

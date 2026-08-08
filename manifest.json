@@ -1,7 +1,7 @@
 {
-    "name" : "Contract.Pro",
+    "name" : "何方签",
     "appid" : "__UNI__20EA0B1",
-    "description" : "电子合同",
+    "description" : "专业电子合同签署平台",
     "versionName" : "1.0.0",
     "versionCode" : "100",
     "uni-app-x" : {},
@@ -9,12 +9,20 @@
     "quickapp" : {},
     /* 小程序特有相关 */
     "mp-weixin" : {
-        "appid" : "wx22db0d6ebe81e2ee",
+        "appid" : "wx4d0de5a13c068285",
         "setting" : {
             "urlCheck" : false
         },
+        "optimization" : {
+            "subPackages" : true
+        },
+        "__usePrivacyCheck__" : true,
         "usingComponents" : true,
-        "permission" : {}
+        "permission" : {
+            "scope.camera" : {
+                "desc" : "用于实名认证拍摄身份证和人脸照片"
+            }
+        }
     },
     "mp-alipay" : {
         "usingComponents" : true
@@ -73,8 +81,8 @@
     },
     "web" : {
         "router" : {
-            "mode" : ""
+            "mode" : "history"
         },
-        "title" : "Contract.Pro"
+        "title" : "何方签"
     }
 }

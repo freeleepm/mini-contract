@@ -233,7 +233,11 @@ export function addEnterpriseMember(data: {
     return request<number>({
         url: '/api/v1/member/enterprise-user/create',
         method: 'POST',
-        data,
+        data: {
+            enterpriseId: data.enterpriseId,
+            mobile: data.mobile,
+            role: data.role
+        },
         isAuth: true
     });
 }
@@ -262,7 +266,6 @@ export function updateEnterpriseMember(data: {
  * 注意：DELETE 请求的参数应该在 URL 中，不是 request body
  */
 export function deleteEnterpriseMember(id: number): Promise<boolean> {
-    // ✅ 修复：将 id 作为 query parameter 拼接到 URL 中
     return request<boolean>({
         url: `/api/v1/member/enterprise-user/delete?id=${id}`,
         method: 'DELETE',
@@ -384,86 +387,10 @@ export function getEnterpriseMemberPage(params: {
             };
         }
         
-        // 检查标准化后的结果
+        // 空列表是有效业务结果，必须原样返回，不能伪造成员数据
         console.log('标准化后的响应:', JSON.stringify(standardizedResponse));
-        
-        // 检查是否为空数据且需要使用模拟数据
-        if (!standardizedResponse.list || standardizedResponse.list.length === 0) {
-            console.log('标准化后的数据为空，使用模拟数据');
-            return getMockMemberData(params);
-        }
-        
         return standardizedResponse;
-    }).catch(error => {
-        console.error('获取企业成员列表失败，详细错误:', error);
-        console.error('错误信息:', error.message);
-        console.error('请求参数:', JSON.stringify(params));
-        console.log('API调用失败，使用模拟数据');
-        return getMockMemberData(params);
     });
-}
-
-/**
- * 生成模拟的成员数据（仅用于开发测试）
- * @param params 查询参数
- * @returns 模拟的分页响应
- */
-function getMockMemberData(params: {
-    enterpriseId: number;
-    pageNo: number;
-    pageSize: number;
-}): EnterpriseMemberPageResponse {
-    console.log('生成模拟成员数据');
-    
-    // 模拟数据
-    const mockMembers: EnterpriseMember[] = [
-        {
-            id: 1001,
-            userId: 2001,
-            nickname: '张三',
-            avatar: '/static/logo.png',
-            mobile: '13800138001',
-            role: EnterpriseRole.OWNER,
-            joinTime: '2023-01-01 10:00:00'
-        },
-        {
-            id: 1002,
-            userId: 2002,
-            nickname: '李四',
-            avatar: '/static/logo.png',
-            mobile: '13800138002',
-            role: EnterpriseRole.ADMIN,
-            joinTime: '2023-01-02 11:00:00'
-        },
-        {
-            id: 1003,
-            userId: 2003,
-            nickname: '王五',
-            avatar: '/static/logo.png',
-            mobile: '13800138003',
-            role: EnterpriseRole.MEMBER,
-            joinTime: '2023-01-03 12:00:00'
-        },
-        {
-            id: 1004,
-            userId: 2004,
-            nickname: '赵六',
-            avatar: '/static/logo.png',
-            mobile: '13800138004',
-            role: EnterpriseRole.MEMBER,
-            joinTime: '2023-01-04 13:00:00'
-        }
-    ];
-    
-    // 计算分页数据
-    const startIndex = (params.pageNo - 1) * params.pageSize;
-    const endIndex = startIndex + params.pageSize;
-    const pagedMembers = mockMembers.slice(startIndex, endIndex);
-    
-    return {
-        list: pagedMembers,
-        total: mockMembers.length
-    };
 }
 
 /**
@@ -688,4 +615,4 @@ export function switchToPersonal(): Promise<boolean> {
 }
 
 // ✅ 重新导出 seal 模块的 updateSeal 函数
-export { updateSeal } from '../seals/index.uts'; 
+export { updateSeal } from '../seals/index.uts';

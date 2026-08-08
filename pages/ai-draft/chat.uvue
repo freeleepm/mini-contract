@@ -8,6 +8,14 @@
       :scroll-with-animation="true"
     >
       <view class="messages-container">
+        <!-- AI 生成内容告知：进入对话后保持首屏可见，随消息自然滚动 -->
+        <view class="chat-ai-disclosure">
+          <view class="chat-ai-disclosure-badge">
+            <text class="chat-ai-disclosure-badge-text">AI生成内容</text>
+          </view>
+          <text class="chat-ai-disclosure-text">本对话使用人工智能生成合同内容，生成结果仅供参考，不构成法律意见，请核对确认后使用。</text>
+        </view>
+
         <!-- 消息列表 -->
         <view 
           v-for="(message, index) in messageList" 
@@ -194,7 +202,7 @@ export default {
       } catch (error: any) {
         console.error('发送消息失败:', error)
         uni.showToast({
-          title: '发送失败，请重试',
+          title: error?.message || 'AI服务暂时不可用，请稍后重试',
           icon: 'none'
         })
       } finally {
@@ -251,9 +259,8 @@ export default {
             } catch (error: any) {
               console.error('生成合同异常:', error)
               uni.hideLoading()
-              console.error('生成合同失败:', error)
               uni.showToast({
-                title: '生成失败，请重试',
+                title: error?.message || 'AI生成失败，请稍后重试',
                 icon: 'none'
               })
             }
@@ -338,6 +345,41 @@ export default {
 
 .messages-container {
   padding: 30rpx;
+}
+
+/* 对话页人工智能生成内容告知 */
+.chat-ai-disclosure {
+  flex-direction: row;
+  align-items: flex-start;
+  padding: 20rpx 22rpx;
+  margin-bottom: 30rpx;
+  background-color: #EDF6FF;
+  border-width: 2rpx;
+  border-color: #A8CCFF;
+  border-radius: 14rpx;
+}
+
+.chat-ai-disclosure-badge {
+  flex-shrink: 0;
+  padding: 5rpx 10rpx;
+  margin-right: 16rpx;
+  background-color: #0D7CFF;
+  border-radius: 8rpx;
+}
+
+.chat-ai-disclosure-badge-text {
+  color: #FFFFFF;
+  font-size: 21rpx;
+  font-weight: 600;
+  line-height: 30rpx;
+}
+
+.chat-ai-disclosure-text {
+  flex: 1;
+  min-width: 0;
+  color: #46698D;
+  font-size: 24rpx;
+  line-height: 36rpx;
 }
 
 .message-item {
@@ -563,4 +605,3 @@ export default {
   font-weight: 500;
 }
 </style>
-

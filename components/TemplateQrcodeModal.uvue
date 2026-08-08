@@ -3,14 +3,14 @@
  * 模板二维码弹窗组件
  * 
  * 功能：
- * - 展示模板二维码（canvas绘制）
+ * - 展示微信官方小程序码
  * - 支持保存到相册
  * - 支持分享
  * 
  * @author 小华同学AI
  */
-import UQRCode from 'uqrcodejs';
 import { SEAL_CORE_H5_URL } from '../config/app.config';
+import { getWxaQrcode } from '../api/auth/social';
 
 export default {
 	props: {
@@ -24,7 +24,7 @@ export default {
 			type: String,
 			default: ''
 		},
-		/** 基础模板ID（用于生成QR URL） */
+		/** 基础模板ID（用于生成小程序码场景值或 H5 降级链接） */
 		baseTemplateId: {
 			type: String,
 			default: ''
@@ -41,18 +41,14 @@ export default {
 			generating: false,
 			/** 错误信息 */
 			errorMsg: '' as string,
-			/** CanvasContext 实例（新版 uni-app x API） */
-			canvasCtx: null as CanvasContext | null,
-			/** 2D 渲染上下文 */
-			renderingCtx: null as CanvasRenderingContext2D | null
+			/** 微信官方小程序码图片 */
+			qrcodeImageSrc: '' as string
 		}
 	},
 	
 	computed: {
 		/** 
-		 * 二维码目标URL
-		 * 直接指向 seal-core 的创建合同页（/h5/sign/create），通过 query string 传递 templateId
-		 * seal-core 使用 history mode 路由 + CreateContract.vue 已支持从 route.query.templateId 自动选中模板
+		 * 保存失败或非小程序分享时使用的 H5 降级链接。
 		 */
 		qrCodeUrl() : string {
 			if (!this.baseTemplateId) return '';
@@ -64,7 +60,7 @@ export default {
 		visible(newVal : boolean) {
 			if (newVal && this.baseTemplateId) {
 				this.$nextTick(() => {
-					// 延迟确保 canvas 元素完成布局渲染
+					// 延迟确保弹窗和图片容器完成布局渲染
 					setTimeout(() => {
 						this.generateQRCode();
 					}, 200);
@@ -72,188 +68,157 @@ export default {
 			}
 			if (!newVal) {
 				this.qrReady = false;
+				this.generating = false;
 				this.errorMsg = '';
+				this.qrcodeImageSrc = '';
 			}
 		}
 	},
 	
 	methods: {
 		/**
-		 * 生成二维码
-		 * 使用 uni-app x 新版 Canvas API（uni.createCanvasContextAsync）
+		 * 生成微信官方小程序码
 		 */
 		generateQRCode() : void {
-			if (!this.qrCodeUrl) {
+			if (!this.baseTemplateId) {
 				this.errorMsg = '无法生成二维码：缺少模板信息';
 				return;
 			}
 			
 			this.generating = true;
+			this.qrReady = false;
 			this.errorMsg = '';
 			
-			console.log('[QR Modal] 开始生成二维码:', this.qrCodeUrl);
-			
-			// 超时保护：如果 8 秒内未完成，显示错误
-			const timeoutId = setTimeout(() => {
-				if (this.generating) {
-					console.error('[QR Modal] 生成超时');
-					this.errorMsg = '二维码生成超时，请重试';
-					this.generating = false;
+			console.log('[QR Modal] 开始生成模板二维码, baseTemplateId:', this.baseTemplateId);
+
+			this.generateMiniProgramCode();
+		},
+
+		/**
+		 * 生成微信官方小程序码，扫码后直接进入模板分享落地页
+		 */
+		async generateMiniProgramCode() : Promise<void> {
+			try {
+				const base64Image = await getWxaQrcode({
+					scene: `tq_${this.baseTemplateId}`,
+					path: 'pages/share/landing',
+					width: 430,
+					autoColor: false,
+					checkPath: true,
+					hyaline: false
+				});
+
+				if (base64Image === '') {
+					throw new Error('小程序码图片为空');
 				}
-			}, 8000);
-			
-			// 获取当前组件实例的 proxy，避免 this 类型与 ComponentPublicInstance 不兼容
-			const instance = getCurrentInstance();
-			const componentProxy = instance != null ? instance.proxy : null;
-			
-			// 使用 uni-app x 推荐的 createCanvasContextAsync API (HBuilderX 4.25+)
-			uni.createCanvasContextAsync({
-				id: 'qrCanvas',
-				component: componentProxy,
-				success: (context : CanvasContext) => {
-					clearTimeout(timeoutId);
-					try {
-						this.canvasCtx = context;
-						const ctx = context.getContext('2d')!;
-						this.renderingCtx = ctx;
-						const canvas = ctx.canvas;
-						
-						// 重要：先保存 CSS 布局尺寸，再修改 canvas buffer 尺寸
-						// 否则修改 canvas.width 后 offsetWidth 可能返回不同值
-						const displayWidth = canvas.offsetWidth;
-						const displayHeight = canvas.offsetHeight;
-						
-						// 处理高清屏
-						const dpr = uni.getDeviceInfo().devicePixelRatio ?? 1;
-						canvas.width = displayWidth * dpr;
-						canvas.height = displayHeight * dpr;
-						ctx.scale(dpr, dpr);
-						
-						// 使用预先保存的尺寸
-						const drawSize = displayWidth;
-						
-						console.log('[QR Modal] Canvas drawSize:', drawSize, 'dpr:', dpr);
-						
-						if (drawSize <= 0) {
-							console.error('[QR Modal] Canvas 尺寸为 0');
-							this.errorMsg = '二维码生成失败：画布尺寸异常';
-							this.generating = false;
-							return;
-						}
-						
-						// 生成 QR 码数据
-						const qr = new UQRCode();
-						qr.data = this.qrCodeUrl;
-						qr.size = drawSize;
-						qr.make();
-						
-						// 使用库的 getDrawModules() 获取结构化绘制指令
-						// uqrcodejs v4 在 make() 后，modules 变成含 color/isBlack 等属性的对象
-						// 直接使用库提供的绘制数据，避免 UTS 环境下 JS 对象类型判断问题
-						const drawModulesList = qr.getDrawModules() as any[];
-						
-						console.log('[QR Modal] drawModules count:', drawModulesList.length);
-						
-						// 清空画布
-						ctx.clearRect(0, 0, drawSize, drawSize);
-						
-						// 按照库的绘制指令逐个绘制
-						for (let i = 0; i < drawModulesList.length; i++) {
-							const m = drawModulesList[i] as any;
-							const mType = String(m.type);
-							
-							if (mType == 'area' || mType == 'tile') {
-								ctx.fillStyle = String(m.color);
-								ctx.fillRect(
-									Number(m.x),
-									Number(m.y),
-									Number(m.width),
-									Number(m.height)
-								);
-							}
-						}
-						
-						console.log('[QR Modal] 二维码绘制完成');
-						this.qrReady = true;
-						this.generating = false;
-					} catch (error : any) {
-						console.error('[QR Modal] 绘制二维码失败:', error);
-						this.errorMsg = '二维码生成失败，请重试';
-						this.generating = false;
-					}
-				}
-			});
+
+				this.qrcodeImageSrc = base64Image.startsWith('data:')
+					? base64Image
+					: `data:image/png;base64,${base64Image}`;
+				this.qrReady = true;
+				this.generating = false;
+				console.log('[QR Modal] 微信小程序码生成完成');
+			} catch (error : any) {
+				console.error('[QR Modal] 微信小程序码生成失败:', error);
+				this.errorMsg = '小程序码生成失败，请重试';
+				this.generating = false;
+			}
 		},
 		
 		/**
 		 * 保存到相册
-		 * 使用 canvas.toDataURL 获取图片数据（W3C 标准 Canvas API）
-		 * H5端：浏览器下载；App端：保存到系统相册
+		 * H5 端触发浏览器下载，其他端写入临时文件后保存到系统相册。
 		 */
 		saveToAlbum() : void {
-			if (!this.qrReady || this.renderingCtx == null) {
-				uni.showToast({ title: '二维码正在生成中', icon: 'none' });
+			if (!this.qrReady || this.qrcodeImageSrc === '') {
+				uni.showToast({ title: '小程序码正在生成中', icon: 'none' });
 				return;
 			}
-			
-			try {
-				const canvas = this.renderingCtx!.canvas;
-				const dataURL = canvas.toDataURL('image/png');
-				
-				console.log('[QR Modal] toDataURL 获取成功, 长度:', dataURL.length);
-				
-				if (dataURL.length < 100) {
-					console.error('[QR Modal] toDataURL 返回无效数据');
-					this.fallbackCopyLink();
-					return;
-				}
-				
-				// #ifdef H5
-				// H5端：使用浏览器下载（与 api/utils/download.uts 中 downloadFileInBrowser 一致的模式）
-				const link = document.createElement('a');
-				link.href = dataURL;
-				link.download = '模板二维码_' + this.templateName + '.png';
-				link.style.display = 'none';
-				document.body.appendChild(link);
-				link.click();
-				setTimeout(() => {
-					document.body.removeChild(link);
-				}, 100);
-				uni.showToast({ title: '图片已下载', icon: 'success' });
+
+			// #ifdef H5
+			const link = document.createElement('a');
+			link.href = this.qrcodeImageSrc;
+			link.download = '模板小程序码_' + this.templateName + '.png';
+			link.style.display = 'none';
+			document.body.appendChild(link);
+			link.click();
+			setTimeout(() => {
+				document.body.removeChild(link);
+			}, 100);
+			uni.showToast({ title: '图片已下载', icon: 'success' });
+			return;
+			// #endif
+
+			// #ifndef H5
+			this.saveDataUrlToAlbum(this.qrcodeImageSrc);
+			// #endif
+		},
+
+		/**
+		 * 将小程序码 Data URL 写入本地文件后保存到相册
+		 */
+		saveDataUrlToAlbum(dataURL : string) : void {
+			// #ifndef H5
+			const separatorIndex = dataURL.indexOf(',');
+			if (separatorIndex < 0 || separatorIndex >= dataURL.length - 1) {
+				console.error('[QR Modal] Data URL 格式无效');
+				this.fallbackCopyLink();
 				return;
-				// #endif
-				
-				// #ifndef H5
-				// App端：保存到系统相册
-				uni.saveImageToPhotosAlbum({
-					filePath: dataURL,
-					success: () => {
-						uni.showToast({ title: '已保存到相册', icon: 'success' });
-					},
-					fail: (err : any) => {
-						console.error('[QR Modal] 保存到相册失败:', err);
-						const errMsg = String(err.errMsg ?? '');
-						if (errMsg.indexOf('auth') >= 0) {
-							uni.showModal({
-								title: '权限提示',
-								content: '需要相册权限才能保存图片，请在设置中开启',
-								confirmText: '去设置',
-								success: (modalRes) => {
-									if (modalRes.confirm) {
-										uni.openSetting({});
-									}
-								}
+			}
+
+			const base64Data = dataURL.substring(separatorIndex + 1);
+			const tempFilePath = `${uni.env.USER_DATA_PATH}/template-qrcode-${Date.now()}.png`;
+			const fileSystemManager = uni.getFileSystemManager();
+
+			fileSystemManager.writeFile({
+				filePath: tempFilePath,
+				data: base64Data,
+				encoding: 'base64',
+				success: () => {
+					uni.saveImageToPhotosAlbum({
+						filePath: tempFilePath,
+						success: () => {
+							uni.showToast({ title: '已保存到相册', icon: 'success' });
+						},
+						fail: (err : any) => {
+							this.handleSaveImageError(err);
+						},
+						complete: () => {
+							fileSystemManager.unlink({
+								filePath: tempFilePath,
+								fail: () => {}
 							});
-						} else {
-							this.fallbackCopyLink();
+						}
+					});
+				},
+				fail: (err : any) => {
+					console.error('[QR Modal] 写入二维码临时文件失败:', err);
+					this.fallbackCopyLink();
+				}
+			});
+			// #endif
+		},
+
+		/**
+		 * 统一处理相册保存失败和授权提示
+		 */
+		handleSaveImageError(err : any) : void {
+			console.error('[QR Modal] 保存到相册失败:', err);
+			const errMsg = String(err.errMsg ?? '').toLowerCase();
+			if (errMsg.indexOf('auth') >= 0 || errMsg.indexOf('deny') >= 0) {
+				uni.showModal({
+					title: '权限提示',
+					content: '需要相册权限才能保存图片，请在设置中开启',
+					confirmText: '去设置',
+					success: (modalRes) => {
+						if (modalRes.confirm) {
+							uni.openSetting({});
 						}
 					}
 				});
-				// #endif
-			} catch (e : any) {
-				console.error('[QR Modal] 保存异常:', e);
-				this.fallbackCopyLink();
+				return;
 			}
+			this.fallbackCopyLink();
 		},
 		
 		/**
@@ -287,8 +252,8 @@ export default {
 			});
 			// #endif
 			
-			// #ifndef H5
-			// 非H5端：使用系统分享
+			// #ifdef APP-PLUS
+			// App端：使用系统分享。微信小程序由 open-type="share" 按钮触发页面分享。
 			uni.share({
 				provider: 'weixin',
 				type: 0,
@@ -357,19 +322,26 @@ export default {
 							<text class="retry-text">点击重试</text>
 						</view>
 					</view>
-					<canvas id="qrCanvas" class="qr-canvas"></canvas>
+					<image v-if="qrcodeImageSrc !== ''" class="qr-image" :src="qrcodeImageSrc" mode="aspectFit"></image>
 				</view>
 				
 				<!-- 提示文字 -->
-				<text class="qr-tip">扫描二维码使用此模板创建合同</text>
+				<text class="qr-tip">微信扫码进入小程序，使用此模板创建合同</text>
 			</view>
 			
 			<!-- 操作按钮 -->
 			<view class="modal-footer">
 				<view class="footer-btn-row">
+					<!-- #ifdef MP-WEIXIN -->
+					<button class="share-btn" open-type="share">
+						<text class="share-btn-text">分享链接</text>
+					</button>
+					<!-- #endif -->
+					<!-- #ifndef MP-WEIXIN -->
 					<view class="share-btn" @click="shareQrcode">
 						<text class="share-btn-text">分享链接</text>
 					</view>
+					<!-- #endif -->
 					<view class="save-btn" @click="saveToAlbum">
 						<text class="save-text">保存到相册</text>
 					</view>
@@ -459,7 +431,7 @@ export default {
 		position: relative;
 	}
 	
-	.qr-canvas {
+	.qr-image {
 		width: 400rpx;
 		height: 400rpx;
 	}
@@ -519,15 +491,23 @@ export default {
 	
 	.share-btn {
 		flex: 1;
+		display: flex;
 		flex-direction: row;
 		align-items: center;
 		justify-content: center;
 		height: 80rpx;
+		line-height: normal;
+		padding: 0;
+		margin: 0;
 		background-color: #F5F7FA;
 		border-radius: 40rpx;
 		border-width: 1rpx;
 		border-color: #DCDFE6;
 		border-style: solid;
+	}
+
+	.share-btn::after {
+		border: none;
 	}
 	
 	.share-btn-text {

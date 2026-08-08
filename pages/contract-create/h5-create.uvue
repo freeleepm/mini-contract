@@ -51,6 +51,9 @@ export default {
 		
 		// LocalStorage轮询定时器
 		pollTimer: null as number | null,
+
+		// 防止多通信通道重复投递同一个完成事件
+		completionHandled: false,
 	}
 },
 	
@@ -200,8 +203,16 @@ export default {
 			case 'created':
 				this.handleCreateCompleted(data.taskId);
 				break;
+
+			case 'need-form-filling':
+				this.handleNeedFormFilling(data.taskId);
+				break;
+
+			case 'ready-to-sign':
+				this.handleReadyToSign(data.taskId);
+				break;
 			
-			case 'formSubmitted':
+			case 'formFilled':
 				console.log('[JSBridge] 表单提交成功，任务ID:', data.taskId);
 				this.handleFormSubmitted(data.taskId);
 				break;
@@ -476,12 +487,14 @@ export default {
 			
 			// 获取消息数据
 			const messages = e.detail.data;
-			if (!messages || messages.length === 0) {
+			if (!messages) {
 				return;
 			}
-			
-			// 取最后一条消息
-			const data = messages[messages.length - 1];
+
+			const data = Array.isArray(messages)
+				? (messages.length > 0 ? messages[messages.length - 1] : null)
+				: messages;
+			if (!data) return;
 			console.log('[JSBridge] 处理消息:', data);
 			
 			// 根据action类型分发处理
@@ -513,8 +526,16 @@ export default {
 				case 'created':
 					this.handleCreateCompleted(data.taskId);
 					break;
+
+				case 'need-form-filling':
+					this.handleNeedFormFilling(data.taskId);
+					break;
+
+				case 'ready-to-sign':
+					this.handleReadyToSign(data.taskId);
+					break;
 				
-				case 'formSubmitted':
+				case 'formFilled':
 					console.log('[JSBridge] 表单提交成功，任务ID:', data.taskId);
 					this.handleFormSubmitted(data.taskId);
 					break;
@@ -858,6 +879,8 @@ export default {
 		 * 创建合同完成
 		 */
 		handleCreateCompleted(taskId: string | number | undefined) {
+			if (this.completionHandled) return;
+			this.completionHandled = true;
 			console.log('[H5创建] 创建完成，任务ID:', taskId);
 			
 			// 通知列表页刷新
@@ -870,12 +893,47 @@ export default {
 				duration: 1500
 			});
 			
-			// H5 页面已通过 JSSDK 调用 navigateBack 关闭了 WebView
-			// 如果消息是在页面关闭时才送达，此时页面可能已经在返回中
-			// 为保险起见，延迟后也尝试返回（防止 H5 端 navigateBack 未生效）
-			setTimeout(() => {
-				uni.navigateBack();
-			}, 500);
+			// H5 页面负责关闭 WebView，宿主只刷新数据，避免重复返回两层。
+		},
+
+		/**
+		 * 模板合同创建后需要继续填写表单
+		 */
+		handleNeedFormFilling(taskId: string | number | undefined) {
+			if (this.completionHandled) return;
+			if (!taskId) {
+				this.handleH5Error('合同创建成功，但未返回任务ID');
+				return;
+			}
+
+			this.completionHandled = true;
+			uni.$emit('contract-created', { taskId });
+			uni.showToast({
+				title: '请继续填写合同表单',
+				icon: 'none',
+				duration: 1500
+			});
+
+			uni.redirectTo({
+				url: `/pages/contract-form/h5-fill?taskId=${taskId}`
+			});
+		},
+
+		/**
+		 * 无待填表环节，且后端确认当前用户是可签署参与人时直接进入签署页
+		 */
+		handleReadyToSign(taskId: string | number | undefined) {
+			if (this.completionHandled) return;
+			if (!taskId) {
+				this.handleH5Error('合同创建成功，但未返回任务ID');
+				return;
+			}
+
+			this.completionHandled = true;
+			uni.$emit('contract-created', { taskId });
+			uni.redirectTo({
+				url: `/pages/contract-sign/h5-sign?taskId=${taskId}`
+			});
 		},
 		
 		/**
@@ -1015,4 +1073,3 @@ export default {
 	line-height: 50rpx;
 }
 </style>
-

@@ -1,7 +1,7 @@
 <script lang="uts">
 	import { getContractStatistics, ContractStatus } from '../../api/contracts/index';
 	import type { ContractStatistics } from '../../api/contracts/index';
-	import { checkAuthAndRedirect } from '../../api/auth';
+	import { isLoggedIn, requireLogin } from '../../api/auth';
 	import { getSealPageUrl } from '../../api/seals/index';
 	import { checkNetworkStatus, testH5ServiceAvailability } from '../../utils/network';
 	import { getSealToken, clearSealToken } from '../../utils/sealTokenManager';
@@ -16,51 +16,24 @@
 		components: {
 			PrivacyGuideModal
 		},
-		async onLoad() {
+		onLoad() {
 			// 检查隐私协议同意状态
 			this.checkPrivacyAgreement();
 			this.safeTop = this.getSafeTop();
-		
-			// 检查登录状态
-			if (!checkAuthAndRedirect(false)) {
-				return;
-			}
-			// 🔧 关键修复：先确保 sealToken 存在且有效，再发起API请求
-			try {
-				await getSealToken();
-			} catch (error) {
-				console.error('[首页] sealToken 获取失败:', error);
-			}
-			// 从本地存储加载上次选择的身份
-			this.loadIdentityFromStorage();
-			// 获取用户信息
-			this.getUserInfo();
-			// 加载合同摘要数据
-			this.loadContractSummary();
 		},
 		async onShow() {
-			// 检查登录状态
-			if (!checkAuthAndRedirect(false)) {
-				return;
-			}
 			this.safeTop = this.getSafeTop();
-			// 🔧 确保 sealToken 有效
-			try {
-				await getSealToken();
-			} catch (error) {
-				console.error('[首页] sealToken 获取失败:', error);
-			}
-			// 从本地存储加载身份（确保与个人中心同步）
-			this.loadIdentityFromStorage();
-			// 每次页面显示时刷新数据
-			this.loadContractSummary();
+			await this.initializeHome();
 		},
 		onHide() {
 			// 页面隐藏时关闭弹窗
 			this.showIdentityDropdown = false;
 		},
 		onPullDownRefresh() {
-			// 下拉刷新
+			if (!this.isLoggedIn) {
+				uni.stopPullDownRefresh();
+				return;
+			}
 			this.loadContractSummary(true);
 		},
 		// #ifdef MP-WEIXIN
@@ -87,8 +60,10 @@
 				copyrightSlogan: APP_COPYRIGHT_SLOGAN,
 				copyrightOwnerText: APP_COPYRIGHT_OWNER_TEXT,
 				safeTop: 0,
-				// 隐私协议引导弹窗
-				showPrivacyModal: false,  // 是否显示隐私协议引导弹窗
+					// 隐私协议引导弹窗
+					showPrivacyModal: false,  // 是否显示隐私协议引导弹窗
+					// 游客首页不请求任何需要 Token 的私有接口
+					isLoggedIn: false,
 				// 身份切换相关（复用个人中心逻辑）
 				showIdentityDropdown: false,  // 是否显示身份切换弹窗
 				currentIdentity: {
@@ -127,25 +102,25 @@
 					{ icon: '/static/icons/image.png', label: '图片发起', path: '/pages/contract-create/h5-create?type=image' },
 					{ icon: '/static/icons/draft.png', label: '批量发起', path: '' }
 				],
-				// 热门模板数据（固定模板ID）
+				// 热门模板数据：ID 需与 seal_template 当前系统模板保持一致
 				templates: [
 					{ 
-						id: 888,
-						name: '借条', 
+						id: 159,
+						name: '个人借条1',
 						description: '让每一份承诺都有据可依',
 						buttonLabel: '立即使用',
 						buttonColor: '#007BFF',
 						image: '/static/templates/loan.png'
 					},
 					{
-						id: 777,
-						name: '收据',
+						id: 156,
+						name: '房屋租赁收据',
 						description: '让每一笔资金流动都有迹可循',
 						image: '/static/templates/receipt.png'
 					},
 					{
-						id: 666,
-						name: '买卖',
+						id: 163,
+						name: '买卖合同',
 						description: '让每一次交易都充满安心与信赖',
 						image: '/static/templates/purchase.png'
 					}
@@ -154,20 +129,23 @@
 				features: [
 					{
 						name: '天眼审查',
-						description: 'AI一键审查合同内容，全局把控法律风险',
+						aiBadge: 'AI生成',
+						description: '人工智能生成合同审查结果，仅供参考',
 						faIcon: 'fa-eye',
 						iconColor: '#00C28A',
 						path: '/pages/contract-audit/intro' // 跳转到天眼审查宣传页
 					},
 					{
 						name: 'AI起草',
-						description: '与AI对话，快速起草专业合同',
+						aiBadge: 'AI生成',
+						description: '人工智能生成合同内容，请核对确认后使用',
 						faIcon: 'fa-robot',
 						iconColor: '#1890FF',
 						path: '/pages/ai-draft/index' // 跳转到AI起草页面
 					},
 					{
 						name: '合同验真',
+						aiBadge: '',
 						description: '上传PDF验证签名真实性与文件完整性',
 						faIcon: 'fa-shield-halved',
 						iconColor: '#667eea',
@@ -176,7 +154,68 @@
 				]
 			}
 		},
-		methods: {
+			methods: {
+				async initializeHome(): Promise<void> {
+					this.isLoggedIn = isLoggedIn();
+					this.syncHomeTabBar();
+					if (!this.isLoggedIn) {
+						this.resetGuestHome();
+						return;
+					}
+
+					try {
+						await getSealToken();
+					} catch (error) {
+						console.error('[首页] sealToken 获取失败:', error);
+					}
+					this.loadIdentityFromStorage();
+					await this.getUserInfo();
+					this.loadContractSummary();
+				},
+
+				resetGuestHome(): void {
+					this.showIdentityDropdown = false;
+					this.currentIdentity = {
+						type: 'personal',
+						id: '',
+						name: '个人',
+						verified: false,
+						role: ''
+					};
+					this.userInfo = { id: '', name: '', isVerified: false };
+					this.enterprises = [];
+					this.personalQuota = 0;
+					this.enterpriseQuotaMap = {};
+					this.statusData = [
+						{ label: '签署中', count: 0, color: '#1890FF' },
+						{ label: '填写表单', count: 0, color: '#FAAD14' },
+						{ label: '已完成', count: 0, color: '#00C28A' }
+					];
+				},
+
+				/**
+				 * 原生 TabBar 会先切换页面再触发页面生命周期，无法做点击前鉴权。
+				 * 游客态用首页内的可控导航替代，登录后恢复原生 TabBar。
+				 */
+				syncHomeTabBar(): void {
+					if (this.isLoggedIn) {
+						uni.showTabBar({ animation: false });
+						return;
+					}
+					uni.hideTabBar({ animation: false });
+				},
+
+				handleGuestTabClick(path: string): void {
+					if (path === '/pages/index/index') {
+						return;
+					}
+					// 不显示延迟 Toast，直接打开登录页并保留回跳目标。
+					requireLogin(path, false);
+				},
+
+				ensureLoggedIn(redirectUrl: string): boolean {
+					return requireLogin(redirectUrl, true);
+				},
 			getSafeTop(): number {
 				try {
 					const sys: any = uni.getSystemInfoSync();
@@ -272,6 +311,7 @@
 			handleItemClick(item: any): void {
 				// 如果是状态摘要项，跳转到合同管理页面并设置对应的状态筛选
 				if (item.label === '签署中') {
+					if (!this.ensureLoggedIn('/pages/contract-manage/index')) return;
 					uni.switchTab({
 						url: '/pages/contract-manage/index'
 					});
@@ -281,6 +321,7 @@
 				}
 				
 				if (item.label === '填写表单') {
+					if (!this.ensureLoggedIn('/pages/contract-manage/index')) return;
 					uni.switchTab({
 						url: '/pages/contract-manage/index'
 					});
@@ -289,6 +330,7 @@
 				}
 				
 				if (item.label === '已完成') {
+					if (!this.ensureLoggedIn('/pages/contract-manage/index')) return;
 					uni.switchTab({
 						url: '/pages/contract-manage/index'
 					});
@@ -298,6 +340,7 @@
 				
 				// 如果是快速发起项或特色服务项，检查是否有路径
 				if (item.path) {
+					if (!this.ensureLoggedIn(item.path)) return;
 					uni.navigateTo({
 						url: item.path
 					})
@@ -306,8 +349,10 @@
 				
 				// 如果是热门模板项，跳转到模板详情页
 				if (item.id != null && item.name) {
+					const templateUrl = `/pages/template-detail/index?id=${item.id}`;
+					if (!this.ensureLoggedIn(templateUrl)) return;
 					uni.navigateTo({
-						url: `/pages/template-detail/index?id=${item.id}`
+						url: templateUrl
 					});
 					return;
 				}
@@ -321,6 +366,9 @@
 			
 			// 处理快速发起项点击（先检测H5服务，再跳转）
 			async handleQuickStartClick(item: any): Promise<void> {
+				const targetUrl = item.path || '/pages/template-market/index';
+				if (!this.ensureLoggedIn(targetUrl)) return;
+
 				// 批量发起已迁移到模板详情页面
 				if (item.label === '批量发起') {
 					uni.showModal({
@@ -466,6 +514,8 @@
 			
 			// 处理特色服务点击
 			handleFeatureClick(feature: any): void {
+				if (!this.ensureLoggedIn(feature.path)) return;
+
 				// 判断是否是 tabBar 页面
 				const tabBarPages = [
 					'/pages/index/index',
@@ -610,6 +660,8 @@
 			
 			// 切换身份下拉菜单
 			toggleIdentityDropdown(): void {
+				if (!this.ensureLoggedIn('/pages/profile/index')) return;
+
 				// 在用户未实名认证的情况下，不允许打开身份切换菜单
 				if (!this.userInfo.isVerified) {
 					uni.showToast({
@@ -791,9 +843,9 @@
 					
 					// 更新状态摘要数据
 					this.statusData = [
-						{ label: '签署中', count: stats.signingCount, color: '#1890FF' },
-						{ label: '填写表单', count: stats.formFillingCount, color: '#FAAD14' },
-						{ label: '已完成', count: stats.completedCount, color: '#00C28A' }
+						{ label: '签署中', count: stats.signingCount || 0, color: '#1890FF' },
+						{ label: '填写表单', count: stats.formFillingCount || 0, color: '#FAAD14' },
+						{ label: '已完成', count: stats.completedCount || 0, color: '#00C28A' }
 					];
 					
 					console.log('统计数据加载成功');
@@ -949,8 +1001,7 @@
 						<!-- 极简状态项结构 -->
 						<view class="status-count-wrapper">
 							<text class="status-count" :style="{ color: item.color }">{{ item.count }}</text>
-							<!-- 给每个项目固定添加红点，通过定位确保显示在右上角 -->
-							<view class="notification-indicator" v-if="index < 2"></view>
+							<view class="notification-indicator" v-if="item.count > 0"></view>
 						</view>
 						<text class="status-label">{{ item.label }}</text>
 					</view>
@@ -990,9 +1041,12 @@
 						<view class="feature-icon-container" :style="{ backgroundColor: feature.iconColor + '10' }">
 							<text class="fa feature-fa-icon" :class="feature.faIcon" :style="{ color: feature.iconColor }"></text>
 						</view>
-						<view class="feature-content">
-							<text class="feature-name">{{ feature.name }}</text>
-							<text class="feature-description">{{ feature.description }}</text>
+							<view class="feature-content">
+								<view class="feature-title-row">
+									<text class="feature-name">{{ feature.name }}</text>
+									<text v-if="feature.aiBadge != ''" class="feature-ai-badge">{{ feature.aiBadge }}</text>
+								</view>
+								<text class="feature-description">{{ feature.description }}</text>
 						</view>
 						<view class="feature-arrow-container">
 							<text class="feature-arrow">›</text>
@@ -1008,8 +1062,24 @@
 			</view>
 			
 			<!-- 底部占位，防止内容被TabBar遮挡 -->
-			<view class="bottom-placeholder"></view>
+			<view class="bottom-placeholder" :class="{ 'guest-bottom-placeholder': !isLoggedIn }"></view>
 		</scroll-view>
+
+		<!-- 游客导航：点击受保护项时在页面切换前进入登录页 -->
+		<view v-if="!isLoggedIn" class="guest-tab-bar">
+			<view class="guest-tab-item guest-tab-item-active" @click="handleGuestTabClick('/pages/index/index')">
+				<image class="guest-tab-icon" src="/static/tabbar/home-active.png" mode="aspectFit"></image>
+				<text class="guest-tab-text guest-tab-text-active">首页</text>
+			</view>
+			<view class="guest-tab-item" @click="handleGuestTabClick('/pages/contract-manage/index')">
+				<image class="guest-tab-icon" src="/static/tabbar/contract.png" mode="aspectFit"></image>
+				<text class="guest-tab-text">合同管理</text>
+			</view>
+			<view class="guest-tab-item" @click="handleGuestTabClick('/pages/profile/index')">
+				<image class="guest-tab-icon" src="/static/tabbar/profile.png" mode="aspectFit"></image>
+				<text class="guest-tab-text">个人中心</text>
+			</view>
+		</view>
 		
 		<!-- 隐私协议引导弹窗 -->
 		<PrivacyGuideModal 
@@ -1574,12 +1644,28 @@
 	.feature-content {
 		flex: 1;
 	}
+
+	.feature-title-row {
+		flex-direction: row;
+		align-items: center;
+	}
 	
 	.feature-name {
 		font-size: 28rpx;
 		color: #333333;
 		font-weight: 500;
 		margin-bottom: 8rpx;
+	}
+
+	.feature-ai-badge {
+		margin-left: 12rpx;
+		margin-bottom: 8rpx;
+		padding: 2rpx 10rpx;
+		border-radius: 12rpx;
+		background-color: #E8F8F3;
+		color: #00A878;
+		font-size: 20rpx;
+		line-height: 28rpx;
 	}
 	
 	.feature-description {
@@ -1630,6 +1716,47 @@
 	.bottom-placeholder {
 		height: 120rpx;
 	}
+
+	.guest-bottom-placeholder {
+		height: calc(120rpx + env(safe-area-inset-bottom));
+	}
+
+	.guest-tab-bar {
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		height: 100rpx;
+		padding-bottom: env(safe-area-inset-bottom);
+		background-color: #FFFFFF;
+		border-top-width: 1rpx;
+		border-top-color: #E5E5E5;
+		flex-direction: row;
+		z-index: 800;
+	}
+
+	.guest-tab-item {
+		width: 33.3333%;
+		height: 100rpx;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.guest-tab-icon {
+		width: 46rpx;
+		height: 46rpx;
+		margin-bottom: 2rpx;
+	}
+
+	.guest-tab-text {
+		font-size: 20rpx;
+		line-height: 26rpx;
+		color: #999999;
+	}
+
+	.guest-tab-text-active {
+		color: #00C28A;
+	}
 	
 	/* 热门模板卡片特殊样式 */
 	.hot-templates.card {
@@ -1651,4 +1778,4 @@
 		z-index: 9999;
 		box-shadow: 0 0 0 2rpx #FFFFFF;
 	}
-</style> 
+</style>

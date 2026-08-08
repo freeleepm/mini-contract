@@ -1,14 +1,20 @@
 {
-  "name": "Contract.Pro",
+  "name": "何方签",
   "version": "1.0.0",
-  "description": "Contract.Pro电子合同应用",
+  "description": "何方签电子合同应用",
   "main": "main.uts",
   "scripts": {
     "predev": "node scripts/sync-app-name.js",
     "dev": "npx @dcloudio/uniapp-cli dev",
     "prebuild": "node scripts/sync-app-name.js",
     "build": "npx @dcloudio/uniapp-cli build",
-    "sync-name": "node scripts/sync-app-name.js"
+    "sync-name": "node scripts/sync-app-name.js",
+    "check:mp-package": "node scripts/check-mp-package-budget.js",
+    "check:login-consent": "node scripts/check-login-consent.js",
+    "check:guest-home": "node scripts/check-guest-home-auth.js",
+    "check:ai-disclosure": "node scripts/check-ai-draft-disclosure.js",
+    "check:pay-openid": "node scripts/check-pay-openid.js",
+    "check:mini-payment": "node scripts/check-mini-program-payment.js"
   },
   "dependencies": {
     "@dcloudio/uni-ui": "^1.5.8",

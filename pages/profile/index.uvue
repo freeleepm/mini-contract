@@ -48,8 +48,9 @@
 		data() {
 			return {
 				// 品牌信息（从集中配置获取）
-				versionText: APP_VERSION_TEXT,
-				safeTop: 0,
+					versionText: APP_VERSION_TEXT,
+					safeTop: 0,
+					authenticatedInitialized: false,
 				// 用户信息
 				userInfo: {
 					id: '', // 添加用户ID
@@ -112,23 +113,12 @@
 			}
 		},
 		
-	onLoad() {
-		try {
-			this.safeTop = this.getSafeTop();
-			// 重置销毁标记
-			this.isDestroyed = false;
-			
-			// 检查登录状态
-			if (!checkAuthAndRedirect(false)) {
-				return;
-			}
-			
-			// 获取用户信息
-			this.getUserInfo();
-			
-			// 从本地存储加载上次选择的身份
-			this.loadIdentityFromStorage();
-		} catch (error) {
+		onLoad() {
+			try {
+				this.safeTop = this.getSafeTop();
+				// 重置销毁标记
+				this.isDestroyed = false;
+			} catch (error) {
 			console.error('onLoad 执行出错:', error);
 		}
 	},
@@ -139,10 +129,19 @@
 			// 重置销毁标记
 			this.isDestroyed = false;
 			
-			// 检查登录状态
-			if (!checkAuthAndRedirect(false)) {
-				return;
-			}
+				// TabBar 首次进入会连续触发 onLoad/onShow，只在 onShow 导航登录
+				if (!checkAuthAndRedirect(false, '/pages/profile/index')) {
+					uni.hideTabBar({ animation: false });
+					this.authenticatedInitialized = false;
+					this.lastLoadTime = 0;
+					return;
+				}
+				uni.showTabBar({ animation: false });
+
+				if (!this.authenticatedInitialized) {
+					this.loadIdentityFromStorage();
+					this.authenticatedInitialized = true;
+				}
 			
 			// 避免重复请求：只有在未加载或距离上次加载超过30秒时才重新获取
 			const now = Date.now();
@@ -551,15 +550,6 @@
 						if (identity && identity.type === 'enterprise' && identity.id) {
 							console.log('使用当前选中的企业进行认证，企业ID:', identity.id);
 							
-							// 查找当前选中企业的完整信息
-							let currentEnterprise: EnterpriseItem | undefined = undefined;
-							if (this.enterprises && this.enterprises.length > 0) {
-								currentEnterprise = this.enterprises.find(item => item.id === identity.id);
-							}
-							
-							// 确保企业信息保存到本地存储
-							this.prepareEnterpriseData(identity.id, currentEnterprise);
-							
 							// 跳转到认证页面
 							uni.navigateTo({
 								url: `/pages/kyc/enterprise/index?id=${identity.id}`
@@ -578,9 +568,6 @@
 						const firstEnterprise = this.enterprises[0];
 						console.log('使用企业列表中的第一个企业进行认证，企业ID:', firstEnterprise.id);
 						
-						// 确保企业信息保存到本地存储
-						this.prepareEnterpriseData(firstEnterprise.id, firstEnterprise);
-						
 						uni.navigateTo({
 							url: `/pages/kyc/enterprise/index?id=${firstEnterprise.id}`
 						});
@@ -591,118 +578,11 @@
 					console.error('读取企业列表失败:', e);
 				}
 				
-				// 以上方法都失败了，创建默认企业
-				let defaultEnterpriseId = "default_enterprise_" + Date.now();
-				let defaultEnterpriseName = "我的企业";
-				
-				// 定义企业列表项类型
-				interface EnterpriseListItem {
-					id: string;
-					name: string;
-					logo: string;
-					status: EnterpriseStatus;
-					certStatus: string;
-					role: number;
-				}
-				
-				// 创建企业列表（如果不存在）
-				try {
-					let enterprises = uni.getStorageSync('enterpriseList');
-					let enterpriseList: EnterpriseListItem[] = [];
-					
-					if (enterprises) {
-						enterpriseList = JSON.parse(enterprises) as EnterpriseListItem[];
-					}
-					
-					// 检查是否已经有默认企业
-					let defaultEnterprise: EnterpriseListItem | undefined = enterpriseList.find(item => item.name === defaultEnterpriseName);
-					
-					if (!defaultEnterprise) {
-						// 创建默认企业并添加到列表中
-						defaultEnterprise = {
-							id: defaultEnterpriseId,
-							name: defaultEnterpriseName,
-							logo: '/static/icons/blue-icon.png',
-							status: EnterpriseStatus.UNVERIFIED, // 未认证状态(0)
-							certStatus: 'pending',
-							role: 1 // 所有者角色
-						};
-						
-						enterpriseList.push(defaultEnterprise);
-						uni.setStorageSync('enterpriseList', JSON.stringify(enterpriseList));
-					}
-					
-					// 使用企业ID跳转到认证页面
-					uni.navigateTo({
-						url: `/pages/kyc/enterprise/index?id=${defaultEnterprise.id}`
-					});
-				} catch (e) {
-					console.error('创建默认企业失败:', e);
-					// 出错时仍尝试跳转，使用临时ID
-					uni.navigateTo({
-						url: `/pages/kyc/enterprise/index?id=${defaultEnterpriseId}`
-					});
-				}
-				
+				// 企业必须先由后端创建，不能使用临时 ID 伪造本地企业。
+				uni.navigateTo({
+					url: '/pages/enterprise/add'
+				});
 				this.closeIdentityDropdown();
-			},
-			
-			// 准备企业数据，确保企业信息保存到本地存储
-			prepareEnterpriseData(enterpriseId: string | number, enterpriseData: EnterpriseItem | undefined) {
-				// 定义企业列表项类型
-				interface EnterpriseListItem {
-					id: string | number;
-					name: string;
-					logo: string;
-					status: EnterpriseStatus;
-					certStatus: string;
-					role: number;
-				}
-				
-				try {
-					// 读取企业列表
-					let enterprises = uni.getStorageSync('enterpriseList');
-					let enterpriseList: EnterpriseListItem[] = [];
-					
-					if (enterprises) {
-						enterpriseList = JSON.parse(enterprises) as EnterpriseListItem[];
-					}
-					
-					// 检查企业是否已在列表中
-					const index = enterpriseList.findIndex(item => item.id === enterpriseId);
-					
-					if (index === -1) {
-						// 如果不在列表中且有企业数据，则添加到列表
-						if (enterpriseData) {
-							const enterprise: EnterpriseListItem = {
-								id: enterpriseData.id,
-								name: enterpriseData.name,
-								logo: '/static/icons/blue-icon.png',
-								status: enterpriseData.verified ? EnterpriseStatus.VERIFIED : EnterpriseStatus.UNVERIFIED,
-								certStatus: enterpriseData.verified ? 'approved' : 'pending',
-								role: enterpriseData.role === '所有者' ? 1 : (enterpriseData.role === '管理员' ? 2 : 3)
-							};
-							
-							enterpriseList.push(enterprise);
-							console.log('添加企业到本地存储:', enterprise);
-						}
-					} else if (enterpriseData) {
-						// 如果在列表中且有企业数据，则更新信息
-						enterpriseList[index] = {
-							...enterpriseList[index],
-							name: enterpriseData.name,
-							status: enterpriseData.verified ? EnterpriseStatus.VERIFIED : EnterpriseStatus.UNVERIFIED,
-							certStatus: enterpriseData.verified ? 'approved' : 'pending',
-							role: enterpriseData.role === '所有者' ? 1 : (enterpriseData.role === '管理员' ? 2 : 3)
-						};
-						console.log('更新本地存储的企业信息:', enterpriseList[index]);
-					}
-					
-					// 保存回本地存储
-					uni.setStorageSync('enterpriseList', JSON.stringify(enterpriseList));
-				} catch (e) {
-					console.error('准备企业数据失败:', e);
-				}
 			},
 			
 			// 添加新企业
@@ -718,25 +598,6 @@
 			goToPersonalInfo() {
 				uni.navigateTo({
 					url: '/pages/profile/personal-info'
-				});
-			},
-			
-			// 导航到签名管理页
-			goToSignatures() {
-				// 未认证用户点击时，也应该提示去认证
-				if (!this.userInfo.isVerified) {
-					this.promptForVerification();
-					return;
-				}
-				uni.navigateTo({
-					url: '/pages/profile/signatures'
-				});
-			},
-			
-			// 导航到通知设置页
-			goToNotifications() {
-				uni.navigateTo({
-					url: '/pages/profile/notifications'
 				});
 			},
 			
@@ -1206,17 +1067,6 @@
 							<view class="quota-badge">
 								<text class="quota-badge-text">{{ quotaBalance }}份</text>
 							</view>
-							<text class="icon icon-chevron-right"></text>
-						</view>
-					</view>
-					<view class="menu-item" hover-class="menu-item-hover" @click="goToNotifications">
-						<view class="menu-icon">
-							<text class="icon icon-bell"></text>
-						</view>
-						<view class="menu-content">
-							<text class="menu-title">通知设置</text>
-						</view>
-						<view class="menu-arrow">
 							<text class="icon icon-chevron-right"></text>
 						</view>
 					</view>
@@ -2372,4 +2222,4 @@
 		padding: 2rpx 8rpx;
 		border-radius: 16rpx;
 	}
-</style> 
+</style>

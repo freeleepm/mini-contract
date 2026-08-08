@@ -19,6 +19,7 @@ import { getSealToken, clearSealToken } from '@/utils/sealTokenManager'
 
 // 社交类型 - 微信公众号 (对应 SocialType.WECHAT_MP)
 const SOCIAL_TYPE: number = 31
+const NEED_BIND_MOBILE_CODE: number = 1004003008
 
 /**
  * 存储 openid 到本地
@@ -116,7 +117,7 @@ async function getLoginUrl(event: string = 'login'): Promise<string | null> {
  * @param state 状态码（回调时传入）
  * @returns 登录结果
  */
-export async function login(code: string = '', state: string = ''): Promise<boolean | SocialLoginResponse> {
+export async function login(code: string = '', state: string = ''): Promise<boolean | SocialLoginResponse | string> {
     console.log('[WechatOfficialAccount] 开始登录流程...')
     
     // #ifdef H5
@@ -159,8 +160,16 @@ export async function login(code: string = '', state: string = ''): Promise<bool
         return response
     } catch (error) {
         console.error('[WechatOfficialAccount] 登录失败:', error)
+        const errorCode = ((error as any)?.code as number | null) ?? 0
+        const errorMessage = ((error as any)?.message as string | null) ?? ''
+        if (errorCode === NEED_BIND_MOBILE_CODE || errorMessage.includes('绑定手机号')) {
+            console.log('[WechatOfficialAccount] 社交账号未绑定手机号，跳转绑定手机号页')
+            const bindUrl = `/pages/register/index?socialType=${SOCIAL_TYPE}&socialCode=${encodeURIComponent(code)}&socialState=${encodeURIComponent(state || 'default')}`
+            uni.redirectTo({ url: bindUrl })
+            return 'needBindMobile'
+        }
         uni.showToast({
-            title: (error as any)?.message || '登录失败',
+            title: errorMessage || '登录失败',
             icon: 'none'
         })
         return false

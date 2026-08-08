@@ -1,14 +1,16 @@
 {
 	"pages": [
 		{
-			"path": "pages/login/index",
+			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "登录",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black",
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "何方签",
+				"navigationBarBackgroundColor": "#00C28A",
+				"navigationBarTextStyle": "white",
 				"app-plus": {
 					"titleNView": false  // 禁用原生导航栏，使用自定义导航栏
-				}
+				},
+				"enablePullDownRefresh": true
 			}
 		},
 		{
@@ -31,16 +33,14 @@
 			}
 		},
 		{
-			"path": "pages/index/index",
+			"path": "pages/login/index",
 			"style": {
-				"navigationStyle": "custom",
-				"navigationBarTitleText": "Contract.Pro",
-				"navigationBarBackgroundColor": "#00C28A",
-				"navigationBarTextStyle": "white",
+				"navigationBarTitleText": "登录",
+				"navigationBarBackgroundColor": "#FFFFFF",
+				"navigationBarTextStyle": "black",
 				"app-plus": {
 					"titleNView": false  // 禁用原生导航栏，使用自定义导航栏
-				},
-				"enablePullDownRefresh": true
+				}
 			}
 		},
 		{
@@ -87,14 +87,6 @@
 				"navigationBarTextStyle": "black"
 			}
 		},
-		{
-			"path": "pages/profile/signatures",
-			"style": {
-				"navigationBarTitleText": "签名管理",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
-			}
-		},
 	{
 		"path": "pages/profile/seals",
 		"style": {
@@ -115,14 +107,6 @@
 			}
 		}
 	},
-		{
-			"path": "pages/profile/notifications",
-			"style": {
-				"navigationBarTitleText": "通知设置",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
-			}
-		},
 		{
 			"path": "pages/profile/settings",
 			"style": {
@@ -172,82 +156,6 @@
 			}
 		},
 		{
-			"path": "pages/enterprise/list",
-			"style": {
-				"navigationBarTitleText": "我的企业",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
-			}
-		},
-		{
-			"path": "pages/enterprise/add",
-			"style": {
-				"navigationBarTitleText": "添加企业",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
-			}
-		},
-		{
-			"path": "pages/enterprise/members",
-			"style": {
-				"navigationBarTitleText": "成员管理",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black",
-				"enablePullDownRefresh": true
-			}
-		},
-		{
-			"path": "pages/enterprise/member-invite",
-			"style": {
-				"navigationBarTitleText": "邀请成员",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
-			}
-		},
-		{
-			"path": "pages/enterprise/member-edit",
-			"style": {
-				"navigationBarTitleText": "编辑成员",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
-			}
-		},
-		{
-			"path": "pages/enterprise/detail",
-			"style": {
-				"navigationBarTitleText": "企业详情",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
-			}
-		},
-		{
-			"path": "pages/enterprise/seals",
-			"style": {
-				"navigationBarTitleText": "企业印章",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
-			}
-		},
-		{
-			"path": "pages/enterprise/seal-create",
-			"style": {
-				"navigationBarTitleText": "创建印章",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black",
-				"app-plus": {
-					"titleNView": false  // H5页面不需要原生导航栏
-				}
-			}
-		},
-		{
-			"path": "pages/enterprise/seal-authorize",
-			"style": {
-				"navigationBarTitleText": "印章授权",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
-			}
-		},
-		{
 			"path": "pages/contract-create/h5-create",
 			"style": {
 				"navigationBarTitleText": "创建合同",
@@ -256,59 +164,6 @@
 				"app-plus": {
 					"titleNView": false  // H5页面不需要原生导航栏
 				}
-			}
-		},
-		{
-			"path": "pages/ai-draft/index",
-			"style": {
-				"navigationBarTitleText": "AI起草",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black",
-				"enablePullDownRefresh": false
-			}
-		},
-		{
-			"path": "pages/ai-draft/history",
-			"style": {
-				"navigationBarTitleText": "对话历史",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black",
-				"enablePullDownRefresh": true
-			}
-		},
-		{
-			"path": "pages/ai-draft/detail",
-			"style": {
-				"navigationBarTitleText": "对话详情",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black",
-				"app-plus": {
-					"titleNView": false
-				}
-			}
-		},
-		{
-			"path": "pages/ai-draft/chat",
-			"style": {
-				"navigationBarTitleText": "AI对话",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
-			}
-		},
-		{
-			"path": "pages/ai-draft/editor",
-			"style": {
-				"navigationBarTitleText": "合同编辑",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
-			}
-		},
-		{
-			"path": "pages/ai-draft/preview",
-			"style": {
-				"navigationBarTitleText": "合同预览",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
 			}
 		},
 		{
@@ -344,47 +199,6 @@
 				"app-plus": {
 					"titleNView": false  // 禁用原生导航栏，使用自定义导航栏
 				}
-			}
-		},
-		{
-			"path": "pages/contract-audit/intro",
-			"style": {
-				"navigationBarTitleText": "天眼审查",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
-			}
-		},
-		{
-			"path": "pages/contract-audit/history",
-			"style": {
-				"navigationBarTitleText": "审查历史",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black",
-				"enablePullDownRefresh": true
-			}
-		},
-		{
-			"path": "pages/contract-audit/progress",
-			"style": {
-				"navigationBarTitleText": "审查进度",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
-			}
-		},
-		{
-			"path": "pages/contract-audit/report",
-			"style": {
-				"navigationBarTitleText": "审查报告",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
-			}
-		},
-		{
-			"path": "pages/contract-audit/risk-detail",
-			"style": {
-				"navigationBarTitleText": "风险详情",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
 			}
 		},
 		{
@@ -491,33 +305,9 @@
 			}
 		},
 		{
-			"path": "pages/quota/purchase",
-			"style": {
-				"navigationBarTitleText": "购买套餐",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
-			}
-		},
-		{
-			"path": "pages/quota/logs",
-			"style": {
-				"navigationBarTitleText": "变动记录",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
-			}
-		},
-		{
-			"path": "pages/quota/pay",
-			"style": {
-				"navigationBarTitleText": "订单支付",
-				"navigationBarBackgroundColor": "#FFFFFF",
-				"navigationBarTextStyle": "black"
-			}
-		},
-		{
 			"path": "pages/share/landing",
 			"style": {
-				"navigationBarTitleText": "Contract.Pro",
+				"navigationBarTitleText": "何方签",
 				"navigationBarBackgroundColor": "#FFFFFF",
 				"navigationBarTextStyle": "black"
 			}
@@ -550,11 +340,225 @@
 					}
 				}
 			]
+		},
+		{
+			"root": "pages/enterprise",
+			"pages": [
+				{
+					"path": "list",
+					"style": {
+						"navigationBarTitleText": "我的企业",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black"
+					}
+				},
+				{
+					"path": "add",
+					"style": {
+						"navigationBarTitleText": "添加企业",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black"
+					}
+				},
+				{
+					"path": "members",
+					"style": {
+						"navigationBarTitleText": "成员管理",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black",
+						"enablePullDownRefresh": true
+					}
+				},
+				{
+					"path": "member-invite",
+					"style": {
+						"navigationBarTitleText": "邀请成员",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black"
+					}
+				},
+				{
+					"path": "member-edit",
+					"style": {
+						"navigationBarTitleText": "编辑成员",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black"
+					}
+				},
+				{
+					"path": "detail",
+					"style": {
+						"navigationBarTitleText": "企业详情",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black"
+					}
+				},
+				{
+					"path": "seals",
+					"style": {
+						"navigationBarTitleText": "企业印章",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black"
+					}
+				},
+				{
+					"path": "seal-create",
+					"style": {
+						"navigationBarTitleText": "创建印章",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black",
+						"app-plus": {
+							"titleNView": false
+						}
+					}
+				},
+				{
+					"path": "seal-authorize",
+					"style": {
+						"navigationBarTitleText": "印章授权",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black"
+					}
+				}
+			]
+		},
+		{
+			"root": "pages/ai-draft",
+			"pages": [
+				{
+					"path": "index",
+					"style": {
+						"navigationBarTitleText": "AI起草",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black",
+						"enablePullDownRefresh": false
+					}
+				},
+				{
+					"path": "history",
+					"style": {
+						"navigationBarTitleText": "对话历史",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black",
+						"enablePullDownRefresh": true
+					}
+				},
+				{
+					"path": "detail",
+					"style": {
+						"navigationBarTitleText": "对话详情",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black",
+						"app-plus": {
+							"titleNView": false
+						}
+					}
+				},
+				{
+					"path": "chat",
+					"style": {
+						"navigationBarTitleText": "AI对话",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black"
+					}
+				},
+				{
+					"path": "editor",
+					"style": {
+						"navigationBarTitleText": "合同编辑",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black"
+					}
+				},
+				{
+					"path": "preview",
+					"style": {
+						"navigationBarTitleText": "合同预览",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black"
+					}
+				}
+			]
+		},
+		{
+			"root": "pages/contract-audit",
+			"pages": [
+				{
+					"path": "intro",
+					"style": {
+						"navigationBarTitleText": "天眼审查",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black"
+					}
+				},
+				{
+					"path": "history",
+					"style": {
+						"navigationBarTitleText": "审查历史",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black",
+						"enablePullDownRefresh": true
+					}
+				},
+				{
+					"path": "progress",
+					"style": {
+						"navigationBarTitleText": "审查进度",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black"
+					}
+				},
+				{
+					"path": "report",
+					"style": {
+						"navigationBarTitleText": "审查报告",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black"
+					}
+				},
+				{
+					"path": "risk-detail",
+					"style": {
+						"navigationBarTitleText": "风险详情",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black"
+					}
+				}
+			]
+		},
+		{
+			"root": "pages/quota",
+			"pages": [
+				{
+					"path": "purchase",
+					"style": {
+						"navigationBarTitleText": "购买套餐",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black"
+					}
+				},
+				{
+					"path": "logs",
+					"style": {
+						"navigationBarTitleText": "变动记录",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black"
+					}
+				},
+				{
+					"path": "pay",
+					"style": {
+						"navigationBarTitleText": "订单支付",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black"
+					}
+				}
+			]
 		}
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "Contract.Pro",
+		"navigationBarTitleText": "何方签",
 		"navigationBarBackgroundColor": "#F8F8F8",
 		"backgroundColor": "#F7F9FC"
 	},

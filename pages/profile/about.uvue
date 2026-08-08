@@ -1,5 +1,5 @@
 <script>
-	import { APP_NAME, APP_VERSION, APP_BUILD_NUMBER, APP_DESCRIPTION, getCopyrightText } from '../../config/app.config';
+	import { APP_NAME, APP_VERSION, APP_BUILD_NUMBER, APP_DESCRIPTION, APP_OFFICIAL_WEBSITE, APP_SERVICE_EMAIL, APP_SERVICE_PHONE, getCopyrightText } from '../../config/app.config';
 	
 	/**
 	 * 关于页面
@@ -21,9 +21,9 @@
 						'实时通知提醒'
 					],
 					contact: {
-						website: 'https://www.example.com',
-						email: 'support@example.com',
-						phone: '400-123-4567'
+						website: APP_OFFICIAL_WEBSITE,
+						email: APP_SERVICE_EMAIL,
+						phone: APP_SERVICE_PHONE
 					},
 					copyright: getCopyrightText()
 				}
@@ -64,30 +64,13 @@
 			
 			// 访问官网
 			visitWebsite(): void {
-				// 在实际环境中应使用系统浏览器打开
-				uni.showToast({
-					title: '即将跳转到官网',
-					icon: 'none'
-				});
-			},
-			
-			// 检查更新
-			checkUpdate(): void {
-				uni.showLoading({
-					title: '检查中...'
-				});
-				
-				// 模拟检查更新
-				setTimeout(() => {
-					uni.hideLoading();
-					
-					uni.showModal({
-						title: '检查更新',
-						content: '当前已是最新版本',
-						showCancel: false,
-						confirmText: '确定'
-					});
-				}, 1500);
+				// H5/公众号环境打开官网；其它端复制地址兜底。
+				// #ifdef H5
+				window.location.href = this.appInfo.contact.website;
+				// #endif
+				// #ifndef H5
+				this.copyText(this.appInfo.contact.website);
+				// #endif
 			}
 		}
 	}
@@ -161,13 +144,6 @@
 					<text class="agreement-text">隐私政策</text>
 					<text class="icon icon-right"></text>
 				</view>
-			</view>
-			
-			<!-- 检查更新按钮 -->
-			<view class="update-button-container">
-				<button class="update-button" @click="checkUpdate">
-					<text class="button-text">检查更新</text>
-				</button>
 			</view>
 			
 			<!-- 版权信息 -->
@@ -349,24 +325,6 @@
 		color: #CCCCCC;
 	}
 	
-	/* 检查更新按钮 */
-	.update-button-container {
-		margin-bottom: 40rpx;
-	}
-	
-	.update-button {
-		background-color: #00C28A;
-		height: 90rpx;
-		border-radius: 12rpx;
-		justify-content: center;
-		align-items: center;
-	}
-	
-	.update-button .button-text {
-		font-size: 32rpx;
-		color: #FFFFFF;
-	}
-	
 	/* 版权信息 */
 	.copyright {
 		align-items: center;
@@ -377,4 +335,4 @@
 		font-size: 26rpx;
 		color: #999999;
 	}
-</style> 
+</style>

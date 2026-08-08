@@ -1,5 +1,6 @@
 <script>
-	import { get, put } from '@/api/index'
+	import { get, put, uploadFileAdvanced } from '@/api/index'
+	import { UPLOAD_CONFIG } from '@/config/app.config'
 	/**
 	 * 个人信息页面
 	 */
@@ -8,6 +9,7 @@
 			return {
 				userInfo: {
 					name: '',
+					realName: '',
 					phone: '',
 					avatar: '/static/logo.png',
 					gender: '未知',
@@ -18,13 +20,18 @@
 					verifyStatus: 0 // 新增：实名认证状态码
 				},
 				isEditingName: false,
-				newName: ''
+				newName: '',
+				avatarUploading: false
 			}
 		},
 		onLoad() {
 			this.getUserInfo()
 		},
 		methods: {
+			isRemoteAvatarUrl(avatar: string): boolean {
+				return !!avatar && (avatar.startsWith('http://') || avatar.startsWith('https://'))
+			},
+
 			// 获取用户信息
 			async getUserInfo(): Promise<void> {
 				try {
@@ -33,10 +40,11 @@
 					console.log('个人信息页获取用户数据:', JSON.stringify(res))
 					
 					this.userInfo.name = res.nickname || ''
+					this.userInfo.realName = res.name || ''
 					this.userInfo.phone = res.mobile || ''
 					
 					// 如果后端返回了头像URL，则使用后端返回的头像
-					if (res.avatar) {
+					if (res.avatar && this.isRemoteAvatarUrl(res.avatar)) {
 						this.userInfo.avatar = res.avatar
 						console.log('设置用户头像:', res.avatar)
 					}
@@ -78,61 +86,131 @@
 			
 			// 修改头像
 			changeAvatar(): void {
+				if (this.avatarUploading) {
+					return
+				}
+
 				uni.chooseImage({
 					count: 1,
-					sizeType: ['original', 'compressed'],
+					sizeType: ['compressed'],
 					sourceType: ['album', 'camera'],
 					success: (res) => {
-						if (res.tempFilePaths.length > 0) {
-							// TODO: 缺少文件上传接口，暂时只在本地预览
-								this.userInfo.avatar = res.tempFilePaths[0];
-								uni.showToast({
-								title: '头像已在本地更换，上传功能待实现',
-								icon: 'none'
-								});
+						if (res.tempFilePaths.length === 0) {
+							return
 						}
+						this.uploadAvatar(res.tempFilePaths[0])
+					},
+					fail: (error) => {
+						console.error('选择头像失败:', error)
 					}
 				});
 			},
+
+			getImageExtension(filePath: string): string {
+				const pathOnly = (filePath.split('?')[0] || '').split('#')[0] || ''
+				const dotIdx = pathOnly.lastIndexOf('.')
+				let ext = dotIdx >= 0 ? pathOnly.substring(dotIdx + 1).toLowerCase() : 'jpg'
+				if (!UPLOAD_CONFIG.ALLOWED_TYPES.IMAGE.includes(ext)) {
+					ext = 'jpg'
+				}
+				return ext
+			},
+
+			getImageMimeType(ext: string): string {
+				if (ext === 'jpg') {
+					return 'image/jpeg'
+				}
+				return `image/${ext}`
+			},
+
+			async uploadAvatar(filePath: string): Promise<void> {
+				this.avatarUploading = true
+				uni.showLoading({
+					title: '头像上传中...'
+				})
+
+				try {
+					const ext = this.getImageExtension(filePath)
+					const timestamp = new Date().getTime()
+					const randomPart = Math.floor(Math.random() * 10000)
+					const fileName = `avatar_${timestamp}_${randomPart}.${ext}`
+
+					const avatarUrl = await uploadFileAdvanced(filePath, {
+						fileName,
+						directory: UPLOAD_CONFIG.DIRECTORIES.AVATAR,
+						fileType: this.getImageMimeType(ext),
+						onProgress: (percent: number) => {
+							uni.showLoading({
+								title: `头像上传中 ${percent}%`
+							})
+						}
+					})
+
+					await put('/api/v1/member/user/update', {
+						avatar: avatarUrl,
+						sex: this.userInfo.sex
+					})
+
+					this.userInfo.avatar = avatarUrl
+					uni.hideLoading()
+					uni.showToast({
+						title: '头像更新成功',
+						icon: 'success'
+					})
+				} catch (error: any) {
+					uni.hideLoading()
+					console.error('头像上传失败:', error)
+					uni.showToast({
+						title: (error && error.message) ? error.message : '头像上传失败',
+						icon: 'none'
+					})
+				} finally {
+					this.avatarUploading = false
+				}
+			},
 			
-			// 开始编辑姓名
+			// 开始编辑昵称
 			startEditName(): void {
 				this.newName = this.userInfo.name;
 				this.isEditingName = true;
 			},
 			
-			// 保存姓名
+			// 保存昵称
 			async saveName(): Promise<void> {
 				if (!this.newName.trim()) {
 					uni.showToast({
-						title: '姓名不能为空',
+						title: '昵称不能为空',
 						icon: 'none'
 					});
 					return;
 				}
 				
 				try {
-					await put('/api/v1/member/user/update', {
+					const updateData: any = {
 						nickname: this.newName,
-						avatar: this.userInfo.avatar,
 						sex: this.userInfo.sex
-					})
+					}
+					if (this.isRemoteAvatarUrl(this.userInfo.avatar)) {
+						updateData.avatar = this.userInfo.avatar
+					}
 
-					this.userInfo.name = this.newName;
+					await put('/api/v1/member/user/update', updateData)
+	
 					this.isEditingName = false;
+					this.userInfo.name = this.newName;
 					uni.showToast({
-						title: '姓名修改成功',
+						title: '昵称修改成功',
 						icon: 'success'
 					});
 				} catch (error: any) {
 					uni.showToast({
-						title: (error && error.message) ? error.message : '姓名修改失败',
+						title: (error && error.message) ? error.message : '昵称修改失败',
 						icon: 'none'
 					});
 				}
 			},
 			
-			// 取消编辑姓名
+			// 取消编辑昵称
 			cancelEditName(): void {
 				this.isEditingName = false;
 			},
@@ -168,7 +246,7 @@
 				<view class="avatar-content" @click="changeAvatar" hover-class="avatar-content-hover">
 					<image class="avatar" :src="userInfo.avatar" mode="aspectFill"></image>
 					<view class="avatar-overlay">
-						<text class="change-text">点击更换</text>
+						<text class="change-text">{{ avatarUploading ? '上传中' : '点击更换' }}</text>
 					</view>
 				</view>
 			</view>
@@ -179,27 +257,33 @@
 					<text class="title-text">基本信息</text>
 				</view>
 					
-					<!-- 姓名 -->
-					<view class="info-item">
-						<text class="item-label">姓名</text>
-						<view v-if="!isEditingName" class="item-value-container">
-							<text class="item-value">{{userInfo.name}}</text>
-							<view class="edit-button" @click="startEditName" hover-class="edit-button-hover">
-								<text class="edit-button-text">修改</text>
-							</view>
-						</view>
-						<view v-else class="item-edit-container">
-							<input class="item-input" v-model="newName" placeholder="请输入姓名" />
-							<view class="edit-actions">
-								<view class="action-button cancel-button" @click="cancelEditName" hover-class="cancel-button-hover">
-									<text class="action-button-text">取消</text>
-								</view>
-								<view class="action-button save-button" @click="saveName" hover-class="save-button-hover">
-									<text class="action-button-text">保存</text>
+						<!-- 昵称 -->
+						<view class="info-item">
+							<text class="item-label">昵称</text>
+							<view v-if="!isEditingName" class="item-value-container">
+								<text class="item-value">{{userInfo.name}}</text>
+								<view class="edit-button" @click="startEditName" hover-class="edit-button-hover">
+									<text class="edit-button-text">修改</text>
 								</view>
 							</view>
+							<view v-else class="item-edit-container">
+								<input class="item-input" v-model="newName" placeholder="请输入昵称" />
+								<view class="edit-actions">
+									<view class="action-button cancel-button" @click="cancelEditName" hover-class="cancel-button-hover">
+										<text class="action-button-text">取消</text>
+									</view>
+									<view class="action-button save-button" @click="saveName" hover-class="save-button-hover">
+										<text class="action-button-text">保存</text>
+									</view>
+								</view>
+							</view>
 						</view>
-					</view>
+
+						<!-- 姓名 -->
+						<view class="info-item">
+							<text class="item-label">姓名</text>
+							<text class="item-value">{{userInfo.realName || '-'}}</text>
+						</view>
 					
 					<!-- 手机号 -->
 					<view class="info-item" @click="goChangePhone">
@@ -423,7 +507,7 @@
 		color: #00C28A;
 		font-weight: 500;
 	}
-	
+
 	/* 编辑输入框 */
 	.item-edit-container {
 		flex: 1;

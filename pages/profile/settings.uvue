@@ -1,39 +1,13 @@
 <script>
+	import { APP_VERSION } from '../../config/app.config';
+
 	/**
 	 * 设置页面
 	 */
 	export default {
 		data() {
 			return {
-				settings: {
-					// 安全设置
-					security: {
-						faceVerify: true,  // 人脸验证
-						gestureLock: false, // 手势锁
-						biometrics: true    // 生物识别（指纹/面容）
-					},
-					// 签署设置
-					signing: {
-						autoSave: true,     // 自动保存草稿
-						previewBeforeSign: true, // 签署前预览
-						signatureNotify: true    // 签署提醒
-					},
-					// 隐私设置
-					privacy: {
-						historyRecord: true,  // 保存历史记录
-						locationService: false, // 位置服务
-						dataAnalysis: true     // 数据分析
-					},
-					// 清理缓存
-					cache: {
-						size: '23.5MB'  // 缓存大小
-					},
-					// 关于
-					about: {
-						version: 'v1.0.0',  // 版本号
-						buildNumber: '20230615'  // 构建号
-					}
-				},
+				appVersion: APP_VERSION,
 				// 是否显示退出登录确认框
 				showLogoutConfirm: false
 			}
@@ -42,41 +16,6 @@
 			// 返回上一页
 			goBack(): void {
 				uni.navigateBack();
-			},
-			
-			// 切换开关设置
-			toggleSetting(group: string, key: string): void {
-				this.settings[group][key] = !this.settings[group][key];
-				this.saveSettings();
-			},
-			
-			// 保存设置
-			saveSettings(): void {
-				// 模拟保存设置
-				console.log('保存设置:', JSON.stringify(this.settings));
-				uni.showToast({
-					title: '设置已保存',
-					icon: 'success',
-					duration: 1000
-				});
-			},
-			
-			// 清理缓存
-			clearCache(): void {
-				uni.showLoading({
-					title: '清理中...'
-				});
-				
-				// 模拟清理缓存
-				setTimeout(() => {
-					uni.hideLoading();
-					this.settings.cache.size = '0KB';
-					
-					uni.showToast({
-						title: '缓存已清理',
-						icon: 'success'
-					});
-				}, 1500);
 			},
 			
 			// 跳转到关于页面
@@ -179,118 +118,6 @@
 						<text class="icon icon-chevron-right"></text>
 					</view>
 					
-					<!-- 人脸验证 -->
-					<view class="setting-item">
-						<text class="item-label">登录人脸验证</text>
-						<switch 
-							:checked="settings.security.faceVerify" 
-							color="#00C28A" 
-							class="small-switch"
-							@change="toggleSetting('security', 'faceVerify')"
-						/>
-					</view>
-					
-					<!-- 手势锁 -->
-					<view class="setting-item">
-						<text class="item-label">手势锁</text>
-						<switch 
-							:checked="settings.security.gestureLock" 
-							color="#00C28A" 
-							class="small-switch"
-							@change="toggleSetting('security', 'gestureLock')"
-						/>
-					</view>
-					
-					<!-- 生物识别 -->
-					<view class="setting-item">
-						<text class="item-label">生物识别登录</text>
-						<switch 
-							:checked="settings.security.biometrics" 
-							color="#00C28A" 
-							class="small-switch"
-							@change="toggleSetting('security', 'biometrics')"
-						/>
-					</view>
-				</view>
-				
-				<!-- 签署设置 -->
-				<view class="setting-section">
-					<view class="section-title">
-						<text class="title-text">签署设置</text>
-					</view>
-					
-					<!-- 自动保存草稿 -->
-					<view class="setting-item">
-						<text class="item-label">自动保存草稿</text>
-						<switch 
-							:checked="settings.signing.autoSave" 
-							color="#00C28A" 
-							class="small-switch"
-							@change="toggleSetting('signing', 'autoSave')"
-						/>
-					</view>
-					
-					<!-- 签署前预览 -->
-					<view class="setting-item">
-						<text class="item-label">签署前预览</text>
-						<switch 
-							:checked="settings.signing.previewBeforeSign" 
-							color="#00C28A" 
-							class="small-switch"
-							@change="toggleSetting('signing', 'previewBeforeSign')"
-						/>
-					</view>
-					
-					<!-- 签署提醒 -->
-					<view class="setting-item">
-						<text class="item-label">签署提醒</text>
-						<switch 
-							:checked="settings.signing.signatureNotify" 
-							color="#00C28A" 
-							class="small-switch"
-							@change="toggleSetting('signing', 'signatureNotify')"
-						/>
-					</view>
-				</view>
-				
-				<!-- 隐私设置 -->
-				<view class="setting-section">
-					<view class="section-title">
-						<text class="title-text">隐私设置</text>
-					</view>
-					
-					<!-- 保存历史记录 -->
-					<view class="setting-item">
-						<text class="item-label">保存历史记录</text>
-						<switch 
-							:checked="settings.privacy.historyRecord" 
-							color="#00C28A" 
-							class="small-switch"
-							@change="toggleSetting('privacy', 'historyRecord')"
-						/>
-					</view>
-					
-					<!-- 位置服务 -->
-					<view class="setting-item">
-						<text class="item-label">位置服务</text>
-						<switch 
-							:checked="settings.privacy.locationService" 
-							color="#00C28A" 
-							class="small-switch"
-							@change="toggleSetting('privacy', 'locationService')"
-						/>
-					</view>
-					
-					<!-- 数据分析 -->
-					<view class="setting-item">
-						<text class="item-label">数据分析</text>
-						<switch 
-							:checked="settings.privacy.dataAnalysis" 
-							color="#00C28A" 
-							class="small-switch"
-							@change="toggleSetting('privacy', 'dataAnalysis')"
-						/>
-					</view>
 				</view>
 				
 				<!-- 通用设置 -->
@@ -299,20 +126,11 @@
 						<text class="title-text">通用</text>
 					</view>
 					
-					<!-- 清理缓存 -->
-					<view class="setting-item" @click="clearCache">
-						<text class="item-label">清理缓存</text>
-						<view class="item-right">
-							<text class="item-value">{{settings.cache.size}}</text>
-							<text class="icon icon-chevron-right"></text>
-						</view>
-					</view>
-					
 					<!-- 关于我们 -->
 					<view class="setting-item" @click="goToAbout">
 						<text class="item-label">关于我们</text>
 						<view class="item-right">
-							<text class="item-value">{{settings.about.version}}</text>
+							<text class="item-value">{{appVersion}}</text>
 							<text class="icon icon-chevron-right"></text>
 						</view>
 					</view>
@@ -543,9 +361,4 @@
 		color: #F56C6C;
 		font-weight: 600;
 	}
-
-    .small-switch {
-        transform: scale(0.8);
-        transform-origin: 100% 50%;
-    }
-</style> 
+</style>

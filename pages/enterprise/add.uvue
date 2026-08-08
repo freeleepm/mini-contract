@@ -149,30 +149,206 @@
 			
 			// 上传营业执照（使用真实上传流程）
 			uploadLicense(): void {
+				console.log('[Enterprise-Add][License] 点击营业执照上传入口');
+				this.chooseLicenseImage((tempFilePath) => {
+					console.log('[Enterprise-Add][License] 已选择/拍摄营业执照, tempFilePath=', tempFilePath);
+					this.uploadLicenseImage(tempFilePath);
+				});
+			},
+
+			// 小程序优先使用 chooseMedia；chooseImage 在微信基础库 2.21.0 后已停止维护。
+			chooseLicenseImage(onSuccess): void {
+				console.log('[Enterprise-Add][Media] chooseLicenseImage start');
+				this.ensureMediaPrivacyAuthorized(() => {
+					console.log('[Enterprise-Add][Media] 隐私授权通过，准备调用媒体选择API');
+					// #ifdef MP-WEIXIN
+					const uniObj = uni;
+					if (uniObj && typeof uniObj.chooseMedia === 'function') {
+						console.log('[Enterprise-Add][Media] 使用 chooseMedia');
+						uniObj.chooseMedia({
+							count: 1,
+							mediaType: ['image'],
+							sourceType: ['album', 'camera'],
+							sizeType: ['compressed'],
+							camera: 'back',
+							success: (res) => {
+								console.log('[Enterprise-Add][Media] chooseMedia success:', JSON.stringify(res));
+								const tempFilePath = this.resolveChooseMediaPath(res);
+								if (!tempFilePath) {
+									this.handleLicenseImageFail(new Error('未获取到图片路径'));
+									return;
+								}
+								onSuccess(tempFilePath);
+							},
+							fail: (error) => {
+								console.warn('[Enterprise-Add][Media] chooseMedia fail:', JSON.stringify(error));
+								if (this.isMediaAuthorizationError(error)) {
+									this.handleLicenseImageFail(error);
+									return;
+								}
+								console.warn('[Enterprise-Add][Media] chooseMedia 不可用，尝试 chooseImage fallback');
+								this.chooseImageFallback(onSuccess);
+							},
+							complete: (res) => {
+								console.log('[Enterprise-Add][Media] chooseMedia complete:', JSON.stringify(res));
+							}
+						});
+						return;
+					}
+					// #endif
+
+					this.chooseImageFallback(onSuccess);
+				});
+			},
+
+			ensureMediaPrivacyAuthorized(onGranted): void {
+				console.log('[Enterprise-Add][Privacy] 检查微信隐私授权');
+				// #ifdef MP-WEIXIN
+				const wxObj = wx;
+				if (wxObj && typeof wxObj.getPrivacySetting === 'function') {
+					wxObj.getPrivacySetting({
+						success: (res) => {
+							console.log('[Enterprise-Add][Privacy] getPrivacySetting success:', JSON.stringify(res));
+							if (res && res.needAuthorization === true && typeof wxObj.requirePrivacyAuthorize === 'function') {
+								console.log('[Enterprise-Add][Privacy] 需要隐私授权，调用 requirePrivacyAuthorize');
+								wxObj.requirePrivacyAuthorize({
+									success: () => {
+										console.log('[Enterprise-Add][Privacy] requirePrivacyAuthorize success');
+										onGranted();
+									},
+									fail: (error) => {
+										console.error('[Enterprise-Add][Privacy] requirePrivacyAuthorize fail:', JSON.stringify(error));
+										this.handleLicenseImageFail(error);
+									}
+								});
+								return;
+							}
+							onGranted();
+						},
+						fail: (error) => {
+							console.warn('[Enterprise-Add][Privacy] getPrivacySetting fail，继续尝试媒体API:', JSON.stringify(error));
+							onGranted();
+						}
+					});
+					return;
+				}
+				// #endif
+				console.log('[Enterprise-Add][Privacy] 非微信或无隐私API，直接继续');
+				onGranted();
+			},
+
+			chooseImageFallback(onSuccess): void {
+				console.log('[Enterprise-Add][Media] 使用 chooseImage fallback');
 				uni.chooseImage({
 					count: 1,
-					sizeType: ['original', 'compressed'],
+					sizeType: ['compressed'],
 					sourceType: ['album', 'camera'],
-					success: async (res) => {
-						const tempFilePath = res.tempFilePaths[0];
-						
-						try {
-							uni.showLoading({ title: '上传中...' });
-							// 使用前端直传到 OSS，并记录文件
-							const url = await uploadFileAdvanced(tempFilePath, {
-								directory: 'license'
-							});
-							this.enterpriseInfo.licenseUrl = url;
-
-							uni.showToast({ title: '营业执照上传成功', icon: 'success' });
-						} catch (error) {
-							console.error('营业执照上传失败', error);
-							uni.showToast({ title: '上传失败，请重试', icon: 'none' });
-						} finally {
-							uni.hideLoading();
+					success: (res) => {
+						console.log('[Enterprise-Add][Media] chooseImage success:', JSON.stringify(res));
+						if (!res || !res.tempFilePaths || res.tempFilePaths.length === 0) {
+							this.handleLicenseImageFail(new Error('未获取到图片路径'));
+							return;
 						}
+						onSuccess(res.tempFilePaths[0]);
+					},
+					fail: (error) => {
+						console.error('[Enterprise-Add][Media] chooseImage fail:', JSON.stringify(error));
+						this.handleLicenseImageFail(error);
+					},
+					complete: (res) => {
+						console.log('[Enterprise-Add][Media] chooseImage complete:', JSON.stringify(res));
 					}
 				});
+			},
+
+			isMediaAuthorizationError(error): boolean {
+				const errMsg = error && (error.errMsg || error.message) ? (error.errMsg || error.message) : '';
+				const lowerMsg = errMsg.toLowerCase();
+				return lowerMsg.indexOf('cancel') >= 0
+					|| lowerMsg.indexOf('privacy') >= 0
+					|| lowerMsg.indexOf('requiredprivateinfos') >= 0
+					|| lowerMsg.indexOf('declared') >= 0
+					|| lowerMsg.indexOf('隐私') >= 0
+					|| lowerMsg.indexOf('auth') >= 0
+					|| lowerMsg.indexOf('authorize') >= 0
+					|| lowerMsg.indexOf('permission') >= 0
+					|| lowerMsg.indexOf('denied') >= 0
+					|| lowerMsg.indexOf('scope.camera') >= 0;
+			},
+
+			resolveChooseMediaPath(res): string {
+				if (res && res.tempFiles && res.tempFiles.length > 0 && res.tempFiles[0]) {
+					return res.tempFiles[0].tempFilePath || res.tempFiles[0].path || '';
+				}
+				if (res && res.tempFilePaths && res.tempFilePaths.length > 0) {
+					return res.tempFilePaths[0];
+				}
+				return '';
+			},
+
+			handleLicenseImageFail(error): void {
+				uni.hideLoading();
+				console.error('[Enterprise-Add][Media] 营业执照选择失败:', error);
+				const errMsg = error && (error.errMsg || error.message) ? (error.errMsg || error.message) : '';
+				const lowerMsg = errMsg.toLowerCase();
+				if (lowerMsg.indexOf('cancel') >= 0) {
+					uni.showToast({ title: '已取消上传', icon: 'none' });
+					return;
+				}
+				const privacyBlocked = lowerMsg.indexOf('privacy') >= 0
+					|| lowerMsg.indexOf('requiredprivateinfos') >= 0
+					|| lowerMsg.indexOf('declared') >= 0
+					|| lowerMsg.indexOf('隐私') >= 0;
+				if (privacyBlocked) {
+					const privacyMessage = errMsg
+						? `营业执照上传需要先同意小程序隐私协议。\n\n微信返回：${errMsg}`
+						: '营业执照上传需要先同意小程序隐私协议；如果仍无法打开，请检查微信公众平台隐私协议是否已声明图片/相机用途。';
+					uni.showModal({
+						title: '需要隐私授权',
+						content: privacyMessage,
+						showCancel: false
+					});
+					return;
+				}
+				const permissionDenied = lowerMsg.indexOf('auth') >= 0
+					|| lowerMsg.indexOf('authorize') >= 0
+					|| lowerMsg.indexOf('permission') >= 0
+					|| lowerMsg.indexOf('denied') >= 0
+					|| lowerMsg.indexOf('scope.camera') >= 0;
+				if (permissionDenied) {
+					uni.showModal({
+						title: '需要相机权限',
+						content: '上传营业执照需要拍照或选择图片，请在设置中允许使用相机。',
+						confirmText: '去设置',
+						success: (res) => {
+							if (res.confirm) {
+								uni.openSetting({});
+							}
+						}
+					});
+					return;
+				}
+				uni.showToast({ title: '选择图片失败，请重试', icon: 'none' });
+			},
+
+			async uploadLicenseImage(tempFilePath): Promise<void> {
+				console.log('[Enterprise-Add][License] 开始上传营业执照, tempFilePath=', tempFilePath);
+				try {
+					uni.showLoading({ title: '上传中...' });
+					const url = await uploadFileAdvanced(tempFilePath, {
+						directory: 'license'
+					});
+					console.log('[Enterprise-Add][License] 营业执照上传完成, url=', url);
+					this.enterpriseInfo.licenseUrl = url;
+					this.validation.licenseUrl.valid = true;
+					this.validation.licenseUrl.message = '';
+					uni.showToast({ title: '营业执照上传成功', icon: 'success' });
+				} catch (error) {
+					console.error('[Enterprise-Add][License] 营业执照上传失败:', error);
+					uni.showToast({ title: '上传失败，请重试', icon: 'none' });
+				} finally {
+					uni.hideLoading();
+				}
 			},
 			
 			// 验证所有表单字段
@@ -694,4 +870,4 @@
 		line-height: 1;
 		text-rendering: auto;
 	}
-</style> 
+</style>

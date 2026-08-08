@@ -27,7 +27,10 @@ export default {
 			loading: true,
 			
 			// 错误信息
-			errorMessage: ''
+			errorMessage: '',
+
+			// 防止 WebView 重复投递创建成功消息
+			completionHandled: false
 		}
 	},
 	
@@ -200,14 +203,15 @@ export default {
 			console.log('[企业印章创建] 收到消息:', e);
 			
 			const messages = e.detail.data;
-			if (!messages || messages.length === 0) {
-								return;
-							}
-							
-			const data = messages[messages.length - 1];
+			if (!messages) return;
+			const data = Array.isArray(messages)
+				? (messages.length > 0 ? messages[messages.length - 1] : null)
+				: messages;
+			if (!data) return;
 			console.log('[企业印章创建] 处理消息:', data);
 			
-			switch(data.type) {
+			const messageType = data.type || data.action;
+			switch(messageType) {
 				case 'seal-created':
 					this.handleSealCreated(data.data);
 					break;
@@ -229,6 +233,8 @@ export default {
 		 * 印章创建成功处理
 		 */
 		handleSealCreated(sealInfo) {
+			if (this.completionHandled) return;
+			this.completionHandled = true;
 			console.log('[企业印章创建] 创建成功:', sealInfo);
 			
 			uni.hideLoading();
@@ -239,13 +245,8 @@ export default {
 				duration: 1500
 			});
 			
-			setTimeout(() => {
-				// 返回上一页并触发刷新事件
-				uni.navigateBack();
-				
-				// 发送全局事件通知企业印章列表刷新
-				uni.$emit('refreshEnterpriseSealList');
-			}, 1500);
+			// H5 页面负责关闭 WebView，宿主只触发列表刷新。
+			uni.$emit('refreshEnterpriseSealList');
 		},
 		
 		/**

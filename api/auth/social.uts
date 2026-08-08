@@ -63,6 +63,18 @@ export interface SocialUserInfo {
 }
 
 /**
+ * 微信小程序码生成参数
+ */
+export interface WxaQrcodeRequest {
+    scene: string
+    path: string
+    width?: number
+    autoColor?: boolean
+    checkPath?: boolean
+    hyaline?: boolean
+}
+
+/**
  * 获取社交授权跳转URL
  * @param type 社交类型
  * @param redirectUri 回调地址
@@ -111,6 +123,13 @@ export function getSocialUser(type: number): Promise<SocialUserInfo | null> {
     return get<SocialUserInfo | null>('/api/v1/member/social-user/get', {
         type: type
     })
+}
+
+/**
+ * 获取微信官方小程序码（Base64 PNG）
+ */
+export function getWxaQrcode(data: WxaQrcodeRequest): Promise<string> {
+    return post<string>('/api/v1/member/social-user/wxa-qrcode', data)
 }
 
 /**

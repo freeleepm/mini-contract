@@ -6,6 +6,28 @@
 import { getBaseURL } from '../../config/app.config';
 
 /**
+ * 构建合同下载文件名：使用合同名称，清理系统不允许的文件名字符，并自动补 .pdf
+ */
+export function buildContractDownloadFileName(contractName?: string | null): string {
+	let fileName = (contractName == null ? '' : contractName).trim();
+	if (fileName.length == 0) {
+		fileName = '合同';
+	}
+	fileName = fileName
+		.replace(/[\\/:*?"<>|]/g, '_')
+		.replace(/\s+/g, ' ')
+		.replace(/\.+$/g, '')
+		.trim();
+	if (fileName.length == 0) {
+		fileName = '合同';
+	}
+	if (!fileName.toLowerCase().endsWith('.pdf')) {
+		fileName = fileName + '.pdf';
+	}
+	return fileName;
+}
+
+/**
  * 下载合同文件
  * @param fileUrl 文件URL（可能是相对路径或完整URL）
  * @param fileName 文件名（可选）
@@ -14,6 +36,7 @@ export async function downloadContractFile(fileUrl: string, fileName?: string): 
 	if (!fileUrl) {
 		throw new Error('文件URL不能为空');
 	}
+	const finalFileName = buildContractDownloadFileName(fileName || '合同');
 	
 	// 🔧 处理URL：如果是相对路径，拼接完整URL
 	let downloadUrl = fileUrl;
@@ -43,7 +66,7 @@ export async function downloadContractFile(fileUrl: string, fileName?: string): 
 					// 🔧 条件编译：不同平台使用不同的保存方式
 					// #ifdef APP-PLUS
 					// App端：保存到相册或文件管理器
-					saveFileToLocal(tempFilePath, fileName || 'contract.pdf')
+					saveFileToLocal(tempFilePath, finalFileName)
 						.then(() => {
 							uni.hideLoading();
 							uni.showToast({
@@ -66,7 +89,7 @@ export async function downloadContractFile(fileUrl: string, fileName?: string): 
 					
 					// #ifdef H5
 					// H5端：使用浏览器下载
-					downloadFileInBrowser(tempFilePath, fileName || 'contract.pdf');
+					downloadFileInBrowser(tempFilePath, finalFileName);
 					uni.hideLoading();
 					uni.showToast({
 						title: '下载成功',
@@ -287,4 +310,3 @@ export async function previewFile(fileUrl: string): Promise<void> {
 		});
 	});
 }
-

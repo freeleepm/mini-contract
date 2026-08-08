@@ -51,6 +51,7 @@ import {
 import H5LoadingContainer from '../../components/H5LoadingContainer.uvue';
 import H5ErrorContainer from '../../components/H5ErrorContainer.uvue';
 import { buildSignShareConfig, buildDefaultShareConfig } from '../../utils/share';
+import { APP_SERVICE_EMAIL, APP_SERVICE_PHONE } from '../../config/app.config';
 
 export default {
 	components: {
@@ -76,7 +77,10 @@ export default {
 			errorMessage: '' as string,
 			
 			// 错误类型（仅用于运行时错误）
-			errorType: '' as string
+			errorType: '' as string,
+
+			// 防止 WebView 重复投递签署完成消息
+			completionHandled: false as boolean
 		}
 	},
 	
@@ -235,7 +239,10 @@ export default {
 		handleMessage(e: any): void {
 			console.log('[H5签署] 收到H5消息:', e);
 			
-			const data = e.detail.data[0];
+			const messages = e.detail.data;
+			const data = Array.isArray(messages)
+				? (messages.length > 0 ? messages[messages.length - 1] : null)
+				: messages;
 			
 			if (!data) {
 				console.warn('[H5签署] 消息数据为空');
@@ -243,15 +250,16 @@ export default {
 			}
 			
 			// 处理签署完成消息
-			if (data.type === 'signComplete') {
+			const messageType = data.type || data.action;
+			if (messageType === 'signComplete') {
 				this.handleSignComplete(data);
 			}
 			// 处理签署取消消息
-			else if (data.type === 'signCancel') {
+			else if (messageType === 'signCancel') {
 				this.handleSignCancel();
 			}
 			// 处理签署错误消息
-			else if (data.type === 'signError') {
+			else if (messageType === 'signError') {
 				this.handleSignError(data);
 			}
 		},
@@ -260,6 +268,8 @@ export default {
 		 * 处理签署完成
 		 */
 		async handleSignComplete(data: any) {
+			if (this.completionHandled) return;
+			this.completionHandled = true;
 			console.log('[H5签署] 签署完成:', data);
 			
 			try {
@@ -277,12 +287,11 @@ export default {
 					icon: 'success',
 					duration: 2000
 				});
-				
-				// 延迟返回
-				setTimeout(() => {
-					uni.navigateBack();
-				}, 2000);
+
+				uni.$emit('contract-updated', { taskId: this.taskId });
+				// H5 成功后负责关闭 WebView，避免宿主再次 navigateBack 多退一页。
 			} catch (error) {
+				this.completionHandled = false;
 				console.error('[H5签署] 提交签署结果失败:', error);
 				uni.showToast({
 					title: '提交失败，请重试',
@@ -353,7 +362,7 @@ export default {
 		contactSupport(): void {
 			uni.showModal({
 				title: '联系客服',
-				content: '客服电话：400-xxx-xxxx\n或发送邮件至：support@example.com',
+				content: `客服电话：${APP_SERVICE_PHONE}\n或发送邮件至：${APP_SERVICE_EMAIL}`,
 				showCancel: false
 			});
 		}

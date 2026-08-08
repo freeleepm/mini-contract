@@ -152,11 +152,29 @@
 		},
 		
 		onLoad(options : any) {
-			// 解析 URL 参数
-			this.shareType = (options.type as string | null) ?? ShareType.APP;
+			// 微信官方小程序码通过 scene 传递场景参数，格式：tq_模板ID。
+			let qrcodeScene = '';
+			if (options != null && options.scene) {
+				try {
+					qrcodeScene = decodeURIComponent(options.scene as string) ?? '';
+				} catch (error : any) {
+					console.error('[分享落地页] 解析小程序码 scene 失败:', error);
+				}
+			}
+
+			if (qrcodeScene.startsWith('tq_')) {
+				this.shareType = ShareType.TEMPLATE_QR;
+				this.targetId = qrcodeScene.substring(3);
+				this.allParams.set('templateId', this.targetId);
+			} else {
+				// 普通小程序分享卡片继续使用 URL 参数。
+				this.shareType = options != null
+					? ((options.type as string | null) ?? ShareType.APP)
+					: ShareType.APP;
+			}
 			
 			// 收集所有参数
-			if (options != null) {
+			if (options != null && qrcodeScene === '') {
 				// 提取关键业务参数
 				if (options.taskId) {
 					this.targetId = options.taskId as string;
@@ -189,9 +207,15 @@
 		// #ifdef MP-WEIXIN
 		onShareAppMessage() : any {
 			const config = buildDefaultShareConfig();
+			let sharePath = `/pages/share/landing?type=${this.shareType}&taskId=${this.targetId}`;
+			if (this.shareType === ShareType.TEMPLATE || this.shareType === ShareType.TEMPLATE_QR) {
+				sharePath = `/pages/share/landing?type=${this.shareType}&templateId=${this.targetId}`;
+			} else if (this.shareType === ShareType.INVITE) {
+				sharePath = `/pages/share/landing?type=${this.shareType}&enterpriseId=${this.targetId}`;
+			}
 			return {
 				title: this.displayTitle || config.title,
-				path: `/pages/share/landing?type=${this.shareType}&taskId=${this.targetId}`,
+				path: sharePath,
 				imageUrl: config.imageUrl
 			};
 		},

@@ -2,9 +2,9 @@
   ===============
 
 
-Current Latest Version: v3.4.0 (Release Date: April 5, 2026)
+Current Latest Version: v3.5.0 (Release Date: August 8, 2026)
 
-[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.4.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
+[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.5.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
 
 
 
@@ -1936,6 +1936,18 @@ Project Screenshots
 
 ### Recent Updates
 
+##### V 3.5.0 
+
+- [x] [Fix] PC: Contract details not displaying the creator
+- [x] [Fix] Mini-program compatibility: Bug with copying signing links
+- [x] [Fix] Mini-program compatibility: Issue with failing to retrieve enterprise user information
+- [x] [Fix] Mini-program compatibility: Bug that allowed arbitrary signing even after signing positions were set
+- [x] [Fix] Mini-program: Bug with the usage count of contract templates
+- [x] [Optimize] Layout of contract templates
+- [x] [Optimize] Generated seal dimensions to better comply with national standards
+
+
+
 ##### V 3.4.0 (2026-04-05)
 
 - [x] [New] Contract details: initiators can generate and copy signing links for pending participants while status is *Signing* or *Form Filling* (one-tap copy when only one pending signer; picker when multiple)
@@ -1985,7 +1997,7 @@ Project Screenshots
 
 * Online Demo:
  https://m-sign.leepm.com (moblie) ，https://pc-sign.leepm.com (PC)
- 
+
 * official website：
 
    Https://s.leepm.com

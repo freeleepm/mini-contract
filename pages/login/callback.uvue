@@ -46,6 +46,11 @@ export default {
                     // 场景一：登录
                     this.message = '正在登录...'
                     const result = await officialAccount.login(code, state)
+                    if (result === 'needBindMobile') {
+                        this.message = '请绑定手机号'
+                        this.loading = false
+                        return
+                    }
                     success = result !== false
                 } else if (event === 'bind') {
                     // 场景二：绑定

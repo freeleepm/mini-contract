@@ -2,9 +2,9 @@
   ===============
 
 
-当前最新版本：v3.4.0 (发布时间：2026-04-05)
+当前最新版本：v3.5.0 (发布时间：2026-08-08)
 
-[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.4.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
+[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.5.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
 
 
 
@@ -1967,7 +1967,19 @@ $background-color: #F7F9FC; // 背景色
 
 ### 最近更新
 
-##### V 3.4.0（2026-04-05）
+##### V 3.5.0
+
+- [x] 【修复】PC端，合同明细不显示创建人
+- [x] 【修复】小程序 兼容问题，copy 签署链接的 bug
+- [x] 【修复】小程序 兼容问题，企业用户获得失败的问题
+- [x] 【修复】小程序 兼容问题，设置签署位置之后还是可以随意签署 bug
+- [x] 【修复】小程序当中合同模版使用次数的 bug
+- [x] 【优化】合同模版的布局方式
+- [x] 【优化】生成印章尺寸，使其更加符合国标
+
+
+
+##### V 3.4.0
 
 - [x] 【新增】合同详情：发起人可在「签署中 / 表单填写中」为待办参与方生成并复制签署链接（仅一名待办时一键复制，多名时可选择后再复制）
 - [x] 【新增】合同 API：签署链接生成等相关接口封装（如 `generateSignLink`）

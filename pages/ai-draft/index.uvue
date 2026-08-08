@@ -26,6 +26,17 @@
     <scroll-view class="content-scroll" scroll-y="true">
       <view class="content-wrapper">
 
+        <!-- AI 生成服务显著说明，用于小程序用户告知与审核 -->
+        <view class="ai-disclosure-card">
+          <view class="ai-disclosure-badge">
+            <text class="ai-disclosure-badge-text">AI生成</text>
+          </view>
+          <view class="ai-disclosure-content">
+            <text class="ai-disclosure-title">人工智能生成服务</text>
+            <text class="ai-disclosure-text">本功能使用人工智能生成合同内容，生成结果仅供参考，不构成法律意见，请您核对确认后使用。</text>
+          </view>
+        </view>
+
         <!-- 推荐话术 -->
         <view class="section">
           <view class="section-header">
@@ -399,6 +410,52 @@ export default {
 
 .content-wrapper {
     padding: 32rpx;
+}
+
+/* 人工智能生成内容告知 */
+.ai-disclosure-card {
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 24rpx;
+    margin-bottom: 36rpx;
+    background-color: #EDF6FF;
+    border-width: 2rpx;
+    border-color: #A8CCFF;
+    border-radius: 16rpx;
+}
+
+.ai-disclosure-badge {
+    flex-shrink: 0;
+    padding: 6rpx 12rpx;
+    margin-right: 18rpx;
+    background-color: #0D7CFF;
+    border-radius: 8rpx;
+}
+
+.ai-disclosure-badge-text {
+    color: #FFFFFF;
+    font-size: 22rpx;
+    font-weight: 600;
+    line-height: 30rpx;
+}
+
+.ai-disclosure-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.ai-disclosure-title {
+    color: #174A7E;
+    font-size: 28rpx;
+    font-weight: 700;
+    line-height: 38rpx;
+    margin-bottom: 8rpx;
+}
+
+.ai-disclosure-text {
+    color: #46698D;
+    font-size: 24rpx;
+    line-height: 38rpx;
 }
 
 .safe-bottom {

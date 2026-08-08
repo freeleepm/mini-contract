@@ -5,7 +5,7 @@
  */
 
 // 导入配置
-import { API_BASE_URL, TENANT_ID, TIMEOUT, UPLOAD_CONFIG } from '../config/app.config';
+import { API_BASE_URL, TENANT_ID, TIMEOUT, UPLOAD_CONFIG, APP_SERVICE_EMAIL } from '../config/app.config';
 
 // 响应数据接口
 export interface ApiResponse<T> {
@@ -191,14 +191,11 @@ async function refreshToken(): Promise<string> {
             
             const response = await new Promise<any>((resolveRefresh, rejectRefresh) => {
                 uni.request({
-                    url: buildFullUrl('/api/v1/member/auth/refresh-token'),
+                    url: buildFullUrl('/api/v1/member/auth/refresh-token') + `?refreshToken=${encodeURIComponent(refreshToken)}`,
                     method: 'POST',
                     header: {
                         'Content-Type': 'application/json',
                         'tenant-id': TENANT_ID
-                    },
-                    data: {
-                        refreshToken: refreshToken
                     },
                     success: (res: any) => {
                         console.log('📥 刷新Token响应状态:', res.statusCode);
@@ -665,7 +662,7 @@ function executeRequest<T>(options: RequestOptions, isSealAuthApi: boolean, isSe
                             // 显示友好的授权提示弹窗
                             uni.showModal({
                                 title: '授权提示',
-                                content: `【${licenseInfo.statusDesc || '授权验证失败'}】\n\n如需获取授权，请联系：\n· 邮箱：${contact.email || 'shawn@leepm.com'}\n· 公众号：${contact.wechat || '小华同学ai'}（微信搜索关注）\n\n${licenseInfo.tip || '获取授权后，请将 License 文件放置于项目根目录并重启服务'}`,
+                                content: `【${licenseInfo.statusDesc || '授权验证失败'}】\n\n如需获取授权，请联系：\n· 邮箱：${contact.email || APP_SERVICE_EMAIL}\n· 公众号：${contact.wechat || '小华同学ai'}（微信搜索关注）\n\n${licenseInfo.tip || '获取授权后，请将 License 文件放置于项目根目录并重启服务'}`,
                                 showCancel: false,
                                 confirmText: '我知道了'
                             });
@@ -687,7 +684,9 @@ function executeRequest<T>(options: RequestOptions, isSealAuthApi: boolean, isSe
                             icon: 'none',
                             duration: 3000
                         });
-                        reject(new Error(errMsg));
+                        const error = new Error(errMsg) as any;
+                        error.code = apiResponse.code;
+                        reject(error);
                     }
                 } catch (error) {
                     console.error('❌ 处理响应数据失败:', error);
@@ -1029,6 +1028,59 @@ export function getPresignedUrl(fileName: string, directory?: string, expiration
 }
 
 /**
+ * 读取待上传文件内容。
+ * 微信小程序的临时文件使用 wxfile:// 协议，不能通过 request 当作网络地址读取。
+ */
+function readUploadFileContent(filePath: string): Promise<ArrayBuffer> {
+    return new Promise((resolve, reject) => {
+        // #ifdef MP-WEIXIN
+        try {
+            const fileSystemManager = wx.getFileSystemManager();
+            fileSystemManager.readFile({
+                filePath,
+                success: (res: any) => {
+                    const fileContent = res.data as ArrayBuffer;
+                    if (!fileContent || fileContent.byteLength === 0) {
+                        reject(new Error('读取到的文件内容为空'));
+                        return;
+                    }
+                    resolve(fileContent);
+                },
+                fail: (err: any) => {
+                    console.error('微信小程序读取文件内容失败:', err);
+                    reject(new Error(`读取文件内容失败: ${err.errMsg || ''}`));
+                }
+            });
+        } catch (error) {
+            console.error('微信小程序创建文件读取任务失败:', error);
+            reject(error);
+        }
+        // #endif
+
+        // #ifndef MP-WEIXIN
+        uni.request({
+            url: filePath,
+            method: 'GET',
+            responseType: 'arraybuffer',
+            dataType: 'text',
+            success: (res) => {
+                const fileContent = res.data as ArrayBuffer;
+                if (!fileContent || fileContent.byteLength === 0) {
+                    reject(new Error('读取到的文件内容为空'));
+                    return;
+                }
+                resolve(fileContent);
+            },
+            fail: (err) => {
+                console.error('获取文件内容失败:', err);
+                reject(new Error(`读取文件内容失败: ${err.errMsg || ''}`));
+            }
+        });
+        // #endif
+    });
+}
+
+/**
  * 直接上传文件到预签名URL
  * @param uploadUrl 预签名URL
  * @param filePath 文件路径
@@ -1048,22 +1100,10 @@ export function uploadToPresignedUrl(
 
         try {
             // 步骤1: 获取文件内容
-            // 对于 uni-app-x, chooseImage 返回 blob: URL, 我们需要先 fetch 这个 URL 获取其 ArrayBuffer 内容
             console.log('正在获取文件内容...');
-            uni.request({
-                url: filePath, // 直接请求 blob: 或 file: URL
-                method: 'GET',
-                responseType: 'arraybuffer',
-                dataType: 'text', // 防止自动JSON解析
-                success: (res) => {
-                    console.log('文件内容获取成功，数据大小:', res.data ? (res.data as ArrayBuffer).byteLength : 0);
-                    const fileContent = res.data as ArrayBuffer;
-
-                    if (!fileContent || fileContent.byteLength === 0) {
-                        reject(new Error('读取到的文件内容为空'));
-                        return;
-                    }
-
+            readUploadFileContent(filePath)
+                .then((fileContent: ArrayBuffer) => {
+                    console.log('文件内容获取成功，数据大小:', fileContent.byteLength);
                     // 步骤2: 将文件内容 PUT 到预签名 URL
                     const fileName = getFileNameFromPath(filePath);
                     let contentType = fileType;
@@ -1075,14 +1115,14 @@ export function uploadToPresignedUrl(
                     }
 
                     console.log('正在PUT上传到OSS...');
+                    // 预签名 PUT 不主动带 Content-Type，避免 OSS CORS 未放行 content-type 请求头时预检失败。
+                    const uploadHeaders: any = {};
                     const requestTask = uni.request({
                         url: uploadUrl,
                         method: 'PUT',
                         data: fileContent,
                         dataType: 'text', // OSS返回的不是JSON，设置为text避免自动JSON解析
-                        header: {
-                            'Content-Type': contentType
-                        },
+                        header: uploadHeaders,
                         success: (uploadRes) => {
                             console.log('文件上传成功，状态码:', uploadRes.statusCode);
                             console.log('OSS响应数据类型:', typeof uploadRes.data);
@@ -1108,12 +1148,8 @@ export function uploadToPresignedUrl(
                         }
                     });
                     // uni.request for PUT 不支持上传进度更新，进度模拟在 uploadFileAdvanced 中处理
-                },
-                fail: (err) => {
-                    console.error('获取文件内容失败:', err);
-                    reject(new Error(`读取文件内容失败: ${err.errMsg || ''}`));
-                }
-            });
+                })
+                .catch((error) => reject(error));
         } catch (error) {
             console.error('创建上传请求失败:', error);
             reject(error);
@@ -1645,4 +1681,4 @@ export default {
     createFileRecord,
     uploadFileAdvanced,
     simpleUpload
-}; 
+};

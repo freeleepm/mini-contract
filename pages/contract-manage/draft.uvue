@@ -23,9 +23,8 @@
       <view 
         class="draft-item" 
         v-for="item in draftList" 
-        :key="item.draft_id"
+        :key="item.id"
         @click="openDraft(item)"
-        @longpress="showDeleteConfirm(item)"
       >
         <!-- 草稿类型图标 -->
         <view class="draft-icon">
@@ -37,20 +36,12 @@
         <!-- 草稿内容 -->
         <view class="draft-content">
           <view class="draft-header">
-            <text class="draft-title">{{ item.title || '无标题草稿' }}</text>
-            <text class="draft-type">{{ getDraftTypeText(item.type) }}</text>
-          </view>
-          
-          <view class="draft-progress-container">
-            <view class="progress-label">
-              <text class="progress-status">完成进度</text>
-              <text class="progress-text">{{item.progress}}%</text>
-            </view>
-            <progress :percent="item.progress" active-color="#00C28A" background-color="#E5F7F2" stroke-width="4" />
+            <text class="draft-title">{{ item.name || '无标题草稿' }}</text>
+            <text class="draft-type">{{ getDraftTypeText(item) }}</text>
           </view>
           
           <view class="draft-footer">
-            <text class="draft-time">上次修改: {{ formatTime(item.update_time) }}</text>
+            <text class="draft-time">创建时间: {{ formatTime(item.createTime) }}</text>
             <view class="draft-action">
               <text class="action-text">继续编辑</text>
               <text class="icon icon-right"></text>
@@ -71,18 +62,16 @@
 </template>
 
 <script>
-import { getDraftList, getDraftDetail, deleteDraft } from '../../api/drafts/index.uts'
+import { getDraftList } from '../../api/drafts/index.uts'
 import { getSealPageUrl } from '../../api/seals/index'
 import { checkNetworkStatus, testH5ServiceAvailability } from '../../utils/network'
 
 // 定义草稿项类型
 interface DraftItem {
-  draft_id: string;
-  id?: string;
-  title: string;
-  type: string;
-  progress: number;
-  update_time: string;
+  id: string;
+  name: string;
+  templateId?: string;
+  createTime: string;
 }
 
 export default {
@@ -122,23 +111,16 @@ export default {
           size: this.size
         })
         
-        if (res.code === 0) {
-          const { total, list } = res.data
-          this.total = total
-          
-          if (isLoadMore) {
-            this.draftList = [...this.draftList, ...list]
-          } else {
-            this.draftList = list
-          }
-          
-          this.hasMore = this.draftList.length < total
+        const list = (res.list || []) as DraftItem[]
+        this.total = res.total || 0
+
+        if (isLoadMore) {
+          this.draftList = [...this.draftList, ...list]
         } else {
-          uni.showToast({
-            title: res.message || '获取草稿列表失败',
-            icon: 'none'
-          })
+          this.draftList = list
         }
+
+        this.hasMore = this.draftList.length < this.total
       } catch (e) {
         uni.showToast({
           title: '网络错误',
@@ -162,8 +144,8 @@ export default {
       console.log('[草稿] 继续编辑草稿:', draft)
       
       // 根据草稿类型跳转到对应的H5创建页面
-      const type = draft.type || 'template' // file/image/template
-      const draftId = draft.draft_id || draft.id
+      const type = draft.templateId ? 'template' : 'file'
+      const draftId = draft.id
       
       if (!draftId) {
         uni.showToast({
@@ -248,48 +230,6 @@ export default {
       }
     },
     
-    // 显示删除确认框
-    showDeleteConfirm(draft: DraftItem) {
-      uni.showModal({
-        title: '删除草稿',
-        content: '确定要删除这个草稿吗？删除后将无法恢复。',
-        confirmText: '删除',
-        confirmColor: '#FF3B30',
-        success: async (res) => {
-          if (res.confirm) {
-            await this.deleteDraft(draft.draft_id)
-          }
-        }
-      })
-    },
-    
-    // 删除草稿
-    async deleteDraft(draftId: string) {
-      try {
-        const res = await deleteDraft(draftId)
-        
-        if (res.code === 0) {
-          uni.showToast({
-            title: '删除成功',
-            icon: 'success'
-          })
-          // 重新加载草稿列表
-          this.loadDraftList()
-        } else {
-          uni.showToast({
-            title: res.message || '删除失败',
-            icon: 'none'
-          })
-        }
-      } catch (e) {
-        uni.showToast({
-          title: '网络错误',
-          icon: 'none'
-        })
-        console.error('删除草稿失败', e)
-      }
-    },
-    
     // 格式化时间
     formatTime(timestamp: string | number | undefined) {
       if (!timestamp) return ''
@@ -298,13 +238,8 @@ export default {
     },
     
     // 获取草稿类型文字
-    getDraftTypeText(type: string | undefined) {
-      const typeMap: Record<string, string> = {
-        'file': '文件发起',
-        'image': '图片发起',
-        'template': '模板发起'
-      }
-      return (type && typeMap[type]) || '未知类型'
+    getDraftTypeText(draft: DraftItem): string {
+      return draft.templateId ? '模板草稿' : '文件草稿'
     }
   }
 }
@@ -582,4 +517,4 @@ progress {
   font-size: 24rpx;
   color: #999999;
 }
-</style> 
+</style>

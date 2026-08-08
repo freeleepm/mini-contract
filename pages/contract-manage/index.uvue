@@ -10,7 +10,7 @@ import {
 	getContractStatusColor
 } from '../../api/contracts/index';
 import type { PageParams, Contract, ContractListResponse } from '../../api/contracts/index';
-import { downloadContractFile } from '../../api/utils/download.uts';
+import { buildContractDownloadFileName, downloadContractFile } from '../../api/utils/download.uts';
 import { checkAuthAndRedirect } from '../../api/auth';
 import { getSealPageUrl } from '../../api/seals/index';
 import { 
@@ -33,7 +33,7 @@ import KycModal from '../../components/KycModal.uvue';
 	export default {
 		// 引入实名认证守卫 Mixin
 		mixins: [kycGuardMixin],
-		
+
 		// 注册组件
 		components: {
 			KycModal
@@ -42,6 +42,7 @@ import KycModal from '../../components/KycModal.uvue';
 		data() {
 			return {
 				safeTop: 0,
+				authenticatedInitialized: false,
 			// 🔧 合同状态常量（注意：后端状态从1开始，不是0！）
 			STATUS_DRAFT: 1,
 			STATUS_SIGNING: 2,
@@ -78,9 +79,6 @@ import KycModal from '../../components/KycModal.uvue';
 		// 列表页头像最多显示数量
 		maxAvatarsShow: 4,
 
-		// 悬浮菜单展开状态
-		showFloatMenu: false,
-				
 				// 搜索相关
 				searchText: '',
 				showSearchBar: false,
@@ -147,45 +145,24 @@ import KycModal from '../../components/KycModal.uvue';
 	
 	onLoad() {
 		this.safeTop = this.getSafeTop();
-		// 检查登录状态
-		if (!checkAuthAndRedirect(false)) {
+	},
+
+	onShow() {
+		this.safeTop = this.getSafeTop();
+		if (!checkAuthAndRedirect(false, '/pages/contract-manage/index')) {
+			uni.hideTabBar({ animation: false });
+			this.authenticatedInitialized = false;
 			return;
 		}
-		
-		// 🔧 获取当前用户ID
-		// TODO: 集成登录系统后，从登录态中获取
-		try {
-			const userInfo = uni.getStorageSync('userInfo');
-			if (userInfo && userInfo.id) {
-				this.currentUserId = String(userInfo.id);
-				console.log('✅ 当前用户ID:', this.currentUserId);
-			} else {
-				// ⚠️ 临时方案：从后端获取或使用默认值
-				// 实际项目中应该从登录态获取
-				console.warn('⚠️ 未找到用户信息，使用默认用户ID: 1');
-				this.currentUserId = '1';
-			}
-		} catch (error) {
-			console.error('获取用户ID失败:', error);
-			this.currentUserId = '1';
+		uni.showTabBar({ animation: false });
+		if (!this.authenticatedInitialized) {
+			this.initializeAuthenticatedPage();
+			return;
 		}
-		
-		// 🔧 检查是否有从首页传递过来的状态筛选参数（在 onLoad 中先检查，避免先加载默认数据）
-		// 如果没有状态筛选参数，需要加载默认数据
-		this.checkAndApplyStatusFilter(true);
-		
-		// 检查实名认证状态
-		(this as any).checkKycStatus();
+		// 🔧 检查是否有从首页传递过来的状态筛选参数（tabBar 页面从其他页面返回时也会触发）
+		// 从其他页面返回时，不需要加载默认数据（避免覆盖已有数据）
+		this.checkAndApplyStatusFilter(false);
 	},
-	
-onShow() {
-	this.safeTop = this.getSafeTop();
-	// 切回页面时关闭浮动菜单
-	this.showFloatMenu = false;
-	// 🔧 检查是否有从首页传递过来的状态筛选参数（tabBar 页面从其他页面返回时也会触发）
-	// 从其他页面返回时，不需要加载默认数据（避免覆盖已有数据）
-	this.checkAndApplyStatusFilter(false);
-},
 	
 		onReachBottom() {
 			// 上拉加载更多
@@ -195,6 +172,27 @@ onShow() {
 		},
 	
 		methods: {
+			initializeAuthenticatedPage(): void {
+				try {
+					const userInfo = uni.getStorageSync('userInfo');
+					if (userInfo && userInfo.id) {
+						this.currentUserId = String(userInfo.id);
+						console.log('✅ 当前用户ID:', this.currentUserId);
+					} else {
+						const storedUserId = uni.getStorageSync('userId');
+						this.currentUserId = storedUserId ? String(storedUserId) : '';
+						console.warn('⚠️ userInfo 中没有用户ID，读取登录态 userId:', this.currentUserId);
+					}
+				} catch (error) {
+					console.error('获取用户ID失败:', error);
+					this.currentUserId = '';
+				}
+
+				this.checkAndApplyStatusFilter(true);
+				(this as any).checkKycStatus();
+				this.authenticatedInitialized = true;
+			},
+
 			getSafeTop(): number {
 				try {
 					const sys: any = uni.getSystemInfoSync();
@@ -398,7 +396,21 @@ onShow() {
 			return false;
 		}
 		
-		return String(contract.creator) === String(this.currentUserId);
+		return this.isContractInitiator(contract);
+	},
+
+	/**
+	 * 判断当前用户是否为合同发起人
+	 * initiatorId 是签署任务业务发起人字段；creator 仅作为历史兼容兜底。
+	 */
+	isContractInitiator(contract: Contract): boolean {
+		if (!contract || !this.currentUserId) return false;
+
+		const contractAny = contract as any;
+		const initiatorId = contractAny.initiatorId ?? contractAny.initiatorUserId ?? contractAny.creatorId ?? contractAny.creator;
+		if (initiatorId == null) return false;
+
+		return String(initiatorId) === String(this.currentUserId);
 	},
 		
 	/**
@@ -414,8 +426,8 @@ onShow() {
 			return false;
 		}
 		
-		// 权限检查：必须是创建者
-		if (String(contract.creator) !== String(this.currentUserId)) {
+		// 权限检查：必须是发起人
+		if (!this.isContractInitiator(contract)) {
 			return false;
 		}
 		
@@ -438,7 +450,7 @@ onShow() {
 		canDownload(contract: Contract): boolean {
 			if (contract.status !== this.STATUS_COMPLETED) return false;
 			
-			if (String(contract.creator) === String(this.currentUserId)) return true;
+			if (this.isContractInitiator(contract)) return true;
 			
 			const isParticipant = contract.participants?.some(
 				(p: any) => String(p.userId) === String(this.currentUserId)
@@ -452,9 +464,6 @@ onShow() {
 		 */
 		changeTab(tabId: string): void {
 			if (this.currentTab === tabId) return;
-			
-			// 切换 Tab 时关闭浮动菜单
-			this.showFloatMenu = false;
 			
 			console.log('🔀 切换标签:', tabId);
 			this.currentTab = tabId;
@@ -577,7 +586,7 @@ onShow() {
 			const hasParticipants = contract.participants && contract.participants.length > 0;
 			console.log(`  📋 合同${index + 1}(ID:${contract.id})`, 
 				`状态:${contract.status}`, 
-				`创建者:${contract.creator}`,
+				`发起人:${(contract as any).initiatorId ?? contract.creator}`,
 				`参与者:${hasParticipants ? contract.participants.length + '人' : '无数据❌'}`
 			);
 			if (!hasParticipants) {
@@ -1022,8 +1031,8 @@ onShow() {
 				return;
 			}
 			
-			// 生成文件名
-			const fileName = `${contract.name || '合同'}_${contract.id}.pdf`;
+			// 下载文件名使用合同名称，避免出现合同ID、时间戳等技术字段
+			const fileName = buildContractDownloadFileName(contract.name);
 			
 			// 使用统一的下载工具
 			await downloadContractFile(fileUrl, fileName);
@@ -1038,25 +1047,6 @@ onShow() {
 		}
 	},
 		
-	/**
-	 * 切换悬浮菜单显示
-	 */
-		toggleFloatMenu() {
-			this.showFloatMenu = !this.showFloatMenu;
-		},
-
-	/**
-	 * 悬浮菜单点击处理
-	 */
-		handleFloatMenuClick(action : string) {
-			this.showFloatMenu = false;
-			if (action == 'batch') {
-				uni.navigateTo({ url: '/pages/batch-create/index' });
-			} else if (action == 'single') {
-				this.navigateToCreate();
-			}
-		},
-
 	/**
 	 * 导航到创建页面（需要先验证实名认证，并检测H5服务）
 	 */
@@ -1581,20 +1571,9 @@ onShow() {
 			</view>
 		</scroll-view>
 		
-		<!-- 悬浮操作菜单 -->
-		<view class="float-menu-mask" v-if="showFloatMenu" @click="showFloatMenu = false"></view>
-		<view class="float-menu" v-if="showFloatMenu">
-			<view class="float-menu-item" @click="handleFloatMenuClick('batch')">
-				<text class="icon icon-copy float-menu-icon"></text>
-				<text class="float-menu-label">批量发起</text>
-			</view>
-			<view class="float-menu-item" @click="handleFloatMenuClick('single')">
-				<text class="icon icon-plus-circle float-menu-icon"></text>
-				<text class="float-menu-label">发起合同</text>
-			</view>
-		</view>
-		<view class="float-button create" @click="toggleFloatMenu">
-			<text class="fa float-icon" :class="showFloatMenu ? 'fa-times' : 'fa-plus'"></text>
+		<!-- 发起合同 -->
+		<view class="float-button create" @click="navigateToCreate">
+			<text class="fa fa-plus float-icon"></text>
 		</view>
 		
 		<!-- 实名认证提示弹窗 - 使用统一组件 -->
@@ -2226,47 +2205,7 @@ onShow() {
 		margin: 0 20rpx;
 	}
 	
-/* ==================== 悬浮按钮与菜单 ==================== */
-	.float-menu-mask {
-		position: fixed;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background-color: rgba(0, 0, 0, 0.35);
-		z-index: 998;
-	}
-
-	.float-menu {
-		position: fixed;
-		right: 32rpx;
-		bottom: 248rpx;
-		align-items: flex-end;
-		z-index: 999;
-	}
-
-	.float-menu-item {
-		flex-direction: row;
-		align-items: center;
-		background-color: #FFFFFF;
-		border-radius: 16rpx;
-		padding: 24rpx 36rpx;
-		margin-bottom: 20rpx;
-		box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.12);
-	}
-
-	.float-menu-icon {
-		font-size: 36rpx;
-		color: #00C28A;
-		margin-right: 16rpx;
-	}
-
-	.float-menu-label {
-		font-size: 30rpx;
-		color: #303133;
-		font-weight: 600;
-	}
-
+/* ==================== 悬浮按钮 ==================== */
 	.float-button {
 		position: fixed;
 		right: 40rpx;

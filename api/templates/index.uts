@@ -74,8 +74,7 @@ export interface Template {
     thumbnail?: string;          // 小缩略图（可选）
     isOfficial: boolean;         // 是否官方模板
     isHot: boolean;              // 是否热门模板
-    useCount?: number;           // 使用次数（兼容后端返回字段名）
-    usageCount?: number;         // 使用次数（兼容旧字段名）
+    useCount: number;            // 使用次数
     createTime: string;          // 创建时间
     updateTime: string;          // 更新时间
     baseTemplateId?: string;     // 基础模板ID（版本分组）
@@ -125,7 +124,7 @@ export function getTemplateList(params: TemplateListParams): Promise<TemplateLis
         requestParams.category = params.category;
     }
     
-    // 使用移动端专用的 search 接口，返回 AppTemplateRespVO 格式
+    // 搜索接口与其它模板列表接口返回统一的模板响应格式
     return get<any>('/api/v1/seal/seal-template/search', requestParams).then((response) => {
         // 后端返回 PageResult 格式，需要转换为前端期望的格式
         const pageSize = params.pageSize || 20;
@@ -187,7 +186,7 @@ export function getHotTemplates(limit: number = 6): Promise<Template[]> {
  * @returns 搜索结果
  */
 export function searchTemplates(keyword: string, pageNum: number = 1, pageSize: number = 20): Promise<TemplateListResponse> {
-    return get<TemplateListResponse>('/api/v1/seal/seal-template/search', { keyword, pageNum, pageSize });
+    return getTemplateList({ keyword, page: pageNum, pageSize });
 }
 
 /**

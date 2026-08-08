@@ -10,16 +10,34 @@
 				copyrightText: getCopyrightText(),
 				phone: '',
 				verificationCode: '',
+				agreementAccepted: false,
 				isLoading: false,
 				errorMessage: '',
 				countdown: 0,
-				timer: 0
+				timer: 0,
+				socialType: 0,
+				socialCode: '',
+				socialState: ''
 			}
 		},
 		computed: {
 			// 登录按钮是否禁用
 			isLoginDisabled(): boolean {
-				return !this.phone || !this.verificationCode || this.isLoading
+				return !this.phone || !this.verificationCode || !this.agreementAccepted || this.isLoading
+			},
+			isSocialBinding(): boolean {
+				return this.socialType > 0 && !!this.socialCode
+			}
+		},
+		onLoad(options: any) {
+			if (options) {
+				const socialType = Number(options.socialType || 0)
+				this.socialType = isNaN(socialType) ? 0 : socialType
+				this.socialCode = (decodeURIComponent(options.socialCode || '') as string | null) ?? ''
+				this.socialState = (decodeURIComponent(options.socialState || '') as string | null) ?? ''
+				if (this.isSocialBinding) {
+					console.log('[Register] 微信授权后绑定手机号:', this.socialType)
+				}
 			}
 		},
 		onUnload() {
@@ -30,10 +48,35 @@
 			}
 		},
 		methods: {
+			// 获取验证码和登录前都必须由用户主动勾选协议
+			ensureAgreementAccepted(): boolean {
+				if (this.agreementAccepted) {
+					uni.setStorageSync('privacyAgreementStatus', 'accepted')
+					return true
+				}
+
+				this.errorMessage = '请先阅读并勾选同意《用户协议》和《隐私政策》'
+				uni.showToast({
+					title: '请先勾选同意用户协议和隐私政策',
+					icon: 'none',
+					duration: 2000
+				})
+				return false
+			},
+
+			toggleAgreement(): void {
+				this.agreementAccepted = !this.agreementAccepted
+				if (!this.agreementAccepted) {
+					uni.removeStorageSync('privacyAgreementStatus')
+				}
+				this.errorMessage = ''
+			},
+
 			// 处理登录/注册（登录即注册）
 			async handleRegister(): Promise<void> {
 				// 清除错误信息
 				this.errorMessage = ''
+				if (!this.ensureAgreementAccepted()) return
 				
 				// 表单验证
 				if (!this.phone || !this.verificationCode) {
@@ -59,7 +102,10 @@
 					// 注意：request函数成功时只返回data字段，所以result实际上是LoginResponse类型
 					const result: LoginResponse = await smsLogin({
 						mobile: this.phone,
-						code: this.verificationCode
+						code: this.verificationCode,
+						socialType: this.isSocialBinding ? this.socialType : undefined,
+						socialCode: this.isSocialBinding ? this.socialCode : undefined,
+						socialState: this.isSocialBinding ? this.socialState : undefined
 					})
 					
 					console.log('登录/注册响应:', JSON.stringify(result))
@@ -76,7 +122,7 @@
 						
 						// 登录/注册成功，跳转到首页
 						uni.showToast({
-							title: '登录成功',
+							title: this.isSocialBinding ? '绑定成功' : '登录成功',
 							icon: 'success',
 							duration: 1500
 						})
@@ -89,7 +135,7 @@
 					
 				} catch (error : any) {
 					console.error('登录/注册失败:', error)
-					this.errorMessage = error.message || '登录失败，请稍后再试'
+					this.errorMessage = error.message || (this.isSocialBinding ? '绑定失败，请稍后再试' : '登录失败，请稍后再试')
 				} finally {
 					this.isLoading = false
 				}
@@ -99,6 +145,7 @@
 			async sendVerificationCode(): Promise<void> {
 				// 清除错误信息
 				this.errorMessage = ''
+				if (!this.ensureAgreementAccepted()) return
 				
 				// 验证手机号
 				if (!this.phone) {
@@ -241,8 +288,8 @@
 		<view class="register-form-container">
 			<view class="register-card">
 				<view class="card-header">
-					<text class="card-title">快速登录</text>
-					<text class="card-subtitle">首次验证即可完成注册</text>
+					<text class="card-title">{{ isSocialBinding ? '绑定手机号' : '快速登录' }}</text>
+					<text class="card-subtitle">{{ isSocialBinding ? '绑定后即可使用微信快捷登录' : '首次验证即可完成注册' }}</text>
 				</view>
 				
 			<!-- 错误信息提示 -->
@@ -295,9 +342,28 @@
 			<!-- 提示信息 -->
 			<view class="info-banner">
 				<text class="fa fa-info-circle info-icon"></text>
-				<text class="info-text">首次验证即可完成注册并登录</text>
+				<text class="info-text">{{ isSocialBinding ? '请绑定手机号，便于合同签署与身份匹配' : '首次验证即可完成注册并登录' }}</text>
 			</view>
 				
+				<!-- 用户协议：必须由用户主动勾选 -->
+				<view class="agreement">
+					<view class="agreement-checkbox-wrapper" @tap="toggleAgreement">
+						<view class="agreement-checkbox" :class="{ checked: agreementAccepted }">
+							<text v-if="agreementAccepted" class="fa fa-check agreement-check-icon"></text>
+						</view>
+					</view>
+					<view class="agreement-content">
+						<text class="agreement-text" @tap="toggleAgreement">我已阅读并同意</text>
+						<view @tap.stop="goToUserAgreement" class="agreement-link-wrapper">
+							<text class="agreement-link">《用户协议》</text>
+						</view>
+						<text class="agreement-text">和</text>
+						<view @tap.stop="goToPrivacyPolicy" class="agreement-link-wrapper">
+							<text class="agreement-link">《隐私政策》</text>
+						</view>
+					</view>
+				</view>
+
 				<!-- 登录按钮 -->
 				<button 
 					class="primary-button" 
@@ -305,7 +371,7 @@
 					:loading="isLoading"
 					@click="handleRegister"
 				>
-					<text class="button-text">{{ isLoading ? '登录中...' : '登 录' }}</text>
+					<text class="button-text">{{ isLoading ? (isSocialBinding ? '绑定中...' : '登录中...') : (isSocialBinding ? '绑定并登录' : '登 录') }}</text>
 				</button>
 				
 				<!-- 已有账号登录 -->
@@ -314,17 +380,6 @@
 					<text class="login-action" @click="goToLogin">密码登录</text>
 				</view>
 				
-				<!-- 用户协议 -->
-				<view class="agreement">
-					<text class="agreement-text">登录即表示您已同意</text>
-					<view @click="goToUserAgreement" class="agreement-link-wrapper">
-						<text class="agreement-link">《用户协议》</text>
-					</view>
-					<text class="agreement-text">和</text>
-					<view @click="goToPrivacyPolicy" class="agreement-link-wrapper">
-						<text class="agreement-link">《隐私政策》</text>
-					</view>
-				</view>
 			</view>
 		</view>
 		
@@ -616,10 +671,44 @@
 	/* 用户协议 */
 	.agreement {
 		flex-direction: row;
+		justify-content: flex-start;
+		align-items: center;
+		padding: 8rpx 0 24rpx;
+	}
+
+	.agreement-checkbox-wrapper {
+		width: 48rpx;
+		height: 36rpx;
+		align-items: center;
 		justify-content: center;
+		margin-right: 4rpx;
+	}
+
+	.agreement-checkbox {
+		width: 36rpx;
+		height: 36rpx;
+		border-radius: 8rpx;
+		border: 2rpx solid #C0C4CC;
+		background-color: #FFFFFF;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.agreement-checkbox.checked {
+		background-color: #00C28A;
+		border-color: #00C28A;
+	}
+
+	.agreement-check-icon {
+		font-size: 18rpx;
+		color: #FFFFFF;
+	}
+
+	.agreement-content {
+		flex: 1;
+		flex-direction: row;
 		align-items: center;
 		flex-wrap: wrap;
-		padding: 20rpx 0;
 	}
 	
 	.agreement-text {
@@ -629,7 +718,7 @@
 	}
 	
 	.agreement-link-wrapper {
-		padding: 8rpx 8rpx;
+		padding: 0 4rpx;
 		position: relative;
 		z-index: 10;
 	}
@@ -655,4 +744,4 @@
 		font-size: 24rpx;
 		color: #909399;
 	}
-</style> 
+</style>

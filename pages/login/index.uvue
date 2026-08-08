@@ -46,6 +46,7 @@
 				password: '',
 				showPassword: false,
 				rememberPassword: false,
+				agreementAccepted: false,
 				currentYear: new Date().getFullYear(),
 				errorMessage: '',
 				isLoading: false,
@@ -62,18 +63,55 @@
 		},
 	computed: {
 		isLoginDisabled() {
-			return !this.phone || !this.password;
+			return !this.phone || !this.password || !this.agreementAccepted;
 		},
 		// 是否显示微信登录按钮
 		showWechatLogin(): boolean {
 			return isWechatLoginSupported()
+		},
+		// 支付宝登录暂未开放
+		showAlipayLogin(): boolean {
+			return false
+		},
+		// 是否显示其他登录方式区域
+		showOtherLoginMethods(): boolean {
+			return this.showWechatLogin || this.showAlipayLogin
 		}
 	},
 		methods: {
+			// 登录前必须由用户主动勾选协议，不能默认或隐式同意
+			ensureAgreementAccepted(): boolean {
+				if (this.agreementAccepted) {
+					uni.setStorageSync('privacyAgreementStatus', 'accepted')
+					return true
+				}
+
+				this.errorMessage = '请先阅读并勾选同意《用户协议》和《隐私政策》'
+				uni.showToast({
+					title: '请先勾选同意用户协议和隐私政策',
+					icon: 'none',
+					duration: 2000
+				})
+				return false
+			},
+
+			toggleAgreement(): void {
+				this.agreementAccepted = !this.agreementAccepted
+				if (!this.agreementAccepted) {
+					uni.removeStorageSync('privacyAgreementStatus')
+				}
+				this.errorMessage = ''
+			},
+
+			promptAgreement(): void {
+				this.ensureAgreementAccepted()
+			},
+
 			// 处理登录
 			async handleLogin(): Promise<void> {
 				// 清除错误信息
 				this.errorMessage = ''
+				if (!this.ensureAgreementAccepted()) return
 				
 				// 表单验证
 				if (!this.phone || !this.password) {
@@ -124,13 +162,12 @@
 						// 兑换失败不影响登录，用户可以进入系统，后续会自动重试
 					}
 					
-					// 检查是否有回跳参数（签署链接登录签署模式）
-					// 如果有 redirect URL，携带 seal-token 跳转回 seal-core 签署页
-					if (this.redirectUrl && sealToken) {
-						console.log('[Login] 🔄 检测到回跳参数，携带 seal-token 跳转回签署页')
-						this.doRedirectWithToken(sealToken)
-						return
-					}
+						// 登录成功后统一处理应用内页面、TabBar 和外部 H5 回跳
+						if (this.redirectUrl) {
+							console.log('[Login] 🔄 检测到回跳参数，返回原目标页面')
+							await this.handleRedirectAfterLogin()
+							return
+						}
 					
 					// 登录成功，跳转到首页
 					uni.showToast({
@@ -188,9 +225,9 @@
 			// 处理微信登录
 			async handleWechatLogin(): Promise<void> {
 				if (this.isWechatLoading) return
-				
-				this.isWechatLoading = true
 				this.errorMessage = ''
+				if (!this.ensureAgreementAccepted()) return
+				this.isWechatLoading = true
 				
 				try {
 					console.log('[Login] 开始微信登录，平台:', this.platformName)
@@ -235,9 +272,9 @@
 			// 处理微信小程序手机号快捷登录
 			async handlePhoneLogin(e: any): Promise<void> {
 				if (this.isWechatLoading) return
-				
-				this.isWechatLoading = true
 				this.errorMessage = ''
+				if (!this.ensureAgreementAccepted()) return
+				this.isWechatLoading = true
 				
 				try {
 					console.log('[Login] 开始手机号快捷登录')
@@ -280,12 +317,24 @@
 			
 			// 处理支付宝登录
 			handleAlipayLogin(): void {
+				if (!this.ensureAgreementAccepted()) return
 				uni.showToast({
 					title: '支付宝登录功能开发中',
 					icon: 'none'
 				})
 			},
 			
+			/**
+			 * 判断是否为 TabBar 页面。TabBar 不能使用 redirectTo。
+			 */
+			isTabBarPage(path: string): boolean {
+				return [
+					'/pages/index/index',
+					'/pages/contract-manage/index',
+					'/pages/profile/index'
+				].includes(path)
+			},
+
 			/**
 			 * 已登录状态下处理回跳逻辑
 			 * 
@@ -310,9 +359,13 @@
 							uni.switchTab({ url: '/pages/index/index' })
 						}
 					} else {
-						// 应用内回跳：直接跳转到对应页面
+						const targetPath = (this.redirectUrl.split('?')[0] as string | null) ?? ''
 						console.log('[Login] 应用内回跳:', this.redirectUrl)
-						uni.redirectTo({ url: this.redirectUrl })
+						if (this.isTabBarPage(targetPath)) {
+							uni.switchTab({ url: targetPath })
+						} else {
+							uni.redirectTo({ url: this.redirectUrl })
+						}
 					}
 				} catch (error) {
 					console.error('[Login] 回跳处理失败:', error)
@@ -453,6 +506,25 @@
 					<text class="forget-password" @click="goToForgetPassword">验证码登录</text>
 				</view>
 				
+				<!-- 用户协议：必须由用户主动勾选 -->
+				<view class="agreement">
+					<view class="agreement-checkbox-wrapper" @tap="toggleAgreement">
+						<view class="agreement-checkbox" :class="{ checked: agreementAccepted }">
+							<text v-if="agreementAccepted" class="fa fa-check agreement-check-icon"></text>
+						</view>
+					</view>
+					<view class="agreement-content">
+						<text class="agreement-text" @tap="toggleAgreement">我已阅读并同意</text>
+						<view @tap.stop="goToUserAgreement" class="agreement-link-wrapper">
+							<text class="agreement-link">《用户协议》</text>
+						</view>
+						<text class="agreement-text">和</text>
+						<view @tap.stop="goToPrivacyPolicy" class="agreement-link-wrapper">
+							<text class="agreement-link">《隐私政策》</text>
+						</view>
+					</view>
+				</view>
+
 				<!-- 登录按钮 -->
 				<button 
 					class="primary-button" 
@@ -464,7 +536,7 @@
 				</button>
 				
 				<!-- 其他登录方式 -->
-				<view class="other-login-methods">
+				<view class="other-login-methods" v-if="showOtherLoginMethods">
 					<view class="divider">
 						<view class="divider-line"></view>
 						<text class="divider-text">其他登录方式</text>
@@ -478,18 +550,26 @@
 							<!-- #ifdef MP-WEIXIN -->
 							<!-- 小程序环境：使用手机号快捷登录 -->
 							<button 
-								class="social-button wechat-button"
+								v-if="agreementAccepted"
+								class="social-button wechat-button mini-program-auth-button"
 								open-type="getPhoneNumber"
 								@getphonenumber="handlePhoneLogin"
 							>
-								<text class="fa-brands fa-weixin social-icon"></text>
-								<text class="social-label">微信</text>
+								<text class="social-label">授权登录</text>
+							</button>
+							<button
+								v-else
+								class="social-button wechat-button mini-program-auth-button disabled"
+								@tap="promptAgreement"
+							>
+								<text class="social-label">授权登录</text>
 							</button>
 							<!-- #endif -->
 							<!-- #ifndef MP-WEIXIN -->
 							<!-- 非小程序环境：使用普通微信登录 -->
 							<view 
-								class="social-button wechat-button" 
+								class="social-button wechat-button"
+								:class="{ disabled: !agreementAccepted }"
 								@click="handleWechatLogin"
 								v-if="showWechatLogin"
 							>
@@ -499,7 +579,7 @@
 							<!-- #endif -->
 							
 							<!-- 支付宝登录按钮 -->
-							<view class="social-button alipay-button" @click="handleAlipayLogin">
+							<view class="social-button alipay-button" @click="handleAlipayLogin" v-if="showAlipayLogin">
 								<text class="fa-brands fa-alipay social-icon"></text>
 								<text class="social-label">支付宝</text>
 							</view>
@@ -507,17 +587,6 @@
 					</view>
 				</view>
 				
-				<!-- 用户协议 -->
-				<view class="agreement">
-					<text class="agreement-text">登录即表示您已同意</text>
-					<view @tap="goToUserAgreement" class="agreement-link-wrapper">
-						<text class="agreement-link">《用户协议》</text>
-					</view>
-					<text class="agreement-text">和</text>
-					<view @tap="goToPrivacyPolicy" class="agreement-link-wrapper">
-						<text class="agreement-link">《隐私政策》</text>
-					</view>
-				</view>
 			</view>
 		</view>
 		
@@ -753,6 +822,7 @@
 	
 	/* 登录按钮 */
 	.primary-button {
+		width: 100%;
 		height: 96rpx;
 		border-radius: 12rpx;
 		background: linear-gradient(135deg, #00C28A 0%, #00A876 100%);
@@ -783,6 +853,7 @@
 		font-weight: 600;
 		letter-spacing: 2rpx;
 		line-height: 1;
+		text-align: center;
 	}
 	
 	/* 其他登录方式 */
@@ -817,6 +888,7 @@
 	
 	/* 社交登录按钮行 */
 	.social-buttons-row {
+		width: 100%;
 		flex-direction: row;
 		justify-content: center;
 		align-items: center;
@@ -841,6 +913,10 @@
 		transform: scale(0.95);
 		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
 	}
+
+	.social-button.disabled {
+		opacity: 0.55;
+	}
 	
 	.social-button .social-icon {
 		font-size: 56rpx;
@@ -854,6 +930,20 @@
 	
 	.wechat-button .social-icon {
 		color: #07C160;
+	}
+
+	/* 小程序手机号授权必须保留 open-type 按钮，同时使用明确的矩形授权入口。 */
+	.mini-program-auth-button {
+		width: 100%;
+		height: 88rpx;
+		margin: 0;
+		border-radius: 12rpx;
+		flex-direction: row;
+	}
+
+	.mini-program-auth-button .social-label {
+		font-size: 30rpx;
+		font-weight: 600;
 	}
 	
 	.alipay-button {
@@ -906,10 +996,44 @@
 	/* 用户协议 */
 	.agreement {
 		flex-direction: row;
+		justify-content: flex-start;
+		align-items: center;
+		padding: 8rpx 0 24rpx;
+	}
+
+	.agreement-checkbox-wrapper {
+		width: 48rpx;
+		height: 36rpx;
+		align-items: center;
 		justify-content: center;
+		margin-right: 4rpx;
+	}
+
+	.agreement-checkbox {
+		width: 36rpx;
+		height: 36rpx;
+		border-radius: 8rpx;
+		border: 2rpx solid #C0C4CC;
+		background-color: #FFFFFF;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.agreement-checkbox.checked {
+		background-color: #00C28A;
+		border-color: #00C28A;
+	}
+
+	.agreement-check-icon {
+		font-size: 18rpx;
+		color: #FFFFFF;
+	}
+
+	.agreement-content {
+		flex: 1;
+		flex-direction: row;
 		align-items: center;
 		flex-wrap: wrap;
-		padding: 20rpx 0;
 	}
 	
 	.agreement-text {
@@ -919,7 +1043,7 @@
 	}
 	
 	.agreement-link-wrapper {
-		padding: 8rpx 8rpx;
+		padding: 0 4rpx;
 		position: relative;
 		z-index: 10;
 	}
@@ -945,4 +1069,4 @@
 		font-size: 24rpx;
 		color: #909399;
 	}
-</style> 
+</style>
