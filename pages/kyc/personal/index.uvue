@@ -20,6 +20,7 @@ interface UserInfo {
 import { post, get, uploadFileAdvanced, simpleUpload } from '../../../api/index';
 import { API_BASE_URL, TENANT_ID, UPLOAD_CONFIG } from '../../../config/app.config';
 import { recognizeIdCard } from '../../../api/member/verify';
+import { openAuthorizeSetting } from '../../../utils/openAuthorizeSetting';
 
 const FACE_IMAGE_MAX_SIZE_MB = 1;
 // 第三方实名接口对图片大小比较敏感，上传前压到 900KB 左右，给 1MB 限制留余量。
@@ -794,7 +795,7 @@ export default {
 	                    confirmText: '去设置',
 	                    success: (res) => {
 	                        if (res.confirm) {
-	                            uni.openSetting({})
+	                            openAuthorizeSetting()
 	                        }
 	                    }
 	                })

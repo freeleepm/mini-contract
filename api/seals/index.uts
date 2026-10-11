@@ -5,7 +5,7 @@
  * 注意：Seal模块使用统一的版本化路径 /api/v1/seal
  */
 import { get, post, put, del } from '../index';
-import { SEAL_CORE_H5_URL } from '../../config/app.config';
+import { getSealCoreH5Url, loadSealCoreH5Url } from '../../utils/sealCoreUrl';
 import { getSealTokenConfig, LOG_PREFIX } from '../../config/seal.config';
 
 // ==================== 数据类型定义 ====================
@@ -444,6 +444,8 @@ export async function getSealPageUrl(
 ): Promise<string> {
 	// 🆕 获取统一配置（静态导入，兼容小程序环境）
 	const config = getSealTokenConfig('mobile');
+	await loadSealCoreH5Url();
+	const sealCoreUrl = getSealCoreH5Url();
 	
 	// 生成 Seal-Token（安全增强：enterpriseId 加密到 Token 中，而非 URL 明文传递）
 	const sealToken = options?.token || await generateSealToken({
@@ -469,7 +471,7 @@ export async function getSealPageUrl(
 	
 	// 🆕 构建URL，使用统一配置的平台标识
 	// ⚠️ 安全增强：enterpriseId 不再通过 URL 明文传递，而是加密在 Token 中
-	let url = `${SEAL_CORE_H5_URL}${path}?token=${encodeURIComponent(sealToken)}&platform=${config.platform}`;
+	let url = `${sealCoreUrl}${path}?token=${encodeURIComponent(sealToken)}&platform=${config.platform}`;
 	
 	// 如果有taskId，添加到URL
 	if (taskId) {

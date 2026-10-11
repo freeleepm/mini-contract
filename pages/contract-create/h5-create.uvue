@@ -54,6 +54,9 @@ export default {
 
 		// 防止多通信通道重复投递同一个完成事件
 		completionHandled: false,
+		// #ifdef H5
+		browserMessageHandler: null as any,
+		// #endif
 	}
 },
 	
@@ -98,6 +101,12 @@ export default {
 	},
 	
 	onUnload() {
+		// #ifdef H5
+		if (this.browserMessageHandler) {
+			window.removeEventListener('message', this.browserMessageHandler);
+			this.browserMessageHandler = null;
+		}
+		// #endif
 		console.log('[H5容器] 页面卸载');
 		// 清理LocalStorage轮询定时器
 		if (this.pollTimer) {
@@ -114,6 +123,10 @@ export default {
 	initBridge() {
 		console.log('[JSBridge] 初始化');
 		this.bridgeReady = true;
+		// #ifdef H5
+		this.browserMessageHandler = (event) => this.handleBrowserMessage(event);
+		window.addEventListener('message', this.browserMessageHandler);
+		// #endif
 			
 		// uni-app的WebView已经自动支持postMessage通信
 		// H5应用可以使用 uni.postMessage 或 window.parent.postMessage 发送消息
@@ -122,6 +135,31 @@ export default {
 		// 启动LocalStorage轮询机制（接收H5通过LocalStorage发送的消息）
 		this.startPollingH5Messages();
 	},
+	// #ifdef H5
+	handleBrowserMessage(event) {
+		if (!this.createUrl || this.completionHandled) return;
+		let expected;
+		try { expected = new URL(this.createUrl, window.location.href); } catch (_) { return; }
+		if (event.origin !== expected.origin) return;
+		const trusted = Array.from(document.querySelectorAll('iframe')).some(frame => {
+			if (frame.contentWindow !== event.source) return false;
+			try {
+				const source = new URL(frame.src, window.location.href);
+				return source.origin === expected.origin && source.pathname === expected.pathname;
+			} catch (_) { return false; }
+		});
+		if (!trusted) return;
+		const envelope = event.data;
+		if (!envelope || typeof envelope !== 'object') return;
+		const data = envelope.data && !Array.isArray(envelope.data) ? envelope.data : envelope;
+		const action = data.action || data.type || envelope.type;
+		const taskId = String(data.taskId ?? '');
+		if (!/^[1-9]\d*$/.test(taskId)) return;
+		if (action === 'ready-to-sign') this.handleReadyToSign(taskId);
+		else if (action === 'need-form-filling') this.handleNeedFormFilling(taskId);
+		else if (action === 'created') this.handleCreateCompleted(taskId);
+	},
+	// #endif
 	
 	/**
 	 * 启动LocalStorage轮询机制
@@ -894,6 +932,9 @@ export default {
 			});
 			
 			// H5 页面负责关闭 WebView，宿主只刷新数据，避免重复返回两层。
+			// #ifdef H5
+			uni.redirectTo({ url: `/pages/contract-detail/index?id=${taskId}` });
+			// #endif
 		},
 
 		/**

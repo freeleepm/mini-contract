@@ -83,6 +83,7 @@
 import { recognizeIdCard } from '../../api/member/verify';
 import { uploadFileAdvanced } from '../../api/index';
 import { UPLOAD_CONFIG } from '../../config/app.config';
+import { openAuthorizeSetting } from '../utils/openAuthorizeSetting';
 
 export default {
 	name: 'IdCardOcrCapture',
@@ -313,7 +314,7 @@ export default {
 					confirmText: '去设置',
 					success: (res) => {
 						if (res.confirm) {
-							uni.openSetting({});
+							openAuthorizeSetting();
 						}
 					}
 				});

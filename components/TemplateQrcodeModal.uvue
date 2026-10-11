@@ -9,8 +9,9 @@
  * 
  * @author 小华同学AI
  */
-import { SEAL_CORE_H5_URL } from '../config/app.config';
+import { getSealCoreH5Url } from '../utils/sealCoreUrl';
 import { getWxaQrcode } from '../api/auth/social';
+import { openAuthorizeSetting } from '../utils/openAuthorizeSetting';
 
 export default {
 	props: {
@@ -52,7 +53,7 @@ export default {
 		 */
 		qrCodeUrl() : string {
 			if (!this.baseTemplateId) return '';
-			return `${SEAL_CORE_H5_URL}/h5/sign/create?templateId=${this.baseTemplateId}`;
+			return `${getSealCoreH5Url()}/h5/sign/create?templateId=${this.baseTemplateId}`;
 		}
 	},
 	
@@ -212,7 +213,7 @@ export default {
 					confirmText: '去设置',
 					success: (modalRes) => {
 						if (modalRes.confirm) {
-							uni.openSetting({});
+							openAuthorizeSetting();
 						}
 					}
 				});

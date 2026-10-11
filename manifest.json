@@ -1,5 +1,5 @@
 {
-    "name" : "何方签",
+    "name" : "Contract.Pro",
     "appid" : "__UNI__20EA0B1",
     "description" : "专业电子合同签署平台",
     "versionName" : "1.0.0",
@@ -9,7 +9,7 @@
     "quickapp" : {},
     /* 小程序特有相关 */
     "mp-weixin" : {
-        "appid" : "wx4d0de5a13c068285",
+        "appid" : null,
         "setting" : {
             "urlCheck" : false
         },
@@ -83,6 +83,6 @@
         "router" : {
             "mode" : "history"
         },
-        "title" : "何方签"
+        "title" : "Contract.Pro"
     }
 }

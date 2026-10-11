@@ -83,19 +83,19 @@ export const APP_VERSION_TEXT = `${APP_NAME} ${APP_VERSION}`;
 export const APP_DEFAULT_SERVICE_PHONE = '400-000-0000';
 
 /** 当前客服电话 */
-export const APP_SERVICE_PHONE = '17895067181';
+export const APP_SERVICE_PHONE = '';
 
 /** 默认客服邮箱（兜底展示） */
 export const APP_DEFAULT_SERVICE_EMAIL = 'shawn@leepm.com';
 
 /** 当前客服邮箱 */
-export const APP_SERVICE_EMAIL = 'shawn@leepm.com';
+export const APP_SERVICE_EMAIL = '';
 
 /** 默认官方网站（兜底展示） */
 export const APP_DEFAULT_OFFICIAL_WEBSITE = 'https://s.leepm.com';
 
 /** 当前官方网站 */
-export const APP_OFFICIAL_WEBSITE = 'https://s.leepm.com';
+export const APP_OFFICIAL_WEBSITE = '';
 
 /** 客服工作时间 */
 export const APP_SERVICE_WORK_TIME = '周一至周五 9:00-18:00';
@@ -118,16 +118,15 @@ export const API_BASE_URLS: Record<string, string> = {
     'development': 'http://localhost:48080/app-api',  // 应用端接口
     'testing': 'https://test-api.example.com/app-api',
     'production': '/app-api'  // 生产环境使用相对路径，保留 /app-api 前缀
-	
+	// 'production':'https://x.compact.xpinr.com/app-api' // 更换客户的地址
 };
 
 // 导出当前环境的API基础URL
 export const API_BASE_URL: string = API_BASE_URLS[CURRENT_ENV] || '/app-api';
 
-// Seal Core H5 页面基础 URL
+// Seal Core H5：库配优先；这里只做本地 / 线上两套兜底
 export const SEAL_CORE_H5_URLS: Record<string, string> = {
     'development': 'http://localhost:3100',
-    'testing': 'https://test-seal.example.com',
     'production': 'https://h5-sign.leepm.com'
 };
 

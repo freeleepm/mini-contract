@@ -1,0 +1,31 @@
+/**
+ * 小华同学AI
+ * 授权设置页兼容封装
+ */
+
+/**
+ * 打开当前平台的授权设置页。
+ * uni-app x 的 Uni 类型未声明 openSetting，小程序端使用 wx.openSetting 避免 UTS 类型警告。
+ */
+export function openAuthorizeSetting(): void {
+	// #ifdef MP-WEIXIN
+	const wxObj = wx as any;
+	if (wxObj != null && typeof wxObj.openSetting === 'function') {
+		wxObj.openSetting({});
+		return;
+	}
+	// #endif
+
+	// #ifdef APP-PLUS
+	const uniObj = uni as any;
+	if (uniObj != null && typeof uniObj.openAppAuthorizeSetting === 'function') {
+		uniObj.openAppAuthorizeSetting({});
+		return;
+	}
+	// #endif
+
+	uni.showToast({
+		title: '请在系统设置中开启权限',
+		icon: 'none'
+	});
+}

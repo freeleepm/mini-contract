@@ -1,7 +1,7 @@
 {
-  "name": "何方签",
+  "name": "Contract.Pro",
   "version": "1.0.0",
-  "description": "何方签电子合同应用",
+  "description": "Contract.Pro电子合同应用",
   "main": "main.uts",
   "scripts": {
     "predev": "node scripts/sync-app-name.js",

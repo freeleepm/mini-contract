@@ -2,9 +2,9 @@
   ===============
 
 
-Current Latest Version: v3.5.0 (Release Date: August 8, 2026)
+Current Latest Version: v4.0.0 (Release Date: October 10th, 2026)
 
-[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.5.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
+[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=4.0.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
 
 
 
@@ -1803,6 +1803,9 @@ Project Screenshots
 
 > Users can create their own seals, supporting upload, handwriting, template generation, etc.
 
+![](.images/app/app_20@4x.png)
+
+> Users can generate their own personalized signature and also view the entire contract signing process in the contract details.
 
 
 ![](.images/app/app_13@4x.png)
@@ -1901,7 +1904,9 @@ Project Screenshots
 
 > Administrators support creating contract templates
 
+![](.images/pc/pc_33@4x.png)
 
+> View Full Contract Signing Process
 
 ![](.images/pc/pc_26@4x.png)
 
@@ -1936,17 +1941,117 @@ Project Screenshots
 
 ### Recent Updates
 
-##### V 3.5.0 
+#####  V 4.0.0 (2026-10-10)
 
-- [x] [Fix] PC: Contract details not displaying the creator
-- [x] [Fix] Mini-program compatibility: Bug with copying signing links
-- [x] [Fix] Mini-program compatibility: Issue with failing to retrieve enterprise user information
-- [x] [Fix] Mini-program compatibility: Bug that allowed arbitrary signing even after signing positions were set
-- [x] [Fix] Mini-program: Bug with the usage count of contract templates
-- [x] [Optimize] Layout of contract templates
-- [x] [Optimize] Generated seal dimensions to better comply with national standards
+- [x] [New] Contract Activity Timeline
 
+- Added a timeline of actual contract events, including creation, form completion, the start of signing, participant signatures, contract completion, rejection, cancellation, and expiration.
+- Displays actions, actors, and timestamps to make contract progress easier to understand.
+- Includes existing signing-intent verification records, signing reminders, and notification requests. A recorded notification request does not mean an SMS was delivered.
+- Provides timeline views in PC, H5, and uni-app contract details, with corresponding information added to OpenAPI contract detail responses.
+- Historical contracts show only verifiable records; missing events and timestamps are not fabricated.
 
+- [x] [New] Assisted Signature Generation
+
+- Added a Generate Signature option within the existing handwriting area. Handwriting remains the default, without a separate workflow.
+- Offers three Chinese typeface styles: Elegant Semi-Regular Script, Natural Running Script, and Free-flowing Cursive Script. Users can preview their own name.
+- Supports PC, H5, QR-code signing, and relevant signature-creation canvases while preserving handwritten content for comparison and switching.
+- Requires explicit acknowledgment before using a generated signature. The notice distinguishes a typeface-based appearance from authentic handwriting and clarifies that accepting the appearance does not constitute acceptance of a contract.
+- Clearly identifies unsupported characters rather than silently substituting another font.
+
+- [x] [New] Unified Signing Confirmation Records
+
+- Reuses existing signing verification logs to record generated-signature consent and SMS, email, and password verification actions and results.
+- Distinguishes verification-code requests from successful verification. Sending a code is not treated as identity confirmation.
+- Exposes only necessary summaries in the contract timeline, without verification codes, passwords, tokens, or original signature images.
+- Face verification has not been connected to a real service provider; the reserved event type is not presented as a completed face-verification capability.
+
+- [x] [New] Return to the Business Application After Signing
+
+- Supports a `returnUrl` for returning to the originating business application through a confirmation button after signing, reducing repeated use of the browser Back button.
+- Applies consistent return-address validation across PC and H5, with the allowed-origin list managed centrally through database-backed settings.
+- Keeps browser navigation through `returnUrl` separate from server-side notifications through the existing `callbackUrl`.
+
+- [x] [Fix] OpenAPI Form Prefill and Signing State Transitions
+
+- Fixed cases where participants remained in the form-filling stage even after `formData` supplied all data required for completion.
+- Unified backend validation for page-based submissions and API processing, including required fields, formats, field ownership, ambiguous names, and conflicting values.
+- Returns the resulting task state after creation to keep client responses consistent with processing outcomes.
+- Participants with incomplete data must still finish their forms; completion by another participant does not bypass required steps.
+
+- [x] [Fix] Duplicate Fixed-Position Signing Design
+
+- Removed the separate template signing-position field and duplicate inheritance logic, reusing existing participant positions and validation.
+- Routes OpenAPI position parameters through the existing creation workflow instead of maintaining separate rules for pages and APIs.
+- Eliminated template-query failures caused by a dependency on the newly introduced position column when that column was absent.
+
+- [x] [Fix] PC Signing Page Remaining Editable After Success
+
+- Fixed standalone PC signing pages that emitted a close event after success but remained in editing mode.
+- Displays the signing result and prevents duplicate submissions. Embedded portal pages retain the result until the user confirms and returns.
+- Distinguishes an individual's completed signature from completion by all participants. A failed status refresh does not negate an already confirmed successful signature.
+
+- [x] [Fix] Browser Navigation After Contract Creation
+
+- Added creation-completion message handling between the browser and the uni-app H5 host, directing users to contract details, form filling, or signing as appropriate.
+- Added message-origin and sender-window checks, plus duplicate-event handling, to prevent incorrect navigation.
+- The uni-app H5 host code change is complete; release validation remains outstanding.
+
+- [x] [Fix] Guest Signature Isolation and QR Session Validation
+
+- Addressed the risk of guest signature resources being mixed through a shared placeholder identity. Temporary signatures are isolated by tenant, contract, and participant.
+- Guests no longer read or save signatures through ordinary personal-seal lists. QR uploads, previews, and use are associated with the corresponding signing session.
+- Expired temporary signatures must be drawn again, with no fallback to shared seals or arbitrary image URLs.
+- Historical data is not automatically deleted. Access risks involving previously public images require separate review.
+
+- [x] [Fix] Contract File Reading and Word Conversion
+
+- Unified file reading for Word conversion, PDF signing, and related images to avoid fetching files from the wrong default storage location.
+- Uses the file's corresponding storage configuration or restricted public-download rules, with improved handling of Chinese filenames, path prefixes, and encoding.
+- Fixed conversion-format detection failures caused by treating the contract title as the Word source filename.
+- Separated general file downloads from PDF content validation so Word files and signature images are not incorrectly validated as PDFs.
+
+- [x] [Fix] Signing Interactions
+
+- Fixed cases where cancelling a seal selection could leave a placement prompt visible. Selection and confirmation are handled separately.
+- Hides cross-page seal controls, Add Seal actions, placement prompts, and editing dialogs after signing is complete.
+- Fixed conflicts between the signature-generation entry and the handwriting canvas that could obstruct the button.
+- Adjusted minimum signing-area dimensions and page-boundary handling to reduce failures caused by undersized preset areas. Custom seals larger than the standard dimensions remain subject to actual-size validation.
+
+- [x] [Improved] Handwritten Signature Strokes
+
+- Refined path smoothing, lightweight jitter reduction, and local direction assistance while preserving the user's stroke direction and release position.
+- Adjusted width variation based on writing speed, direction, and pauses before release to soften abrupt tips and reduce overly uniform strokes.
+- Unified drawing behavior across compact canvases, fullscreen handwriting, and QR signing, with improved high-density display clarity and export consistency.
+- These changes assist stroke rendering; they do not recognize or replace name characters, or promise to turn arbitrary handwriting into calligraphy.
+
+- [x] [Improved] Font Loading and Style Previews
+
+- Each style shows a sample image using “小华同学”, allowing users to compare appearances before the full font loads.
+- Prioritizes the selected font and handles other styles independently. A failed font download does not block styles that are already ready.
+- Added per-style loading states and retries, and prevents stale results from overwriting new content after a name change or panel closure.
+- Switched fonts to WOFF2, reducing the combined font-resource transfer size by approximately 46.6% compared with the original TTF files while retaining the full character sets.
+- Aligned preview spacing, image proportions, and ink-color handling, with improved wide-screen comparisons and narrow-screen browsing.
+
+- [x] [Improved] Consistent Seal Availability States
+
+- PC and H5 now share availability messages. Company seals are hidden when the signing identity is not eligible; company participants without usable seals receive clear guidance.
+- Distinguishes loading, load failure, unconfirmed identity, and no available company seals, with a reload action.
+- Uses consistent filtered lists in the PC narrow-screen drawer and main panel.
+- Does not change server-side seal permissions or grant additional access through display behavior.
+
+- [x] [Improved] Signing Positions and Action Guidance
+
+- Added page numbers and a navigation action for fixed signing positions on PC.
+- Keeps signing areas proportional to the PDF on PC and H5, starting at the minimum dimensions and preserving proportions and page boundaries during resizing.
+- Removed confusing coordinate percentages beside signing areas while retaining page numbers and document zoom controls.
+- Simplified post-signing actions to reduce irrelevant controls and repetitive guidance.
+
+- [x] [Improved] Error Messages
+
+- Shows a clearer service-unavailable message when the signing certificate is missing, while retaining technical details in server logs.
+- Provides guidance on file existence, access permissions, and storage configuration when file reading fails, without exposing sensitive credentials.
+- Reduces duplicate error notifications for a single contract-creation failure.
 
 ##### V 3.4.0 (2026-04-05)
 

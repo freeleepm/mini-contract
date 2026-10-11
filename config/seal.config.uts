@@ -74,7 +74,7 @@ export function getSealTokenConfig(platformKey: string = 'mobile'): SealTokenCon
 export const LOG_PREFIX = '[Seal Token]';
 
 /**
- * ⚠️ 注意：Seal Core H5/PC URL 配置已迁移到 config/app.config.uts
- * 请从 config/app.config.uts 导入 SEAL_CORE_H5_URL
+ * ⚠️ 注意：Seal Core H5 URL 从 infra_config.seal.platform.h5-domain 读取
+ * 见 utils/sealCoreUrl.uts，编译期兜底仍在 config/app.config.uts
  */
 

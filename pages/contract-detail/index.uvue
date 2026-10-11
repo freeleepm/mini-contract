@@ -77,6 +77,7 @@ import {
 		
 		// 🔗 分享弹窗显示状态
 		showSharePopup: false,
+		detailTab: 'participants',
 		shareLinkItems: [] as any[],
 		shareLinkCacheTaskId: '',
 		shareLinkCache: {} as any
@@ -942,6 +943,34 @@ async handleSign(): Promise<void> {
 	/**
 	 * 格式化日期时间
 	 */
+	timelineLabel(type: string): string {
+		switch (type) {
+			case 'CREATED': return '发起合同';
+			case 'FORM_FILLING_STARTED': return '进入填写阶段';
+			case 'URGE_REQUESTED': return '发起催签';
+			case 'NOTIFICATION_REGISTERED': return '通知请求已登记';
+			case 'NOTIFICATION_FAILED': return '通知请求失败';
+			case 'NOTIFICATION_SKIPPED': return '未发送通知';
+			case 'FORM_SUBMITTED': return '提交表单';
+			case 'FORM_UPDATED': return '修改表单';
+			case 'SIGNING_STARTED': return '进入签署阶段';
+			case 'SIGNED': return '完成签署';
+			case 'COMPLETED': return '合同完成';
+			case 'REJECTED': return '拒绝签署';
+			case 'CANCELLED': return '撤销合同';
+			case 'EXPIRED': return '合同过期';
+			case 'VERIFICATION_SUCCESS': return '意愿验证通过';
+			case 'VERIFICATION_FAILED': return '意愿验证未通过';
+			case 'VERIFICATION_RECORDED': return '意愿验证记录';
+			case 'SIGNATURE_APPEARANCE_CONFIRMED': return '确认签名外观';
+			case 'SIGNATURE_APPEARANCE_FAILED': return '签名外观确认失败';
+			case 'CODE_SEND_REQUESTED': return '验证码发送请求已受理';
+			case 'CODE_SEND_FAILED': return '验证码发送请求未受理';
+			case 'CODE_SEND_RECORDED': return '验证码发送记录';
+			case 'SIGNING_AUDIT_RECORDED': return '签署确认与验证记录';
+			default: return '合同操作';
+		}
+	},
 	formatDateTime(dateStr: string | null): string {
 			if (!dateStr) return '';
 			
@@ -974,9 +1003,37 @@ async handleSign(): Promise<void> {
 			}
 		},
 		
+	// 次要操作收纳到原生菜单，避免底部按钮挤压。
+	hasMoreActions(): boolean {
+		return this.canShare() || this.canCancel() || this.canDelete() ||
+			(this.contract != null && this.contract.status === this.STATUS_COMPLETED);
+	},
+	
+	handleMoreActions() {
+		const labels: string[] = [];
+		const actions: string[] = [];
+		if (this.canShare()) { labels.push('分享链接'); actions.push('share'); }
+		if (this.contract != null && this.contract.status === this.STATUS_COMPLETED) {
+			labels.push('AI审查'); actions.push('audit');
+		}
+		if (this.canCancel()) { labels.push('撤销合同'); actions.push('cancel'); }
+		if (this.canDelete()) { labels.push('删除合同'); actions.push('delete'); }
+		if (labels.length === 0) return;
+		uni.showActionSheet({
+			itemList: labels,
+			success: (res) => {
+				const action = actions[res.tapIndex];
+				// 菜单打开后状态可能刷新，执行前重新检查；危险操作仍走原确认弹窗。
+				if (action === 'share' && this.canShare()) this.handleShare();
+				if (action === 'audit' && this.contract != null && this.contract.status === this.STATUS_COMPLETED) this.handleAIAudit();
+				if (action === 'cancel' && this.canCancel()) this.handleCancel();
+				if (action === 'delete' && this.canDelete()) this.handleDelete();
+			}
+		});
+	},
+	
 	/**
-	 * 🆕 判断是否可以填写表单
-	 * 条件：任务状态=表单填写中(7) 且 当前用户的参与人模式=TWO_STAGE 且 状态=PENDING(0)
+	 * 判断是否可以填写表单：填写中任务的当前 TWO_STAGE 待处理参与方。
 	 */
 	canFillForm(): boolean {
 		if (!this.contract) return false;
@@ -1494,15 +1551,17 @@ async handleSign(): Promise<void> {
 				
 			<!-- 参与人信息卡片 -->
 			<view class="info-card participants-card" v-if="contract">
-				<view class="card-header">
-					<view class="header-left">
-						<text class="card-title">参与方信息</text>
+				<view class="detail-tabs">
+					<view class="detail-tab" :class="{ 'detail-tab-active': detailTab === 'participants' }" @click="detailTab = 'participants'">
+						<text class="detail-tab-text">参与方</text>
+						<text class="detail-tab-count">{{ contract.participants ? contract.participants.length : 0 }}</text>
 					</view>
-					<view class="participant-count" v-if="contract.participants && contract.participants.length > 0">
-						<text class="count-text">{{ contract.participants.length }}方</text>
+					<view class="detail-tab" :class="{ 'detail-tab-active': detailTab === 'timeline' }" @click="detailTab = 'timeline'">
+						<text class="detail-tab-text">合同流程</text>
+						<text class="detail-tab-count">{{ contract.timeline ? contract.timeline.length : 0 }}</text>
 					</view>
 				</view>
-				
+				<view v-show="detailTab === 'participants'">
 				<!-- 有参与人时显示列表 -->
 				<view v-if="contract.participants && contract.participants.length > 0" class="participants-list">
 		<view 
@@ -1603,6 +1662,20 @@ async handleSign(): Promise<void> {
 					<text class="fa fa-user-slash empty-icon"></text>
 					<text class="empty-text">暂无参与人信息</text>
 				</view>
+				</view>
+				<view v-show="detailTab === 'timeline'">
+					<text class="timeline-note">仅展示真实记录。历史合同可能缺少部分环节，不代表这些操作未发生。</text>
+					<scroll-view v-if="contract.timeline && contract.timeline.length > 0" scroll-y class="timeline-scroll">
+						<view v-for="event in contract.timeline" :key="event.id" class="timeline-event">
+							<text class="timeline-title">{{ timelineLabel(event.eventType) }}</text>
+							<text class="timeline-time">{{ event.occurredAt ?? '时间未记录' }}</text>
+							<text class="timeline-actor">{{ event.actorName ?? '操作人未记录' }}</text>
+							<text v-if="event.detail" class="timeline-note">{{ event.detail }}</text>
+							<text v-if="event.source === 'BUSINESS_RECORD'" class="timeline-time">来自已有业务记录</text>
+						</view>
+					</scroll-view>
+					<text v-else class="timeline-note">暂无可核实的流程记录</text>
+				</view>
 			</view>
 			
 			<!-- 拒绝原因（如果有） -->
@@ -1641,34 +1714,16 @@ async handleSign(): Promise<void> {
 			<text class="action-text">立即签署</text>
 		</view>
 		
-		<!-- 撤销按钮 -->
-		<view v-if="canCancel()" class="action-btn danger" @click="handleCancel">
-			<text class="fa fa-undo"></text>
-			<text class="action-text">撤销</text>
-		</view>
-		
-		<!-- 🆕 分享按钮 -->
-		<view v-if="canShare()" class="action-btn secondary" @click="handleShare">
-			<text class="fa fa-share-alt-square"></text>
-			<text class="action-text">分享链接</text>
-		</view>
-		
-	<!-- AI审查按钮 -->
-	<view v-if="contract && contract.status === STATUS_COMPLETED" class="action-btn audit" @click="handleAIAudit">
-		<text class="fa fa-search"></text>
-		<text class="action-text">AI审查</text>
-	</view>
-	
 	<!-- 下载按钮 -->
 	<view v-if="contract && contract.status === STATUS_COMPLETED" class="action-btn primary" @click="handleDownload">
 		<text class="fa fa-download"></text>
 		<text class="action-text">下载</text>
 	</view>
 	
-	<!-- 删除按钮 -->
-	<view v-if="canDelete()" class="action-btn danger" @click="handleDelete">
-		<text class="fa fa-trash"></text>
-		<text class="action-text">删除</text>
+	<!-- 次要操作收纳，底栏最多保留三个入口 -->
+	<view v-if="hasMoreActions()" class="action-btn secondary" @click="handleMoreActions">
+		<text class="fa fa-ellipsis-h"></text>
+		<text class="action-text">更多</text>
 	</view>
 	</view>
 	</view>
@@ -1713,6 +1768,19 @@ async handleSign(): Promise<void> {
 </template>
 
 <style>
+.detail-tabs { flex-direction: row; padding: 8rpx; margin-bottom: 28rpx; border-radius: 16rpx; background-color: #F3F6F8; }
+.detail-tab { flex: 1; flex-direction: row; align-items: center; justify-content: center; padding: 20rpx 8rpx; border-radius: 12rpx; }
+.detail-tab-text { font-size: 28rpx; color: #708078; }
+.detail-tab-count { font-size: 22rpx; color: #708078; margin-left: 12rpx; }
+.detail-tab-active { background-color: #FFFFFF; }
+.detail-tab-active .detail-tab-text { color: #008F72; font-weight: 600; }
+.detail-tab-active .detail-tab-count { color: #008F72; }
+.timeline-scroll { height: 600rpx; }
+.timeline-event { border-left: 2rpx solid #DCE8E3; padding: 0 0 28rpx 24rpx; margin-top: 24rpx; }
+.timeline-title { font-size: 28rpx; font-weight: 600; color: #008F72; display: block; }
+.timeline-time { font-size: 22rpx; color: #7C8B85; display: block; margin-top: 8rpx; }
+.timeline-actor { font-size: 26rpx; color: #243D38; display: block; margin-top: 10rpx; }
+.timeline-note { font-size: 24rpx; color: #70867F; line-height: 36rpx; display: block; margin-top: 8rpx; }
 /* 引入FontAwesome样式 */
 @import url("../../static/styles/fontawesome.css");
 
@@ -2371,7 +2439,7 @@ async handleSign(): Promise<void> {
 
 /* ==================== 底部安全区 ==================== */
 .bottom-safe-area {
-	height: 160rpx;
+	height: calc(152rpx + env(safe-area-inset-bottom));
 }
 
 /* ==================== 底部操作栏 ==================== */
@@ -2382,31 +2450,35 @@ async handleSign(): Promise<void> {
 		right: 0;
 	z-index: 900;
 	background-color: #FFFFFF;
-	padding: 20rpx 30rpx;
+	padding: 20rpx 24rpx;
+	padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
 	box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
 	flex-direction: row;
 	justify-content: space-between;
 	align-items: center;
+	gap: 16rpx;
 }
 
 .action-btn {
 	flex: 1;
+	min-width: 0;
 	height: 88rpx;
 	border-radius: 16rpx;
 		flex-direction: row;
 		align-items: center;
 	justify-content: center;
-	margin: 0 8rpx;
 }
 
 .action-btn .fa {
 	font-size: 28rpx;
 	margin-right: 8rpx;
+	flex-shrink: 0;
 }
 
 .action-text {
-	font-size: 30rpx;
+	font-size: 28rpx;
 	font-weight: 500;
+	flex-shrink: 0;
 }
 
 /* 主要按钮 */

@@ -9,7 +9,7 @@
  */
 import { getSealPageUrl } from '../../api/seals/index';
 import { checkNetworkStatus, testH5ServiceAvailability } from '../../utils/network';
-import { SEAL_CORE_H5_URL } from '../../config/app.config';
+import { getSealCoreH5Url, loadSealCoreH5Url } from '../../utils/sealCoreUrl';
 
 export default {
   data() {
@@ -99,7 +99,8 @@ export default {
 			
 			// 🔧 步骤 2: 检查 H5 服务可用性
 			uni.showLoading({ title: '正在检测服务...', mask: true });
-			const serviceResult = await testH5ServiceAvailability(SEAL_CORE_H5_URL);
+			await loadSealCoreH5Url();
+			const serviceResult = await testH5ServiceAvailability(getSealCoreH5Url());
 			
 			if (!serviceResult.available) {
 				uni.hideLoading();

@@ -6,6 +6,7 @@
 	import { uploadFileAdvanced } from '../../../api/index'; // 从API模块导入上传文件工具
 	import { APP_SERVICE_EMAIL, APP_SERVICE_PHONE } from '../../../config/app.config';
 	import { recognizeIdCard } from '../../../api/member/verify';
+	import { openAuthorizeSetting } from '../../../utils/openAuthorizeSetting';
 
 	// 定义认证参数类型
 	interface VerifyEnterpriseParams {
@@ -581,7 +582,7 @@
 						confirmText: '去设置',
 						success: (res) => {
 							if (res.confirm) {
-								uni.openSetting({});
+								openAuthorizeSetting();
 							}
 						}
 					});

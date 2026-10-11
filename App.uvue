@@ -1,5 +1,6 @@
 <script lang="uts">
 	import { buildDefaultShareConfig } from './utils/share';
+	import { loadSealCoreH5Url } from './utils/sealCoreUrl';
 	
 	let firstBackTime = 0
 	export default {
@@ -8,6 +9,7 @@
 			
 			// 初始化uni-id配置
 			this.initUniId()
+			loadSealCoreH5Url()
 			
 			// 图标现在使用CSS Mask + SVG技术，实现简约平面设计
 			console.log('已实现简约平面图标系统，使用CSS Mask + SVG技术，符合现代简约设计原则')

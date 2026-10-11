@@ -2,9 +2,9 @@
   ===============
 
 
-当前最新版本：v3.5.0 (发布时间：2026-08-08)
+当前最新版本：v4.0.0 (发布时间：2026-10-10)
 
-[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=3.5.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
+[![输入图片说明](https://img.shields.io/static/v1?label=licents&message=Apache%20License%202.0&color=green)](https://gitee.com/leepm/mini-contract/blob/master/LICENSE)[![输入图片说明](https://img.shields.io/static/v1?label=Author&message=shawn&color=blue)](https://gitee.com/leepm/mini-contract)[![输入图片说明](https://img.shields.io/static/v1?label=version&message=4.0.0&color=green)](https://gitee.com/leepm/mini-contract)[![star](https://gitee.com/leepm/mini-contract/badge/star.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![fork](https://gitee.com/leepm/mini-contract/badge/fork.svg?theme=dark)](https://gitee.com/leepm/mini-contract)[![GitHub stars](https://img.shields.io/github/stars/freeleepm/mini-contract.svg?style=social&label=Stars)](https://github.freeleepm/mini-contract)[![GitHub forks](https://img.shields.io/github/forks/freeleepm/mini-contract.svg?style=social&label=Fork)](https://github.freeleepm/mini-contract)
 
 
 
@@ -1831,6 +1831,9 @@ $background-color: #F7F9FC; // 背景色
 
 > 用户可以创建自己的印章，支持上传、手写、模版生成等方式
 
+![](.images/app/app_20@4x.png)
+
+> 用户可以生成自己的专属的签名，同时在合同详情还能查看整体合同签署过程
 
 
 ![](.images/app/app_13@4x.png)
@@ -1931,12 +1934,13 @@ $background-color: #F7F9FC; // 背景色
 
 > 管理人员支持创建合同模版
 
+![](.images/pc/pc_33@4x.png)
 
+> 查看合同的整个签署过程
 
 ![](.images/pc/pc_26@4x.png)
 
 > 合同模板支持可视化设计签名位置，管理员可在模板中为每位签署方预设固定的签名落章区域，签署时系统自动定位，签署方无需手动选择位置，确保签名位置精准统一
-
 
 ![](.images/pc/pc_09@4x.png)
 ![](.images/pc/pc_21@4x.png)
@@ -1956,7 +1960,6 @@ $background-color: #F7F9FC; // 背景色
 
 > 合同验真功能：上传已签署的 PDF 合同文件，系统自动验证文件完整性、数字签名有效性和签署证书状态。若合同未包含数字签名或签名无效，系统将给出明确的异常提示；若签名真实有效且文件未被篡改，则显示「验证通过」并展示签署方信息和签署时间，确保合同的真实性和法律效力可追溯
 
-
 ![](.images/pc/pc_31@4x.png)
 ![](.images/pc/pc_30@4x.png)
 ![](.images/pc/pc_32@4x.png)
@@ -1967,19 +1970,118 @@ $background-color: #F7F9FC; // 背景色
 
 ### 最近更新
 
-##### V 3.5.0
+##### V 4.0.0（2026-10-10）
 
-- [x] 【修复】PC端，合同明细不显示创建人
-- [x] 【修复】小程序 兼容问题，copy 签署链接的 bug
-- [x] 【修复】小程序 兼容问题，企业用户获得失败的问题
-- [x] 【修复】小程序 兼容问题，设置签署位置之后还是可以随意签署 bug
-- [x] 【修复】小程序当中合同模版使用次数的 bug
-- [x] 【优化】合同模版的布局方式
-- [x] 【优化】生成印章尺寸，使其更加符合国标
+- [x] 【新增】合同流程时间轴
+  - 增加合同流程记录，集中展示合同发起、表单填写、进入签署、参与方签署、合同完成，以及拒签、撤销、过期等实际发生的环节。
+  - 展示操作内容、操作人及时间，辅助了解合同当前进度和处理过程。
+  - 将已有意愿验证记录、催签及通知请求记录纳入流程展示。通知请求登记不等于短信已送达。
+  - PC、H5 和 uni-app 合同详情提供对应展示入口，OpenAPI 合同详情响应补充流程信息。
+  - 历史合同仅展示能够核实的记录，不补造缺失环节或时间。
 
+- [x] 【新增】生成签名辅助功能
 
+  - 在原手写签名区域内增加“生成签名”入口，默认仍使用手写，无需进入独立业务页面。
+  - 提供清雅行楷、自然行书、洒脱草书三种字体外观，输入本人姓名后生成预览。
+  - 支持 PC、H5、扫码签名及相关创建签名画板，保留原手写内容，便于切换和比较。
+  - 使用生成签名前需主动确认使用声明，明确字体外观并非真实手写笔迹，确认外观不等于确认合同内容。
+  - 对不支持的字符明确提示，不静默替换为其他字体。
 
-##### V 3.4.0
+- [x] 【新增】签署确认统一记录
+
+  - 复用既有签署验证日志，统一记录字体签名使用确认，以及短信、邮箱、密码验证相关操作和结果。
+  - 区分验证码发送请求与验证通过，保留实际结果，不将发送成功等同于身份确认。
+  - 合同流程只展示必要摘要，不公开验证码、密码、Token 或原始签名图片等敏感内容。
+  - 人脸验证暂未接入真实服务提供商，不将预留类型描述为已完成的人脸签署能力。
+
+- [x] 【新增】签署完成返回业务页面
+
+  - 支持通过 `returnUrl` 指定签署完成后的业务返回地址，由用户点击确认按钮返回，减少反复操作浏览器后退。
+  - PC 与 H5 使用统一的返回地址校验规则，返回地址白名单集中在数据库参数配置中管理。
+  - `returnUrl` 用于浏览器返回；原有 `callbackUrl` 继续用于服务端通知，两者用途独立。
+
+- [x] 【修复】OpenAPI 表单预填与签署状态衔接
+
+  - 修复通过 `formData` 提供表单数据后，符合完成条件的参与方仍可能停留在填写阶段的问题。
+  - 页面正式提交与 API 处理共用后端表单规则，统一检查必填、格式、字段归属、名称歧义及冲突。
+  - 创建响应返回处理后的任务状态，避免前端收到的状态与实际处理结果不一致。
+  - 数据未完整的参与方仍需继续填写，不因其他参与方已完成而跳过必要环节。
+
+- [x] 【修复】 固定签署位置重复设计问题
+
+  - 取消新增的模板签署位置独立字段和重复继承逻辑，复用原有参与方签署位置与校验机制。
+  - OpenAPI 位置参数沿用既有创建流程，避免页面与 API 形成两套位置规则。
+  - 消除模板查询依赖新增位置列而导致旧表结构查询失败的问题。
+
+- [x] 【修复】签署成功后仍停留编辑界面
+
+  - 修复独立 PC 签署页成功后仅发出关闭事件、页面却未退出编辑状态的问题。
+  - 成功后显示签署结果，阻止重复提交；门户内嵌场景保留结果，等待用户确认后返回。
+  - 区分“本人已签署”与“所有参与方已完成”，不因结果刷新失败而否认已经成功的签署操作。
+
+- [x] 【修复】创建成功后的浏览器页面衔接
+
+  - 补充浏览器与 uni-app H5 宿主之间的创建完成消息处理，按结果进入合同详情、填写或签署页面。
+  - 增加消息来源、发送窗口检查及重复事件处理，避免错误消息触发跳转。
+  - 此项 uni-app H5 宿主修复已完成代码调整，尚未完成发布验证。
+
+- [x] 【修复】游客签名隔离与扫码签名范围校验
+
+  - 修复游客共享占位身份可能造成签名资源混用的风险，临时签名按租户、合同及参与方隔离。
+  - 游客不再通过普通个人印章列表读取或保存签名；扫码上传、预览及使用与对应签署会话关联。
+  - 临时材料失效后需重新绘制，不回退为公共印章或任意图片链接使用。
+  - 不自动删除历史数据；历史公开图片的访问风险仍需单独核查。
+
+- [x] 【修复】合同文件读取与 Word 转换
+
+  - 统一 Word 转换、PDF 签署及相关图片的文件读取逻辑，避免从当前默认存储空间错误读取其他来源的文件。
+  - 按文件对应的存储配置或受限公网下载规则读取，完善中文文件名、路径前缀与编码处理。
+  - 修复将合同标题当作 Word 转换文件名、导致转换格式识别异常的问题。
+  - 区分普通文件下载与 PDF 内容校验，避免 Word、签名图片被误按 PDF 校验。
+
+- [x] 【修复】签署过程交互问题
+
+  - 修复选择印章后点击取消仍可能出现放置印章引导的问题，选择与确认使用分开处理。
+  - 签署完成后收起骑缝章、添加印章、放置引导及编辑弹层，避免流程结束后仍出现可编辑操作。
+  - 修复生成签名入口与手写画布交互冲突，避免按钮被画布区域遮挡。
+  - 调整签署区域最小尺寸及页边界处理，减少预设区域过小造成的签署阻塞；超出标准尺寸的自定义印章仍受实际尺寸校验约束。
+
+- [x] 【优化】手写签名笔触
+
+  - 调整轨迹平滑、轻量去抖和局部方向辅助，减少轻微抖动，同时保留真实笔画走向与松手位置。
+  - 根据书写速度、方向及收笔停顿调整粗细变化，改善笔锋过于突兀或笔画粗细过于均匀的观感。
+  - 统一小画布、全屏及扫码场景的绘制处理，优化高分屏清晰度和导出一致性。
+  - 该能力是笔迹呈现辅助，不进行姓名字形识别，也不承诺将任意字迹转换为书法作品。
+
+- [x] 【优化】字体加载与样式预览
+
+  - 三种风格分别展示“小华同学”示例图，完整字体尚未加载时也能先了解样式。
+  - 优先加载当前选中字体，其他风格独立处理；某一种加载失败不阻止使用已就绪的风格。
+  - 增加逐项加载状态及重试，避免切换姓名或关闭面板后旧结果覆盖新内容。
+  - 字体改用 WOFF2，三种字体资源总传输体积较原 TTF 减少约 46.6%，保留完整字符集。
+  - 统一预览留白、图片比例及笔色传递，优化宽屏对照与窄屏浏览。
+
+- [x] 【优化】印章选择状态统一
+
+  - PC 与 H5 使用一致的印章状态提示：不适用的身份不展示企业章；企业签署人无可用章时显示检查指引。
+  - 明确区分加载中、加载失败、身份未确认与无可用企业章，并提供重新加载入口。
+  - PC 窄屏选择抽屉与主面板使用一致的过滤列表，避免同一页面不同入口展示不一致。
+  - 不改变服务端用章权限，也不因为前端隐藏或展示而授予额外权限。
+
+- [x] 【优化】签署位置与操作提示
+
+  - PC 固定签署位置增加页码与定位入口，便于快速找到需要签署的页面。
+  - PC、H5 签署区域与 PDF 显示比例同步，默认使用最小尺寸，调整时保持比例和页内边界。
+  - 隐藏签署框旁不易理解的坐标百分比，保留页码；不移除文档缩放比例控件。
+  - 优化签署完成后的操作区，减少无效按钮和重复操作引导。
+
+- [x] 【优化】异常提示
+
+  - 签署证书缺失时向用户显示易理解的服务不可用提示，技术细节保留在服务端日志中。
+  - 文件读取失败提供检查文件存在性、权限和存储配置的指引，不向用户展示敏感凭据。
+  - 减少同一次创建失败同时弹出多条重复提示的情况。
+
+##### V 3.4.0（2026-04-05）
 
 - [x] 【新增】合同详情：发起人可在「签署中 / 表单填写中」为待办参与方生成并复制签署链接（仅一名待办时一键复制，多名时可选择后再复制）
 - [x] 【新增】合同 API：签署链接生成等相关接口封装（如 `generateSignLink`）

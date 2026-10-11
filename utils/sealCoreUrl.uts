@@ -1,0 +1,51 @@
+/**
+ * seal-core 签署页地址。
+ * 优先读库 seal.platform.h5-domain；失败时：本地 localhost:3100，线上 https://h5-sign.leepm.com。
+ */
+import { get } from '../api/index'
+import { SEAL_CORE_H5_URL } from '../config/app.config'
+
+const STORAGE_KEY = 'sealCoreH5Url'
+let cachedUrl = ''
+
+interface PlatformRouting {
+	sealCoreUrl: string
+}
+
+function trimSlash(url: string): string {
+	if (url.length > 0 && url.substring(url.length - 1) == '/') {
+		return url.substring(0, url.length - 1)
+	}
+	return url
+}
+
+function fallbackUrl(): string {
+	return trimSlash(SEAL_CORE_H5_URL)
+}
+
+export function getSealCoreH5Url(): string {
+	if (cachedUrl != '') {
+		return cachedUrl
+	}
+	const stored = (uni.getStorageSync(STORAGE_KEY) as string | null) ?? ''
+	if (stored != '') {
+		cachedUrl = trimSlash(stored)
+		return cachedUrl
+	}
+	return fallbackUrl()
+}
+
+export async function loadSealCoreH5Url(): Promise<void> {
+	try {
+		const data = await get<PlatformRouting>('/api/v1/seal/config/platform', {}, {
+			isAuth: false
+		})
+		const url = (data.sealCoreUrl as string | null) ?? ''
+		if (url != '') {
+			cachedUrl = trimSlash(url)
+			uni.setStorageSync(STORAGE_KEY, cachedUrl)
+		}
+	} catch (e) {
+		console.warn('[sealCoreUrl] 读取 seal.platform.h5-domain 失败，使用本地配置', e)
+	}
+}

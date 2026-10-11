@@ -71,6 +71,15 @@ export interface ParticipantInfo {
 /**
  * 合同基本信息
  */
+export interface ContractTimelineEvent {
+	id: string;
+	eventType: string;
+	actorName?: string;
+	detail?: string;
+	occurredAt?: string;
+	source: string;
+}
+
 export interface Contract {
 	id: string;
 	name: string;                // 合同名称
@@ -82,6 +91,7 @@ export interface Contract {
 	deadline?: string;           // 截止时间
 	reason?: string;             // 拒绝原因
 	participants: ParticipantInfo[]; // 参与人列表
+	timeline?: ContractTimelineEvent[]; // 后端提供的真实流程事件
 	initiatorId?: number;         // 发起人用户ID（业务权限判断使用）
 	creator?: number | string;    // 创建者字段（BaseDO 字符串字段，仅兼容旧逻辑）
 	currentUserParticipant?: ParticipantInfo; // 当前用户的参与人信息（后端已处理）
